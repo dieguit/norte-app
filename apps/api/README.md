@@ -96,3 +96,9 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+## WhatsApp Baileys Service
+
+The API starts the WhatsApp Baileys socket automatically. On first login, scan the QR or pairing information printed in the API logs. Baileys auth state is stored in Postgres in `whatsapp_auth_state`, so production should run the database migration before starting the API.
+
+Run only one WhatsApp-owning API instance for v1. Multiple replicas can race on the same WhatsApp session.
