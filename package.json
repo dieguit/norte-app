@@ -1,0 +1,43 @@
+{
+  "name": "norte-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:stack": "pnpm db:up && turbo run dev",
+    "db:studio": "pnpm db:up && DATABASE_URL=postgres://norte:norte@localhost:5433/norte pnpm --filter @repo/api db:studio",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:test:up": "docker compose up -d postgres-test",
+    "db:test:down": "docker compose stop postgres-test",
+    "db:test:logs": "docker compose logs -f postgres-test",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "check-types": "turbo run check-types"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.15.4",
+  "pnpm": {
+    "overrides": {
+      "@nestjs/common": "11.1.27",
+      "@nestjs/core": "11.1.27",
+      "@nestjs/platform-express": "11.1.27"
+    },
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@swc/core",
+      "@scarf/scarf",
+      "esbuild",
+      "lightningcss"
+    ]
+  },
+  "devDependencies": {
+    "turbo": "^2.10.2",
+    "typescript": "^6.0.3"
+  }
+}

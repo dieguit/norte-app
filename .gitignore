@@ -1,0 +1,11 @@
+# dependencies
+node_modules
+
+# turbo
+.turbo
+
+# tmp
+/tmp/
+
+# IA
+/docs/superpowers/
