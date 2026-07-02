@@ -9,6 +9,6 @@ dist/
 /tmp/
 
 # IA
-/docs/superpowers/
+docs/superpowers
 .superpowers/
 

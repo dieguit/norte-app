@@ -28,16 +28,22 @@ export class WhatsappMessageService {
     }
 
     if (message.key?.fromMe) {
-      this.logger.log('Skipping WhatsApp message sent by the connected account', {
-        remoteJid,
-      });
+      this.logger.log(
+        'Skipping WhatsApp message sent by the connected account',
+        {
+          remoteJid,
+        },
+      );
       return;
     }
 
     if (!this.isDirectChat(remoteJid)) {
-      this.logger.log('Skipping WhatsApp message because it is not a direct chat', {
-        remoteJid,
-      });
+      this.logger.log(
+        'Skipping WhatsApp message because it is not a direct chat',
+        {
+          remoteJid,
+        },
+      );
       return;
     }
 

@@ -9,8 +9,12 @@ describe('WhatsappMessageService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    loggerLog = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-    loggerError = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    loggerLog = vi
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
+    loggerError = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
   });
 
   it('logs the sender number and replies Hello for direct inbound messages', async () => {
