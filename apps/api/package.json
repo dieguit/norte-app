@@ -31,6 +31,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.4.5",
     "@repo/shared-types": "workspace:^",
+    "@whiskeysockets/baileys": "7.0.0-rc13",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "nestjs-zod": "^5.4.0",
