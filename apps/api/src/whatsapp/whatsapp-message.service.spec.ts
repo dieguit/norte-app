@@ -39,7 +39,10 @@ describe('WhatsappMessageService', () => {
       socket,
     );
 
-    expect(consoleLog).not.toHaveBeenCalled();
+    expect(consoleLog).toHaveBeenCalledWith(
+      'Skipping WhatsApp message sent by the connected account',
+      { remoteJid: '5491112345678@s.whatsapp.net' },
+    );
     expect(socket.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -52,6 +55,10 @@ describe('WhatsappMessageService', () => {
       socket,
     );
 
+    expect(consoleLog).toHaveBeenCalledWith(
+      'Skipping WhatsApp message because it is not a direct chat',
+      { remoteJid: '120363123456789@g.us' },
+    );
     expect(socket.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -68,6 +75,18 @@ describe('WhatsappMessageService', () => {
       socket,
     );
 
+    expect(consoleLog).toHaveBeenCalledWith(
+      'Skipping WhatsApp message because it is not a direct chat',
+      { remoteJid: 'status@broadcast' },
+    );
+    expect(consoleLog).toHaveBeenCalledWith(
+      'Skipping WhatsApp message because it is not a direct chat',
+      { remoteJid: '12345@broadcast' },
+    );
+    expect(consoleLog).toHaveBeenCalledWith(
+      'Skipping WhatsApp message because it is not a direct chat',
+      { remoteJid: '12345@newsletter' },
+    );
     expect(socket.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -77,6 +96,9 @@ describe('WhatsappMessageService', () => {
 
     await service.handleMessages([message({ remoteJid: undefined })], socket);
 
+    expect(consoleLog).toHaveBeenCalledWith(
+      'Skipping WhatsApp message without remoteJid',
+    );
     expect(socket.sendMessage).not.toHaveBeenCalled();
   });
 

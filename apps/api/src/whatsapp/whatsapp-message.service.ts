@@ -20,7 +20,22 @@ export class WhatsappMessageService {
   ): Promise<void> {
     const remoteJid = message.key?.remoteJid;
 
-    if (!remoteJid || message.key?.fromMe || !this.isDirectChat(remoteJid)) {
+    if (!remoteJid) {
+      console.log('Skipping WhatsApp message without remoteJid');
+      return;
+    }
+
+    if (message.key?.fromMe) {
+      console.log('Skipping WhatsApp message sent by the connected account', {
+        remoteJid,
+      });
+      return;
+    }
+
+    if (!this.isDirectChat(remoteJid)) {
+      console.log('Skipping WhatsApp message because it is not a direct chat', {
+        remoteJid,
+      });
       return;
     }
 
