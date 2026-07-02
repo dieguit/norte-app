@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   OnApplicationBootstrap,
   OnApplicationShutdown,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { WhatsappMessageService } from './whatsapp-message.service';
 export class WhatsappConnectionService
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
+  private readonly logger = new Logger(WhatsappConnectionService.name);
   private socket?: WASocket;
   private connecting = false;
   private isShuttingDown = false;
@@ -33,7 +35,7 @@ export class WhatsappConnectionService
   onApplicationShutdown(signal?: string): void {
     this.isShuttingDown = true;
     if (signal) {
-      console.log(`Closing WhatsApp socket after ${signal}`);
+      this.logger.log(`Closing WhatsApp socket after ${signal}`);
     }
 
     void this.socket?.end(undefined);
@@ -79,14 +81,14 @@ export class WhatsappConnectionService
       );
       const type = event.type || 'notify';
 
-      console.log('WhatsApp messages.upsert received', {
+      this.logger.log('WhatsApp messages.upsert received', {
         type,
         count: event.messages.length,
         remoteJids,
       });
 
       if (type !== 'notify') {
-        console.log(
+        this.logger.log(
           'Skipping WhatsApp messages.upsert because it is not a live notification',
           { type },
         );
@@ -95,7 +97,7 @@ export class WhatsappConnectionService
 
       await this.messageService.handleMessages(event.messages, socket);
     } catch (error) {
-      console.error('Failed to handle WhatsApp messages.upsert', error);
+      this.logger.error('Failed to handle WhatsApp messages.upsert', error);
     }
   }
 
@@ -109,12 +111,12 @@ export class WhatsappConnectionService
     }
 
     if (connection === 'connecting') {
-      console.log('WhatsApp connecting...');
+      this.logger.log('WhatsApp connecting...');
       return;
     }
 
     if (connection === 'open') {
-      console.log('WhatsApp connection opened');
+      this.logger.log('WhatsApp connection opened');
       return;
     }
 
@@ -125,13 +127,13 @@ export class WhatsappConnectionService
     const statusCode = this.getDisconnectStatusCode(lastDisconnect?.error);
 
     if (statusCode === DisconnectReason.loggedOut) {
-      console.error(
+      this.logger.error(
         'WhatsApp connection closed because the account is logged out',
       );
       return;
     }
 
-    console.error(
+    this.logger.error(
       'WhatsApp connection closed; reconnecting',
       lastDisconnect?.error,
     );

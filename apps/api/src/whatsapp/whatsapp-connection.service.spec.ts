@@ -5,6 +5,7 @@ import { WhatsappAuthStoreService } from './whatsapp-auth-store.service';
 import { WhatsappConnectionService } from './whatsapp-connection.service';
 import { WhatsappMessageService } from './whatsapp-message.service';
 import * as qrcode from 'qrcode-terminal';
+import { Logger } from '@nestjs/common';
 
 vi.mock('@whiskeysockets/baileys', () => ({
   default: vi.fn(),
@@ -17,14 +18,16 @@ vi.mock('qrcode-terminal', () => ({
 }));
 
 describe('WhatsappConnectionService', () => {
-  let consoleLog: ReturnType<typeof vi.spyOn>;
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  let loggerLog: ReturnType<typeof vi.spyOn>;
+  let loggerError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    consoleError = vi
-      .spyOn(console, 'error')
+    loggerLog = vi
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
+    loggerError = vi
+      .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
   });
 
@@ -58,8 +61,8 @@ describe('WhatsappConnectionService', () => {
     await socket.emit('connection.update', { connection: 'open' });
 
     expect(qrcode.generate).toHaveBeenCalledWith('qr-code', { small: true });
-    expect(consoleLog).toHaveBeenCalledWith('WhatsApp connecting...');
-    expect(consoleLog).toHaveBeenCalledWith('WhatsApp connection opened');
+    expect(loggerLog).toHaveBeenCalledWith('WhatsApp connecting...');
+    expect(loggerLog).toHaveBeenCalledWith('WhatsApp connection opened');
   });
 
   it('delegates upserted messages to the message service', async () => {
@@ -92,7 +95,7 @@ describe('WhatsappConnectionService', () => {
       messages: [{ key: { remoteJid: '1@s.whatsapp.net', fromMe: false } }],
     });
 
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'WhatsApp messages.upsert received',
       {
         type: 'notify',
@@ -118,7 +121,7 @@ describe('WhatsappConnectionService', () => {
       messages: [{ key: { remoteJid: '1@s.whatsapp.net', fromMe: false } }],
     });
 
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'WhatsApp messages.upsert received',
       {
         type: 'append',
@@ -126,7 +129,7 @@ describe('WhatsappConnectionService', () => {
         remoteJids: ['1@s.whatsapp.net'],
       },
     );
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'Skipping WhatsApp messages.upsert because it is not a live notification',
       { type: 'append' },
     );
@@ -146,7 +149,7 @@ describe('WhatsappConnectionService', () => {
       messages: [{ key: { remoteJid: '1@s.whatsapp.net', fromMe: false } }],
     });
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(loggerError).toHaveBeenCalledWith(
       'Failed to handle WhatsApp messages.upsert',
       error,
     );
@@ -161,10 +164,12 @@ describe('WhatsappConnectionService', () => {
     await service.onApplicationBootstrap();
     await socket.emit('messages.upsert', {
       type: 'notify',
-      messages: [{ key: undefined as any }],
+      messages: [
+        {} as unknown as import('@whiskeysockets/baileys').proto.IWebMessageInfo,
+      ],
     });
 
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'WhatsApp messages.upsert received',
       {
         type: 'notify',
@@ -206,7 +211,7 @@ describe('WhatsappConnectionService', () => {
     });
 
     expect(makeWASocket).toHaveBeenCalledTimes(1);
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(loggerError).toHaveBeenCalledWith(
       'WhatsApp connection closed because the account is logged out',
     );
   });
