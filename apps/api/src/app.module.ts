@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { PlaceholderModule } from './placeholder/placeholder.module';
 import { UsersModule } from './users/users.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UsersModule } from './users/users.module';
     DatabaseModule,
     PlaceholderModule,
     UsersModule,
+    WhatsappModule,
   ],
   controllers: [AppController],
   providers: [AppService],

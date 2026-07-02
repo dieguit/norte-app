@@ -18,6 +18,7 @@ export class WhatsappConnectionService
 {
   private socket?: WASocket;
   private connecting = false;
+  private isShuttingDown = false;
 
   constructor(
     private readonly authStore: WhatsappAuthStoreService,
@@ -29,6 +30,7 @@ export class WhatsappConnectionService
   }
 
   onApplicationShutdown(signal?: string): void {
+    this.isShuttingDown = true;
     if (signal) {
       console.log(`Closing WhatsApp socket after ${signal}`);
     }
@@ -38,7 +40,7 @@ export class WhatsappConnectionService
   }
 
   private async connect(): Promise<void> {
-    if (this.connecting) {
+    if (this.connecting || this.isShuttingDown) {
       return;
     }
 
@@ -83,7 +85,7 @@ export class WhatsappConnectionService
       return;
     }
 
-    if (connection !== 'close') {
+    if (connection !== 'close' || this.isShuttingDown) {
       return;
     }
 
