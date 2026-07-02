@@ -152,6 +152,29 @@ describe('WhatsappConnectionService', () => {
     );
   });
 
+  it('safely handles missing message key in upsert events', async () => {
+    const socket = createSocket();
+    vi.mocked(makeWASocket).mockReturnValue(socket as never);
+    const handleMessages = vi.fn().mockResolvedValue(undefined);
+    const service = await createService({ handleMessages });
+
+    await service.onApplicationBootstrap();
+    await socket.emit('messages.upsert', {
+      type: 'notify',
+      messages: [{ key: undefined as any }],
+    });
+
+    expect(consoleLog).toHaveBeenCalledWith(
+      'WhatsApp messages.upsert received',
+      {
+        type: 'notify',
+        count: 1,
+        remoteJids: ['unknown'],
+      },
+    );
+    expect(handleMessages).toHaveBeenCalled();
+  });
+
   it('reconnects after non-logout close', async () => {
     const firstSocket = createSocket();
     const secondSocket = createSocket();

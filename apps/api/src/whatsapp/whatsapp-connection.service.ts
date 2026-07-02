@@ -73,26 +73,26 @@ export class WhatsappConnectionService
     event: BaileysEventMap['messages.upsert'],
     socket: WASocket,
   ): Promise<void> {
-    const remoteJids = event.messages.map(
-      (message) => message.key.remoteJid ?? 'unknown',
-    );
-    const type = event.type || 'notify';
-
-    console.log('WhatsApp messages.upsert received', {
-      type,
-      count: event.messages.length,
-      remoteJids,
-    });
-
-    if (type !== 'notify') {
-      console.log(
-        'Skipping WhatsApp messages.upsert because it is not a live notification',
-        { type },
-      );
-      return;
-    }
-
     try {
+      const remoteJids = event.messages.map(
+        (message) => message.key?.remoteJid ?? 'unknown',
+      );
+      const type = event.type || 'notify';
+
+      console.log('WhatsApp messages.upsert received', {
+        type,
+        count: event.messages.length,
+        remoteJids,
+      });
+
+      if (type !== 'notify') {
+        console.log(
+          'Skipping WhatsApp messages.upsert because it is not a live notification',
+          { type },
+        );
+        return;
+      }
+
       await this.messageService.handleMessages(event.messages, socket);
     } catch (error) {
       console.error('Failed to handle WhatsApp messages.upsert', error);
