@@ -1,0 +1,47 @@
+import { Injectable } from '@nestjs/common';
+import type { proto, WASocket } from '@whiskeysockets/baileys';
+
+type ReplySocket = Pick<WASocket, 'sendMessage'>;
+
+@Injectable()
+export class WhatsappMessageService {
+  async handleMessages(
+    messages: proto.IWebMessageInfo[],
+    socket: ReplySocket,
+  ): Promise<void> {
+    for (const message of messages) {
+      await this.handleMessage(message, socket);
+    }
+  }
+
+  private async handleMessage(
+    message: proto.IWebMessageInfo,
+    socket: ReplySocket,
+  ): Promise<void> {
+    const remoteJid = message.key?.remoteJid;
+
+    if (!remoteJid || message.key?.fromMe || !this.isDirectChat(remoteJid)) {
+      return;
+    }
+
+    const number = this.extractPhoneNumber(remoteJid);
+    console.log(number);
+
+    try {
+      await socket.sendMessage(remoteJid, { text: 'Hello' });
+    } catch (error) {
+      console.error(
+        `Failed to reply to WhatsApp message from ${number}`,
+        error,
+      );
+    }
+  }
+
+  private isDirectChat(remoteJid: string): boolean {
+    return remoteJid.endsWith('@s.whatsapp.net');
+  }
+
+  private extractPhoneNumber(remoteJid: string): string {
+    return remoteJid.split('@')[0] ?? remoteJid;
+  }
+}
