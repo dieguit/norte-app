@@ -6,7 +6,7 @@ import { WhatsappConnectionService } from './whatsapp-connection.service';
 import { WhatsappMessageService } from './whatsapp-message.service';
 import * as qrcode from 'qrcode-terminal';
 
-vi.mock('@whiskeysockets/baileys', async () => ({
+vi.mock('@whiskeysockets/baileys', () => ({
   default: vi.fn(),
   DisconnectReason: { loggedOut: 401 },
   Browsers: { ubuntu: vi.fn((name: string) => ['Ubuntu', name, '1.0.0']) },
@@ -23,7 +23,9 @@ describe('WhatsappConnectionService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
   });
 
   it('creates a Baileys socket on application bootstrap and saves creds updates', async () => {
@@ -49,7 +51,10 @@ describe('WhatsappConnectionService', () => {
     const service = await createService();
 
     await service.onApplicationBootstrap();
-    await socket.emit('connection.update', { qr: 'qr-code', connection: 'connecting' });
+    await socket.emit('connection.update', {
+      qr: 'qr-code',
+      connection: 'connecting',
+    });
     await socket.emit('connection.update', { connection: 'open' });
 
     expect(qrcode.generate).toHaveBeenCalledWith('qr-code', { small: true });
@@ -64,11 +69,86 @@ describe('WhatsappConnectionService', () => {
     const service = await createService({ handleMessages });
 
     await service.onApplicationBootstrap();
-    await socket.emit('messages.upsert', { messages: [{ key: { remoteJid: '1@s.whatsapp.net' } }] });
+    await socket.emit('messages.upsert', {
+      type: 'notify',
+      messages: [{ key: { remoteJid: '1@s.whatsapp.net' } }],
+    });
 
     expect(handleMessages).toHaveBeenCalledWith(
       [{ key: { remoteJid: '1@s.whatsapp.net' } }],
       socket,
+    );
+  });
+
+  it('logs metadata and delegates only notify upserted messages', async () => {
+    const socket = createSocket();
+    vi.mocked(makeWASocket).mockReturnValue(socket as never);
+    const handleMessages = vi.fn().mockResolvedValue(undefined);
+    const service = await createService({ handleMessages });
+
+    await service.onApplicationBootstrap();
+    await socket.emit('messages.upsert', {
+      type: 'notify',
+      messages: [{ key: { remoteJid: '1@s.whatsapp.net', fromMe: false } }],
+    });
+
+    expect(consoleLog).toHaveBeenCalledWith(
+      'WhatsApp messages.upsert received',
+      {
+        type: 'notify',
+        count: 1,
+        remoteJids: ['1@s.whatsapp.net'],
+      },
+    );
+    expect(handleMessages).toHaveBeenCalledWith(
+      [{ key: { remoteJid: '1@s.whatsapp.net', fromMe: false } }],
+      socket,
+    );
+  });
+
+  it('logs and skips non-notify upserted messages', async () => {
+    const socket = createSocket();
+    vi.mocked(makeWASocket).mockReturnValue(socket as never);
+    const handleMessages = vi.fn().mockResolvedValue(undefined);
+    const service = await createService({ handleMessages });
+
+    await service.onApplicationBootstrap();
+    await socket.emit('messages.upsert', {
+      type: 'append',
+      messages: [{ key: { remoteJid: '1@s.whatsapp.net', fromMe: false } }],
+    });
+
+    expect(consoleLog).toHaveBeenCalledWith(
+      'WhatsApp messages.upsert received',
+      {
+        type: 'append',
+        count: 1,
+        remoteJids: ['1@s.whatsapp.net'],
+      },
+    );
+    expect(consoleLog).toHaveBeenCalledWith(
+      'Skipping WhatsApp messages.upsert because it is not a live notification',
+      { type: 'append' },
+    );
+    expect(handleMessages).not.toHaveBeenCalled();
+  });
+
+  it('logs message handler failures from upsert events', async () => {
+    const socket = createSocket();
+    vi.mocked(makeWASocket).mockReturnValue(socket as never);
+    const error = new Error('handler failed');
+    const handleMessages = vi.fn().mockRejectedValue(error);
+    const service = await createService({ handleMessages });
+
+    await service.onApplicationBootstrap();
+    await socket.emit('messages.upsert', {
+      type: 'notify',
+      messages: [{ key: { remoteJid: '1@s.whatsapp.net', fromMe: false } }],
+    });
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to handle WhatsApp messages.upsert',
+      error,
     );
   });
 
@@ -120,10 +200,12 @@ describe('WhatsappConnectionService', () => {
   });
 });
 
-async function createService(overrides: {
-  saveCreds?: () => Promise<void>;
-  handleMessages?: (messages: unknown[], socket: unknown) => Promise<void>;
-} = {}) {
+async function createService(
+  overrides: {
+    saveCreds?: () => Promise<void>;
+    handleMessages?: (messages: unknown[], socket: unknown) => Promise<void>;
+  } = {},
+) {
   const moduleRef = await Test.createTestingModule({
     providers: [
       WhatsappConnectionService,
@@ -132,7 +214,8 @@ async function createService(overrides: {
         useValue: {
           createAuthState: vi.fn().mockResolvedValue({
             state: { creds: { id: 'creds' }, keys: {} },
-            saveCreds: overrides.saveCreds ?? vi.fn().mockResolvedValue(undefined),
+            saveCreds:
+              overrides.saveCreds ?? vi.fn().mockResolvedValue(undefined),
           }),
         },
       },
@@ -150,13 +233,21 @@ async function createService(overrides: {
 }
 
 function createSocket() {
-  const handlers = new Map<string, (payload: unknown) => Promise<void> | void>();
+  const handlers = new Map<
+    string,
+    (payload: unknown) => Promise<void> | void
+  >();
 
   return {
     ev: {
-      on: vi.fn((event: string, handler: (payload: unknown) => Promise<void> | void) => {
-        handlers.set(event, handler);
-      }),
+      on: vi.fn(
+        (
+          event: string,
+          handler: (payload: unknown) => Promise<void> | void,
+        ) => {
+          handlers.set(event, handler);
+        },
+      ),
     },
     end: vi.fn(),
     async emit(event: string, payload: unknown) {

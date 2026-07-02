@@ -36,7 +36,7 @@ export class WhatsappConnectionService
       console.log(`Closing WhatsApp socket after ${signal}`);
     }
 
-    this.socket?.end(undefined);
+    void this.socket?.end(undefined);
     this.socket = undefined;
   }
 
@@ -55,15 +55,47 @@ export class WhatsappConnectionService
       });
 
       this.socket = socket;
-      socket.ev.on('creds.update', saveCreds);
+      socket.ev.on('creds.update', () => {
+        void saveCreds();
+      });
       socket.ev.on('connection.update', (update) => {
         void this.handleConnectionUpdate(update);
       });
       socket.ev.on('messages.upsert', (event) => {
-        void this.messageService.handleMessages(event.messages, socket);
+        void this.handleMessagesUpsert(event, socket);
       });
     } finally {
       this.connecting = false;
+    }
+  }
+
+  private async handleMessagesUpsert(
+    event: BaileysEventMap['messages.upsert'],
+    socket: WASocket,
+  ): Promise<void> {
+    const remoteJids = event.messages.map(
+      (message) => message.key.remoteJid ?? 'unknown',
+    );
+    const type = event.type || 'notify';
+
+    console.log('WhatsApp messages.upsert received', {
+      type,
+      count: event.messages.length,
+      remoteJids,
+    });
+
+    if (type !== 'notify') {
+      console.log(
+        'Skipping WhatsApp messages.upsert because it is not a live notification',
+        { type },
+      );
+      return;
+    }
+
+    try {
+      await this.messageService.handleMessages(event.messages, socket);
+    } catch (error) {
+      console.error('Failed to handle WhatsApp messages.upsert', error);
     }
   }
 
@@ -93,11 +125,16 @@ export class WhatsappConnectionService
     const statusCode = this.getDisconnectStatusCode(lastDisconnect?.error);
 
     if (statusCode === DisconnectReason.loggedOut) {
-      console.error('WhatsApp connection closed because the account is logged out');
+      console.error(
+        'WhatsApp connection closed because the account is logged out',
+      );
       return;
     }
 
-    console.error('WhatsApp connection closed; reconnecting', lastDisconnect?.error);
+    console.error(
+      'WhatsApp connection closed; reconnecting',
+      lastDisconnect?.error,
+    );
     await this.connect();
   }
 

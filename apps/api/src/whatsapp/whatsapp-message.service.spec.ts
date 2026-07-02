@@ -9,7 +9,9 @@ describe('WhatsappMessageService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
   });
 
   it('logs the sender number and replies Hello for direct inbound messages', async () => {
@@ -80,7 +82,9 @@ describe('WhatsappMessageService', () => {
 
   it('logs reply failures without throwing', async () => {
     const service = await createService();
-    const socket = { sendMessage: vi.fn().mockRejectedValue(new Error('boom')) };
+    const socket = {
+      sendMessage: vi.fn().mockRejectedValue(new Error('boom')),
+    };
 
     await expect(
       service.handleMessages(

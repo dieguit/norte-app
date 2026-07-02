@@ -13,7 +13,8 @@ import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
 import { whatsappAuthState } from './whatsapp.schema';
 
-type StoredJson = Record<string, unknown> | unknown[] | string | number | boolean | null;
+type StoredJson =
+  Record<string, unknown> | unknown[] | string | number | boolean | null;
 
 const CREDS_KEY = 'creds';
 
@@ -93,7 +94,7 @@ export class WhatsappAuthStoreService {
       return undefined;
     }
 
-    return this.deserialize<T>(row.value as StoredJson);
+    return this.deserialize<T>(row.value);
   }
 
   protected async write(key: string, value: unknown): Promise<void> {
