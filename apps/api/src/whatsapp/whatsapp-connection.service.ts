@@ -9,6 +9,7 @@ import makeWASocket, {
   type BaileysEventMap,
   type WASocket,
 } from '@whiskeysockets/baileys';
+import * as qrcode from 'qrcode-terminal';
 import { WhatsappAuthStoreService } from './whatsapp-auth-store.service';
 import { WhatsappMessageService } from './whatsapp-message.service';
 
@@ -72,7 +73,7 @@ export class WhatsappConnectionService
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-      console.log('WhatsApp QR code:', qr);
+      qrcode.generate(qr, { small: true });
     }
 
     if (connection === 'connecting') {

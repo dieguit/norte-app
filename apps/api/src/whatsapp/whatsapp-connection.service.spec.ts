@@ -4,11 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WhatsappAuthStoreService } from './whatsapp-auth-store.service';
 import { WhatsappConnectionService } from './whatsapp-connection.service';
 import { WhatsappMessageService } from './whatsapp-message.service';
+import * as qrcode from 'qrcode-terminal';
 
 vi.mock('@whiskeysockets/baileys', async () => ({
   default: vi.fn(),
   DisconnectReason: { loggedOut: 401 },
   Browsers: { ubuntu: vi.fn((name: string) => ['Ubuntu', name, '1.0.0']) },
+}));
+
+vi.mock('qrcode-terminal', () => ({
+  generate: vi.fn(),
 }));
 
 describe('WhatsappConnectionService', () => {
@@ -47,7 +52,7 @@ describe('WhatsappConnectionService', () => {
     await socket.emit('connection.update', { qr: 'qr-code', connection: 'connecting' });
     await socket.emit('connection.update', { connection: 'open' });
 
-    expect(consoleLog).toHaveBeenCalledWith('WhatsApp QR code:', 'qr-code');
+    expect(qrcode.generate).toHaveBeenCalledWith('qr-code', { small: true });
     expect(consoleLog).toHaveBeenCalledWith('WhatsApp connecting...');
     expect(consoleLog).toHaveBeenCalledWith('WhatsApp connection opened');
   });
