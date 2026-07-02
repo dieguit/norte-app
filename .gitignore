@@ -1,5 +1,6 @@
 # dependencies
-node_modules
+node_modules/
+dist/
 
 # turbo
 .turbo
@@ -9,3 +10,5 @@ node_modules
 
 # IA
 /docs/superpowers/
+.superpowers/
+
