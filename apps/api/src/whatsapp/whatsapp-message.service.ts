@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { proto, WASocket } from '@whiskeysockets/baileys';
 
 type ReplySocket = Pick<WASocket, 'sendMessage'>;
 
 @Injectable()
 export class WhatsappMessageService {
+  private readonly logger = new Logger(WhatsappMessageService.name);
+
   async handleMessages(
     messages: proto.IWebMessageInfo[],
     socket: ReplySocket,
@@ -21,31 +23,31 @@ export class WhatsappMessageService {
     const remoteJid = message.key?.remoteJid;
 
     if (!remoteJid) {
-      console.log('Skipping WhatsApp message without remoteJid');
+      this.logger.log('Skipping WhatsApp message without remoteJid');
       return;
     }
 
     if (message.key?.fromMe) {
-      console.log('Skipping WhatsApp message sent by the connected account', {
+      this.logger.log('Skipping WhatsApp message sent by the connected account', {
         remoteJid,
       });
       return;
     }
 
     if (!this.isDirectChat(remoteJid)) {
-      console.log('Skipping WhatsApp message because it is not a direct chat', {
+      this.logger.log('Skipping WhatsApp message because it is not a direct chat', {
         remoteJid,
       });
       return;
     }
 
     const number = this.extractPhoneNumber(remoteJid);
-    console.log(number);
+    this.logger.log(number);
 
     try {
       await socket.sendMessage(remoteJid, { text: 'Hello' });
     } catch (error) {
-      console.error(
+      this.logger.error(
         `Failed to reply to WhatsApp message from ${number}`,
         error,
       );
@@ -53,7 +55,7 @@ export class WhatsappMessageService {
   }
 
   private isDirectChat(remoteJid: string): boolean {
-    return remoteJid.endsWith('@s.whatsapp.net');
+    return remoteJid.endsWith('@s.whatsapp.net') || remoteJid.endsWith('@lid');
   }
 
   private extractPhoneNumber(remoteJid: string): string {

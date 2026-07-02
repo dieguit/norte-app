@@ -1,17 +1,16 @@
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WhatsappMessageService } from './whatsapp-message.service';
+import { Logger } from '@nestjs/common';
 
 describe('WhatsappMessageService', () => {
-  let consoleLog: ReturnType<typeof vi.spyOn>;
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  let loggerLog: ReturnType<typeof vi.spyOn>;
+  let loggerError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
+    loggerLog = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    loggerError = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
   });
 
   it('logs the sender number and replies Hello for direct inbound messages', async () => {
@@ -23,11 +22,26 @@ describe('WhatsappMessageService', () => {
       socket,
     );
 
-    expect(consoleLog).toHaveBeenCalledWith('5491112345678');
+    expect(loggerLog).toHaveBeenCalledWith('5491112345678');
     expect(socket.sendMessage).toHaveBeenCalledWith(
       '5491112345678@s.whatsapp.net',
       { text: 'Hello' },
     );
+  });
+
+  it('logs the sender identifier and replies Hello for direct inbound lid messages', async () => {
+    const service = await createService();
+    const socket = { sendMessage: vi.fn().mockResolvedValue({}) };
+
+    await service.handleMessages(
+      [message({ remoteJid: '69900777328755@lid' })],
+      socket,
+    );
+
+    expect(loggerLog).toHaveBeenCalledWith('69900777328755');
+    expect(socket.sendMessage).toHaveBeenCalledWith('69900777328755@lid', {
+      text: 'Hello',
+    });
   });
 
   it('skips messages sent by the connected account', async () => {
@@ -39,7 +53,7 @@ describe('WhatsappMessageService', () => {
       socket,
     );
 
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'Skipping WhatsApp message sent by the connected account',
       { remoteJid: '5491112345678@s.whatsapp.net' },
     );
@@ -55,7 +69,7 @@ describe('WhatsappMessageService', () => {
       socket,
     );
 
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'Skipping WhatsApp message because it is not a direct chat',
       { remoteJid: '120363123456789@g.us' },
     );
@@ -75,15 +89,15 @@ describe('WhatsappMessageService', () => {
       socket,
     );
 
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'Skipping WhatsApp message because it is not a direct chat',
       { remoteJid: 'status@broadcast' },
     );
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'Skipping WhatsApp message because it is not a direct chat',
       { remoteJid: '12345@broadcast' },
     );
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'Skipping WhatsApp message because it is not a direct chat',
       { remoteJid: '12345@newsletter' },
     );
@@ -96,7 +110,7 @@ describe('WhatsappMessageService', () => {
 
     await service.handleMessages([message({ remoteJid: undefined })], socket);
 
-    expect(consoleLog).toHaveBeenCalledWith(
+    expect(loggerLog).toHaveBeenCalledWith(
       'Skipping WhatsApp message without remoteJid',
     );
     expect(socket.sendMessage).not.toHaveBeenCalled();
@@ -115,7 +129,7 @@ describe('WhatsappMessageService', () => {
       ),
     ).resolves.toBeUndefined();
 
-    expect(consoleError).toHaveBeenCalledWith(
+    expect(loggerError).toHaveBeenCalledWith(
       'Failed to reply to WhatsApp message from 5491112345678',
       expect.any(Error),
     );
