@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { onboardingDrafts } from '@/db/schema'
+import type { OnboardingAnswers } from './definition'
 
 export function getDraft(deviceId: string) {
   return db.query.onboardingDrafts.findFirst({
@@ -10,7 +11,7 @@ export function getDraft(deviceId: string) {
 
 export async function saveDraft(data: {
   deviceId: string
-  answers: Record<string, string | number>
+  answers: OnboardingAnswers
   completed: boolean
 }) {
   const [draft] = await db.insert(onboardingDrafts).values({

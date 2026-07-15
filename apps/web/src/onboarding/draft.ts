@@ -1,11 +1,11 @@
 import { z } from 'zod'
-import type { OnboardingAnswers } from './definition'
+import { filterAnswersForActiveSteps, type OnboardingAnswers, onboardingAnswerSchema } from './definition'
 
 export const DRAFT_KEY = 'onboarding-draft'
 
 const localDraftSchema = z.object({
   deviceId: z.uuid(),
-  answers: z.record(z.string(), z.union([z.string(), z.number()])),
+  answers: z.record(z.string(), onboardingAnswerSchema),
   stepIndex: z.number().int().nonnegative(),
   completed: z.boolean(),
   updatedAt: z.string().datetime(),
@@ -21,12 +21,17 @@ export function loadDraft(): LocalDraft | null {
 
   try {
     const parsed = localDraftSchema.safeParse(JSON.parse(stored))
-    return parsed.success ? (parsed.data as LocalDraft) : null
+    return parsed.success
+      ? { ...parsed.data, answers: filterAnswersForActiveSteps(parsed.data.answers) }
+      : null
   } catch {
     return null
   }
 }
 
 export function saveDraft(draft: LocalDraft) {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({
+    ...draft,
+    answers: filterAnswersForActiveSteps(draft.answers),
+  }))
 }

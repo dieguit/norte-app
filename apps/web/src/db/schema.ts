@@ -1,7 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
-
-export type OnboardingAnswers = Record<string, string | number>
+import type { OnboardingAnswers } from '../onboarding/definition'
 
 export const onboardingDrafts = pgTable('onboarding_drafts', {
   deviceId: text('device_id').primaryKey(),

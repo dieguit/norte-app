@@ -48,4 +48,18 @@ describe('onboarding server persistence', () => {
     expect(draft).toBeDefined()
     expect(draft?.completedAt).toBeInstanceOf(Date)
   })
+
+  it('saves database persistence coverage for a list', async () => {
+    const deviceId = '7f3192f1-689e-4b40-9a29-cfa090b8f6c6'
+
+    await saveDraft({
+      deviceId,
+      answers: { p5_fuentes: ['Sueldo fijo (relacion de dependencia)', 'Jubilacion / pension'] },
+      completed: false,
+    })
+
+    expect((await getDraft(deviceId))?.answers).toEqual({
+      p5_fuentes: ['Sueldo fijo (relacion de dependencia)', 'Jubilacion / pension'],
+    })
+  })
 })

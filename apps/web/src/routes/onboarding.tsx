@@ -1,106 +1,174 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useForm } from '@tanstack/react-form'
-import React, { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { createFileRoute } from "@tanstack/react-router";
+import { useForm, useStore } from "@tanstack/react-form";
+import { AnimatePresence, motion } from "motion/react";
+import React, { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  onboardingSteps,
   validateStep,
   getFirstIncompleteStep,
+  getActiveSteps,
+  getVisibleFields,
+  getInactiveAnswerIds,
+  filterAnswersForActiveSteps,
   type OnboardingAnswers,
-} from '../onboarding/definition'
-import { loadDraft, saveDraft as saveLocalDraft } from '../onboarding/draft'
-import { getOnboardingDraft, saveOnboardingDraft } from '../onboarding/server'
-import { ArrowLeft, ArrowRight, CheckCircle2, Lock, Sparkles } from 'lucide-react'
+} from "../onboarding/definition";
+import { loadDraft, saveDraft as saveLocalDraft } from "../onboarding/draft";
+import { getOnboardingDraft, saveOnboardingDraft } from "../onboarding/server";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Lock,
+  Sparkles,
+} from "lucide-react";
 
-export const Route = createFileRoute('/onboarding')({
+const numberFormatter = new Intl.NumberFormat("es-AR", {
+  maximumFractionDigits: 0,
+});
+
+function formatNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? numberFormatter.format(value)
+    : String(value ?? "");
+}
+
+function parseNumber(value: string) {
+  const digits = value.replace(/[.,\s]/g, "");
+  return digits === "" ? "" : Number(digits);
+}
+
+export const Route = createFileRoute("/onboarding")({
   component: OnboardingPage,
-})
+});
+
+function getRestoredStepIndex(answers: OnboardingAnswers) {
+  const firstIncomplete = getFirstIncompleteStep(answers);
+  if (firstIncomplete >= 0) return firstIncomplete;
+  return Math.max(getActiveSteps(answers).length - 1, 0);
+}
 
 export function OnboardingPage() {
-  const [mounted, setMounted] = useState(false)
-  const [deviceId, setDeviceId] = useState<string>('')
-  const [stepIndex, setStepIndex] = useState(0)
-  const [completed, setCompleted] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [mounted, setMounted] = useState(false);
+  const [deviceId, setDeviceId] = useState<string>("");
+  const [stepIndex, setStepIndex] = useState(0);
+  const [completed, setCompleted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
   // Initialize form with TanStack React Form
   const form = useForm({
     defaultValues: {} as OnboardingAnswers,
-  })
+  });
+  const formAnswers = useStore(form.store, (state) => state.values);
+  const hydrated = useRef(false);
+
+  useEffect(() => {
+    if (!hydrated.current) return;
+    for (const fieldId of getInactiveAnswerIds(formAnswers)) {
+      form.setFieldValue(fieldId as any, undefined as any);
+    }
+  }, [form, formAnswers]);
+
+  const [showWelcome, setShowWelcome] = useState(() => {
+    if (
+      typeof window !== "undefined" &&
+      localStorage.getItem("onboarding-welcome-force") === "true"
+    ) {
+      return true;
+    }
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("onboarding-welcome-seen") !== "true";
+    }
+    return true;
+  });
 
   // Set mounted on client
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   // Load draft data on mount
   useEffect(() => {
-    if (!mounted) return
+    if (!mounted) return;
 
     // 1. Get or generate device ID
-    let id = localStorage.getItem('onboarding-device-id')
+    let id = localStorage.getItem("onboarding-device-id");
     if (!id) {
-      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        id = crypto.randomUUID()
+      if (
+        typeof crypto !== "undefined" &&
+        typeof crypto.randomUUID === "function"
+      ) {
+        id = crypto.randomUUID();
       } else {
-        id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-          const r = (Math.random() * 16) | 0
-          const v = c === 'x' ? r : (r & 0x3) | 0x8
-          return v.toString(16)
-        })
+        id = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          const v = c === "x" ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
       }
-      localStorage.setItem('onboarding-device-id', id)
+      localStorage.setItem("onboarding-device-id", id);
     }
-    setDeviceId(id)
+    setDeviceId(id);
 
     // 2. Read local storage draft
-    const local = loadDraft()
+    const local = loadDraft();
+    const initialAnswers = local
+      ? filterAnswersForActiveSteps(local.answers)
+      : {};
     if (local) {
-      setStepIndex(local.stepIndex)
-      setCompleted(local.completed)
-      Object.entries(local.answers).forEach(([key, val]) => {
-        form.setFieldValue(key as any, val as any)
-      })
+      Object.entries(initialAnswers).forEach(([key, val]) => {
+        form.setFieldValue(key as any, val as any);
+      });
+      setStepIndex(getRestoredStepIndex(initialAnswers));
+      setCompleted(local.completed);
     }
+    hydrated.current = true;
 
     // 3. Call getOnboardingDraft and compare timestamps
     getOnboardingDraft({ data: { deviceId: id } })
       .then((serverDraft) => {
         if (serverDraft) {
-          const localTime = local ? new Date(local.updatedAt).getTime() : 0
-          const serverTime = serverDraft.updatedAt ? new Date(serverDraft.updatedAt).getTime() : 0
+          const localTime = local ? new Date(local.updatedAt).getTime() : 0;
+          const serverTime = serverDraft.updatedAt
+            ? new Date(serverDraft.updatedAt).getTime()
+            : 0;
 
-          if (!local || serverTime > localTime) {
-            const nextIncomplete = getFirstIncompleteStep(serverDraft.answers)
-            const resolvedStep = nextIncomplete >= 0 ? nextIncomplete : 0
-            const isCompleted = !!serverDraft.completedAt
+          const currentAnswers = filterAnswersForActiveSteps(form.state.values);
+          const hasLocalEdit =
+            JSON.stringify(currentAnswers) !== JSON.stringify(initialAnswers);
 
-            setStepIndex(resolvedStep)
-            setCompleted(isCompleted)
-
+          if (!hasLocalEdit && (!local || serverTime > localTime)) {
             // Update form values
-            Object.entries(serverDraft.answers).forEach(([key, val]) => {
-              form.setFieldValue(key as any, val as any)
-            })
+            const answers = filterAnswersForActiveSteps(serverDraft.answers);
+            Object.entries(answers).forEach(([key, val]) => {
+              form.setFieldValue(key as any, val as any);
+            });
+
+            const resolvedStep = getRestoredStepIndex(answers);
+            const isCompleted = !!serverDraft.completedAt;
+
+            setStepIndex(resolvedStep >= 0 ? resolvedStep : 0);
+            setCompleted(isCompleted);
 
             // Sync back to local storage
             saveLocalDraft({
               deviceId: id,
-              answers: serverDraft.answers,
-              stepIndex: resolvedStep,
+              answers,
+              stepIndex: resolvedStep >= 0 ? resolvedStep : 0,
               completed: isCompleted,
               updatedAt: new Date(serverDraft.updatedAt).toISOString(),
-            })
+            });
           }
         }
       })
       .catch((err) => {
-        console.error('Failed to retrieve onboarding draft from server:', err)
-      })
-  }, [mounted])
+        console.error("Failed to retrieve onboarding draft from server:", err);
+      });
+  }, [mounted]);
 
   if (!mounted) {
     return (
@@ -114,56 +182,135 @@ export function OnboardingPage() {
           </div>
         </section>
       </main>
-    )
+    );
+  }
+
+  // Derive active steps
+  const activeSteps = getActiveSteps(formAnswers);
+  const safeStepIndex = Math.max(
+    0,
+    Math.min(stepIndex, activeSteps.length - 1),
+  );
+  const currentStep = activeSteps[safeStepIndex];
+  const displayName =
+    typeof formAnswers.nombre === "string" ? formAnswers.nombre.trim() : "";
+  const progressPercent =
+    activeSteps.length > 0
+      ? Math.round(((safeStepIndex + 1) / activeSteps.length) * 100)
+      : 0;
+
+  // Welcome Screen
+  if (showWelcome) {
+    return (
+      <main className="flex flex-col flex-1 sm:items-center sm:justify-center px-0 py-0 sm:px-8 sm:py-12">
+        <section className="flex flex-col flex-1 w-full rounded-none border-x-0 border-b border-t-0 sm:flex-initial lg:w-[70vw] sm:rounded-[2rem] sm:border sm:shadow-[var(--shadow-card)] p-6 sm:p-8 lg:p-10 bg-[var(--surface-strong)] space-y-8 text-center items-center justify-center">
+          <div className="bg-[var(--foam)] border border-[var(--chip-line)] rounded-full p-4 mb-6 text-[var(--palm)]">
+            <Sparkles className="size-16 animate-pulse" />
+          </div>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)] mb-4">
+            ¡Te damos la bienvenida a Norte!
+          </h1>
+          <p className="text-base text-[var(--sea-ink-soft)] leading-relaxed mb-8 max-w-xl">
+            Hola 👋 Esto toma unos 10 minutos y no necesitás buscar ningún
+            papel: todos los números pueden ser aproximados y son{" "}
+            <strong>por mes</strong>.
+            <br />
+            Hoy pensemos en tu próximo año, después habrá tiempo para más.
+            <br />
+            Al final vas a recibir algo que ningún banco te dio nunca: la foto
+            completa de tu situación financiera y el camino más corto hacia tu
+            primer objetivo.
+            <br />
+            Acá nadie te juzga, venimos a mirar para adelante, no para atrás.
+          </p>
+          <Button
+            type="button"
+            onClick={() => {
+              localStorage.setItem("onboarding-welcome-seen", "true");
+              setShowWelcome(false);
+            }}
+            className="h-auto rounded-xl bg-[var(--lagoon-deep)] px-8 py-3 text-base font-bold text-[var(--on-primary)] hover:bg-[var(--sea-ink)] flex items-center gap-2 shadow-md shadow-[var(--lagoon)/10] transition-all active:scale-[0.98]"
+          >
+            Continuar
+            <ArrowRight className="size-5" />
+          </Button>
+        </section>
+      </main>
+    );
+  }
+
+  // Render completion screen
+  if (completed) {
+    return (
+      <main className="flex flex-col flex-1 sm:items-center sm:justify-center px-0 py-0 sm:px-8 sm:py-12">
+        <section className="flex flex-col flex-1 w-full rounded-none border-x-0 border-b border-t-0 sm:flex-initial lg:w-[70vw] sm:rounded-[2rem] sm:border sm:shadow-[var(--shadow-card)] p-6 sm:p-8 lg:p-10 bg-[var(--surface-strong)] text-center items-center justify-center">
+          <div className="bg-[var(--foam)] border border-[var(--chip-line)] rounded-full p-4 mb-6 text-[var(--palm)] animate-[bounce_1.5s_infinite]">
+            <CheckCircle2 className="size-16" />
+          </div>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)] mb-4">
+            ¡Cuestionario completado!
+          </h1>
+          <p className="text-base text-[var(--sea-ink-soft)] leading-relaxed mb-8 max-w-md">
+            {displayName
+              ? `Gracias, ${displayName}. Tu perfil está listo y ahora podés explorar herramientas y servicios personalizados.`
+              : "Gracias por compartir tu panorama financiero. Tu perfil está listo y ahora podés explorar herramientas y servicios personalizados."}
+          </p>
+          <div className="flex items-center gap-2 text-sm text-[var(--sea-ink-soft)]">
+            <Lock className="size-4" />
+            <span>Tus datos financieros están encriptados y seguros</span>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   // Back action: without saving
   const handleBack = () => {
-    if (stepIndex > 0) {
-      setSaveError(null)
-      setValidationErrors({})
-      const prevStepIndex = stepIndex - 1
-      setStepIndex(prevStepIndex)
+    if (safeStepIndex > 0) {
+      setSaveError(null);
+      setValidationErrors({});
+      const prevStepIndex = safeStepIndex - 1;
+      setStepIndex(prevStepIndex);
 
-      const local = loadDraft()
+      const local = loadDraft();
       if (local) {
         saveLocalDraft({
           ...local,
           stepIndex: prevStepIndex,
           updatedAt: new Date().toISOString(),
-        })
+        });
       }
     }
-  }
+  };
 
   // Next action
   const handleNext = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaveError(null)
-    setValidationErrors({})
+    e.preventDefault();
+    setSaveError(null);
+    setValidationErrors({});
 
-    const currentAnswers = form.state.values
-    const errors = validateStep(stepIndex, currentAnswers)
+    const currentAnswers = filterAnswersForActiveSteps(form.state.values);
+    const errors = validateStep(currentStep, currentAnswers);
     if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors)
-      return
+      setValidationErrors(errors);
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
-      const isLastStep = stepIndex === onboardingSteps.length - 1
-      const isCompleted = isLastStep
-      const nextStepIndex = stepIndex + 1
-      const updatedAt = new Date().toISOString()
+      const isLastStep = safeStepIndex === activeSteps.length - 1;
+      const isCompleted = isLastStep;
+      const nextStepIndex = safeStepIndex + 1;
+      const updatedAt = new Date().toISOString();
 
       // 1. Save to local draft first
       saveLocalDraft({
         deviceId,
         answers: currentAnswers,
-        stepIndex: isCompleted ? stepIndex : nextStepIndex,
+        stepIndex: isCompleted ? safeStepIndex : nextStepIndex,
         completed: isCompleted,
         updatedAt,
-      })
+      });
 
       // 2. Call saveOnboardingDraft server action
       await saveOnboardingDraft({
@@ -172,47 +319,21 @@ export function OnboardingPage() {
           answers: currentAnswers,
           completed: isCompleted,
         },
-      })
+      });
 
       // 3. Proceed
       if (isCompleted) {
-        setCompleted(true)
+        setCompleted(true);
       } else {
-        setStepIndex(nextStepIndex)
+        setStepIndex(nextStepIndex);
       }
     } catch (error) {
-      console.error('Failed to save onboarding progress:', error)
-      setSaveError('Failed to save onboarding draft. Please try again.')
+      console.error("Failed to save onboarding progress:", error);
+      setSaveError("Error al guardar el borrador. Intentá de nuevo.");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
-
-  // Render completion screen
-  if (completed) {
-    return (
-      <main className="flex flex-col flex-1 sm:items-center sm:justify-center px-0 py-0 sm:px-8 sm:py-12">
-        <section className="flex flex-col flex-1 w-full rounded-none border-x-0 border-b border-t-0 sm:flex-initial lg:w-[70vw] sm:rounded-[2rem] sm:border sm:shadow-[var(--shadow-card)] p-6 sm:p-8 lg:p-10 bg-[var(--surface-strong)] text-center items-center justify-center">
-          <div className="bg-[var(--foam)] border border-[var(--chip-line)] rounded-full p-4 mb-6 text-[var(--palm)] animate-bounce">
-            <CheckCircle2 className="size-16" />
-          </div>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)] mb-4">
-            Onboarding Completed!
-          </h1>
-          <p className="text-base text-[var(--sea-ink-soft)] leading-relaxed mb-8 max-w-md">
-            Thank you for sharing your financial overview. Your profile is ready, and you can now explore tailored tools and services.
-          </p>
-          <div className="flex items-center gap-2 text-sm text-[var(--sea-ink-soft)]">
-            <Lock className="size-4" />
-            <span>Your financial data is encrypted & secure</span>
-          </div>
-        </section>
-      </main>
-    )
-  }
-
-  const currentStep = onboardingSteps[stepIndex]
-  const progressPercent = Math.round(((stepIndex + 1) / onboardingSteps.length) * 100)
+  };
 
   return (
     <main className="flex flex-col flex-1 sm:items-center sm:justify-center px-0 py-0 sm:px-8 sm:py-12">
@@ -220,8 +341,10 @@ export function OnboardingPage() {
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between items-center text-xs font-semibold text-[var(--sea-ink-soft)] mb-2">
-            <span>STEP {stepIndex + 1} OF {onboardingSteps.length}</span>
-            <span>{progressPercent}% COMPLETE</span>
+            <span>
+              PASO {safeStepIndex + 1} DE {activeSteps.length}
+            </span>
+            <span>{progressPercent}% COMPLETADO</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]">
             <div
@@ -232,136 +355,350 @@ export function OnboardingPage() {
         </div>
 
         {/* Step Header */}
-        <div className="mb-6">
-          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1 text-xs font-bold text-[var(--palm)]">
-            <Sparkles className="size-3.5" />
-            Financial Assessment
-          </span>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)]">
-            {currentStep.title}
-          </h1>
-        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={currentStep.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="mb-6">
+              <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1 text-xs font-bold text-[var(--palm)]">
+                <Sparkles className="size-3.5" />
+                Evaluación Financiera
+              </span>
+              <h1
+                className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)]"
+                aria-label={
+                  currentStep.id === "p1"
+                    ? "que te esta pesando mas hoy"
+                    : undefined
+                }
+              >
+                {currentStep.title}
+              </h1>
+              {currentStep.intro && (
+                <p className="mt-2 text-sm text-[var(--sea-ink-soft)] leading-relaxed">
+                  {displayName
+                    ? `${displayName}, ${currentStep.intro}`
+                    : currentStep.intro}
+                </p>
+              )}
+            </div>
 
-        {/* Form */}
-        <form onSubmit={handleNext} className="flex flex-col flex-1 justify-between sm:justify-start space-y-6">
-          <div className="flex-1 space-y-6">
-            {currentStep.fields.map((field) => (
-              <div key={field.id} className="space-y-2">
-                <label
-                  htmlFor={field.id}
-                  className="block text-sm font-bold text-[var(--sea-ink)]"
-                >
-                  {field.label}
-                  {field.required && <span className="text-rose-500 ml-0.5">*</span>}
-                </label>
+            {/* Form */}
+            <form
+              onSubmit={handleNext}
+              className="flex flex-col flex-1 justify-between sm:justify-start space-y-6"
+            >
+              <div className="flex-1 space-y-6">
+                {getVisibleFields(currentStep, formAnswers).map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    {field.type !== "radio" && field.type !== "checkbox" && (
+                      <label
+                        htmlFor={field.id}
+                        className="block text-sm font-bold text-[var(--sea-ink)]"
+                      >
+                        {field.label}
+                        {field.required && (
+                          <span className="text-rose-500 ml-0.5">*</span>
+                        )}
+                      </label>
+                    )}
 
-                <form.Field name={field.id}>
-                  {(fieldState) => {
-                    if (field.type === 'currency') {
-                      return (
-                        <Input
-                          id={field.id}
-                          type="number"
-                          placeholder="e.g. 1500000"
-                          value={fieldState.state.value ?? ''}
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? '' : Number(e.target.value)
-                            fieldState.handleChange(val)
-                          }}
-                          onBlur={fieldState.handleBlur}
-                          className={
-                            validationErrors[field.id]
-                              ? 'border-[var(--error)] ring-[color-mix(in_oklab,var(--error)_20%,transparent)] focus:border-[var(--error)]'
-                              : ''
-                          }
-                        />
-                      )
-                    } else {
-                      return (
-                        <div className="relative">
-                          <select
-                            id={field.id}
-                            aria-label={
-                              field.id === 'incomeRange'
-                                ? 'Income range'
-                                : field.id === 'savingsRange'
-                                  ? 'Savings range'
-                                  : field.id === 'debtRange'
-                                    ? 'Debt range'
+                    <form.Field name={field.id}>
+                      {(fieldState) => {
+                        switch (field.type) {
+                          case "radio":
+                            return (
+                              <fieldset
+                                aria-describedby={
+                                  validationErrors[field.id]
+                                    ? `${field.id}-error`
                                     : undefined
+                                }
+                                className="flex flex-col gap-2"
+                              >
+                                <legend className="mb-2 block text-sm font-bold text-[var(--sea-ink)]">
+                                  {field.label}
+                                  {field.required && (
+                                    <span className="text-rose-500 ml-0.5">
+                                      *
+                                    </span>
+                                  )}
+                                </legend>
+                                {field.options?.map((option) => {
+                                  const isDisabled =
+                                    field.disabledOptions?.includes(option) ??
+                                    false;
+                                  return (
+                                    <label
+                                      key={option}
+                                      htmlFor={`${field.id}-${option}`}
+                                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] text-base font-medium text-[var(--sea-ink)] transition-all focus-within:ring-2 focus-within:ring-[var(--lagoon-deep)] ${isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-[var(--foam)] active:scale-[0.99]"}`}
+                                    >
+                                      <input
+                                        id={`${field.id}-${option}`}
+                                        type="radio"
+                                        name={field.id}
+                                        value={option}
+                                        checked={
+                                          fieldState.state.value === option
+                                        }
+                                        disabled={isDisabled}
+                                        onChange={() =>
+                                          fieldState.handleChange(option)
+                                        }
+                                        className="size-5 accent-[var(--lagoon-deep)] cursor-pointer"
+                                      />
+                                      {option}
+                                    </label>
+                                  );
+                                })}
+                              </fieldset>
+                            );
+                          case "checkbox":
+                            return (
+                              <fieldset
+                                aria-describedby={
+                                  validationErrors[field.id]
+                                    ? `${field.id}-error`
+                                    : undefined
+                                }
+                                className="flex flex-col gap-2"
+                              >
+                                <legend className="mb-2 block text-sm font-bold text-[var(--sea-ink)]">
+                                  {field.label}
+                                  {field.required && (
+                                    <span className="text-rose-500 ml-0.5">
+                                      *
+                                    </span>
+                                  )}
+                                </legend>
+                                {field.options?.map((option) => {
+                                  const selected = Array.isArray(
+                                    fieldState.state.value,
+                                  )
+                                    ? fieldState.state.value
+                                    : [];
+                                  const checked = selected.includes(option);
+                                  const isDisabled =
+                                    !checked &&
+                                    field.maxSelections === selected.length;
+                                  return (
+                                    <label
+                                      key={option}
+                                      htmlFor={`${field.id}-${option}`}
+                                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] text-base font-medium text-[var(--sea-ink)] cursor-pointer transition-all hover:bg-[var(--foam)] active:scale-[0.99] focus-within:ring-2 focus-within:ring-[var(--lagoon-deep)] ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
+                                    >
+                                      <input
+                                        id={`${field.id}-${option}`}
+                                        type="checkbox"
+                                        checked={checked}
+                                        disabled={isDisabled}
+                                        onChange={() =>
+                                          fieldState.handleChange(
+                                            checked
+                                              ? selected.filter(
+                                                  (item) => item !== option,
+                                                )
+                                              : [...selected, option],
+                                          )
+                                        }
+                                        className="size-5 accent-[var(--lagoon-deep)] cursor-pointer"
+                                      />
+                                      {option}
+                                    </label>
+                                  );
+                                })}
+                              </fieldset>
+                            );
+                          case "month":
+                            return (
+                              <Input
+                                id={field.id}
+                                type="month"
+                                aria-invalid={!!validationErrors[field.id]}
+                                aria-describedby={
+                                  validationErrors[field.id]
+                                    ? `${field.id}-error`
+                                    : undefined
+                                }
+                                value={String(fieldState.state.value ?? "")}
+                                onChange={(event) =>
+                                  fieldState.handleChange(event.target.value)
+                                }
+                                onBlur={fieldState.handleBlur}
+                                className={
+                                  validationErrors[field.id]
+                                    ? "border-[var(--error)] ring-[color-mix(in_oklab,var(--error)_20%,transparent)] focus:border-[var(--error)]"
+                                    : ""
+                                }
+                              />
+                            );
+                          case "upload":
+                            return (
+                              <Button
+                                type="button"
+                                disabled
+                                aria-label={
+                                  field.label.toLowerCase().includes("resumen")
+                                    ? "subi el resumen"
+                                    : undefined
+                                }
+                                className="h-auto w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] text-[var(--sea-ink-soft)] px-5 py-3 font-semibold flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
+                              >
+                                <Lock className="size-4" />
+                                {field.label}
+                              </Button>
+                            );
+                          case "select":
+                            return (
+                              <div className="relative">
+                                <select
+                                  id={field.id}
+                                  aria-invalid={!!validationErrors[field.id]}
+                                  aria-describedby={
+                                    validationErrors[field.id]
+                                      ? `${field.id}-error`
+                                      : undefined
+                                  }
+                                  value={String(fieldState.state.value ?? "")}
+                                  onChange={(e) =>
+                                    fieldState.handleChange(e.target.value)
+                                  }
+                                  onBlur={fieldState.handleBlur}
+                                  className="block w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-3.5 py-2.5 text-base text-[var(--sea-ink)] outline-none transition-colors focus:border-[var(--lagoon-deep)] focus:ring-3 focus:ring-[color-mix(in_oklab,var(--lagoon)_25%,transparent)]"
+                                >
+                                  <option value="" disabled>
+                                    Elegí una opción...
+                                  </option>
+                                  {field.options?.map((option) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            );
+                          default:
+                            if (field.type === "number") {
+                              return (
+                                <Input
+                                  id={field.id}
+                                  type="text"
+                                  inputMode="numeric"
+                                  aria-invalid={!!validationErrors[field.id]}
+                                  aria-describedby={
+                                    validationErrors[field.id]
+                                      ? `${field.id}-error`
+                                      : undefined
+                                  }
+                                  value={formatNumber(fieldState.state.value)}
+                                  onChange={(event) =>
+                                    fieldState.handleChange(
+                                      parseNumber(event.target.value),
+                                    )
+                                  }
+                                  onBlur={fieldState.handleBlur}
+                                  className={
+                                    validationErrors[field.id]
+                                      ? "border-[var(--error)] ring-[color-mix(in_oklab,var(--error)_20%,transparent)] focus:border-[var(--error)]"
+                                      : ""
+                                  }
+                                />
+                              );
                             }
-                            value={fieldState.state.value ?? ''}
-                            onChange={(e) => fieldState.handleChange(e.target.value)}
-                            onBlur={fieldState.handleBlur}
-                            className="block w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-3.5 py-2.5 text-base text-[var(--sea-ink)] outline-none transition-colors focus:border-[var(--lagoon-deep)] focus:ring-3 focus:ring-[color-mix(in_oklab,var(--lagoon)_25%,transparent)]"
-                          >
-                            <option value="" disabled>Select an option...</option>
-                            {field.options?.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )
-                    }
-                  }}
-                </form.Field>
+                            return (
+                              <Input
+                                id={field.id}
+                                type={field.type}
+                                aria-invalid={!!validationErrors[field.id]}
+                                aria-describedby={
+                                  validationErrors[field.id]
+                                    ? `${field.id}-error`
+                                    : undefined
+                                }
+                                value={String(fieldState.state.value ?? "")}
+                                onChange={(event) =>
+                                  fieldState.handleChange(event.target.value)
+                                }
+                                onBlur={fieldState.handleBlur}
+                                className={
+                                  validationErrors[field.id]
+                                    ? "border-[var(--error)] ring-[color-mix(in_oklab,var(--error)_20%,transparent)] focus:border-[var(--error)]"
+                                    : ""
+                                }
+                              />
+                            );
+                        }
+                      }}
+                    </form.Field>
 
-                {validationErrors[field.id] && (
-                  <p className="mt-1 text-xs font-semibold text-[var(--error)]">
-                    {validationErrors[field.id]}
-                  </p>
+                    {validationErrors[field.id] && (
+                      <p
+                        id={`${field.id}-error`}
+                        className="mt-1 text-xs font-semibold text-[var(--error)]"
+                        role="alert"
+                        aria-live="polite"
+                      >
+                        {validationErrors[field.id]}
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                {/* Save/Retry Error */}
+                {saveError && (
+                  <div
+                    className="flex items-center gap-2 rounded-xl border border-[var(--error-border)] bg-[var(--error-surface)] p-4 text-sm font-semibold text-[var(--error)]"
+                    role="alert"
+                    aria-live="polite"
+                  >
+                    <div className="size-2 rounded-full bg-[var(--error)] animate-ping" />
+                    <span>{saveError}</span>
+                  </div>
                 )}
               </div>
-            ))}
 
-            {/* Save/Retry Error */}
-            {saveError && (
-              <div
-                className="flex items-center gap-2 rounded-xl border border-[var(--error-border)] bg-[var(--error-surface)] p-4 text-sm font-semibold text-[var(--error)]"
-                role="alert"
-                aria-live="polite"
-              >
-                <div className="size-2 rounded-full bg-[var(--error)] animate-ping" />
-                <span>{saveError}</span>
+              {/* Navigation Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={safeStepIndex === 0 || isSaving}
+                  className="h-auto rounded-xl border border-[var(--line)] px-5 py-2.5 text-base font-bold text-[var(--sea-ink)] hover:bg-[var(--foam)] disabled:opacity-40 flex items-center gap-2 transition-all active:scale-[0.98]"
+                >
+                  <ArrowLeft className="size-4" />
+                  Volver
+                </Button>
+
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="h-auto rounded-xl bg-[var(--lagoon-deep)] px-6 py-2.5 text-base font-bold text-[var(--on-primary)] hover:bg-[var(--sea-ink)] disabled:opacity-50 flex items-center gap-2 shadow-md shadow-[var(--lagoon)/10] transition-all active:scale-[0.98]"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      {safeStepIndex === activeSteps.length - 1
+                        ? "Completar"
+                        : "Continuar"}
+                      <ArrowRight className="size-4" />
+                    </>
+                  )}
+                </Button>
               </div>
-            )}
-          </div>
-
-          {/* Navigation Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBack}
-              disabled={stepIndex === 0 || isSaving}
-              className="h-auto rounded-xl border border-[var(--line)] px-5 py-2.5 text-base font-bold text-[var(--sea-ink)] hover:bg-[var(--foam)] disabled:opacity-40 flex items-center gap-2 transition-all active:scale-[0.98]"
-            >
-              <ArrowLeft className="size-4" />
-              Back
-            </Button>
-
-            <Button
-              type="submit"
-              disabled={isSaving}
-              className="h-auto rounded-xl bg-[var(--lagoon-deep)] px-6 py-2.5 text-base font-bold text-[var(--on-primary)] hover:bg-[var(--sea-ink)] disabled:opacity-50 flex items-center gap-2 shadow-md shadow-[var(--lagoon)/10] transition-all active:scale-[0.98]"
-            >
-              {isSaving ? (
-                <>
-                  <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  {stepIndex === onboardingSteps.length - 1 ? 'Complete' : 'Next'}
-                  <ArrowRight className="size-4" />
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+            </form>
+          </motion.div>
+        </AnimatePresence>
       </section>
     </main>
-  )
+  );
 }
