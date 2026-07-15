@@ -104,15 +104,15 @@ export function OnboardingPage() {
 
   if (!mounted) {
     return (
-      <main className="page-wrap px-4 py-12 flex justify-center items-center min-h-[70vh]">
-        <div className="island-shell rounded-2xl p-8 max-w-xl w-full animate-pulse h-96">
+      <main className="flex flex-col flex-1 sm:items-center sm:justify-center px-0 py-0 sm:px-8 sm:py-12">
+        <section className="flex flex-col flex-1 w-full rounded-none border-x-0 border-b border-t-0 sm:flex-initial lg:w-[70vw] sm:rounded-[2rem] sm:border sm:shadow-[var(--shadow-card)] p-6 sm:p-8 lg:p-10 bg-[var(--surface-strong)] animate-pulse h-96">
           <div className="h-6 bg-[var(--line)] rounded w-1/4 mb-4"></div>
           <div className="h-10 bg-[var(--line)] rounded w-3/4 mb-6"></div>
           <div className="space-y-4">
             <div className="h-12 bg-[var(--line)] rounded"></div>
             <div className="h-12 bg-[var(--line)] rounded"></div>
           </div>
-        </div>
+        </section>
       </main>
     )
   }
@@ -191,12 +191,12 @@ export function OnboardingPage() {
   // Render completion screen
   if (completed) {
     return (
-      <main className="page-wrap px-4 py-12 flex justify-center items-center min-h-[80vh]">
-        <section className="island-shell rounded-2xl p-8 max-w-xl w-full text-center flex flex-col items-center">
+      <main className="flex flex-col flex-1 sm:items-center sm:justify-center px-0 py-0 sm:px-8 sm:py-12">
+        <section className="flex flex-col flex-1 w-full rounded-none border-x-0 border-b border-t-0 sm:flex-initial lg:w-[70vw] sm:rounded-[2rem] sm:border sm:shadow-[var(--shadow-card)] p-6 sm:p-8 lg:p-10 bg-[var(--surface-strong)] text-center items-center justify-center">
           <div className="bg-[var(--foam)] border border-[var(--chip-line)] rounded-full p-4 mb-6 text-[var(--palm)] animate-bounce">
             <CheckCircle2 className="size-16" />
           </div>
-          <h1 className="display-title mb-4 text-3xl font-extrabold text-[var(--sea-ink)]">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)] mb-4">
             Onboarding Completed!
           </h1>
           <p className="text-base text-[var(--sea-ink-soft)] leading-relaxed mb-8 max-w-md">
@@ -215,15 +215,15 @@ export function OnboardingPage() {
   const progressPercent = Math.round(((stepIndex + 1) / onboardingSteps.length) * 100)
 
   return (
-    <main className="page-wrap px-4 py-12 flex flex-col items-center justify-center min-h-[85vh]">
-      <section className="island-shell rounded-2xl p-8 max-w-xl w-full">
+    <main className="flex flex-col flex-1 sm:items-center sm:justify-center px-0 py-0 sm:px-8 sm:py-12">
+      <section className="flex flex-col flex-1 w-full rounded-none border-x-0 border-b border-t-0 sm:flex-initial lg:w-[70vw] sm:rounded-[2rem] sm:border sm:shadow-[var(--shadow-card)] p-6 sm:p-8 lg:p-10 bg-[var(--surface-strong)] space-y-8">
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between items-center text-xs font-semibold text-[var(--sea-ink-soft)] mb-2">
             <span>STEP {stepIndex + 1} OF {onboardingSteps.length}</span>
             <span>{progressPercent}% COMPLETE</span>
           </div>
-          <div className="w-full h-1.5 bg-[var(--line)] rounded-full overflow-hidden">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]">
             <div
               className="h-full bg-[var(--lagoon-deep)] transition-all duration-300 ease-out"
               style={{ width: `${progressPercent}%` }}
@@ -233,108 +233,110 @@ export function OnboardingPage() {
 
         {/* Step Header */}
         <div className="mb-6">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--foam)] border border-[var(--chip-line)] text-[var(--palm)] mb-3">
+          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1 text-xs font-bold text-[var(--palm)]">
             <Sparkles className="size-3.5" />
             Financial Assessment
           </span>
-          <h1 className="display-title text-2xl font-extrabold text-[var(--sea-ink)] leading-tight">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)]">
             {currentStep.title}
           </h1>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleNext} className="space-y-6">
-          {currentStep.fields.map((field) => (
-            <div key={field.id} className="space-y-2">
-              <label
-                htmlFor={field.id}
-                className="block text-sm font-bold text-[var(--sea-ink)]"
-              >
-                {field.label}
-                {field.required && <span className="text-rose-500 ml-0.5">*</span>}
-              </label>
+        <form onSubmit={handleNext} className="flex flex-col flex-1 justify-between sm:justify-start space-y-6">
+          <div className="flex-1 space-y-6">
+            {currentStep.fields.map((field) => (
+              <div key={field.id} className="space-y-2">
+                <label
+                  htmlFor={field.id}
+                  className="block text-sm font-bold text-[var(--sea-ink)]"
+                >
+                  {field.label}
+                  {field.required && <span className="text-rose-500 ml-0.5">*</span>}
+                </label>
 
-              <form.Field name={field.id}>
-                {(fieldState) => {
-                  if (field.type === 'currency') {
-                    return (
-                      <Input
-                        id={field.id}
-                        type="number"
-                        placeholder="e.g. 1500000"
-                        value={fieldState.state.value ?? ''}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value)
-                          fieldState.handleChange(val)
-                        }}
-                        onBlur={fieldState.handleBlur}
-                        className={
-                          validationErrors[field.id]
-                            ? 'border-destructive ring-destructive/20 focus:border-destructive focus:ring-destructive/20'
-                            : ''
-                        }
-                      />
-                    )
-                  } else {
-                    return (
-                      <div className="relative">
-                        <select
+                <form.Field name={field.id}>
+                  {(fieldState) => {
+                    if (field.type === 'currency') {
+                      return (
+                        <Input
                           id={field.id}
-                          aria-label={
-                            field.id === 'incomeRange'
-                              ? 'Income range'
-                              : field.id === 'savingsRange'
-                                ? 'Savings range'
-                                : field.id === 'debtRange'
-                                  ? 'Debt range'
-                                  : undefined
-                          }
+                          type="number"
+                          placeholder="e.g. 1500000"
                           value={fieldState.state.value ?? ''}
-                          onChange={(e) => fieldState.handleChange(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Number(e.target.value)
+                            fieldState.handleChange(val)
+                          }}
                           onBlur={fieldState.handleBlur}
-                          className="demo-select block w-full px-3.5 py-2.5 text-base border border-[var(--line)] rounded-xl bg-[color-mix(in_oklab,var(--surface-strong)_88%,white_12%)] text-[var(--sea-ink)] outline-none transition-all focus:border-[color-mix(in_oklab,var(--lagoon-deep)_58%,var(--line))] focus:ring-3 focus:ring-[color-mix(in_oklab,var(--lagoon)_24%,transparent)]"
-                        >
-                          <option value="" disabled>Select an option...</option>
-                          {field.options?.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )
-                  }
-                }}
-              </form.Field>
+                          className={
+                            validationErrors[field.id]
+                              ? 'border-[var(--error)] ring-[color-mix(in_oklab,var(--error)_20%,transparent)] focus:border-[var(--error)]'
+                              : ''
+                          }
+                        />
+                      )
+                    } else {
+                      return (
+                        <div className="relative">
+                          <select
+                            id={field.id}
+                            aria-label={
+                              field.id === 'incomeRange'
+                                ? 'Income range'
+                                : field.id === 'savingsRange'
+                                  ? 'Savings range'
+                                  : field.id === 'debtRange'
+                                    ? 'Debt range'
+                                    : undefined
+                            }
+                            value={fieldState.state.value ?? ''}
+                            onChange={(e) => fieldState.handleChange(e.target.value)}
+                            onBlur={fieldState.handleBlur}
+                            className="block w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-3.5 py-2.5 text-base text-[var(--sea-ink)] outline-none transition-colors focus:border-[var(--lagoon-deep)] focus:ring-3 focus:ring-[color-mix(in_oklab,var(--lagoon)_25%,transparent)]"
+                          >
+                            <option value="" disabled>Select an option...</option>
+                            {field.options?.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    }
+                  }}
+                </form.Field>
 
-              {validationErrors[field.id] && (
-                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1">
-                  {validationErrors[field.id]}
-                </p>
-              )}
-            </div>
-          ))}
+                {validationErrors[field.id] && (
+                  <p className="mt-1 text-xs font-semibold text-[var(--error)]">
+                    {validationErrors[field.id]}
+                  </p>
+                )}
+              </div>
+            ))}
 
-          {/* Save/Retry Error */}
-          {saveError && (
-            <div
-              className="demo-alert demo-alert-danger text-sm font-semibold p-4 rounded-xl border border-rose-200/50 bg-rose-50/50 text-rose-800 flex items-center gap-2"
-              role="alert"
-              aria-live="polite"
-            >
-              <div className="size-2 rounded-full bg-rose-600 animate-ping" />
-              <span>{saveError}</span>
-            </div>
-          )}
+            {/* Save/Retry Error */}
+            {saveError && (
+              <div
+                className="flex items-center gap-2 rounded-xl border border-[var(--error-border)] bg-[var(--error-surface)] p-4 text-sm font-semibold text-[var(--error)]"
+                role="alert"
+                aria-live="polite"
+              >
+                <div className="size-2 rounded-full bg-[var(--error)] animate-ping" />
+                <span>{saveError}</span>
+              </div>
+            )}
+          </div>
 
           {/* Navigation Controls */}
-          <div className="flex items-center justify-between pt-4 border-t border-[var(--line)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={handleBack}
               disabled={stepIndex === 0 || isSaving}
-              className="px-5 py-2.5 h-auto text-base rounded-xl font-bold flex items-center gap-2 border-[var(--line)] hover:bg-[var(--foam)] transition-all active:scale-[0.98] disabled:opacity-40"
+              className="h-auto rounded-xl border border-[var(--line)] px-5 py-2.5 text-base font-bold text-[var(--sea-ink)] hover:bg-[var(--foam)] disabled:opacity-40 flex items-center gap-2 transition-all active:scale-[0.98]"
             >
               <ArrowLeft className="size-4" />
               Back
@@ -343,7 +345,7 @@ export function OnboardingPage() {
             <Button
               type="submit"
               disabled={isSaving}
-              className="px-6 py-2.5 h-auto text-base rounded-xl font-bold bg-[var(--lagoon-deep)] text-white hover:bg-[var(--sea-ink)] flex items-center gap-2 shadow-md shadow-[var(--lagoon)/10] transition-all active:scale-[0.98] disabled:opacity-50"
+              className="h-auto rounded-xl bg-[var(--lagoon-deep)] px-6 py-2.5 text-base font-bold text-[var(--on-primary)] hover:bg-[var(--sea-ink)] disabled:opacity-50 flex items-center gap-2 shadow-md shadow-[var(--lagoon)/10] transition-all active:scale-[0.98]"
             >
               {isSaving ? (
                 <>
