@@ -281,10 +281,10 @@ describe('onboarding draft', () => {
     expect(validateStep(step, { p15_tarjetas: 5 })).toEqual({})
   })
 
-  it('does not accept disabled P17 Option A or require its impossible upload', () => {
+  it('requires the uploaded statement key when Option A is selected', () => {
     const step = onboardingSteps.find(({ id }) => id === 't1_p17')
     expect(validateStep(step, { t1_cuotas_modo: 'Subir foto del resumen' })).toEqual({
-      t1_cuotas_modo: 'Elegí la opción B o C para continuar.',
+      t1_upload_url: 'Subí el resumen para continuar.',
     })
   })
 })

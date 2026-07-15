@@ -14,7 +14,8 @@ import {
   type OnboardingAnswers,
 } from "../onboarding/definition";
 import { loadDraft, saveDraft as saveLocalDraft } from "../onboarding/draft";
-import { getOnboardingDraft, saveOnboardingDraft } from "../onboarding/server";
+import { getOnboardingDraft, saveOnboardingDraft, createOnboardingUpload, deleteOnboardingUpload } from "../onboarding/server";
+import OnboardingUpload, { putFile } from "../components/onboarding-upload";
 import {
   ArrowLeft,
   ArrowRight,
@@ -539,19 +540,35 @@ export function OnboardingPage() {
                             );
                           case "upload":
                             return (
-                              <Button
-                                type="button"
-                                disabled
-                                aria-label={
-                                  field.label.toLowerCase().includes("resumen")
-                                    ? "subi el resumen"
-                                    : undefined
-                                }
-                                className="h-auto w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] text-[var(--sea-ink-soft)] px-5 py-3 font-semibold flex items-center justify-center gap-2 cursor-not-allowed opacity-50"
-                              >
-                                <Lock className="size-4" />
-                                {field.label}
-                              </Button>
+                              <OnboardingUpload
+                                fieldId={field.id}
+                                value={typeof fieldState.state.value === 'string' ? fieldState.state.value : undefined}
+                                disabled={isSaving}
+                                onUpload={async (file, setProgress) => {
+                                  const previousKey = typeof fieldState.state.value === 'string'
+                                    ? fieldState.state.value
+                                    : undefined;
+                                  const { key, url } = await createOnboardingUpload({
+                                    data: { deviceId, fieldId: field.id, contentType: file.type, size: file.size },
+                                  });
+                                  await putFile(url, file, setProgress);
+
+                                  const answers = filterAnswersForActiveSteps({ ...form.state.values, [field.id]: key });
+                                  await saveOnboardingDraft({ data: { deviceId, answers, completed: false } });
+
+                                  fieldState.handleChange(key);
+                                  saveLocalDraft({
+                                    deviceId,
+                                    answers,
+                                    stepIndex: safeStepIndex,
+                                    completed: false,
+                                    updatedAt: new Date().toISOString(),
+                                  });
+                                  if (previousKey) {
+                                    await deleteOnboardingUpload({ data: { deviceId, key: previousKey } }).catch(() => undefined);
+                                  }
+                                }}
+                              />
                             );
                           case "select":
                             return (

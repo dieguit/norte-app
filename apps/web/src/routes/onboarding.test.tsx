@@ -3,7 +3,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, waitForElementToBeRemoved } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { OnboardingPage } from './onboarding'
-import { getOnboardingDraft, saveOnboardingDraft } from '../onboarding/server'
+import { getOnboardingDraft, saveOnboardingDraft, createOnboardingUpload, deleteOnboardingUpload } from '../onboarding/server'
 import { getActiveSteps, validateStep, type OnboardingAnswers } from '../onboarding/definition'
 import type { OnboardingDraft } from '../db/schema'
 
@@ -55,6 +55,8 @@ async function advanceToCardP17(cardIndex: number) {
 vi.mock('../onboarding/server', () => ({
   getOnboardingDraft: vi.fn(),
   saveOnboardingDraft: vi.fn(),
+  createOnboardingUpload: vi.fn(),
+  deleteOnboardingUpload: vi.fn(),
 }))
 
 describe('OnboardingPage component tests', () => {
@@ -64,10 +66,13 @@ describe('OnboardingPage component tests', () => {
     vi.clearAllMocks()
     vi.mocked(getOnboardingDraft).mockResolvedValue(makeDraft({}))
     vi.mocked(saveOnboardingDraft).mockResolvedValue({} as any)
+    vi.mocked(createOnboardingUpload).mockResolvedValue({ key: 'mock-key', url: 'https://mock-url.com' })
+    vi.mocked(deleteOnboardingUpload).mockResolvedValue({} as any)
   })
 
   afterEach(() => {
     cleanup()
+    vi.unstubAllGlobals()
   })
 
   it('renders all fields in the current step and blocks Next for a missing required field', async () => {
@@ -254,10 +259,10 @@ describe('OnboardingPage component tests', () => {
     expect(await screen.findByLabelText(/Monto mensual/i)).toBeDefined()
   })
 
-  it('shows the statement upload option as disabled', async () => {
+  it('shows the statement upload option as enabled', async () => {
     render(<OnboardingPage />)
     await advanceToCardP17(1)
-    expect((screen.getByRole('radio', { name: /subir foto del resumen/i }) as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByRole('radio', { name: /subir foto del resumen/i }) as HTMLInputElement).disabled).toBe(false)
   })
 
   it('shows P6 after selecting third-party income in P5', async () => {
@@ -381,10 +386,10 @@ describe('OnboardingPage component tests', () => {
     expect(await screen.findByRole('heading', { name: /tarjeta 2 - el último resumen/i })).toBeDefined()
   })
 
-  it('supports manual P17 B and C paths while disabling A', async () => {
+  it('supports manual P17 B and C paths and enabled A', async () => {
     const user = userEvent.setup()
     await advanceToCardP17(1)
-    expect((screen.getByRole('radio', { name: /subir foto del resumen/i }) as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByRole('radio', { name: /subir foto del resumen/i }) as HTMLInputElement).disabled).toBe(false)
 
     await user.click(screen.getByRole('radio', { name: /carga manual mes por mes/i }))
     expect(await screen.findByLabelText(/mes 1/i)).toBeDefined()
@@ -508,5 +513,226 @@ describe('OnboardingPage component tests', () => {
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
     expect(await screen.findByRole('heading', { name: /que te esta pesando mas hoy/i })).toBeDefined()
+  })
+
+  it('requires the uploaded statement key when the upload mode is selected', () => {
+    expect(validateStep({
+      id: 't1_p17', title: '', fields: [],
+    }, {
+      t1_cuotas_modo: 'Subir foto del resumen',
+    })).toMatchObject({ t1_upload_url: 'Subí el resumen para continuar.' })
+  })
+
+  it('accepts the upload mode when an opaque statement key exists', () => {
+    expect(validateStep({
+      id: 't1_p17', title: '', fields: [],
+    }, {
+      t1_cuotas_modo: 'Subir foto del resumen',
+      t1_upload_url: 'onboarding/device/t1_upload_url/object',
+    })).toEqual({})
+  })
+
+  it('displays validation error for a rejected oversized file and does not call createOnboardingUpload', async () => {
+    const user = userEvent.setup()
+    await advanceToCardP17(1)
+    await user.click(screen.getByRole('radio', { name: /subir foto del resumen/i }))
+
+    const file = new File(['a'.repeat(5 * 1024 * 1024 + 1)], 'resumen.pdf', { type: 'application/pdf' })
+    const fileInput = screen.getByLabelText(/subí el resumen/i)
+    await user.upload(fileInput, file)
+
+    expect(screen.getByText('El archivo no puede superar 5 MB.')).toBeDefined()
+    expect(vi.mocked(createOnboardingUpload)).not.toHaveBeenCalled()
+  })
+
+  it('successfully uploads statement PDF, persists key, and handles replacement safely', async () => {
+    const mockXHR = {
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+      upload: {} as any,
+      status: 200,
+      onload: null as any,
+    }
+
+    mockXHR.send.mockImplementation(() => {
+      if (mockXHR.upload.onprogress) {
+        mockXHR.upload.onprogress({ lengthComputable: true, loaded: 100, total: 100 })
+      }
+      if (mockXHR.onload) {
+        mockXHR.onload()
+      }
+    })
+
+    function MockXMLHttpRequest() {
+      return mockXHR
+    }
+
+    vi.stubGlobal('XMLHttpRequest', MockXMLHttpRequest)
+
+    let uploadCount = 0
+    vi.mocked(createOnboardingUpload).mockImplementation(async () => {
+      uploadCount++
+      return {
+        key: `mock-key-${uploadCount}`,
+        url: `https://mock-url-${uploadCount}.com`,
+      }
+    })
+
+    const user = userEvent.setup()
+    await advanceToCardP17(1)
+    await user.click(screen.getByRole('radio', { name: /subir foto del resumen/i }))
+
+    // First upload
+    const file1 = new File(['a'], 'resumen1.pdf', { type: 'application/pdf' })
+    const fileInput = screen.getByLabelText(/subí el resumen/i)
+    await user.upload(fileInput, file1)
+
+    // Verify first upload requested signed URL and saved draft
+    expect(createOnboardingUpload).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        fieldId: 't1_upload_url',
+        contentType: 'application/pdf',
+      })
+    }))
+    expect(screen.getByText('resumen1.pdf')).toBeDefined()
+    expect(saveOnboardingDraft).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        answers: expect.objectContaining({
+          t1_upload_url: 'mock-key-1',
+        })
+      })
+    }))
+
+    // Second upload (Replacement)
+    const replaceButton = screen.getByRole('button', { name: /reemplazar/i })
+    expect(replaceButton).toBeDefined()
+
+    const file2 = new File(['b'], 'resumen2.pdf', { type: 'application/pdf' })
+    await user.upload(fileInput, file2)
+
+    // Verify second upload requested signed URL and saved draft with mock-key-2
+    expect(createOnboardingUpload).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        fieldId: 't1_upload_url',
+        contentType: 'application/pdf',
+      })
+    }))
+    expect(screen.getByText('resumen2.pdf')).toBeDefined()
+    expect(saveOnboardingDraft).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        answers: expect.objectContaining({
+          t1_upload_url: 'mock-key-2',
+        })
+      })
+    }))
+
+    // Verify delete was called on mock-key-1
+    expect(deleteOnboardingUpload).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        key: 'mock-key-1',
+      })
+    }))
+
+    // Verify delete occurred AFTER the new key (mock-key-2) was persisted
+    const saveOrder = vi.mocked(saveOnboardingDraft).mock.invocationCallOrder
+    const deleteOrder = vi.mocked(deleteOnboardingUpload).mock.invocationCallOrder
+    const lastSaveInvocation = saveOrder[saveOrder.length - 1]
+    const firstDeleteInvocation = deleteOrder[0]
+    expect(lastSaveInvocation).toBeLessThan(firstDeleteInvocation)
+
+    // Verify the user can continue
+    const continueBtn = screen.getByRole('button', { name: /continuar/i }) as HTMLButtonElement
+    expect(continueBtn.disabled).toBe(false)
+    await user.click(continueBtn)
+    await screen.findByRole('heading', { name: /Tarjeta 1 - ¿quedó algo sin pagar/i })
+  })
+
+  it('renders "Archivo subido" when a key is already persisted and allows replacement', async () => {
+    const user = userEvent.setup()
+    cleanup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      fijo_total_directo: 1,
+      var_total_directo: 1,
+      d_salidas: 1,
+      p15_tarjetas: 1,
+      t1_cuotas_modo: 'Subir foto del resumen',
+      t1_upload_url: 'existing-key-from-backend',
+    })
+    render(<OnboardingPage />)
+
+    // Lands on t1_p16
+    await screen.findByRole('heading', { name: /Tarjeta 1 - el último resumen/i })
+
+    // Fill t1_p16 and click continue
+    await user.type(screen.getByLabelText(/en pesos/i), '10000')
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    // Now we should land on t1_p17 and see the pre-populated value state
+    await screen.findByRole('heading', { name: /Tarjeta 1 - las cuotas/i })
+
+    expect(screen.getByText('Archivo subido')).toBeDefined()
+    expect(screen.getByRole('button', { name: /reemplazar/i })).toBeDefined()
+  })
+
+  it('does not update local state or storage if saveOnboardingDraft fails during file upload', async () => {
+    const mockXHR = {
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+      upload: {} as any,
+      status: 200,
+      onload: null as any,
+    }
+
+    mockXHR.send.mockImplementation(() => {
+      if (mockXHR.upload.onprogress) {
+        mockXHR.upload.onprogress({ lengthComputable: true, loaded: 100, total: 100 })
+      }
+      if (mockXHR.onload) {
+        mockXHR.onload()
+      }
+    })
+
+    function MockXMLHttpRequest() {
+      return mockXHR
+    }
+
+    vi.stubGlobal('XMLHttpRequest', MockXMLHttpRequest)
+
+    vi.mocked(createOnboardingUpload).mockResolvedValue({
+      key: 'should-not-persist-key',
+      url: 'https://mock-url.com',
+    })
+
+    // Mock saveOnboardingDraft to reject/fail
+    vi.mocked(saveOnboardingDraft).mockRejectedValue(new Error('Draft Save Failed'))
+
+    const user = userEvent.setup()
+    await advanceToCardP17(1)
+    await user.click(screen.getByRole('radio', { name: /subir foto del resumen/i }))
+
+    const file = new File(['a'], 'resumen.pdf', { type: 'application/pdf' })
+    const fileInput = screen.getByLabelText(/subí el resumen/i)
+    
+    // Upload the file
+    await user.upload(fileInput, file)
+
+    // Confirm that error message is displayed
+    await screen.findByText('Error al subir el archivo. Intentá de nuevo.')
+
+    // Confirm that the UI does NOT show "Archivo subido"
+    expect(screen.queryByText('Archivo subido')).toBeNull()
+
+    // Confirm that the local draft does NOT have 'should-not-persist-key'
+    const local = localStorage.getItem('onboarding-draft')
+    if (local) {
+      const parsed = JSON.parse(local)
+      expect(parsed.answers.t1_upload_url).toBeUndefined()
+    }
   })
 })

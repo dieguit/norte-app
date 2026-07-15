@@ -427,7 +427,6 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             'Carga manual mes por mes',
             'Carga manual a ojo',
           ],
-          disabledOptions: ['Subir foto del resumen'],
         },
         { id: `t${n}_upload_url`, type: 'upload', label: 'Subí el resumen (foto o PDF)', visibleWhen: (answers: OnboardingAnswers) => answers[`t${n}_cuotas_modo`] === 'Subir foto del resumen' },
         ...([1, 2, 3, 4, 5, 6].map((month) => ({
@@ -715,7 +714,9 @@ export function validateStep(
         errors[hastaKey] = 'Completá la fecha de vencimiento.'
       }
     } else if (modoVal === 'Subir foto del resumen' || modoVal === 'A') {
-      errors[modoKey] = 'Elegí la opción B o C para continuar.'
+      if (!answers[`${prefix}_upload_url`]) {
+        errors[`${prefix}_upload_url`] = 'Subí el resumen para continuar.'
+      }
     }
   }
 
