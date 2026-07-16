@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 let cachedClient: S3Client | null = null
@@ -38,4 +38,9 @@ export function signUpload(key: string, contentType: string) {
 export function deleteUpload(key: string) {
   const { client, bucket } = getR2Client()
   return client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+}
+
+export function signDownload(key: string) {
+  const { client, bucket } = getR2Client()
+  return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 300 })
 }

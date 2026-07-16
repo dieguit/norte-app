@@ -1,5 +1,4 @@
 import { createServerFn } from '@tanstack/react-start'
-import { useSession } from '@tanstack/react-start/server'
 import { z } from 'zod'
 
 const credentialsSchema = z.object({ username: z.string(), password: z.string() })
@@ -9,12 +8,20 @@ export function hasValidAdminCredentials(credentials: z.infer<typeof credentials
   return credentials.username === 'admin' && credentials.password === 'N0rt3!'
 }
 
-function useAdminSession() {
+async function useAdminSession() {
+  const { useSession } = await import('@tanstack/react-start/server')
   return useSession<{ authenticated?: true }>({
     name: 'norte-admin',
     password: sessionPassword,
     cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' },
   })
+}
+
+export async function requireAdminSession() {
+  const session = await useAdminSession()
+  if (!session.data.authenticated) {
+    throw new Error('Unauthorized')
+  }
 }
 
 export const loginAdmin = createServerFn({ method: 'POST' })
@@ -28,3 +35,4 @@ export const loginAdmin = createServerFn({ method: 'POST' })
 
 export const getAdminSession = createServerFn({ method: 'GET' })
   .handler(async () => Boolean((await useAdminSession()).data.authenticated))
+

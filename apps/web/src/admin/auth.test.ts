@@ -1,13 +1,33 @@
-import { describe, expect, it } from 'vitest'
-import { hasValidAdminCredentials } from './auth'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { requireAdminSession } from './auth'
+import { useSession } from '@tanstack/react-start/server'
 
-describe('hasValidAdminCredentials', () => {
-  it('accepts the configured temporary credentials', () => {
-    expect(hasValidAdminCredentials({ username: 'admin', password: 'N0rt3!' })).toBe(true)
+vi.mock('@tanstack/react-start/server', () => ({
+  useSession: vi.fn(),
+}))
+
+describe('requireAdminSession', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('rejects an invalid username or password', () => {
-    expect(hasValidAdminCredentials({ username: 'other', password: 'N0rt3!' })).toBe(false)
-    expect(hasValidAdminCredentials({ username: 'admin', password: 'wrong' })).toBe(false)
+  it('resolves when session is authenticated', async () => {
+    vi.mocked(useSession).mockResolvedValue({
+      data: { authenticated: true },
+      update: vi.fn(),
+      clear: vi.fn(),
+    } as any)
+
+    await expect(requireAdminSession()).resolves.toBeUndefined()
+  })
+
+  it('rejects with Unauthorized when session is not authenticated', async () => {
+    vi.mocked(useSession).mockResolvedValue({
+      data: {},
+      update: vi.fn(),
+      clear: vi.fn(),
+    } as any)
+
+    await expect(requireAdminSession()).rejects.toThrow('Unauthorized')
   })
 })

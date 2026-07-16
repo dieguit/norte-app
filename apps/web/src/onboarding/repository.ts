@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { onboardingDrafts } from '@/db/schema'
 import type { OnboardingAnswers } from './definition'
@@ -28,4 +28,8 @@ export async function saveDraft(data: {
   }).returning()
 
   return draft
+}
+
+export function listDrafts() {
+  return db.select().from(onboardingDrafts).orderBy(desc(onboardingDrafts.updatedAt))
 }

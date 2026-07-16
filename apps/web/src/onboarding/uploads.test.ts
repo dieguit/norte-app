@@ -33,6 +33,8 @@ describe('onboarding uploads', () => {
     const deviceId = '6f0a7482-29a0-4c03-a3e1-256add2f91a8'
     expect(isOwnedUploadKey(`onboarding/${deviceId}/t1_upload_url/2e68e7ee-9e4d-423d-97f1-78b6588d9d1a`, deviceId)).toBe(true)
     expect(isOwnedUploadKey(`onboarding/${deviceId.toUpperCase()}/T1_UPLOAD_URL/2E68E7EE-9E4D-423D-97F1-78B6588D9D1A`, deviceId)).toBe(true)
+    expect(isOwnedUploadKey(`onboarding/${deviceId}/t1_postcierre_upload/2e68e7ee-9e4d-423d-97f1-78b6588d9d1a`, deviceId)).toBe(true)
     expect(isOwnedUploadKey('onboarding/other-device/t1_upload_url/2e68e7ee-9e4d-423d-97f1-78b6588d9d1a', deviceId)).toBe(false)
+    expect(isOwnedUploadKey(`onboarding/${deviceId}/incomeRange/2e68e7ee-9e4d-423d-97f1-78b6588d9d1a`, deviceId)).toBe(false)
   })
 })

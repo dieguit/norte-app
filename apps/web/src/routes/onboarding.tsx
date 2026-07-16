@@ -47,6 +47,7 @@ function parseNumber(value: string) {
 }
 
 export const Route = createFileRoute("/onboarding")({
+  head: () => ({ meta: [{ title: "Onboarding | Norte" }] }),
   component: OnboardingPage,
 });
 
