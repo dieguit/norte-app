@@ -254,9 +254,9 @@ export function OnboardingPage() {
             <br />
             Hoy pensemos en tu próximo año, después habrá tiempo para más.
             <br />
-            Al final vas a recibir algo que ningún banco te dio nunca: la foto
-            completa de tu situación financiera y el camino más corto hacia tu
-            primer objetivo.
+            Cuando termines, vamos a procesar la info y en las próximas 24hs vas
+            a recibir algo que ningún banco te dio nunca: la foto completa de tu
+            situación financiera y el camino más corto hacia tu primer objetivo.
             <br />
             Acá nadie te juzga, venimos a mirar para adelante, no para atrás.
           </p>
@@ -290,8 +290,8 @@ export function OnboardingPage() {
           </h1>
           <p className="text-base text-[var(--sea-ink-soft)] leading-relaxed mb-8 max-w-md">
             {displayName
-              ? `Gracias, ${displayName}. Tu perfil está listo y ahora podés explorar herramientas y servicios personalizados.`
-              : "Gracias por compartir tu panorama financiero. Tu perfil está listo y ahora podés explorar herramientas y servicios personalizados."}
+              ? `Gracias, ${displayName}. Tu perfil está listo, lo vamos a procesar y en las próximas 24hs te vamos a enviar tu informe personalizado.`
+              : "Gracias por compartir tu panorama financiero. Tu perfil está listo, lo vamos a procesar y en las próximas 24hs te vamos a enviar tu informe personalizado."}
           </p>
           <div className="flex items-center gap-2 text-sm text-[var(--sea-ink-soft)]">
             <Lock className="size-4" />
@@ -414,18 +414,7 @@ export function OnboardingPage() {
             transition={{ duration: 0.3 }}
           >
             <div className="mb-6">
-              <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1 text-xs font-bold text-[var(--palm)]">
-                <Sparkles className="size-3.5" />
-                Evaluación Financiera
-              </span>
-              <h1
-                className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)]"
-                aria-label={
-                  currentStep.id === "p1"
-                    ? "que te esta pesando mas hoy"
-                    : undefined
-                }
-              >
+              <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)]">
                 {currentStep.title}
               </h1>
               {currentStep.intro && (
