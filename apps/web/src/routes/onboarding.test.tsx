@@ -86,6 +86,7 @@ describe('OnboardingPage component tests', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
+    window.history.replaceState({}, '', '/onboarding')
   })
 
   it('captures a readable view event for the displayed onboarding step', async () => {
@@ -285,7 +286,7 @@ describe('OnboardingPage component tests', () => {
     const user = userEvent.setup()
     render(<OnboardingPage />)
 
-    expect(await screen.findByRole('heading', { name: /que te esta pesando mas hoy/i })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: /qué te está pesando más hoy/i })).toBeDefined()
     await user.click(screen.getByRole('button', { name: /continuar/i }))
     expect(screen.getByRole('alert').textContent).toContain('Elegí una opción')
   })
@@ -305,6 +306,7 @@ describe('OnboardingPage component tests', () => {
   })
 
   it('restores from answers instead of reusing a stale filtered-step index', async () => {
+    localStorage.setItem('onboarding-device-id', '6f0a7482-29a0-4c03-a3e1-256add2f91a8')
     localStorage.setItem('onboarding-draft', JSON.stringify({
       deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
       answers: { ...initialAnswers, p1_pesa: 'Otra' },
@@ -508,7 +510,7 @@ describe('OnboardingPage component tests', () => {
     await user.type(screen.getByLabelText(/^Nombre/), 'Ada')
     await continueStep(user)
 
-    expect(await screen.findByRole('heading', { name: '¿A dónde te mandamos tu informe?' })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: '¡Un gusto, Ada! ¿A dónde te mandamos tu informe?' })).toBeDefined()
     expect(screen.queryByRole('heading', { name: /cuánta plata tenés hoy/i })).toBeNull()
     expect(screen.queryByRole('heading', { name: /debés algo fuera de las tarjetas/i })).toBeNull()
 
@@ -529,10 +531,36 @@ describe('OnboardingPage component tests', () => {
 
     expect(await screen.findByRole('heading', { name: /te damos la bienvenida a norte/i })).toBeDefined()
     await user.click(screen.getByRole('button', { name: /continuar/i }))
-    expect(await screen.findByRole('heading', { name: /que te esta pesando mas hoy/i })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: /qué te está pesando más hoy/i })).toBeDefined()
   })
 
-  it('personalizes the next step intro with the entered name', async () => {
+  it('personalizes only the selected delivery, income, and fixed-expense copy', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue(undefined)
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Ana')
+    await continueStep(user)
+    expect(await screen.findByRole('heading', {
+      name: '¡Un gusto, Ana! ¿A dónde te mandamos tu informe?',
+    })).toBeDefined()
+
+    cleanup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({ nombre: 'Ana', p1_pesa: 'Otra' })
+    render(<OnboardingPage />)
+    expect(await screen.findByText('Ana, un número redondo está perfecto, no hace falta precisión.')).toBeDefined()
+
+    cleanup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({ nombre: 'Ana', p1_pesa: 'Otra', ing_total: 500000 })
+    render(<OnboardingPage />)
+    expect(await screen.findByText(/Ana, vamos a lo que pagás sí o sí todos los meses/)).toBeDefined()
+  })
+
+  it('does not prepend the name to an ordinary step intro', async () => {
     const user = userEvent.setup()
     vi.mocked(getOnboardingDraft).mockResolvedValue(undefined)
     render(<OnboardingPage />)
@@ -545,10 +573,12 @@ describe('OnboardingPage component tests', () => {
     await user.click(await screen.findByRole('radio', { name: /otra/i }))
     await continueStep(user)
 
-    expect(await screen.findByText(/Ana, Selección múltiple/)).toBeDefined()
+    expect(await screen.findByText('Selección múltiple, máximo 2.')).toBeDefined()
+    expect(screen.queryByText('Ana, Selección múltiple, máximo 2.')).toBeNull()
   })
 
   it('personalizes completion copy from the saved name', async () => {
+    localStorage.setItem('onboarding-device-id', deviceId)
     localStorage.setItem('onboarding-draft', JSON.stringify({
       deviceId,
       answers: { nombre: 'Ana' },
@@ -571,7 +601,7 @@ describe('OnboardingPage component tests', () => {
     expect(await screen.findByRole('heading', { name: /te damos la bienvenida a norte/i })).toBeDefined()
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(await screen.findByRole('heading', { name: /que te esta pesando mas hoy/i })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: /qué te está pesando más hoy/i })).toBeDefined()
   })
 
   it('requires the uploaded statement key when the upload mode is selected', () => {
@@ -793,5 +823,19 @@ describe('OnboardingPage component tests', () => {
       const parsed = JSON.parse(local)
       expect(parsed.answers.t1_upload_url).toBeUndefined()
     }
+  })
+
+  it('adopts a valid invitado query parameter before loading its draft', async () => {
+    window.history.replaceState({}, '', '/onboarding?invitado=c2446e70-8555-44dc-a428-cb1185c8d4b3')
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      ...makeDraft({ nombre: 'Invitada' }),
+      deviceId: 'c2446e70-8555-44dc-a428-cb1185c8d4b3',
+    })
+
+    render(<OnboardingPage />)
+
+    await screen.findByDisplayValue('Invitada')
+    expect(localStorage.getItem('onboarding-device-id')).toBe('c2446e70-8555-44dc-a428-cb1185c8d4b3')
+    expect(getOnboardingDraft).toHaveBeenCalledWith({ data: { deviceId: 'c2446e70-8555-44dc-a428-cb1185c8d4b3' } })
   })
 })

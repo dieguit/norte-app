@@ -28,7 +28,9 @@ export type OnboardingField = {
 export type OnboardingStep = {
   id: string
   title: string
+  titleWithName?: string
   intro?: string
+  introWithName?: string
   fields: readonly OnboardingField[]
   visibleWhen?: VisibleWhen
 }
@@ -44,6 +46,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
   {
     id: 'p23',
     title: '¿A dónde te mandamos tu informe?',
+    titleWithName: '¡Un gusto, {name}! ¿A dónde te mandamos tu informe?',
     fields: [
       {
         id: 'contacto_canal',
@@ -152,6 +155,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
     id: 'p4',
     title: '¿Cuánta plata entra en tu casa en un mes normal, sumando todo?',
     intro: 'Un número redondo está perfecto, no hace falta precisión.',
+    introWithName: '{name}, un número redondo está perfecto, no hace falta precisión.',
     fields: [
       {
         id: 'ing_total',
@@ -271,6 +275,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
     id: 'p9',
     title: 'Lo que pagás sí o sí todos los meses',
     intro: 'Vamos a lo que pagás sí o sí todos los meses. Eso que no elegís: te toca. Completá lo que aplique, o si sos de los que tienen el número total en la cabeza, saltá directo al final. Sin contar inflación, el número de hoy alcanza.',
+    introWithName: '{name}, vamos a lo que pagás sí o sí todos los meses. Eso que no elegís: te toca. Completá lo que aplique, o si sos de los que tienen el número total en la cabeza, saltá directo al final. Sin contar inflación, el número de hoy alcanza.',
     fields: [
       { id: 'fijo_alquiler', type: 'number', label: 'Alquiler / vivienda ($)' },
       { id: 'fijo_colegio', type: 'number', label: 'Colegio ($)' },

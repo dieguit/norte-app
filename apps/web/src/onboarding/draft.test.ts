@@ -287,4 +287,16 @@ describe('onboarding draft', () => {
       t1_upload_url: 'Subí el resumen para continuar.',
     })
   })
+
+  it('scopes draft loading to the device ID', () => {
+    saveDraft({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+      answers: { ing_total: 1000000 },
+      stepIndex: 1,
+      completed: false,
+      updatedAt: '2026-07-14T00:00:00.000Z',
+    })
+
+    expect(loadDraft('c2446e70-8555-44dc-a428-cb1185c8d4b3')).toBeNull()
+  })
 })

@@ -15,6 +15,7 @@ import {
   type OnboardingAnswers,
 } from "../onboarding/definition";
 import { loadDraft, saveDraft as saveLocalDraft } from "../onboarding/draft";
+import { getInvitedDeviceId } from "../onboarding/invitation";
 import {
   getOnboardingDraft,
   saveOnboardingDraft,
@@ -104,7 +105,11 @@ export function OnboardingPage() {
     if (!mounted) return;
 
     // 1. Get or generate device ID
-    let id = localStorage.getItem("onboarding-device-id");
+    const invitedDeviceId = getInvitedDeviceId(new URLSearchParams(window.location.search).get("invitado"));
+    let id = invitedDeviceId ?? localStorage.getItem("onboarding-device-id");
+
+    if (invitedDeviceId) localStorage.setItem("onboarding-device-id", invitedDeviceId);
+
     if (!id) {
       if (
         typeof crypto !== "undefined" &&
@@ -124,7 +129,7 @@ export function OnboardingPage() {
     posthog?.identify(id);
 
     // 2. Read local storage draft
-    const local = loadDraft();
+    const local = loadDraft(id);
     const initialAnswers = local
       ? filterAnswersForActiveSteps(local.answers)
       : {};
@@ -216,6 +221,13 @@ export function OnboardingPage() {
 
   const displayName =
     typeof formAnswers.nombre === "string" ? formAnswers.nombre.trim() : "";
+  const stepTitle = displayName && currentStep.titleWithName
+    ? currentStep.titleWithName.replaceAll('{name}', displayName)
+    : currentStep.title
+  const stepIntro = displayName && currentStep.introWithName
+    ? currentStep.introWithName.replaceAll('{name}', displayName)
+    : currentStep.intro
+
   const progressPercent =
     activeSteps.length > 0
       ? Math.round(((safeStepIndex + 1) / activeSteps.length) * 100)
@@ -311,7 +323,7 @@ export function OnboardingPage() {
       setStepIndex(prevStepIndex);
       posthog?.capture("onboarding_step_back", stepEventProperties!);
 
-      const local = loadDraft();
+      const local = loadDraft(deviceId);
       if (local) {
         saveLocalDraft({
           ...local,
@@ -415,13 +427,11 @@ export function OnboardingPage() {
           >
             <div className="mb-6">
               <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-[var(--sea-ink)]">
-                {currentStep.title}
+                {stepTitle}
               </h1>
-              {currentStep.intro && (
+              {stepIntro && (
                 <p className="mt-2 text-sm text-[var(--sea-ink-soft)] leading-relaxed">
-                  {displayName
-                    ? `${displayName}, ${currentStep.intro}`
-                    : currentStep.intro}
+                  {stepIntro}
                 </p>
               )}
             </div>

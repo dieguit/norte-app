@@ -15,15 +15,14 @@ export type LocalDraft = z.infer<typeof localDraftSchema> & {
   answers: OnboardingAnswers
 }
 
-export function loadDraft(): LocalDraft | null {
+export function loadDraft(deviceId?: string): LocalDraft | null {
   const stored = localStorage.getItem(DRAFT_KEY)
   if (!stored) return null
 
   try {
     const parsed = localDraftSchema.safeParse(JSON.parse(stored))
-    return parsed.success
-      ? { ...parsed.data, answers: filterAnswersForActiveSteps(parsed.data.answers) }
-      : null
+    if (!parsed.success || (deviceId && parsed.data.deviceId !== deviceId)) return null
+    return { ...parsed.data, answers: filterAnswersForActiveSteps(parsed.data.answers) }
   } catch {
     return null
   }
