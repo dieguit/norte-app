@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useForm, useStore } from "@tanstack/react-form";
 import { AnimatePresence, motion } from "motion/react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,7 +15,12 @@ import {
   type OnboardingAnswers,
 } from "../onboarding/definition";
 import { loadDraft, saveDraft as saveLocalDraft } from "../onboarding/draft";
-import { getOnboardingDraft, saveOnboardingDraft, createOnboardingUpload, deleteOnboardingUpload } from "../onboarding/server";
+import {
+  getOnboardingDraft,
+  saveOnboardingDraft,
+  createOnboardingUpload,
+  deleteOnboardingUpload,
+} from "../onboarding/server";
 import OnboardingUpload, { putFile } from "../components/onboarding-upload";
 import {
   ArrowLeft,
@@ -50,6 +56,7 @@ function getRestoredStepIndex(answers: OnboardingAnswers) {
 }
 
 export function OnboardingPage() {
+  const posthog = usePostHog();
   const [mounted, setMounted] = useState(false);
   const [deviceId, setDeviceId] = useState<string>("");
   const [stepIndex, setStepIndex] = useState(0);
@@ -114,6 +121,7 @@ export function OnboardingPage() {
       localStorage.setItem("onboarding-device-id", id);
     }
     setDeviceId(id);
+    posthog?.identify(id);
 
     // 2. Read local storage draft
     const local = loadDraft();
@@ -171,6 +179,48 @@ export function OnboardingPage() {
       });
   }, [mounted]);
 
+  // Derive active steps
+  const activeSteps = getActiveSteps(formAnswers);
+  const safeStepIndex = Math.max(
+    0,
+    Math.min(stepIndex, activeSteps.length - 1),
+  );
+  const currentStep = activeSteps[safeStepIndex];
+  const stepEventProperties = useMemo(() => {
+    return currentStep
+      ? {
+          step_id: currentStep.id,
+          step_number: safeStepIndex + 1,
+          total_steps: activeSteps.length,
+          step_label: `Paso ${safeStepIndex + 1} de ${activeSteps.length}: ${currentStep.title}`,
+        }
+      : null;
+  }, [currentStep, safeStepIndex, activeSteps.length]);
+
+  const viewedStepId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (
+      showWelcome ||
+      completed ||
+      !deviceId ||
+      !posthog ||
+      !stepEventProperties
+    )
+      return;
+    if (viewedStepId.current === stepEventProperties.step_id) return;
+
+    posthog.capture("onboarding_step_viewed", stepEventProperties);
+    viewedStepId.current = stepEventProperties.step_id;
+  }, [deviceId, posthog, stepEventProperties, showWelcome, completed]);
+
+  const displayName =
+    typeof formAnswers.nombre === "string" ? formAnswers.nombre.trim() : "";
+  const progressPercent =
+    activeSteps.length > 0
+      ? Math.round(((safeStepIndex + 1) / activeSteps.length) * 100)
+      : 0;
+
   if (!mounted) {
     return (
       <main className="flex flex-col flex-1 sm:items-center sm:justify-center px-0 py-0 sm:px-8 sm:py-12">
@@ -185,20 +235,6 @@ export function OnboardingPage() {
       </main>
     );
   }
-
-  // Derive active steps
-  const activeSteps = getActiveSteps(formAnswers);
-  const safeStepIndex = Math.max(
-    0,
-    Math.min(stepIndex, activeSteps.length - 1),
-  );
-  const currentStep = activeSteps[safeStepIndex];
-  const displayName =
-    typeof formAnswers.nombre === "string" ? formAnswers.nombre.trim() : "";
-  const progressPercent =
-    activeSteps.length > 0
-      ? Math.round(((safeStepIndex + 1) / activeSteps.length) * 100)
-      : 0;
 
   // Welcome Screen
   if (showWelcome) {
@@ -229,6 +265,7 @@ export function OnboardingPage() {
             onClick={() => {
               localStorage.setItem("onboarding-welcome-seen", "true");
               setShowWelcome(false);
+              posthog?.capture("onboarding_welcome_continued");
             }}
             className="h-auto rounded-xl bg-[var(--lagoon-deep)] px-8 py-3 text-base font-bold text-[var(--on-primary)] hover:bg-[var(--sea-ink)] flex items-center gap-2 shadow-md shadow-[var(--lagoon)/10] transition-all active:scale-[0.98]"
           >
@@ -272,6 +309,7 @@ export function OnboardingPage() {
       setValidationErrors({});
       const prevStepIndex = safeStepIndex - 1;
       setStepIndex(prevStepIndex);
+      posthog?.capture("onboarding_step_back", stepEventProperties!);
 
       const local = loadDraft();
       if (local) {
@@ -294,6 +332,10 @@ export function OnboardingPage() {
     const errors = validateStep(currentStep, currentAnswers);
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
+      posthog?.capture("onboarding_validation_failed", {
+        ...stepEventProperties!,
+        error_count: Object.keys(errors).length,
+      });
       return;
     }
 
@@ -325,12 +367,19 @@ export function OnboardingPage() {
       // 3. Proceed
       if (isCompleted) {
         setCompleted(true);
+        posthog?.capture("onboarding_completed", {
+          ...stepEventProperties!,
+          contact_channel: String(currentAnswers.contacto_canal ?? ""),
+        });
       } else {
+        posthog?.capture("onboarding_step_completed", stepEventProperties!);
         setStepIndex(nextStepIndex);
       }
     } catch (error) {
       console.error("Failed to save onboarding progress:", error);
       setSaveError("Error al guardar el borrador. Intentá de nuevo.");
+      posthog?.captureException(error);
+      posthog?.capture("onboarding_save_failed", stepEventProperties!);
     } finally {
       setIsSaving(false);
     }
@@ -542,19 +591,39 @@ export function OnboardingPage() {
                             return (
                               <OnboardingUpload
                                 fieldId={field.id}
-                                value={typeof fieldState.state.value === 'string' ? fieldState.state.value : undefined}
+                                value={
+                                  typeof fieldState.state.value === "string"
+                                    ? fieldState.state.value
+                                    : undefined
+                                }
                                 disabled={isSaving}
                                 onUpload={async (file, setProgress) => {
-                                  const previousKey = typeof fieldState.state.value === 'string'
-                                    ? fieldState.state.value
-                                    : undefined;
-                                  const { key, url } = await createOnboardingUpload({
-                                    data: { deviceId, fieldId: field.id, contentType: file.type, size: file.size },
-                                  });
+                                  const previousKey =
+                                    typeof fieldState.state.value === "string"
+                                      ? fieldState.state.value
+                                      : undefined;
+                                  const { key, url } =
+                                    await createOnboardingUpload({
+                                      data: {
+                                        deviceId,
+                                        fieldId: field.id,
+                                        contentType: file.type,
+                                        size: file.size,
+                                      },
+                                    });
                                   await putFile(url, file, setProgress);
 
-                                  const answers = filterAnswersForActiveSteps({ ...form.state.values, [field.id]: key });
-                                  await saveOnboardingDraft({ data: { deviceId, answers, completed: false } });
+                                  const answers = filterAnswersForActiveSteps({
+                                    ...form.state.values,
+                                    [field.id]: key,
+                                  });
+                                  await saveOnboardingDraft({
+                                    data: {
+                                      deviceId,
+                                      answers,
+                                      completed: false,
+                                    },
+                                  });
 
                                   fieldState.handleChange(key);
                                   saveLocalDraft({
@@ -565,7 +634,9 @@ export function OnboardingPage() {
                                     updatedAt: new Date().toISOString(),
                                   });
                                   if (previousKey) {
-                                    await deleteOnboardingUpload({ data: { deviceId, key: previousKey } }).catch(() => undefined);
+                                    await deleteOnboardingUpload({
+                                      data: { deviceId, key: previousKey },
+                                    }).catch(() => undefined);
                                   }
                                 }}
                               />

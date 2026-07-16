@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { PostHogProvider } from '@posthog/react'
 import { SiteShell } from '../components/SiteShell'
 import appCss from '../styles.css?url'
 
@@ -20,8 +21,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head><HeadContent /></head>
       <body className="font-sans antialiased [overflow-wrap:anywhere]">
-        <SiteShell>{children}</SiteShell>
-        <TanStackDevtools config={{ position: 'bottom-right' }} plugins={[{ name: 'Tanstack Router', render: <TanStackRouterDevtoolsPanel /> }]} />
+        <PostHogProvider
+          apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN!}
+          options={{
+            api_host: '/ingest',
+            ui_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
+            defaults: '2025-05-24',
+            capture_exceptions: true,
+            debug: import.meta.env.DEV,
+          }}
+        >
+          <SiteShell>{children}</SiteShell>
+          <TanStackDevtools config={{ position: 'bottom-right' }} plugins={[{ name: 'Tanstack Router', render: <TanStackRouterDevtoolsPanel /> }]} />
+        </PostHogProvider>
         <Scripts />
       </body>
     </html>

@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react'
+import { usePostHog } from '@posthog/react'
 import { getFileValidationError } from '../onboarding/uploads'
 import { Button } from './ui/button'
 import { CheckCircle2, AlertCircle, Loader2, Upload } from 'lucide-react'
@@ -47,6 +48,7 @@ export default function OnboardingUpload({
   onUpload,
   disabled = false,
 }: OnboardingUploadProps) {
+  const posthog = usePostHog()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -75,8 +77,17 @@ export default function OnboardingUpload({
         setProgress(p)
       })
       setProgress(null)
+      posthog?.capture('file_upload_completed', {
+        field_id: fieldId,
+        file_type: file.type,
+      })
     } catch (err) {
       console.error('Error uploading file:', err)
+      posthog?.captureException(err)
+      posthog?.capture('file_upload_failed', {
+        field_id: fieldId,
+        file_type: file.type,
+      })
       setError('Error al subir el archivo. Intentá de nuevo.')
       setFileName(null)
       setProgress(null)

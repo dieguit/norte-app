@@ -59,11 +59,24 @@ vi.mock('../onboarding/server', () => ({
   deleteOnboardingUpload: vi.fn(),
 }))
 
+const posthogCapture = vi.fn()
+const posthogCaptureException = vi.fn()
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({
+    capture: posthogCapture,
+    captureException: posthogCaptureException,
+    identify: vi.fn(),
+  }),
+}))
+
 describe('OnboardingPage component tests', () => {
   beforeEach(() => {
     localStorage.clear()
     localStorage.setItem('onboarding-welcome-seen', 'true')
     vi.clearAllMocks()
+    posthogCapture.mockClear()
+    posthogCaptureException.mockClear()
     vi.mocked(getOnboardingDraft).mockResolvedValue(makeDraft({}))
     vi.mocked(saveOnboardingDraft).mockResolvedValue({} as any)
     vi.mocked(createOnboardingUpload).mockResolvedValue({ key: 'mock-key', url: 'https://mock-url.com' })
@@ -74,6 +87,42 @@ describe('OnboardingPage component tests', () => {
     cleanup()
     vi.unstubAllGlobals()
   })
+
+  it('captures a readable view event for the displayed onboarding step', async () => {
+    render(<OnboardingPage />)
+
+    await screen.findByRole('heading', { name: '¿Cómo te llamás?' })
+
+    expect(posthogCapture).toHaveBeenCalledWith('onboarding_step_viewed', {
+      step_id: 'p0',
+      step_number: 1,
+      total_steps: getActiveSteps({}).length,
+      step_label: `Paso 1 de ${getActiveSteps({}).length}: ¿Cómo te llamás?`,
+    })
+  })
+
+  it('captures the next displayed step with its full title and ordinal', async () => {
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Ada')
+    await continueStep(user)
+
+    const totalSteps = getActiveSteps({ nombre: 'Ada' }).length
+    expect(posthogCapture).toHaveBeenCalledWith('onboarding_step_viewed', {
+      step_id: 'p23',
+      step_number: 2,
+      total_steps: totalSteps,
+      step_label: `Paso 2 de ${totalSteps}: ¿A dónde te mandamos tu informe?`,
+    })
+    expect(posthogCapture).toHaveBeenCalledWith('onboarding_step_completed', {
+      step_id: 'p0',
+      step_number: 1,
+      total_steps: totalSteps,
+      step_label: `Paso 1 de ${totalSteps}: ¿Cómo te llamás?`,
+    })
+  })
+
 
   it('renders all fields in the current step and blocks Next for a missing required field', async () => {
     const user = userEvent.setup()
@@ -92,6 +141,16 @@ describe('OnboardingPage component tests', () => {
     expect(screen.getByText('Este campo es requerido.')).toBeDefined()
     expect(input.getAttribute('aria-invalid')).toBe('true')
     expect(input.getAttribute('aria-describedby')).toBe('ing_total-error')
+
+    const activeSteps = getActiveSteps({ ...initialAnswers, p1_pesa: 'Otra' })
+    const stepNumber = activeSteps.findIndex((step) => step.id === 'p4') + 1
+
+    expect(posthogCapture).toHaveBeenCalledWith('onboarding_validation_failed', expect.objectContaining({
+      step_id: 'p4',
+      step_number: stepNumber,
+      total_steps: activeSteps.length,
+      step_label: `Paso ${stepNumber} de ${activeSteps.length}: ¿Cuánta plata entra en tu casa en un mes normal, sumando todo?`,
+    }))
   })
 
   it('does not let pending server hydration overwrite a local edit', async () => {
