@@ -6,10 +6,11 @@ import { nitro } from 'nitro/vite'
 
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { posthogProxyRules } from './posthog-proxy'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [devtools(), tailwindcss(), tanstackStart(), nitro(), viteReact()],
+  plugins: [devtools(), tailwindcss(), tanstackStart(), nitro({ routeRules: posthogProxyRules }), viteReact()],
   server: {
     proxy: {
       '/ingest/static': {
