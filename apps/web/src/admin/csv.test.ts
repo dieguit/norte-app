@@ -47,6 +47,33 @@ describe('admin CSV export', () => {
     })
   })
 
+  it('keeps upload links after the central contract in card order', () => {
+    expect(csvHeaders.slice(-10)).toEqual([
+      'T1_upload_url', 'T1_postcierre_upload',
+      'T2_upload_url', 'T2_postcierre_upload',
+      'T3_upload_url', 'T3_postcierre_upload',
+      'T4_upload_url', 'T4_postcierre_upload',
+      'T5_upload_url', 'T5_postcierre_upload',
+    ])
+    expect(csvHeaders.indexOf('T1_upload_url')).toBeGreaterThan(csvHeaders.indexOf('T5_postcierre'))
+  })
+
+  it('exports dates and expiring incomes in the central contract', () => {
+    const row = toAdminCsvRow({
+      completedAt: new Date('2026-07-16T12:00:00Z'),
+      answers: {
+        extra_cuando: 'sep-27', aumento_proximo: 'oct-27',
+        ing_fin1_monto: 100000, ing_fin1_hasta: 'nov-27',
+        t1_upload_url: 'statement-key', t1_postcierre_upload: 'movements-key',
+      },
+    })
+    expect(row).toMatchObject({
+      extra_cuando: 'sep-27', aumento_proximo: 'oct-27',
+      ing_fin1_monto: 100000, ing_fin1_hasta: 'nov-27',
+      T1_upload_url: 'statement-key', T1_postcierre_upload: 'movements-key',
+    })
+  })
+
   it('writes BOM-prefixed, comma-delimited CSV with Excel line endings', () => {
     expect(serializeCsv(['nombre', 'nota'], [{ nombre: 'Ana, "A"', nota: 'uno\ndos' }]))
       .toBe('\uFEFFnombre,nota\r\n"Ana, ""A""","uno\r\ndos"')

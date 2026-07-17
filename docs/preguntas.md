@@ -112,6 +112,18 @@ Opciones:
 
 · “No aumenta / no sé”.
 
+## **P8a · ¿Alguno de tus ingresos tiene fecha de vencimiento?**
+
+_"¿Cuánto es por mes y hasta cuándo entra?"_
+
+Tipo: opción única, seguida de hasta 4 filas si responde “Sí”.
+
+- Sí → cuatro filas posibles: [Monto mensual] [Hasta: mes/año].
+
+- No → continúa sin filas adicionales.
+
+Debe completar al menos una fila completa. Los montos ya están incluidos en P4; estas filas indican qué parte del ingreso deja de entrar y cuándo.
+
 # **Bloque 2 — Egresos (montos mensuales)**
 
 ## **P9 · Lo que pagás sí o sí todos los meses**
@@ -253,8 +265,9 @@ Una fila por respuesta completa. Nombres de columna exactos, en este orden. Tarj
 | ing\_total                                            | número               | P4             | Radiografía (base 100%)                |
 | ing\_fuentes (multi)                                  | lista                | P5             | Tipos de ingreso                       |
 | ing\_tercero\_falla / ing\_tercero\_monto             | sí-no / número       | P6             | Escenario sin ingreso incierto         |
-| extra\_tipo / extra\_monto                            | opción / número      | P7             | Eventos en proyección                  |
-| aumento\_meses / aumento\_pct                         | número / número      | P8             | Paritarias en proyección               |
+| extra\_tipo / extra\_monto / extra\_cuando            | opción / número / mes-año | P7          | Eventos en proyección                  |
+| aumento\_meses / aumento\_pct / aumento\_proximo      | número / número / mes-año | P8        | Paritarias en proyección               |
+| ing\_fin1..ing\_fin4: \_monto / \_hasta                | número / mes-año     | P8a            | Ingresos que terminan                  |
 | fijo\_alquiler … fijo\_ayuda (7 cols)                 | número               | P9             | Bloque P                               |
 | fijo\_otro1/2\_concepto \+ \_monto                    | texto \+ número      | P9             | Bloque P                               |
 | fijo\_total\_directo                                  | número               | P9             | Bloque P (vía rápida)                  |
@@ -269,12 +282,11 @@ Una fila por respuesta completa. Nombres de columna exactos, en este orden. Tarj
 | num\_tarjetas                                         | 0–5                  | P15            | Estructura bloque tarjetas             |
 | T{n}\_resumen\_ars / T{n}\_resumen\_usd               | número               | P16            | Capa 1: resumen cerrado                |
 | T{n}\_cuotas\_modo                                    | A/B/C                | P17            | Ruta de procesamiento                  |
-| T{n}\_upload\_url                                     | link                 | P17-A          | Concierge procesa a mano (spec OCR F2) |
 | T{n}\_cuotas\_m1..m6 \+ \_resto \+ \_resto\_hasta     | números              | P17-B          | Capa 3: compromisos futuros            |
 | T{n}\_cuotas\_mensual \+ \_hasta                      | número \+ mes-año    | P17-C          | Capa 3 (aprox)                         |
 | T{n}\_arrastre                                        | número               | P18            | Costo evitable (acto 3\)               |
 | T{n}\_cierre\_dia / T{n}\_vto\_dia                    | número               | P19            | Trailer (avisos con fecha)             |
-| T{n}\_postcierre / T{n}\_postcierre\_upload           | número / link        | P20            | Capa 2: período vigente                |
+| T{n}\_postcierre                                      | número               | P20            | Capa 2: período vigente                |
 | saldo\_hoy                                            | número               | P21            | Punto de partida del acumulado         |
 | deudas\_otras / deudas\_otras\_monto                  | sí-no / número       | P22            | Posición real completa                 |
 
@@ -294,7 +306,9 @@ Una fila por respuesta completa. Nombres de columna exactos, en este orden. Tarj
 
 - Obligatorias mínimas: P4, P9 (o total), P11 (o total), P12, P16, P17 (cualquier camino). Todo lo demás salteable — el informe declara honestamente lo que no sabe.
 
-- Uploads (P17-A, P20): los procesa el concierge a mano en Fase 0\. Cada upload procesado es la spec del OCR de Fase 2, ordenada por dolor real.
+- Fechas mensuales (P7, P8, P8a, P10 y P17-B/C) se guardan como texto `mes-yy`, por ejemplo `sep-27`. El concierge las normaliza a índices 1-18 en `NORMALIZAR`.
+
+- Uploads (P17-A, P20): sus links van después de la última columna del contrato central, en este orden: `T1_upload_url`, `T1_postcierre_upload` … `T5_upload_url`, `T5_postcierre_upload`. Los procesa el concierge a mano en Fase 0.
 
 - Medir abandono por paso y tiempo por bloque — es el leading indicator del Experimento 4 de Diego.
 

@@ -4,7 +4,7 @@ import { render, screen, cleanup, waitForElementToBeRemoved } from '@testing-lib
 import userEvent from '@testing-library/user-event'
 import { OnboardingPage } from './onboarding'
 import { getOnboardingDraft, saveOnboardingDraft, createOnboardingUpload, deleteOnboardingUpload } from '../onboarding/server'
-import { getActiveSteps, validateStep, type OnboardingAnswers } from '../onboarding/definition'
+import { getActiveSteps, validateStep, getMonthlyDateOptions, type OnboardingAnswers } from '../onboarding/definition'
 import type { OnboardingDraft } from '../db/schema'
 
 const deviceId = '6f0a7482-29a0-4c03-a3e1-256add2f91a8'
@@ -12,10 +12,11 @@ const initialAnswers: OnboardingAnswers = {
   nombre: 'Ada',
   contacto_canal: 'Email',
   email: 'ada@example.com',
+  p8a_tiene_vencimiento: 'No',
 }
 
 function makeDraft(answers: OnboardingAnswers): OnboardingDraft {
-  const timestamp = new Date('2026-07-15T00:00:00.000Z')
+  const timestamp = new Date('2026-06-15T00:00:00.000Z')
   return {
     deviceId,
     answers: { ...initialAnswers, ...answers },
@@ -72,6 +73,8 @@ vi.mock('@posthog/react', () => ({
 
 describe('OnboardingPage component tests', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 6, 1))
     localStorage.clear()
     localStorage.setItem('onboarding-welcome-seen', 'true')
     vi.clearAllMocks()
@@ -86,6 +89,7 @@ describe('OnboardingPage component tests', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
+    vi.useRealTimers()
     window.history.replaceState({}, '', '/onboarding')
   })
 
@@ -436,7 +440,8 @@ describe('OnboardingPage component tests', () => {
     await continueStep(user)
     await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
     await user.type(await screen.findByLabelText(/monto mensual/i), '5000')
-    await user.type(await screen.findByLabelText(/hasta \(mes\/año\)/i), '2026-12')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) mes'), 'dic')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) año'), '26')
     await continueStep(user)
     for (const label of [/monto impago/i, /día de cierre/i, /a ojo/i]) {
       const input = screen.getByLabelText(label)
@@ -461,7 +466,8 @@ describe('OnboardingPage component tests', () => {
     await advanceToCardP17(1)
     await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
     await user.type(await screen.findByLabelText(/monto mensual/i), '3000')
-    await user.type(await screen.findByLabelText(/hasta \(mes\/año\)/i), '2026-12')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) mes'), 'dic')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) año'), '26')
     await continueStep(user)
     expect(await screen.findByRole('heading', { name: /tarjeta 1 - ¿quedó algo/i })).toBeDefined()
   })
@@ -471,7 +477,8 @@ describe('OnboardingPage component tests', () => {
     await advanceToCardP17(1)
     await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
     await user.type(await screen.findByLabelText(/monto mensual/i), '4500')
-    await user.type(await screen.findByLabelText(/hasta \(mes\/año\)/i), '2026-11')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) mes'), 'nov')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) año'), '26')
     await continueStep(user)
 
     expect(saveOnboardingDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -479,8 +486,27 @@ describe('OnboardingPage component tests', () => {
         answers: expect.objectContaining({
           t1_cuotas_modo: 'Carga manual a ojo',
           t1_cuotas_mensual: 4500,
-          t1_cuotas_hasta: '2026-11',
+          t1_cuotas_hasta: 'nov-26',
         }),
+      }),
+    }))
+  })
+
+  it('stores a month field as mes-yy from its month and year selects', async () => {
+    const user = userEvent.setup()
+    await advanceToCardP17(1)
+    await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
+
+    const [month, year] = getMonthlyDateOptions()[0].split('-')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) mes'), month)
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) año'), year)
+
+    expect((screen.getByLabelText('Hasta (mes/año) mes') as HTMLSelectElement).value).toBe(month)
+    await user.type(screen.getByLabelText(/monto mensual/i), '4500')
+    await continueStep(user)
+    expect(saveOnboardingDraft).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        answers: expect.objectContaining({ t1_cuotas_hasta: `${month}-${year}` }),
       }),
     }))
   })

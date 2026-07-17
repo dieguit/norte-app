@@ -25,6 +25,38 @@ export type OnboardingField = {
   disabledOptions?: readonly string[]
 }
 
+const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+export function getMonthlyDateOptions(now = new Date()): string[] {
+  return Array.from({ length: 18 }, (_, offset) => {
+    const date = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+    return `${monthNames[date.getMonth()]}-${String(date.getFullYear()).slice(-2)}`
+  })
+}
+
+export function splitMonthlyDate(value: unknown): [string, string] {
+  if (typeof value !== 'string') {
+    return ['', '']
+  }
+  const legacyMatch = value.match(/^(\d{4})-(\d{2})$/)
+  if (legacyMatch) {
+    const yearAbbrev = legacyMatch[1].slice(-2)
+    const monthNum = parseInt(legacyMatch[2], 10)
+    const monthAbbrev = monthNames[monthNum - 1] || ''
+    if (monthNames.includes(monthAbbrev)) {
+      return [monthAbbrev, yearAbbrev]
+    }
+  }
+  const standardMatch = value.match(/^([a-z]{3})-(\d{2})$/i)
+  if (standardMatch) {
+    const monthAbbrev = standardMatch[1].toLowerCase()
+    if (monthNames.includes(monthAbbrev)) {
+      return [monthAbbrev, standardMatch[2]]
+    }
+  }
+  return ['', '']
+}
+
 export type OnboardingStep = {
   id: string
   title: string
@@ -269,6 +301,18 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         label: 'Próximo aumento esperado en',
         visibleWhen: (answers) => answers.aumento_tipo === 'Tiene aumentos periódicos',
       },
+    ],
+  },
+  {
+    id: 'p8a',
+    title: '¿Alguno de tus ingresos tiene fecha de vencimiento?',
+    intro: '¿Cuánto es por mes y hasta cuándo entra?',
+    fields: [
+      { id: 'p8a_tiene_vencimiento', type: 'radio', label: '¿Tiene vencimiento?', options: ['Sí', 'No'], required: true },
+      ...(['ing_fin1', 'ing_fin2', 'ing_fin3', 'ing_fin4'] as const).flatMap((prefix, index) => [
+        { id: `${prefix}_monto`, type: 'number' as const, label: `Monto mensual ${index + 1} ($)`, visibleWhen: (answers: OnboardingAnswers) => answers.p8a_tiene_vencimiento === 'Sí' },
+        { id: `${prefix}_hasta`, type: 'month' as const, label: `Hasta ${index + 1} (mes/año)`, visibleWhen: (answers: OnboardingAnswers) => answers.p8a_tiene_vencimiento === 'Sí' },
+      ]),
     ],
   },
   {
@@ -625,6 +669,34 @@ export function validateStep(
     const val = answers.ing_total
     if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
       errors.ing_total = 'Este campo es requerido.'
+    }
+  }
+
+  if (step.id === 'p8a') {
+    const val = answers.p8a_tiene_vencimiento
+    if (val === 'Sí') {
+      const rows = ['ing_fin1', 'ing_fin2', 'ing_fin3', 'ing_fin4'] as const
+      let completeCount = 0
+      let partialCount = 0
+      for (const prefix of rows) {
+        const montoVal = answers[`${prefix}_monto`]
+        const hastaVal = answers[`${prefix}_hasta`]
+        const hasM = montoVal !== undefined && montoVal !== null && montoVal !== ''
+        const hasH = typeof hastaVal === 'string' && hastaVal.trim() !== ''
+        if (hasM && hasH) {
+          completeCount++
+        } else if (hasM || hasH) {
+          partialCount++
+          if (hasM) {
+            errors[`${prefix}_hasta`] = 'Completá la fecha de vencimiento.'
+          } else {
+            errors[`${prefix}_monto`] = 'Este campo es requerido.'
+          }
+        }
+      }
+      if (completeCount === 0 && partialCount === 0) {
+        errors.ing_fin1_monto = 'Completá al menos un ingreso que vence.'
+      }
     }
   }
 

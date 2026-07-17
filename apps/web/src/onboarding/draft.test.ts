@@ -7,7 +7,9 @@ import {
   getVisibleFields,
   onboardingSteps,
   validateStep,
+  getMonthlyDateOptions,
   type OnboardingAnswers,
+  splitMonthlyDate,
 } from './definition'
 import { loadDraft, saveDraft } from './draft'
 
@@ -298,5 +300,61 @@ describe('onboarding draft', () => {
     })
 
     expect(loadDraft('c2446e70-8555-44dc-a428-cb1185c8d4b3')).toBeNull()
+  })
+
+  it('shows four expiring-income rows only after P8a is Sí', () => {
+    const step = onboardingSteps.find(({ id }) => id === 'p8a')!
+    expect(getVisibleFields(step, { p8a_tiene_vencimiento: 'No' })
+      .map(({ id }) => id)).toEqual(['p8a_tiene_vencimiento'])
+    expect(getVisibleFields(step, { p8a_tiene_vencimiento: 'Sí' })
+      .map(({ id }) => id)).toEqual([
+        'p8a_tiene_vencimiento',
+        'ing_fin1_monto', 'ing_fin1_hasta',
+        'ing_fin2_monto', 'ing_fin2_hasta',
+        'ing_fin3_monto', 'ing_fin3_hasta',
+        'ing_fin4_monto', 'ing_fin4_hasta',
+      ])
+  })
+
+  it('requires one complete expiring-income row after Sí', () => {
+    const step = onboardingSteps.find(({ id }) => id === 'p8a')!
+    expect(validateStep(step, { p8a_tiene_vencimiento: 'Sí' })).toMatchObject({
+      ing_fin1_monto: 'Completá al menos un ingreso que vence.',
+    })
+    expect(validateStep(step, {
+      p8a_tiene_vencimiento: 'Sí', ing_fin1_monto: 100000,
+    })).toMatchObject({ ing_fin1_hasta: 'Completá la fecha de vencimiento.' })
+    expect(validateStep(step, {
+      p8a_tiene_vencimiento: 'Sí', ing_fin1_monto: 100000, ing_fin1_hasta: 'sep-27',
+    })).toEqual({})
+  })
+
+  it('filters expiring-income answers after P8a switches to No', () => {
+    expect(filterAnswersForActiveSteps({
+      p8a_tiene_vencimiento: 'No', ing_fin1_monto: 100000, ing_fin1_hasta: 'sep-27',
+    })).toEqual({ p8a_tiene_vencimiento: 'No' })
+  })
+
+  it('offers exactly 18 sequential monthly dates', () => {
+    expect(getMonthlyDateOptions(new Date(2026, 6, 1))).toEqual([
+      'jul-26', 'ago-26', 'sep-26', 'oct-26', 'nov-26', 'dic-26',
+      'ene-27', 'feb-27', 'mar-27', 'abr-27', 'may-27', 'jun-27',
+      'jul-27', 'ago-27', 'sep-27', 'oct-27', 'nov-27', 'dic-27',
+    ])
+  })
+
+  describe('splitMonthlyDate', () => {
+    it('parses legacy yyyy-mm format correctly', () => {
+      expect(splitMonthlyDate("2026-12")).toEqual(['dic', '26'])
+    })
+
+    it('parses standard mes-yy format correctly', () => {
+      expect(splitMonthlyDate("dic-26")).toEqual(['dic', '26'])
+    })
+
+    it('returns empty strings for invalid or unknown values', () => {
+      expect(splitMonthlyDate("invalid")).toEqual(['', ''])
+      expect(splitMonthlyDate(undefined)).toEqual(['', ''])
+    })
   })
 })

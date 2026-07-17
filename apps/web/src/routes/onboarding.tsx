@@ -13,6 +13,9 @@ import {
   getInactiveAnswerIds,
   filterAnswersForActiveSteps,
   type OnboardingAnswers,
+  type OnboardingField,
+  getMonthlyDateOptions,
+  splitMonthlyDate,
 } from "../onboarding/definition";
 import { loadDraft, saveDraft as saveLocalDraft } from "../onboarding/draft";
 import { getInvitedDeviceId } from "../onboarding/invitation";
@@ -50,6 +53,134 @@ export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Onboarding | Norte" }] }),
   component: OnboardingPage,
 });
+
+interface MonthYearFieldState {
+  state: {
+    value: any;
+  };
+  handleChange: (value: string) => void;
+  handleBlur: () => void;
+}
+
+function MonthYearSelects({
+  field,
+  fieldState,
+  validationErrors,
+}: {
+  field: OnboardingField;
+  fieldState: MonthYearFieldState;
+  validationErrors: Record<string, string>;
+}) {
+  const [selectedMonth, selectedYear] = splitMonthlyDate(fieldState.state.value);
+
+  const [localMonth, setLocalMonth] = useState(selectedMonth);
+  const [localYear, setLocalYear] = useState(selectedYear);
+
+  const externalValue = typeof fieldState.state.value === "string" ? fieldState.state.value : "";
+
+  const options = useMemo(() => getMonthlyDateOptions(), []);
+  const months = useMemo(() => [...new Set(options.map((option) => option.split("-")[0]))], [options]);
+  const years = useMemo(() => [...new Set(options.map((option) => option.split("-")[1]))], [options]);
+
+  useEffect(() => {
+    const [m, y] = splitMonthlyDate(externalValue);
+    const externalIsComplete = !!m && !!y;
+    const localIsComplete = !!localMonth && !!localYear;
+
+    if (externalIsComplete) {
+      if (m !== localMonth || y !== localYear) {
+        setLocalMonth(m);
+        setLocalYear(y);
+      }
+    } else {
+      if (localIsComplete) {
+        setLocalMonth("");
+        setLocalYear("");
+      }
+    }
+  }, [externalValue, localMonth, localYear]);
+
+  const handleMonthChange = (m: string) => {
+    setLocalMonth(m);
+    const combined = m && localYear ? `${m}-${localYear}` : "";
+    if (options.includes(combined)) {
+      fieldState.handleChange(combined);
+    } else {
+      fieldState.handleChange("");
+    }
+  };
+
+  const handleYearChange = (y: string) => {
+    setLocalYear(y);
+    const combined = localMonth && y ? `${localMonth}-${y}` : "";
+    if (options.includes(combined)) {
+      fieldState.handleChange(combined);
+    } else {
+      fieldState.handleChange("");
+    }
+  };
+
+  const selectClass = `block w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-3.5 py-2.5 text-base text-[var(--sea-ink)] outline-none transition-colors focus:border-[var(--lagoon-deep)] focus:ring-3 focus:ring-[color-mix(in_oklab,var(--lagoon)_25%,transparent)] ${
+    validationErrors[field.id]
+      ? "border-[var(--error)] ring-[color-mix(in_oklab,var(--error)_20%,transparent)] focus:border-[var(--error)]"
+      : ""
+  }`;
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex-1 space-y-1">
+        <label htmlFor={`${field.id}-month`} className="sr-only">
+          {`${field.label} mes`}
+        </label>
+        <select
+          id={`${field.id}-month`}
+          aria-invalid={!!validationErrors[field.id]}
+          aria-describedby={
+            validationErrors[field.id] ? `${field.id}-error` : undefined
+          }
+          value={localMonth}
+          onChange={(e) => handleMonthChange(e.target.value)}
+          onBlur={fieldState.handleBlur}
+          className={selectClass}
+        >
+          <option value="">
+            Mes
+          </option>
+          {months.map((month) => (
+            <option key={month} value={month}>
+              {month}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex-1 space-y-1">
+        <label htmlFor={`${field.id}-year`} className="sr-only">
+          {`${field.label} año`}
+        </label>
+        <select
+          id={`${field.id}-year`}
+          aria-invalid={!!validationErrors[field.id]}
+          aria-describedby={
+            validationErrors[field.id] ? `${field.id}-error` : undefined
+          }
+          value={localYear}
+          onChange={(e) => handleYearChange(e.target.value)}
+          onBlur={fieldState.handleBlur}
+          className={selectClass}
+        >
+          <option value="">
+            Año
+          </option>
+          {years.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 function getRestoredStepIndex(answers: OnboardingAnswers) {
   const firstIncomplete = getFirstIncompleteStep(answers);
@@ -446,15 +577,24 @@ export function OnboardingPage() {
                 {getVisibleFields(currentStep, formAnswers).map((field) => (
                   <div key={field.id} className="space-y-2">
                     {field.type !== "radio" && field.type !== "checkbox" && (
-                      <label
-                        htmlFor={field.id}
-                        className="block text-sm font-bold text-[var(--sea-ink)]"
-                      >
-                        {field.label}
-                        {field.required && (
-                          <span className="text-rose-500 ml-0.5">*</span>
-                        )}
-                      </label>
+                      field.type === "month" ? (
+                        <div className="block text-sm font-bold text-[var(--sea-ink)]">
+                          {field.label}
+                          {field.required && (
+                            <span className="text-rose-500 ml-0.5">*</span>
+                          )}
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor={field.id}
+                          className="block text-sm font-bold text-[var(--sea-ink)]"
+                        >
+                          {field.label}
+                          {field.required && (
+                            <span className="text-rose-500 ml-0.5">*</span>
+                          )}
+                        </label>
+                      )
                     )}
 
                     <form.Field name={field.id}>
@@ -566,25 +706,10 @@ export function OnboardingPage() {
                             );
                           case "month":
                             return (
-                              <Input
-                                id={field.id}
-                                type="month"
-                                aria-invalid={!!validationErrors[field.id]}
-                                aria-describedby={
-                                  validationErrors[field.id]
-                                    ? `${field.id}-error`
-                                    : undefined
-                                }
-                                value={String(fieldState.state.value ?? "")}
-                                onChange={(event) =>
-                                  fieldState.handleChange(event.target.value)
-                                }
-                                onBlur={fieldState.handleBlur}
-                                className={
-                                  validationErrors[field.id]
-                                    ? "border-[var(--error)] ring-[color-mix(in_oklab,var(--error)_20%,transparent)] focus:border-[var(--error)]"
-                                    : ""
-                                }
+                              <MonthYearSelects
+                                field={field}
+                                fieldState={fieldState}
+                                validationErrors={validationErrors}
                               />
                             );
                           case "upload":
