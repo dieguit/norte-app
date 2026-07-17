@@ -34,29 +34,6 @@ export function getMonthlyDateOptions(now = new Date()): string[] {
   })
 }
 
-export function splitMonthlyDate(value: unknown): [string, string] {
-  if (typeof value !== 'string') {
-    return ['', '']
-  }
-  const legacyMatch = value.match(/^(\d{4})-(\d{2})$/)
-  if (legacyMatch) {
-    const yearAbbrev = legacyMatch[1].slice(-2)
-    const monthNum = parseInt(legacyMatch[2], 10)
-    const monthAbbrev = monthNames[monthNum - 1] || ''
-    if (monthNames.includes(monthAbbrev)) {
-      return [monthAbbrev, yearAbbrev]
-    }
-  }
-  const standardMatch = value.match(/^([a-z]{3})-(\d{2})$/i)
-  if (standardMatch) {
-    const monthAbbrev = standardMatch[1].toLowerCase()
-    if (monthNames.includes(monthAbbrev)) {
-      return [monthAbbrev, standardMatch[2]]
-    }
-  }
-  return ['', '']
-}
-
 export type OnboardingStep = {
   id: string
   title: string
@@ -310,7 +287,13 @@ export const onboardingSteps: readonly OnboardingStep[] = [
     fields: [
       { id: 'p8a_tiene_vencimiento', type: 'radio', label: '¿Tiene vencimiento?', options: ['Sí', 'No'], required: true },
       ...(['ing_fin1', 'ing_fin2', 'ing_fin3', 'ing_fin4'] as const).flatMap((prefix, index) => [
-        { id: `${prefix}_monto`, type: 'number' as const, label: `Monto mensual ${index + 1} ($)`, visibleWhen: (answers: OnboardingAnswers) => answers.p8a_tiene_vencimiento === 'Sí' },
+        {
+          id: `${prefix}_monto`,
+          type: 'number' as const,
+          label: `Monto mensual ${index + 1} ($)`,
+          helpText: index === 0 ? 'No hace falta que llenes todos' : undefined,
+          visibleWhen: (answers: OnboardingAnswers) => answers.p8a_tiene_vencimiento === 'Sí',
+        },
         { id: `${prefix}_hasta`, type: 'month' as const, label: `Hasta ${index + 1} (mes/año)`, visibleWhen: (answers: OnboardingAnswers) => answers.p8a_tiene_vencimiento === 'Sí' },
       ]),
     ],
@@ -328,7 +311,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
       { id: 'fijo_servicios', type: 'number', label: 'Servicios (luz, gas, internet, celular) ($)' },
       { id: 'fijo_seguros', type: 'number', label: 'Seguros ($)' },
       { id: 'fijo_ayuda', type: 'number', label: 'Ayuda a familiares ($)' },
-      { id: 'fijo_otro1_concepto', type: 'text', label: 'Otro (concepto)' },
+      { id: 'fijo_otro1_concepto', type: 'text', label: 'Otro (concepto)', helpText: 'No hace falta que llenes todos' },
       { id: 'fijo_otro1_monto', type: 'number', label: 'Otro ($)' },
       { id: 'fijo_otro2_concepto', type: 'text', label: 'Otro 2 (concepto)' },
       { id: 'fijo_otro2_monto', type: 'number', label: 'Otro 2 ($)' },
@@ -350,7 +333,13 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         ],
       },
       ...(['fin1', 'fin2', 'fin3', 'fin4'] as const).flatMap((prefix, index) => [
-        { id: `${prefix}_concepto`, type: 'text' as const, label: `Concepto ${index + 1}`, visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí' },
+        {
+          id: `${prefix}_concepto`,
+          type: 'text' as const,
+          label: `Concepto ${index + 1}`,
+          helpText: index === 0 ? 'No hace falta que llenes todos' : undefined,
+          visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí',
+        },
         { id: `${prefix}_cuota`, type: 'number' as const, label: 'Cuota mensual ($)', visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí' },
         { id: `${prefix}_hasta`, type: 'month' as const, label: '¿Cuándo termina?', visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí' },
       ]),
@@ -364,7 +353,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
       { id: 'var_comida', type: 'number', label: 'Comida / súper ($)' },
       { id: 'var_transporte', type: 'number', label: 'Nafta / transporte ($)' },
       { id: 'var_farmacia', type: 'number', label: 'Farmacia ($)' },
-      { id: 'var_otro1_concepto', type: 'text', label: 'Otro 1 (concepto)' },
+      { id: 'var_otro1_concepto', type: 'text', label: 'Otro 1 (concepto)', helpText: 'No hace falta que llenes todos' },
       { id: 'var_otro1_monto', type: 'number', label: 'Otro 1 ($)' },
       { id: 'var_otro2_concepto', type: 'text', label: 'Otro 2 (concepto)' },
       { id: 'var_otro2_monto', type: 'number', label: 'Otro 2 ($)' },
@@ -383,7 +372,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
       { id: 'd_delivery', type: 'number', label: 'Delivery ($)' },
       { id: 'd_susc', type: 'number', label: 'Suscripciones ($)' },
       { id: 'd_hobbies', type: 'number', label: 'Hobbies / actividades propias ($)' },
-      { id: 'd_otro1_concepto', type: 'text', label: 'Otro 1 (concepto)' },
+      { id: 'd_otro1_concepto', type: 'text', label: 'Otro 1 (concepto)', helpText: 'No hace falta que llenes todos' },
       { id: 'd_otro1_monto', type: 'number', label: 'Otro 1 ($)' },
       { id: 'd_otro2_concepto', type: 'text', label: 'Otro 2 (concepto)' },
       { id: 'd_otro2_monto', type: 'number', label: 'Otro 2 ($)' },
@@ -425,7 +414,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         label: '¿Tiene compras previstas?',
         options: ['Sí', 'No'],
       },
-      { id: 'n1_concepto', type: 'text', label: 'Concepto 1', visibleWhen: (answers) => answers.p14_tiene_compras === 'Sí' },
+      { id: 'n1_concepto', type: 'text', label: 'Concepto 1', helpText: 'No hace falta que llenes todos', visibleWhen: (answers) => answers.p14_tiene_compras === 'Sí' },
       { id: 'n1_monto', type: 'number', label: 'Monto aproximado 1 ($)', visibleWhen: (answers) => answers.p14_tiene_compras === 'Sí' },
       { id: 'n2_concepto', type: 'text', label: 'Concepto 2', visibleWhen: (answers) => answers.p14_tiene_compras === 'Sí' },
       { id: 'n2_monto', type: 'number', label: 'Monto aproximado 2 ($)', visibleWhen: (answers) => answers.p14_tiene_compras === 'Sí' },

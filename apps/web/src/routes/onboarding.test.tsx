@@ -440,8 +440,7 @@ describe('OnboardingPage component tests', () => {
     await continueStep(user)
     await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
     await user.type(await screen.findByLabelText(/monto mensual/i), '5000')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) mes'), 'dic')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) año'), '26')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año)'), 'dic-26')
     await continueStep(user)
     for (const label of [/monto impago/i, /día de cierre/i, /a ojo/i]) {
       const input = screen.getByLabelText(label)
@@ -466,8 +465,7 @@ describe('OnboardingPage component tests', () => {
     await advanceToCardP17(1)
     await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
     await user.type(await screen.findByLabelText(/monto mensual/i), '3000')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) mes'), 'dic')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) año'), '26')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año)'), 'dic-26')
     await continueStep(user)
     expect(await screen.findByRole('heading', { name: /tarjeta 1 - ¿quedó algo/i })).toBeDefined()
   })
@@ -477,8 +475,7 @@ describe('OnboardingPage component tests', () => {
     await advanceToCardP17(1)
     await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
     await user.type(await screen.findByLabelText(/monto mensual/i), '4500')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) mes'), 'nov')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) año'), '26')
+    await user.selectOptions(screen.getByLabelText('Hasta (mes/año)'), 'nov-26')
     await continueStep(user)
 
     expect(saveOnboardingDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -492,21 +489,21 @@ describe('OnboardingPage component tests', () => {
     }))
   })
 
-  it('stores a month field as mes-yy from its month and year selects', async () => {
+  it('stores a selected month field as mes-yy', async () => {
     const user = userEvent.setup()
     await advanceToCardP17(1)
     await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
 
-    const [month, year] = getMonthlyDateOptions()[0].split('-')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) mes'), month)
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año) año'), year)
+    const month = getMonthlyDateOptions()[0]
+    const field = await screen.findByLabelText('Hasta (mes/año)')
+    await user.selectOptions(field, month)
 
-    expect((screen.getByLabelText('Hasta (mes/año) mes') as HTMLSelectElement).value).toBe(month)
+    expect((field as HTMLSelectElement).value).toBe(month)
     await user.type(screen.getByLabelText(/monto mensual/i), '4500')
     await continueStep(user)
     expect(saveOnboardingDraft).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        answers: expect.objectContaining({ t1_cuotas_hasta: `${month}-${year}` }),
+        answers: expect.objectContaining({ t1_cuotas_hasta: month }),
       }),
     }))
   })
@@ -863,5 +860,141 @@ describe('OnboardingPage component tests', () => {
     await screen.findByDisplayValue('Invitada')
     expect(localStorage.getItem('onboarding-device-id')).toBe('c2446e70-8555-44dc-a428-cb1185c8d4b3')
     expect(getOnboardingDraft).toHaveBeenCalledWith({ data: { deviceId: 'c2446e70-8555-44dc-a428-cb1185c8d4b3' } })
+  })
+
+  it('shows the repeated-fields helper for expiring income fields (p8a)', async () => {
+    const helperText = 'No hace falta que llenes todos'
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'Sí',
+    })
+    render(<OnboardingPage />)
+    const expiringIncomeHelper = await screen.findByText(helperText)
+    expect(
+      expiringIncomeHelper.compareDocumentPosition(
+        screen.getByLabelText(/^Monto mensual 1 \(\$\)$/i),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('shows the repeated-fields helper for expiring payments (p10)', async () => {
+    const user = userEvent.setup()
+    const helperText = 'No hace falta que llenes todos'
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+    })
+    render(<OnboardingPage />)
+    await user.type(await screen.findByLabelText(/directamente el total/i), '100000')
+    await continueStep(user)
+    await user.click(screen.getByRole('radio', { name: /^sí$/i }))
+    const expiringPaymentHelper = await screen.findByText(helperText)
+    expect(
+      expiringPaymentHelper.compareDocumentPosition(
+        screen.getByLabelText(/^Concepto 1$/i),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('shows the repeated-fields helper for planned purchases (p14)', async () => {
+    const user = userEvent.setup()
+    const helperText = 'No hace falta que llenes todos'
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      var_total_directo: 100000,
+    })
+    render(<OnboardingPage />)
+    await user.type(await screen.findByLabelText(/salidas/i), '100000')
+    await continueStep(user)
+    await screen.findByRole('heading', { name: /qué harías con cada gustito/i })
+    await continueStep(user)
+    await user.click(screen.getByRole('radio', { name: /^sí$/i }))
+    const plannedPurchaseHelper = await screen.findByText(helperText)
+    expect(
+      plannedPurchaseHelper.compareDocumentPosition(
+        screen.getByLabelText(/^Concepto 1$/i),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('does not show the repeated-fields helper on manual card loading (p17)', async () => {
+    const user = userEvent.setup()
+    const helperText = 'No hace falta que llenes todos'
+    await advanceToCardP17(1)
+    await user.click(
+      screen.getByRole('radio', { name: /carga manual mes por mes/i }),
+    )
+    expect(screen.queryByText(helperText)).toBeNull()
+  })
+
+  it('shows the repeated-fields helper for other fixed expenses (p9)', async () => {
+    const helperText = 'No hace falta que llenes todos'
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+    })
+    render(<OnboardingPage />)
+    const fixedExpensesHelper = await screen.findByText(helperText)
+    expect(
+      fixedExpensesHelper.compareDocumentPosition(
+        screen.getByLabelText(/^Otro \(concepto\)$/i),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('shows the repeated-fields helper for daily expenses (p11)', async () => {
+    const helperText = 'No hace falta que llenes todos'
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+    })
+    render(<OnboardingPage />)
+    const dailyExpensesHelper = await screen.findByText(helperText)
+    expect(
+      dailyExpensesHelper.compareDocumentPosition(
+        screen.getByLabelText(/^Otro 1 \(concepto\)$/i),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('shows the repeated-fields helper for gustitos (p12)', async () => {
+    const helperText = 'No hace falta que llenes todos'
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      var_total_directo: 100000,
+    })
+    render(<OnboardingPage />)
+    const gustitosHelper = await screen.findByText(helperText)
+    expect(
+      gustitosHelper.compareDocumentPosition(
+        screen.getByLabelText(/^Otro 1 \(concepto\)$/i),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 })

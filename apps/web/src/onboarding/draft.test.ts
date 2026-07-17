@@ -9,7 +9,6 @@ import {
   validateStep,
   getMonthlyDateOptions,
   type OnboardingAnswers,
-  splitMonthlyDate,
 } from './definition'
 import { loadDraft, saveDraft } from './draft'
 
@@ -341,20 +340,5 @@ describe('onboarding draft', () => {
       'ene-27', 'feb-27', 'mar-27', 'abr-27', 'may-27', 'jun-27',
       'jul-27', 'ago-27', 'sep-27', 'oct-27', 'nov-27', 'dic-27',
     ])
-  })
-
-  describe('splitMonthlyDate', () => {
-    it('parses legacy yyyy-mm format correctly', () => {
-      expect(splitMonthlyDate("2026-12")).toEqual(['dic', '26'])
-    })
-
-    it('parses standard mes-yy format correctly', () => {
-      expect(splitMonthlyDate("dic-26")).toEqual(['dic', '26'])
-    })
-
-    it('returns empty strings for invalid or unknown values', () => {
-      expect(splitMonthlyDate("invalid")).toEqual(['', ''])
-      expect(splitMonthlyDate(undefined)).toEqual(['', ''])
-    })
   })
 })
