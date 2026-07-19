@@ -64,6 +64,22 @@ function hasDetailedFixedExpense(answers: OnboardingAnswers) {
   return fixedExpenseExpiryFields.some(([amountId]) => hasPositiveAmount(answers, amountId))
 }
 
+const incomeSourceExpiryFields = [
+  ['Sueldo fijo (relación de dependencia)', 'ing_sueldo_fijo_hasta'],
+  ['Trabajos propios (freelance, clases, negocio, honorarios)', 'ing_trabajos_propios_hasta'],
+  ['Aportes de un tercero (cuota alimentaria, alquiler que cobrás, ayuda familiar)', 'ing_aportes_tercero_hasta'],
+  ['Jubilación / pensión', 'ing_jubilacion_pension_hasta'],
+  ['Otro', 'ing_otro_hasta'],
+] as const
+
+function hasSelectedIncomeSource(answers: OnboardingAnswers, source: string) {
+  return Array.isArray(answers.p5_fuentes) && answers.p5_fuentes.includes(source)
+}
+
+function hasDefinedExtra(answers: OnboardingAnswers) {
+  return typeof answers.extra_tipo === 'string' && answers.extra_tipo !== 'No'
+}
+
 export const onboardingSteps: readonly OnboardingStep[] = [
   {
     id: 'p0',
@@ -208,6 +224,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
           'Jubilación / pensión',
           'Otro',
         ],
+        required: true,
       },
     ],
   },
@@ -303,19 +320,26 @@ export const onboardingSteps: readonly OnboardingStep[] = [
   {
     id: 'p8a',
     title: '¿Alguno de tus ingresos tiene fecha de vencimiento?',
-    intro: '¿Cuánto es por mes y hasta cuándo entra?',
+    intro: '¿Hasta cuándo los recibís?',
     fields: [
       { id: 'p8a_tiene_vencimiento', type: 'radio', label: '¿Tiene vencimiento?', options: ['Sí', 'No'], required: true },
-      ...(['ing_fin1', 'ing_fin2', 'ing_fin3', 'ing_fin4'] as const).flatMap((prefix, index) => [
-        {
-          id: `${prefix}_monto`,
-          type: 'number' as const,
-          label: `Monto mensual ${index + 1} ($)`,
-          helpText: index === 0 ? 'No hace falta que llenes todos' : undefined,
-          visibleWhen: (answers: OnboardingAnswers) => answers.p8a_tiene_vencimiento === 'Sí',
-        },
-        { id: `${prefix}_hasta`, type: 'month' as const, label: `Hasta ${index + 1} (mes/año)`, visibleWhen: (answers: OnboardingAnswers) => answers.p8a_tiene_vencimiento === 'Sí' },
-      ]),
+      ...incomeSourceExpiryFields.map(([source, id]) => ({
+        id,
+        type: 'month' as const,
+        label: `¿Hasta cuándo recibís ${source}?`,
+        visibleWhen: (answers: OnboardingAnswers) => (
+          answers.p8a_tiene_vencimiento === 'Sí' &&
+          hasSelectedIncomeSource(answers, source)
+        ),
+      })),
+      {
+        id: 'extra_hasta',
+        type: 'month',
+        label: '¿Hasta cuándo recibís este ingreso extra?',
+        visibleWhen: (answers: OnboardingAnswers) => (
+          answers.p8a_tiene_vencimiento === 'Sí' && hasDefinedExtra(answers)
+        ),
+      },
     ],
   },
   {
@@ -712,34 +736,6 @@ export function validateStep(
     const val = answers.ing_total
     if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
       errors.ing_total = 'Este campo es requerido.'
-    }
-  }
-
-  if (step.id === 'p8a') {
-    const val = answers.p8a_tiene_vencimiento
-    if (val === 'Sí') {
-      const rows = ['ing_fin1', 'ing_fin2', 'ing_fin3', 'ing_fin4'] as const
-      let completeCount = 0
-      let partialCount = 0
-      for (const prefix of rows) {
-        const montoVal = answers[`${prefix}_monto`]
-        const hastaVal = answers[`${prefix}_hasta`]
-        const hasM = montoVal !== undefined && montoVal !== null && montoVal !== ''
-        const hasH = typeof hastaVal === 'string' && hastaVal.trim() !== ''
-        if (hasM && hasH) {
-          completeCount++
-        } else if (hasM || hasH) {
-          partialCount++
-          if (hasM) {
-            errors[`${prefix}_hasta`] = 'Completá la fecha de vencimiento.'
-          } else {
-            errors[`${prefix}_monto`] = 'Este campo es requerido.'
-          }
-        }
-      }
-      if (completeCount === 0 && partialCount === 0) {
-        errors.ing_fin1_monto = 'Completá al menos un ingreso que vence.'
-      }
     }
   }
 

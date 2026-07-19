@@ -146,6 +146,7 @@ describe('onboarding draft', () => {
       email: 'ada@example.com',
       p1_pesa: 'Otra',
       ing_total: 500000,
+      p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
     })).toBe(9)
   })
 

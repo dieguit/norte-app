@@ -12,6 +12,7 @@ const initialAnswers: OnboardingAnswers = {
   nombre: 'Ada',
   contacto_canal: 'Email',
   email: 'ada@example.com',
+  p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
   p8a_tiene_vencimiento: 'No',
 }
 
@@ -860,24 +861,6 @@ describe('OnboardingPage component tests', () => {
     await screen.findByDisplayValue('Invitada')
     expect(localStorage.getItem('onboarding-device-id')).toBe('c2446e70-8555-44dc-a428-cb1185c8d4b3')
     expect(getOnboardingDraft).toHaveBeenCalledWith({ data: { deviceId: 'c2446e70-8555-44dc-a428-cb1185c8d4b3' } })
-  })
-
-  it('shows the repeated-fields helper for expiring income fields (p8a)', async () => {
-    const helperText = 'No hace falta que llenes todos'
-    localStorage.clear()
-    localStorage.setItem('onboarding-welcome-seen', 'true')
-    setDraft({
-      p1_pesa: 'Otra',
-      ing_total: 500000,
-      p8a_tiene_vencimiento: 'Sí',
-    })
-    render(<OnboardingPage />)
-    const expiringIncomeHelper = await screen.findByText(helperText)
-    expect(
-      expiringIncomeHelper.compareDocumentPosition(
-        screen.getByLabelText(/^Monto mensual 1 \(\$\)$/i),
-      ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('shows the repeated-fields helper for expiring payments (p10)', async () => {
