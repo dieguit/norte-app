@@ -35,6 +35,17 @@ describe('onboarding draft', () => {
     expect(validateStep(p4Step, { ing_total: 1000000 })).toEqual({})
   })
 
+  it('requires at least one income source in P5', () => {
+    const step = onboardingSteps.find(({ id }) => id === 'p5')!
+
+    expect(validateStep(step, {})).toEqual({
+      p5_fuentes: 'Este campo es requerido.',
+    })
+    expect(validateStep(step, {
+      p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
+    })).toEqual({})
+  })
+
   it('rejects whitespace-only required names', () => {
     const p0Step = onboardingSteps.find(s => s.id === 'p0')
     expect(validateStep(p0Step, { nombre: '   ' })).toEqual({
@@ -208,8 +219,6 @@ describe('onboarding draft', () => {
 
     expect(getVisibleFields(step('p7'), { extra_tipo: 'No' })
       .map(field => field.id)).toEqual(['extra_tipo'])
-    expect(getVisibleFields(step('p10'), { p10_tiene_vencimiento: 'No' })
-      .map(field => field.id)).toEqual(['p10_tiene_vencimiento'])
     expect(getVisibleFields(step('p14'), { p14_tiene_compras: 'No' })
       .map(field => field.id)).toEqual(['p14_tiene_compras'])
     expect(getVisibleFields(step('p14'), { p14_tiene_compras: 'Sí' })
@@ -248,10 +257,49 @@ describe('onboarding draft', () => {
     })
   })
 
-  it('shows P13 decisions only for completed P12 items', () => {
-    const step = onboardingSteps.find(({ id }) => id === 'p13')
+  it('shows expiring-payment dates only for positive detailed P9 amounts', () => {
+    const step = onboardingSteps.find(({ id }) => id === 'p10')!
+
+    expect(getVisibleFields(step, {
+      p10_tiene_vencimiento: 'Sí',
+      fijo_alquiler: 100000,
+      fijo_prestamos: 0,
+      fijo_otro1_concepto: 'Expensas',
+      fijo_otro1_monto: 25000,
+    }).map(({ id, label }) => ({ id, label }))).toEqual([
+      { id: 'p10_tiene_vencimiento', label: '¿Tiene vencimiento final?' },
+      { id: 'fijo_alquiler_hasta', label: '¿Cuándo termina Alquiler / vivienda?' },
+      { id: 'fijo_otro1_hasta', label: '¿Cuándo termina Expensas?' },
+    ])
+  })
+
+  it('keeps generic expiring-payment fields when P9 has only a direct total', () => {
+    const step = onboardingSteps.find(({ id }) => id === 'p10')!
+
+    expect(getVisibleFields(step, {
+      p10_tiene_vencimiento: 'Sí',
+      fijo_total_directo: 100000,
+    }).map(({ id }) => id)).toEqual([
+      'p10_tiene_vencimiento',
+      'fin1_concepto', 'fin1_cuota', 'fin1_hasta',
+      'fin2_concepto', 'fin2_cuota', 'fin2_hasta',
+      'fin3_concepto', 'fin3_cuota', 'fin3_hasta',
+      'fin4_concepto', 'fin4_cuota', 'fin4_hasta',
+    ])
+  })
+
+  it('filters fixed-expense expiry answers when the P9 amount is no longer positive', () => {
+    expect(filterAnswersForActiveSteps({
+      p10_tiene_vencimiento: 'Sí',
+      fijo_alquiler: 0,
+      fijo_alquiler_hasta: 'sep-27',
+    })).toEqual({ p10_tiene_vencimiento: 'Sí', fijo_alquiler: 0 })
+  })
+
+  it('shows P13 decisions only for positive P12 amounts', () => {
+    const step = onboardingSteps.find(({ id }) => id === 'p13')!
     expect(getVisibleFields(step, { d_salidas: 100, d_ropa: 0 }).map(field => field.id))
-      .toEqual(['e13_salidas', 'e13_ropa'])
+      .toEqual(['e13_salidas'])
   })
 
   it('skips required validation for hidden fields', () => {
@@ -301,37 +349,52 @@ describe('onboarding draft', () => {
     expect(loadDraft('c2446e70-8555-44dc-a428-cb1185c8d4b3')).toBeNull()
   })
 
-  it('shows four expiring-income rows only after P8a is Sí', () => {
+  it('shows expiry dates only for selected income sources and the active extra', () => {
     const step = onboardingSteps.find(({ id }) => id === 'p8a')!
-    expect(getVisibleFields(step, { p8a_tiene_vencimiento: 'No' })
-      .map(({ id }) => id)).toEqual(['p8a_tiene_vencimiento'])
-    expect(getVisibleFields(step, { p8a_tiene_vencimiento: 'Sí' })
-      .map(({ id }) => id)).toEqual([
-        'p8a_tiene_vencimiento',
-        'ing_fin1_monto', 'ing_fin1_hasta',
-        'ing_fin2_monto', 'ing_fin2_hasta',
-        'ing_fin3_monto', 'ing_fin3_hasta',
-        'ing_fin4_monto', 'ing_fin4_hasta',
-      ])
+
+    expect(getVisibleFields(step, {
+      p8a_tiene_vencimiento: 'Sí',
+      p5_fuentes: [
+        'Sueldo fijo (relación de dependencia)',
+        'Jubilación / pensión',
+      ],
+      extra_tipo: 'Aguinaldo',
+    }).map(({ id }) => id)).toEqual([
+      'p8a_tiene_vencimiento',
+      'ing_sueldo_fijo_hasta',
+      'ing_jubilacion_pension_hasta',
+      'extra_hasta',
+    ])
   })
 
-  it('requires one complete expiring-income row after Sí', () => {
+  it('hides P8a source expiry dates when its gate is No', () => {
     const step = onboardingSteps.find(({ id }) => id === 'p8a')!
-    expect(validateStep(step, { p8a_tiene_vencimiento: 'Sí' })).toMatchObject({
-      ing_fin1_monto: 'Completá al menos un ingreso que vence.',
-    })
+
+    expect(getVisibleFields(step, {
+      p8a_tiene_vencimiento: 'No',
+      p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
+      extra_tipo: 'Aguinaldo',
+    }).map(({ id }) => id)).toEqual(['p8a_tiene_vencimiento'])
+  })
+
+  it('does not require any source expiry date after P8a is Sí', () => {
+    const step = onboardingSteps.find(({ id }) => id === 'p8a')!
+
     expect(validateStep(step, {
-      p8a_tiene_vencimiento: 'Sí', ing_fin1_monto: 100000,
-    })).toMatchObject({ ing_fin1_hasta: 'Completá la fecha de vencimiento.' })
-    expect(validateStep(step, {
-      p8a_tiene_vencimiento: 'Sí', ing_fin1_monto: 100000, ing_fin1_hasta: 'sep-27',
+      p8a_tiene_vencimiento: 'Sí',
+      p5_fuentes: ['Trabajos propios (freelance, clases, negocio, honorarios)'],
     })).toEqual({})
   })
 
-  it('filters expiring-income answers after P8a switches to No', () => {
+  it('filters a source expiry when P8a switches to No', () => {
     expect(filterAnswersForActiveSteps({
-      p8a_tiene_vencimiento: 'No', ing_fin1_monto: 100000, ing_fin1_hasta: 'sep-27',
-    })).toEqual({ p8a_tiene_vencimiento: 'No' })
+      p8a_tiene_vencimiento: 'No',
+      p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
+      ing_sueldo_fijo_hasta: 'sep-27',
+    })).toEqual({
+      p8a_tiene_vencimiento: 'No',
+      p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
+    })
   })
 
   it('offers exactly 18 sequential monthly dates', () => {

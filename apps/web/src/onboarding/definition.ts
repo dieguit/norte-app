@@ -44,6 +44,26 @@ export type OnboardingStep = {
   visibleWhen?: VisibleWhen
 }
 
+const fixedExpenseExpiryFields = [
+  ['fijo_alquiler', 'fijo_alquiler_hasta', 'Alquiler / vivienda'],
+  ['fijo_colegio', 'fijo_colegio_hasta', 'Colegio'],
+  ['fijo_prepaga', 'fijo_prepaga_hasta', 'Prepaga / salud'],
+  ['fijo_prestamos', 'fijo_prestamos_hasta', 'Préstamos (cuotas mensuales)'],
+  ['fijo_servicios', 'fijo_servicios_hasta', 'Servicios (luz, gas, internet, celular)'],
+  ['fijo_seguros', 'fijo_seguros_hasta', 'Seguros'],
+  ['fijo_ayuda', 'fijo_ayuda_hasta', 'Ayuda a familiares'],
+  ['fijo_otro1_monto', 'fijo_otro1_hasta', 'Otro 1', 'fijo_otro1_concepto'],
+  ['fijo_otro2_monto', 'fijo_otro2_hasta', 'Otro 2', 'fijo_otro2_concepto'],
+] as const
+
+function hasPositiveAmount(answers: OnboardingAnswers, id: string) {
+  return typeof answers[id] === 'number' && answers[id] > 0
+}
+
+function hasDetailedFixedExpense(answers: OnboardingAnswers) {
+  return fixedExpenseExpiryFields.some(([amountId]) => hasPositiveAmount(answers, amountId))
+}
+
 export const onboardingSteps: readonly OnboardingStep[] = [
   {
     id: 'p0',
@@ -332,16 +352,31 @@ export const onboardingSteps: readonly OnboardingStep[] = [
           'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
         ],
       },
+      ...fixedExpenseExpiryFields.map((item) => {
+        const amountId = item[0]
+        const hastaId = item[1]
+        const label = item[2]
+        return {
+          id: hastaId,
+          type: 'month' as const,
+          label: `¿Cuándo termina ${label}?`,
+          visibleWhen: (answers: OnboardingAnswers) => (
+            answers.p10_tiene_vencimiento === 'Sí' &&
+            hasDetailedFixedExpense(answers) &&
+            hasPositiveAmount(answers, amountId)
+          ),
+        }
+      }),
       ...(['fin1', 'fin2', 'fin3', 'fin4'] as const).flatMap((prefix, index) => [
         {
           id: `${prefix}_concepto`,
           type: 'text' as const,
           label: `Concepto ${index + 1}`,
           helpText: index === 0 ? 'No hace falta que llenes todos' : undefined,
-          visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí',
+          visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí' && !hasDetailedFixedExpense(answers),
         },
-        { id: `${prefix}_cuota`, type: 'number' as const, label: 'Cuota mensual ($)', visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí' },
-        { id: `${prefix}_hasta`, type: 'month' as const, label: '¿Cuándo termina?', visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí' },
+        { id: `${prefix}_cuota`, type: 'number' as const, label: 'Cuota mensual ($)', visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí' && !hasDetailedFixedExpense(answers) },
+        { id: `${prefix}_hasta`, type: 'month' as const, label: '¿Cuándo termina?', visibleWhen: (answers: OnboardingAnswers) => answers.p10_tiene_vencimiento === 'Sí' && !hasDetailedFixedExpense(answers) },
       ]),
     ],
   },
@@ -399,7 +434,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         type: 'radio' as const,
         label,
         options: ['Lo llevo a cero', 'Lo reduzco a la mitad', 'No lo toco ni en crisis'],
-        visibleWhen: (answers: OnboardingAnswers) => typeof answers[answerId] === 'number',
+        visibleWhen: (answers: OnboardingAnswers) => hasPositiveAmount(answers, answerId),
       })),
     ],
   },
@@ -548,7 +583,26 @@ export function getVisibleFields(
   step: OnboardingStep | undefined,
   answers: OnboardingAnswers,
 ): readonly OnboardingField[] {
-  return step?.fields.filter((field) => field.visibleWhen?.(answers) !== false) ?? []
+  if (!step) return []
+  return step.fields
+    .filter((field) => field.visibleWhen?.(answers) !== false)
+    .map((field) => {
+      const expiryField = fixedExpenseExpiryFields.find((f) => f[1] === field.id)
+      if (expiryField && expiryField.length === 4) {
+        const conceptId = expiryField[3]
+        const conceptVal = answers[conceptId]
+        if (typeof conceptVal === 'string') {
+          const trimmed = conceptVal.trim()
+          if (trimmed !== '') {
+            return {
+              ...field,
+              label: `¿Cuándo termina ${trimmed}?`,
+            }
+          }
+        }
+      }
+      return field
+    })
 }
 
 export function validateStep(
