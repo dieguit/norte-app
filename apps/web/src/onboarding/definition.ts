@@ -855,12 +855,14 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             id: `t${n}_resumen_ars`,
             type: "number",
             label: "En pesos ($)",
+            helpText: "Cargá el total que figura en tu último resumen, en pesos.",
             visibleWhen: manualMode,
           },
           {
             id: `t${n}_resumen_usd`,
             type: "number",
             label: "En dólares (US$)",
+            helpText: "Cargá el total en dólares si aparece en tu resumen.",
             visibleWhen: manualMode,
           },
           {
@@ -868,6 +870,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             type: "select",
             label: "Día de cierre",
             options: dayOptions,
+            helpText: "Elegí el día del mes en que cierra esta tarjeta.",
             visibleWhen: manualMode,
           },
           {
@@ -875,43 +878,68 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             type: "select",
             label: "Día de vencimiento",
             options: dayOptions,
+            helpText: "Elegí el día límite para pagar el resumen.",
             visibleWhen: manualMode,
           },
           ...[1, 2, 3, 4, 5, 6].map((month) => ({
             id: `t${n}_cuotas_m${month}`,
             type: "number" as const,
             label: `Mes ${month} ($)`,
+            helpText: `Cargá cuánto te queda pagar en ${month} cuotas.`,
             visibleWhen: manualMode,
           })),
           {
             id: `t${n}_cuotas_resto`,
             type: "number",
             label: "¿Y después de eso quedan más cuotas por pagar? ($)",
+            helpText: "Cargá el total mensual de cuotas que queda después de estos seis meses.",
             visibleWhen: manualMode,
           },
           {
             id: `t${n}_cuotas_resto_hasta`,
             type: "month",
             label: "¿Hasta cuando tendrías que pagar? (mes/año)",
+            helpText: "Elegí el último mes en que vas a pagar esas cuotas.",
             visibleWhen: manualMode,
           },
           {
             id: `t${n}_arrastre`,
             type: "number",
             label: "¿Te quedó algún monto impago del resumen anterior? ($)",
+            helpText: "¿Quedó saldo del resumen pasado que no pagaste completo (y la tarjeta te lo está financiando)?",
             visibleWhen: manualMode,
           },
           {
             id: `t${n}_postcierre`,
             type: "number",
             label: "Cuánto gastaste desde el cierre hasta ahora? A ojo ($)",
+            helpText: "Cargá lo que gastaste desde el cierre del último resumen hasta hoy.",
             visibleWhen: manualMode,
+          },
+          {
+            id: `t${n}_postcierre_cuotas`,
+            type: "radio",
+            label: "¿Algo de eso fue en cuotas?",
+            options: ["Sí", "No"],
+            helpText: "Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.",
+            visibleWhen: manualMode,
+          },
+          {
+            id: `t${n}_postcierre_cuotas_cantidad`,
+            type: "select",
+            label: "¿En cuántas cuotas?",
+            options: Array.from({ length: 18 }, (_, index) => String(index + 1)),
+            helpText: "Elegí en cuántas cuotas se hizo esa compra.",
+            visibleWhen: (answers: OnboardingAnswers) =>
+              manualMode(answers) &&
+              answers[`t${n}_postcierre_cuotas`] === "Sí",
           },
           {
             id: `t${n}_postcierre_upload`,
             type: "upload",
             label:
               "O subí una captura de los últimos movimientos desde el cierre",
+            helpText: "Subí una captura de los movimientos desde el cierre, si te resulta más fácil.",
             visibleWhen: manualMode,
           },
         ],
@@ -1250,6 +1278,13 @@ export function validateStep(
       );
       if (!months.some((key) => typeof answers[key] === "number")) {
         errors[`${prefix}_cuotas_m1`] = "Completá al menos una cuota mensual.";
+      }
+      if (
+        answers[`${prefix}_postcierre_cuotas`] === "Sí" &&
+        !answers[`${prefix}_postcierre_cuotas_cantidad`]
+      ) {
+        errors[`${prefix}_postcierre_cuotas_cantidad`] =
+          "Elegí una opción para continuar.";
       }
     }
   }

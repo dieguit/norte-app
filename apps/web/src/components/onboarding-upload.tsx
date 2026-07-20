@@ -9,6 +9,7 @@ export type OnboardingUploadProps = {
   value: string | undefined
   onUpload: (file: File, setProgress: (progress: number) => void) => Promise<void>
   disabled?: boolean
+  ariaDescribedBy?: string
 }
 
 export function putFile(
@@ -47,6 +48,7 @@ export default function OnboardingUpload({
   value,
   onUpload,
   disabled = false,
+  ariaDescribedBy,
 }: OnboardingUploadProps) {
   const posthog = usePostHog()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -111,6 +113,7 @@ export default function OnboardingUpload({
         ref={fileInputRef}
         id={fieldId}
         type="file"
+        aria-describedby={ariaDescribedBy}
         accept="application/pdf,image/jpeg,image/png"
         onChange={handleFileChange}
         disabled={disabled || isUploading}

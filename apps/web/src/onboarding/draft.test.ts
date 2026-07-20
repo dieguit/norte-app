@@ -47,8 +47,54 @@ describe('onboarding draft', () => {
         't1_cierre_dia', 't1_vto_dia',
         't1_cuotas_m1', 't1_cuotas_m2', 't1_cuotas_m3', 't1_cuotas_m4', 't1_cuotas_m5', 't1_cuotas_m6',
         't1_cuotas_resto', 't1_cuotas_resto_hasta', 't1_arrastre',
-        't1_postcierre', 't1_postcierre_upload',
+        't1_postcierre', 't1_postcierre_cuotas', 't1_postcierre_upload',
       ])
+  })
+
+  it('shows post-close installment quantity only after selecting Sí', () => {
+    const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
+
+    expect(getVisibleFields(step, {
+      t1_cuotas_modo: 'Copiar el renglón mes a mes',
+    }).map(({ id }) => id)).not.toContain('t1_postcierre_cuotas_cantidad')
+    expect(getVisibleFields(step, {
+      t1_cuotas_modo: 'Copiar el renglón mes a mes',
+      t1_postcierre_cuotas: 'Sí',
+    }).map(({ id }) => id)).toContain('t1_postcierre_cuotas_cantidad')
+
+    const fields = getVisibleFields(step, {
+      t1_cuotas_modo: 'Copiar el renglón mes a mes',
+      t1_postcierre_cuotas: 'Sí',
+    })
+    expect(fields.find(({ id }) => id === 't1_postcierre_cuotas')?.options).toEqual(['Sí', 'No'])
+    expect(fields.find(({ id }) => id === 't1_postcierre_cuotas_cantidad')?.options)
+      .toEqual(Array.from({ length: 18 }, (_, index) => String(index + 1)))
+  })
+
+  it('provides help text for every manual card field', () => {
+    const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
+    const fields = getVisibleFields(step, {
+      t1_cuotas_modo: 'Copiar el renglón mes a mes',
+      t1_postcierre_cuotas: 'Sí',
+    })
+
+    expect(Object.fromEntries(fields.map(({ id, helpText }) => [id, helpText]))).toMatchObject({
+      t1_resumen_ars: 'Cargá el total que figura en tu último resumen, en pesos.',
+      t1_resumen_usd: 'Cargá el total en dólares si aparece en tu resumen.',
+      t1_cierre_dia: 'Elegí el día del mes en que cierra esta tarjeta.',
+      t1_vto_dia: 'Elegí el día límite para pagar el resumen.',
+      ...Object.fromEntries(Array.from({ length: 6 }, (_, index) => [
+        `t1_cuotas_m${index + 1}`,
+        `Cargá cuánto te queda pagar en ${index + 1} cuotas.`,
+      ])),
+      t1_cuotas_resto: 'Cargá el total mensual de cuotas que queda después de estos seis meses.',
+      t1_cuotas_resto_hasta: 'Elegí el último mes en que vas a pagar esas cuotas.',
+      t1_arrastre: '¿Quedó saldo del resumen pasado que no pagaste completo (y la tarjeta te lo está financiando)?',
+      t1_postcierre: 'Cargá lo que gastaste desde el cierre del último resumen hasta hoy.',
+      t1_postcierre_cuotas: 'Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.',
+      t1_postcierre_cuotas_cantidad: 'Elegí en cuántas cuotas se hizo esa compra.',
+      t1_postcierre_upload: 'Subí una captura de los movimientos desde el cierre, si te resulta más fácil.',
+    })
   })
 
   it('shows only mode selection in WhatsApp mode', () => {
@@ -63,6 +109,8 @@ describe('onboarding draft', () => {
       p15_tarjetas: 1,
       t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
       t1_resumen_ars: 100,
+      t1_postcierre_cuotas: 'Sí',
+      t1_postcierre_cuotas_cantidad: '6',
       t1_upload_url: 'file-key',
     })).toEqual({
       p15_tarjetas: 1,
@@ -557,6 +605,12 @@ describe('onboarding draft', () => {
     })
     expect(validateStep(step, { t1_cuotas_modo: 'Subir foto o archivo' })).toEqual({
       t1_upload_url: 'Subí el resumen para continuar.',
+    })
+    expect(validateStep(step, {
+      t1_cuotas_modo: 'Copiar el renglón mes a mes',
+      t1_postcierre_cuotas: 'Sí',
+    })).toMatchObject({
+      t1_postcierre_cuotas_cantidad: 'Elegí una opción para continuar.',
     })
     expect(validateStep(step, { t1_cuotas_modo: 'Copiar el renglón mes a mes' })).toEqual({
       t1_resumen_ars: 'Debe ingresar el monto de la tarjeta.',

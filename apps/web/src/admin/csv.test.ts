@@ -61,6 +61,28 @@ describe('admin CSV export', () => {
     expect(csvHeaders).not.toContain('T1_cuotas_hasta')
   })
 
+  it('exports post-close installment answers for each card', () => {
+    expect(csvHeaders).toEqual(expect.arrayContaining([
+      'T1_postcierre_cuotas', 'T1_postcierre_cuotas_cantidad',
+      'T5_postcierre_cuotas', 'T5_postcierre_cuotas_cantidad',
+    ]))
+
+    const row = toAdminCsvRow({
+      completedAt: new Date('2026-07-16T12:00:00Z'),
+      answers: {
+        t1_postcierre_cuotas: 'Sí',
+        t1_postcierre_cuotas_cantidad: '6',
+      },
+    })
+
+    expect(row).toMatchObject({
+      T1_postcierre_cuotas: 'Sí',
+      T1_postcierre_cuotas_cantidad: '6',
+      T5_postcierre_cuotas: '',
+      T5_postcierre_cuotas_cantidad: '',
+    })
+  })
+
   it('flattens p9 mode and up to five fixed other expenses', () => {
     const row = toAdminCsvRow({
       completedAt: new Date('2026-07-16T12:00:00Z'),

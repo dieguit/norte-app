@@ -27,7 +27,9 @@ function formatNumber(value: unknown) {
 
 function parseNumber(value: string) {
   const digits = value.replace(/\D/g, "");
-  return digits === "" ? "" : Number(digits);
+  if (digits === "") return "";
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : "";
 }
 
 export function OnboardingRepeatedItems({
@@ -132,15 +134,6 @@ export function OnboardingRepeatedItems({
                         )}
                       </label>
 
-                      {itemField.helpText && (
-                        <p
-                          id={`${controlId}-help`}
-                          className="text-base text-[var(--sea-ink-soft)] leading-normal"
-                        >
-                          {itemField.helpText}
-                        </p>
-                      )}
-
                       {itemField.type === "month" ? (
                         <select
                           id={controlId}
@@ -203,6 +196,15 @@ export function OnboardingRepeatedItems({
                               : ""
                           }
                         />
+                      )}
+
+                      {itemField.helpText && (
+                        <p
+                          id={`${controlId}-help`}
+                          className="text-base text-[var(--sea-ink-soft)] leading-normal"
+                        >
+                          {itemField.helpText}
+                        </p>
                       )}
 
                       {hasError && (

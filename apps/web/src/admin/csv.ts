@@ -15,6 +15,7 @@ const cardHeaders = [1, 2, 3, 4, 5].flatMap((number) => {
     ...[1, 2, 3, 4, 5, 6].map((month) => `${prefix}_cuotas_m${month}`),
     `${prefix}_cuotas_resto`, `${prefix}_cuotas_resto_hasta`,
     `${prefix}_arrastre`, `${prefix}_cierre_dia`, `${prefix}_vto_dia`, `${prefix}_postcierre`,
+    `${prefix}_postcierre_cuotas`, `${prefix}_postcierre_cuotas_cantidad`,
   ]
 })
 

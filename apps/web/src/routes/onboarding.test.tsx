@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup, waitForElementToBeRemoved } from '@testing-library/react'
+import { render, screen, cleanup, waitForElementToBeRemoved, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { OnboardingPage } from './onboarding'
 import { OnboardingRepeatedItems } from '../components/onboarding-repeated-items'
+import OnboardingUpload from '../components/onboarding-upload'
 import { getOnboardingDraft, saveOnboardingDraft, createOnboardingUpload, deleteOnboardingUpload } from '../onboarding/server'
 import { getActiveSteps, validateStep, type OnboardingAnswers } from '../onboarding/definition'
 import type { OnboardingDraft } from '../db/schema'
@@ -207,6 +208,61 @@ describe('OnboardingPage component tests', () => {
     }))
   })
 
+  it('ignores letters in numeric fields and accepts a number afterward', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+      answers: { ...initialAnswers, p1_pesa: 'Otra' },
+      stepIndex: 3,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    } as any)
+    render(<OnboardingPage />)
+
+    const input = await screen.findByLabelText(/Monto mensual/i)
+    await user.type(input, '123')
+    expect((input as HTMLInputElement).value).toBe('123')
+
+    await user.type(input, 'a')
+    expect((input as HTMLInputElement).value).toBe('123')
+
+    await user.type(input, '4')
+    expect((input as HTMLInputElement).value).toBe('1.234')
+  })
+
+  it('ignores letters in repeated numeric fields', async () => {
+    const user = userEvent.setup()
+    const field = {
+      id: 'ingresos_extra',
+      type: 'repeated' as const,
+      label: 'Ingresos extra',
+      itemFields: [{ key: 'monto' as const, type: 'number' as const, label: 'Monto mensual ($)' }],
+    }
+    const onChange = vi.fn()
+    const items = [{ concepto: '', monto: '', desde: '', hasta: '' }]
+    const { rerender } = render(
+      <OnboardingRepeatedItems field={field} value={items} errors={{}} onChange={onChange} />,
+    )
+
+    const input = screen.getByLabelText('Monto mensual ($) 1')
+    await user.type(input, 'a')
+    const lastCall = onChange.mock.lastCall
+    expect(lastCall).toBeDefined()
+    expect(Number.isNaN(lastCall![0][0].monto)).toBe(false)
+
+    rerender(
+      <OnboardingRepeatedItems
+        field={field}
+        value={[{ ...items[0], monto: '' }]}
+        errors={{}}
+        onChange={onChange}
+      />,
+    )
+    await user.click(screen.getByLabelText('Monto mensual ($) 1'))
+    await user.paste('123')
+    expect(onChange).toHaveBeenLastCalledWith([{ ...items[0], monto: 123 }])
+  })
+
   it('normalizes pasted separators and keeps an empty numeric field empty', async () => {
     const user = userEvent.setup()
     vi.mocked(getOnboardingDraft).mockResolvedValue({
@@ -334,6 +390,20 @@ describe('OnboardingPage component tests', () => {
     expect((screen.getByRole('radio', { name: 'Subir foto o archivo' }) as HTMLInputElement).disabled).toBe(false)
   })
 
+  it('passes helper text accessibility to the hidden upload input', () => {
+    render(
+      <OnboardingUpload
+        fieldId="t1_upload_url"
+        value={undefined}
+        ariaDescribedBy="t1_upload_url-help"
+        onUpload={async () => undefined}
+      />,
+    )
+
+    expect(screen.getByTestId('onboarding-file-input').getAttribute('aria-describedby'))
+      .toBe('t1_upload_url-help')
+  })
+
   it('shows P6 after selecting third-party income in P5', async () => {
     const user = userEvent.setup()
     render(<OnboardingPage />)
@@ -442,8 +512,70 @@ describe('OnboardingPage component tests', () => {
     await advanceToCard(1)
     await user.click(screen.getByRole('radio', { name: 'Copiar el renglón mes a mes' }))
 
-    for (const label of [/en pesos/i, /mes 1/i, /monto impago/i, /día de cierre/i, /a ojo/i]) {
+    for (const label of [
+      /en pesos/i,
+      /en dólares/i,
+      /^día de cierre$/i,
+      /^día de vencimiento$/i,
+      /después de eso quedan más cuotas/i,
+      /hasta cuando tendrías que pagar/i,
+      /monto impago/i,
+      /a ojo/i,
+      /subí una captura de los últimos movimientos/i,
+    ]) {
       expect(screen.getByLabelText(label)).toBeDefined()
+    }
+    for (const month of [1, 2, 3, 4, 5, 6]) {
+      expect(screen.getByLabelText(`Mes ${month} ($)`)).toBeDefined()
+    }
+  })
+
+  it('renders postcierre cuotas controls inline after selecting Sí', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Copiar el renglón mes a mes' }))
+
+    expect(screen.getByText('¿Quedó saldo del resumen pasado que no pagaste completo (y la tarjeta te lo está financiando)?')).toBeDefined()
+
+    const cuotasGroup = screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })
+    expect(screen.getByText('Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.')).toBeDefined()
+    expect(screen.queryByText('Elegí en cuántas cuotas se hizo esa compra.')).toBeNull()
+    expect(screen.queryByLabelText('¿En cuántas cuotas?')).toBeNull()
+    await user.click(within(cuotasGroup).getByRole('radio', { name: 'Sí' }))
+
+    const cuotasSelect = screen.getByLabelText('¿En cuántas cuotas?')
+    expect(screen.getByText('Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.')).toBeDefined()
+    expect(screen.getByText('Elegí en cuántas cuotas se hizo esa compra.')).toBeDefined()
+    expect(screen.getAllByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toHaveLength(1)
+    expect(screen.getAllByLabelText('¿En cuántas cuotas?')).toHaveLength(1)
+    expect(Array.from((cuotasSelect as HTMLSelectElement).options).filter((option) => !option.disabled).map((option) => option.value)).toEqual(
+      Array.from({ length: 18 }, (_, index) => String(index + 1)),
+    )
+    const inlineRow = screen.getByTestId('postcierre-cuotas-row')
+    expect(inlineRow.classList.contains('sm:flex-row')).toBe(true)
+    expect(within(inlineRow).getByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toBeDefined()
+    expect(within(inlineRow).getByLabelText('¿En cuántas cuotas?')).toBeDefined()
+  })
+
+  it('renders each card field helper after its associated control', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Copiar el renglón mes a mes' }))
+
+    const cuotasGroup = screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })
+    await user.click(within(cuotasGroup).getByRole('radio', { name: 'Sí' }))
+    const refreshedNumberInput = screen.getByLabelText('En pesos ($)')
+    const refreshedCuotasGroup = screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })
+    const cuotasSelect = screen.getByLabelText('¿En cuántas cuotas?')
+
+    for (const [control, helpId] of [
+      [refreshedNumberInput, 't1_resumen_ars-help'],
+      [refreshedCuotasGroup, 't1_postcierre_cuotas-help'],
+      [cuotasSelect, 't1_postcierre_cuotas_cantidad-help'],
+    ] as const) {
+      const help = document.getElementById(helpId)
+      expect(help).not.toBeNull()
+      expect(control.compareDocumentPosition(help!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     }
   })
 
@@ -828,8 +960,8 @@ describe('OnboardingPage component tests', () => {
     await user.click(screen.getByRole('radio', { name: /^sí$/i }))
     const expiringPaymentHelper = await screen.findByText(helperText)
     expect(
-      expiringPaymentHelper.compareDocumentPosition(
-        screen.getByLabelText(/^Concepto 1$/i),
+      screen.getByLabelText(/^Concepto 1$/i).compareDocumentPosition(
+        expiringPaymentHelper,
       ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
@@ -857,8 +989,8 @@ describe('OnboardingPage component tests', () => {
     await user.click(screen.getByRole('radio', { name: /^sí$/i }))
     const plannedPurchaseHelper = await screen.findByText(helperText)
     expect(
-      plannedPurchaseHelper.compareDocumentPosition(
-        screen.getByLabelText(/^Concepto 1$/i),
+      screen.getByLabelText(/^Concepto 1$/i).compareDocumentPosition(
+        plannedPurchaseHelper,
       ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
@@ -877,8 +1009,8 @@ describe('OnboardingPage component tests', () => {
     render(<OnboardingPage />)
     const fixedExpensesHelper = await screen.findByText(helperText)
     expect(
-      fixedExpensesHelper.compareDocumentPosition(
-        screen.getByRole('button', { name: /agregar otro/i }),
+      screen.getByRole('button', { name: /agregar otro/i }).compareDocumentPosition(
+        fixedExpensesHelper,
       ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
@@ -976,6 +1108,32 @@ describe('OnboardingPage component tests', () => {
     expect(screen.queryByText('¿Cuándo termina Niñera?')).toBeNull()
   })
 
+  it('renders repeated item helpers after their controls', () => {
+    render(
+      <OnboardingRepeatedItems
+        field={{
+          id: 'extra_ingresos',
+          type: 'repeated',
+          label: 'Ingresos extra',
+          itemFields: [{
+            key: 'desde',
+            type: 'month',
+            label: 'Desde',
+            helpText: 'Elegí el mes de inicio.',
+          }],
+        }}
+        value={[{ concepto: '', monto: '', desde: '', hasta: '' }]}
+        errors={{}}
+        onChange={vi.fn()}
+      />,
+    )
+
+    const control = screen.getByLabelText('Desde 1')
+    const help = screen.getByText('Elegí el mes de inicio.')
+    expect(control.getAttribute('aria-describedby')).toBe('extra_ingresos-0-desde-help')
+    expect(control.compareDocumentPosition(help)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
   it('shows the repeated-fields helper for daily expenses (p11)', async () => {
     const helperText = 'No hace falta que llenes todos'
     localStorage.clear()
@@ -992,8 +1150,8 @@ describe('OnboardingPage component tests', () => {
     render(<OnboardingPage />)
     const dailyExpensesHelper = await screen.findByText(helperText)
     expect(
-      dailyExpensesHelper.compareDocumentPosition(
-        screen.getByLabelText(/^Otro 1 \(concepto\)$/i),
+      screen.getByLabelText(/^Otro 1 \(concepto\)$/i).compareDocumentPosition(
+        dailyExpensesHelper,
       ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
@@ -1015,8 +1173,8 @@ describe('OnboardingPage component tests', () => {
     render(<OnboardingPage />)
     const gustitosHelper = await screen.findByText(helperText)
     expect(
-      gustitosHelper.compareDocumentPosition(
-        screen.getByLabelText(/^Otro 1 \(concepto\)$/i),
+      screen.getByLabelText(/^Otro 1 \(concepto\)$/i).compareDocumentPosition(
+        gustitosHelper,
       ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })

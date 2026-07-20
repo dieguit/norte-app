@@ -46,8 +46,10 @@ function formatNumber(value: unknown) {
 }
 
 function parseNumber(value: string) {
-  const digits = value.replace(/[.,\s]/g, "");
-  return digits === "" ? "" : Number(digits);
+  const digits = value.replace(/\D/g, "");
+  if (digits === "") return "";
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : "";
 }
 
 function getFiniteNumber(value: unknown) {
@@ -518,13 +520,10 @@ export function OnboardingPage() {
               className="flex flex-col flex-1 justify-between sm:justify-start space-y-6"
             >
               <div className="flex-1 space-y-6">
-                {getVisibleFields(currentStep, formAnswers).map((field) => (
+                {getVisibleFields(currentStep, formAnswers).map((field, index, fields) => {
+                  const nextField = fields[index + 1];
+                  const renderField = (field: (typeof fields)[number]) => (
                   <div key={field.id} className="space-y-2">
-                    {field.helpText && (
-                      <p id={`${field.id}-help`} className="text-base text-[var(--sea-ink-soft)]">
-                        {field.helpText}
-                      </p>
-                    )}
                     {field.type !== "radio" && field.type !== "checkbox" && (
                       <label
                         htmlFor={field.id}
@@ -651,6 +650,7 @@ export function OnboardingPage() {
                             return (
                               <OnboardingUpload
                                 fieldId={field.id}
+                                ariaDescribedBy={getAriaDescribedBy(field.id, !!field.helpText, !!validationErrors[field.id])}
                                 value={
                                   typeof fieldState.state.value === "string"
                                     ? fieldState.state.value
@@ -786,6 +786,12 @@ export function OnboardingPage() {
                       }}
                     </form.Field>
 
+                    {field.helpText && (
+                      <p id={`${field.id}-help`} className="text-base text-[var(--sea-ink-soft)]">
+                        {field.helpText}
+                      </p>
+                    )}
+
                     {validationErrors[field.id] && (
                       <p
                         id={`${field.id}-error`}
@@ -797,7 +803,20 @@ export function OnboardingPage() {
                       </p>
                     )}
                   </div>
-                ))}
+                  );
+                  if (field.id.endsWith("_postcierre_cuotas_cantidad") && fields[index - 1]?.id.endsWith("_postcierre_cuotas")) {
+                    return null;
+                  }
+                  if (field.id.endsWith("_postcierre_cuotas") && nextField?.id === `${field.id}_cantidad`) {
+                    return (
+                      <div data-testid="postcierre-cuotas-row" key={field.id} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        {renderField(field)}
+                        {renderField(nextField)}
+                      </div>
+                    );
+                  }
+                  return renderField(field);
+                })}
 
                 {currentStep.id === "p9" &&
                   formAnswers.p9_modo === "Quiero desglosar" && (
