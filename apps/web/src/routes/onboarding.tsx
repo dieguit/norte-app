@@ -573,7 +573,10 @@ export function OnboardingPage() {
                                   const selected = Array.isArray(
                                     fieldState.state.value,
                                   )
-                                    ? fieldState.state.value
+                                    ? fieldState.state.value.filter(
+                                        (item): item is string =>
+                                          typeof item === "string",
+                                      )
                                     : [];
                                   const checked = selected.includes(option);
                                   const isDisabled =

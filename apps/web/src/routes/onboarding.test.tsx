@@ -4,7 +4,7 @@ import { render, screen, cleanup, waitForElementToBeRemoved } from '@testing-lib
 import userEvent from '@testing-library/user-event'
 import { OnboardingPage } from './onboarding'
 import { getOnboardingDraft, saveOnboardingDraft, createOnboardingUpload, deleteOnboardingUpload } from '../onboarding/server'
-import { getActiveSteps, validateStep, getMonthlyDateOptions, type OnboardingAnswers } from '../onboarding/definition'
+import { getActiveSteps, validateStep, type OnboardingAnswers } from '../onboarding/definition'
 import type { OnboardingDraft } from '../db/schema'
 
 const deviceId = '6f0a7482-29a0-4c03-a3e1-256add2f91a8'
@@ -14,6 +14,7 @@ const initialAnswers: OnboardingAnswers = {
   email: 'ada@example.com',
   p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
   p8a_tiene_vencimiento: 'No',
+  extra_tiene: 'No',
 }
 
 function makeDraft(answers: OnboardingAnswers): OnboardingDraft {
@@ -31,13 +32,7 @@ function setDraft(answers: OnboardingAnswers) {
   vi.mocked(getOnboardingDraft).mockResolvedValue(makeDraft(answers))
 }
 
-async function continueStep(user: ReturnType<typeof userEvent.setup>) {
-  const continueButton = screen.getByRole('button', { name: /continuar/i })
-  await user.click(continueButton)
-  await waitForElementToBeRemoved(continueButton)
-}
-
-async function advanceToCardP17(cardIndex: number) {
+async function advanceToCard(cardIndex: number) {
   cleanup()
   localStorage.clear()
   localStorage.setItem('onboarding-welcome-seen', 'true')
@@ -47,11 +42,16 @@ async function advanceToCardP17(cardIndex: number) {
     fijo_total_directo: 1,
     var_total_directo: 1,
     d_salidas: 1,
-    t1_resumen_ars: 1,
     p15_tarjetas: cardIndex,
   })
   render(<OnboardingPage />)
-  await screen.findByRole('heading', { name: /Tarjeta 1 - las cuotas que siguen/i })
+  await screen.findByRole('heading', { name: /Tarjeta 1/i })
+}
+
+async function continueStep(user: ReturnType<typeof userEvent.setup>) {
+  const continueButton = screen.getByRole('button', { name: /continuar|completar/i })
+  await user.click(continueButton)
+  await waitForElementToBeRemoved(continueButton)
 }
 
 vi.mock('../onboarding/server', () => ({
@@ -327,8 +327,8 @@ describe('OnboardingPage component tests', () => {
 
   it('shows the statement upload option as enabled', async () => {
     render(<OnboardingPage />)
-    await advanceToCardP17(1)
-    expect((screen.getByRole('radio', { name: /subir foto del resumen/i }) as HTMLInputElement).disabled).toBe(false)
+    await advanceToCard(1)
+    expect((screen.getByRole('radio', { name: 'Subir foto o archivo' }) as HTMLInputElement).disabled).toBe(false)
   })
 
   it('shows P6 after selecting third-party income in P5', async () => {
@@ -422,89 +422,42 @@ describe('OnboardingPage component tests', () => {
     expect(screen.queryByRole('table')).toBeNull()
   })
 
-  it('creates repeated P16-P20 steps for two selected cards', async () => {
+  it('shows only upload field for the statement path', async () => {
     const user = userEvent.setup()
-    setDraft({
-      p1_pesa: 'Otra',
-      ing_total: 500000,
-      fijo_total_directo: 100000,
-      var_total_directo: 80000,
-      d_salidas: 20000,
-    })
-    render(<OnboardingPage />)
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
 
-    await user.type(await screen.findByLabelText(/cuántas tarjetas/i), '2')
-    await continueStep(user)
-    expect(await screen.findByRole('heading', { name: /tarjeta 1 - el último resumen/i })).toBeDefined()
+    expect(screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' })).toBeDefined()
+    expect(screen.queryByLabelText(/a ojo/i)).toBeNull()
+    expect(screen.queryByLabelText(/en pesos/i)).toBeNull()
+    expect(screen.queryByLabelText(/monto impago/i)).toBeNull()
+    expect(screen.queryByLabelText(/día de cierre/i)).toBeNull()
+  })
 
-    await user.type(screen.getByLabelText(/en pesos/i), '10000')
-    await continueStep(user)
-    await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
-    await user.type(await screen.findByLabelText(/monto mensual/i), '5000')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año)'), 'dic-26')
-    await continueStep(user)
-    for (const label of [/monto impago/i, /día de cierre/i, /a ojo/i]) {
-      const input = screen.getByLabelText(label)
-      if (label.source.includes('a ojo')) await user.type(input, '1000')
-      await continueStep(user)
+  it('keeps all manual card inputs on one screen', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Copiar el renglón mes a mes' }))
+
+    for (const label of [/en pesos/i, /mes 1/i, /monto impago/i, /día de cierre/i, /a ojo/i]) {
+      expect(screen.getByLabelText(label)).toBeDefined()
     }
-
-    expect(await screen.findByRole('heading', { name: /tarjeta 2 - el último resumen/i })).toBeDefined()
   })
 
-  it('supports manual P17 B and C paths and enabled A', async () => {
+  it('continues after the WhatsApp path without card details', async () => {
     const user = userEvent.setup()
-    await advanceToCardP17(1)
-    expect((screen.getByRole('radio', { name: /subir foto del resumen/i }) as HTMLInputElement).disabled).toBe(false)
-
-    await user.click(screen.getByRole('radio', { name: /carga manual mes por mes/i }))
-    expect(await screen.findByLabelText(/mes 1/i)).toBeDefined()
-    await user.type(screen.getByLabelText(/mes 1/i), '3000')
-    await continueStep(user)
-
-    cleanup()
-    await advanceToCardP17(1)
-    await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
-    await user.type(await screen.findByLabelText(/monto mensual/i), '3000')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año)'), 'dic-26')
-    await continueStep(user)
-    expect(await screen.findByRole('heading', { name: /tarjeta 1 - ¿quedó algo/i })).toBeDefined()
-  })
-
-  it('sends card-scoped values in the save payload', async () => {
-    const user = userEvent.setup()
-    await advanceToCardP17(1)
-    await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
-    await user.type(await screen.findByLabelText(/monto mensual/i), '4500')
-    await user.selectOptions(screen.getByLabelText('Hasta (mes/año)'), 'nov-26')
-    await continueStep(user)
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', {
+      name: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+    }))
+    await user.click(screen.getByRole('button', { name: /completar/i }))
+    await screen.findByText(/Cuestionario completado/i)
 
     expect(saveOnboardingDraft).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         answers: expect.objectContaining({
-          t1_cuotas_modo: 'Carga manual a ojo',
-          t1_cuotas_mensual: 4500,
-          t1_cuotas_hasta: 'nov-26',
+          t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
         }),
-      }),
-    }))
-  })
-
-  it('stores a selected month field as mes-yy', async () => {
-    const user = userEvent.setup()
-    await advanceToCardP17(1)
-    await user.click(screen.getByRole('radio', { name: /carga manual a ojo/i }))
-
-    const month = getMonthlyDateOptions()[0]
-    const field = await screen.findByLabelText('Hasta (mes/año)')
-    await user.selectOptions(field, month)
-
-    expect((field as HTMLSelectElement).value).toBe(month)
-    await user.type(screen.getByLabelText(/monto mensual/i), '4500')
-    await continueStep(user)
-    expect(saveOnboardingDraft).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        answers: expect.objectContaining({ t1_cuotas_hasta: month }),
       }),
     }))
   })
@@ -630,28 +583,28 @@ describe('OnboardingPage component tests', () => {
 
   it('requires the uploaded statement key when the upload mode is selected', () => {
     expect(validateStep({
-      id: 't1_p17', title: '', fields: [],
+      id: 't1_p16', title: '', fields: [],
     }, {
-      t1_cuotas_modo: 'Subir foto del resumen',
+      t1_cuotas_modo: 'Subir foto o archivo',
     })).toMatchObject({ t1_upload_url: 'Subí el resumen para continuar.' })
   })
 
   it('accepts the upload mode when an opaque statement key exists', () => {
     expect(validateStep({
-      id: 't1_p17', title: '', fields: [],
+      id: 't1_p16', title: '', fields: [],
     }, {
-      t1_cuotas_modo: 'Subir foto del resumen',
+      t1_cuotas_modo: 'Subir foto o archivo',
       t1_upload_url: 'onboarding/device/t1_upload_url/object',
     })).toEqual({})
   })
 
   it('displays validation error for a rejected oversized file and does not call createOnboardingUpload', async () => {
     const user = userEvent.setup()
-    await advanceToCardP17(1)
-    await user.click(screen.getByRole('radio', { name: /subir foto del resumen/i }))
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
 
     const file = new File(['a'.repeat(5 * 1024 * 1024 + 1)], 'resumen.pdf', { type: 'application/pdf' })
-    const fileInput = screen.getByLabelText(/subí el resumen/i)
+    const fileInput = screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' })
     await user.upload(fileInput, file)
 
     expect(screen.getByText('El archivo no puede superar 5 MB.')).toBeDefined()
@@ -693,12 +646,12 @@ describe('OnboardingPage component tests', () => {
     })
 
     const user = userEvent.setup()
-    await advanceToCardP17(1)
-    await user.click(screen.getByRole('radio', { name: /subir foto del resumen/i }))
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
 
     // First upload
     const file1 = new File(['a'], 'resumen1.pdf', { type: 'application/pdf' })
-    const fileInput = screen.getByLabelText(/subí el resumen/i)
+    const fileInput = screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' })
     await user.upload(fileInput, file1)
 
     // Verify first upload requested signed URL and saved draft
@@ -755,14 +708,13 @@ describe('OnboardingPage component tests', () => {
     expect(lastSaveInvocation).toBeLessThan(firstDeleteInvocation)
 
     // Verify the user can continue
-    const continueBtn = screen.getByRole('button', { name: /continuar/i }) as HTMLButtonElement
+    const continueBtn = screen.getByRole('button', { name: /continuar|completar/i }) as HTMLButtonElement
     expect(continueBtn.disabled).toBe(false)
     await user.click(continueBtn)
-    await screen.findByRole('heading', { name: /Tarjeta 1 - ¿quedó algo sin pagar/i })
+    await screen.findByText(/Cuestionario completado/i)
   })
 
   it('renders "Archivo subido" when a key is already persisted and allows replacement', async () => {
-    const user = userEvent.setup()
     cleanup()
     localStorage.clear()
     localStorage.setItem('onboarding-welcome-seen', 'true')
@@ -773,20 +725,12 @@ describe('OnboardingPage component tests', () => {
       var_total_directo: 1,
       d_salidas: 1,
       p15_tarjetas: 1,
-      t1_cuotas_modo: 'Subir foto del resumen',
+      t1_cuotas_modo: 'Subir foto o archivo',
       t1_upload_url: 'existing-key-from-backend',
     })
     render(<OnboardingPage />)
 
-    // Lands on t1_p16
-    await screen.findByRole('heading', { name: /Tarjeta 1 - el último resumen/i })
-
-    // Fill t1_p16 and click continue
-    await user.type(screen.getByLabelText(/en pesos/i), '10000')
-    await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-    // Now we should land on t1_p17 and see the pre-populated value state
-    await screen.findByRole('heading', { name: /Tarjeta 1 - las cuotas/i })
+    await screen.findByRole('heading', { name: /Tarjeta 1/i })
 
     expect(screen.getByText('Archivo subido')).toBeDefined()
     expect(screen.getByRole('button', { name: /reemplazar/i })).toBeDefined()
@@ -826,11 +770,11 @@ describe('OnboardingPage component tests', () => {
     vi.mocked(saveOnboardingDraft).mockRejectedValue(new Error('Draft Save Failed'))
 
     const user = userEvent.setup()
-    await advanceToCardP17(1)
-    await user.click(screen.getByRole('radio', { name: /subir foto del resumen/i }))
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
 
     const file = new File(['a'], 'resumen.pdf', { type: 'application/pdf' })
-    const fileInput = screen.getByLabelText(/subí el resumen/i)
+    const fileInput = screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' })
     
     // Upload the file
     await user.upload(fileInput, file)
@@ -872,6 +816,7 @@ describe('OnboardingPage component tests', () => {
       p1_pesa: 'Otra',
       ing_total: 500000,
       p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
     })
     render(<OnboardingPage />)
     await user.type(await screen.findByLabelText(/directamente el total/i), '100000')
@@ -894,6 +839,7 @@ describe('OnboardingPage component tests', () => {
       p1_pesa: 'Otra',
       ing_total: 500000,
       p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
       var_total_directo: 100000,
@@ -912,16 +858,6 @@ describe('OnboardingPage component tests', () => {
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
-  it('does not show the repeated-fields helper on manual card loading (p17)', async () => {
-    const user = userEvent.setup()
-    const helperText = 'No hace falta que llenes todos'
-    await advanceToCardP17(1)
-    await user.click(
-      screen.getByRole('radio', { name: /carga manual mes por mes/i }),
-    )
-    expect(screen.queryByText(helperText)).toBeNull()
-  })
-
   it('shows the repeated-fields helper for other fixed expenses (p9)', async () => {
     const helperText = 'No hace falta que llenes todos'
     localStorage.clear()
@@ -930,6 +866,7 @@ describe('OnboardingPage component tests', () => {
       p1_pesa: 'Otra',
       ing_total: 500000,
       p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
     })
     render(<OnboardingPage />)
     const fixedExpensesHelper = await screen.findByText(helperText)
@@ -948,6 +885,7 @@ describe('OnboardingPage component tests', () => {
       p1_pesa: 'Otra',
       ing_total: 500000,
       p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
     })
@@ -968,6 +906,7 @@ describe('OnboardingPage component tests', () => {
       p1_pesa: 'Otra',
       ing_total: 500000,
       p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
       var_total_directo: 100000,

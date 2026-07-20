@@ -25,9 +25,10 @@ describe('admin CSV export', () => {
         p5_fuentes: ['Sueldo fijo (relación de dependencia)', 'Otro'],
         n1_concepto: 'Lavarropas',
         n1_monto: 500000,
-        t1_cuotas_modo: 'Carga manual mes por mes',
+        t1_cuotas_modo: 'Copiar el renglón mes a mes',
         t1_cuotas_m1: 20000,
-        p15_tarjetas: 1,
+        t2_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+        p15_tarjetas: 2,
       },
     })
 
@@ -42,9 +43,12 @@ describe('admin CSV export', () => {
       n1_monto: 500000,
       T1_cuotas_modo: 'B',
       T1_cuotas_m1: 20000,
+      T2_cuotas_modo: 'D',
       T2_resumen_ars: '',
       T5_postcierre_upload: '',
     })
+    expect(csvHeaders).not.toContain('T1_cuotas_mensual')
+    expect(csvHeaders).not.toContain('T1_cuotas_hasta')
   })
 
   it('keeps upload links after the central contract in card order', () => {
@@ -58,22 +62,19 @@ describe('admin CSV export', () => {
     expect(csvHeaders.indexOf('T1_upload_url')).toBeGreaterThan(csvHeaders.indexOf('T5_postcierre'))
   })
 
-  it('exports source-specific income expiry dates in the central contract', () => {
+  it('exports dates and expiring incomes in the central contract', () => {
     const row = toAdminCsvRow({
       completedAt: new Date('2026-07-16T12:00:00Z'),
       answers: {
-        extra_cuando: 'sep-27',
-        ing_sueldo_fijo_hasta: 'nov-27',
-        ing_aportes_tercero_hasta: 'dic-27',
-        extra_hasta: 'ene-28',
+        extra_cuando: 'sep-27', aumento_proximo: 'oct-27',
+        ing_fin1_monto: 100000, ing_fin1_hasta: 'nov-27',
+        t1_upload_url: 'statement-key', t1_postcierre_upload: 'movements-key',
       },
     })
-
     expect(row).toMatchObject({
-      extra_cuando: 'sep-27',
-      ing_sueldo_fijo_hasta: 'nov-27',
-      ing_aportes_tercero_hasta: 'dic-27',
-      extra_hasta: 'ene-28',
+      extra_cuando: 'sep-27', aumento_proximo: 'oct-27',
+      ing_fin1_monto: 100000, ing_fin1_hasta: 'nov-27',
+      T1_upload_url: 'statement-key', T1_postcierre_upload: 'movements-key',
     })
   })
 

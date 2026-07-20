@@ -13,7 +13,7 @@ const cardHeaders = [1, 2, 3, 4, 5].flatMap((number) => {
   return [
     `${prefix}_resumen_ars`, `${prefix}_resumen_usd`, `${prefix}_cuotas_modo`,
     ...[1, 2, 3, 4, 5, 6].map((month) => `${prefix}_cuotas_m${month}`),
-    `${prefix}_cuotas_resto`, `${prefix}_cuotas_resto_hasta`, `${prefix}_cuotas_mensual`, `${prefix}_cuotas_hasta`,
+    `${prefix}_cuotas_resto`, `${prefix}_cuotas_resto_hasta`,
     `${prefix}_arrastre`, `${prefix}_cierre_dia`, `${prefix}_vto_dia`, `${prefix}_postcierre`,
   ]
 })
@@ -26,14 +26,9 @@ const uploadHeaders = [1, 2, 3, 4, 5].flatMap((number) => {
 export const csvHeaders = [
   'timestamp', 'nombre', 'whatsapp', 'email', 'p1_pesa', 'p1_otra',
   'p2_ultimo_1', 'p2_ultimo_2', 'p3_primero_1', 'p3_primero_2',
-  'ing_total', 'ing_fuentes', 'ing_tercero_falla', 'ing_tercero_monto', 'extra_tipo', 'extra_monto', 'extra_cuando',
+  'ing_total', 'ing_fuentes', 'ing_tercero_falla', 'ing_tercero_monto', 'extra_tipo', 'extra_monto', 'extra_cuando', 'extra_hasta',
   'aumento_meses', 'aumento_pct', 'aumento_proximo',
-  'ing_sueldo_fijo_hasta',
-  'ing_trabajos_propios_hasta',
-  'ing_aportes_tercero_hasta',
-  'ing_jubilacion_pension_hasta',
-  'ing_otro_hasta',
-  'extra_hasta',
+  ...['ing_fin1', 'ing_fin2', 'ing_fin3', 'ing_fin4'].flatMap((prefix) => [`${prefix}_monto`, `${prefix}_hasta`]),
   'fijo_alquiler', 'fijo_colegio', 'fijo_prepaga', 'fijo_prestamos', 'fijo_servicios', 'fijo_seguros', 'fijo_ayuda',
   'fijo_otro1_concepto', 'fijo_otro1_monto', 'fijo_otro2_concepto', 'fijo_otro2_monto', 'fijo_total_directo',
   ...['fin1', 'fin2', 'fin3', 'fin4'].flatMap((prefix) => [`${prefix}_concepto`, `${prefix}_cuota`, `${prefix}_hasta`]),
@@ -49,12 +44,9 @@ export const csvHeaders = [
 ] as const
 
 const modeMap: Record<string, string> = {
-  'Subir foto del resumen': 'A',
-  'Carga manual mes por mes': 'B',
-  'Carga manual a ojo': 'C',
-  'A': 'A',
-  'B': 'B',
-  'C': 'C',
+  'Subir foto o archivo': 'A',
+  'Copiar el renglón mes a mes': 'B',
+  'No lo tengo a mano, que Norte me lo pida después por WhatsApp': 'D',
 }
 
 const value = (answers: OnboardingAnswers, key: string): CsvValue => {
@@ -69,10 +61,12 @@ export function toAdminCsvRow(draft: CompletedDraft): CsvRow {
   for (const header of csvHeaders) row[header] = value(answers, header)
   row.timestamp = draft.completedAt.toISOString()
   row.ing_fuentes = Array.isArray(answers.p5_fuentes) ? answers.p5_fuentes.join(' | ') : ''
-  row.p2_ultimo_1 = Array.isArray(answers.p2_ultimo) ? answers.p2_ultimo[0] ?? '' : ''
-  row.p2_ultimo_2 = Array.isArray(answers.p2_ultimo) ? answers.p2_ultimo[1] ?? '' : ''
-  row.p3_primero_1 = Array.isArray(answers.p3_primero) ? answers.p3_primero[0] ?? '' : ''
-  row.p3_primero_2 = Array.isArray(answers.p3_primero) ? answers.p3_primero[1] ?? '' : ''
+  const p2 = Array.isArray(answers.p2_ultimo) ? answers.p2_ultimo : []
+  const p3 = Array.isArray(answers.p3_primero) ? answers.p3_primero : []
+  row.p2_ultimo_1 = typeof p2[0] === 'string' ? p2[0] : ''
+  row.p2_ultimo_2 = typeof p2[1] === 'string' ? p2[1] : ''
+  row.p3_primero_1 = typeof p3[0] === 'string' ? p3[0] : ''
+  row.p3_primero_2 = typeof p3[1] === 'string' ? p3[1] : ''
   row.num_tarjetas = value(answers, 'p15_tarjetas')
   for (let number = 1; number <= 5; number++) {
     const source = `t${number}`

@@ -22,10 +22,52 @@ describe('onboarding draft', () => {
       .toContain('p6')
   })
 
-  it('creates five card questions for every selected card', () => {
+  it('creates one consolidated card step for every selected card', () => {
     const ids = getActiveSteps({ p15_tarjetas: 2 }).map((step) => step.id)
-    expect(ids).toEqual(expect.arrayContaining(['t1_p16', 't1_p17', 't2_p16', 't2_p17']))
-    expect(ids).not.toContain('t3_p16')
+
+    expect(ids).toEqual(expect.arrayContaining(['t1_p16', 't2_p16']))
+    expect(ids).not.toEqual(expect.arrayContaining(['t1_p17', 't1_p18', 't1_p19', 't1_p20']))
+  })
+
+  it('shows only the statement upload field in upload mode', () => {
+    const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
+
+    expect(getVisibleFields(step, { t1_cuotas_modo: 'Subir foto o archivo' })
+      .map(({ id }) => id)).toEqual([
+        't1_cuotas_modo', 't1_upload_url',
+      ])
+  })
+
+  it('shows every manual card field in month-by-month mode', () => {
+    const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
+
+    expect(getVisibleFields(step, { t1_cuotas_modo: 'Copiar el renglón mes a mes' })
+      .map(({ id }) => id)).toEqual([
+        't1_cuotas_modo', 't1_resumen_ars', 't1_resumen_usd',
+        't1_cierre_dia', 't1_vto_dia',
+        't1_cuotas_m1', 't1_cuotas_m2', 't1_cuotas_m3', 't1_cuotas_m4', 't1_cuotas_m5', 't1_cuotas_m6',
+        't1_cuotas_resto', 't1_cuotas_resto_hasta', 't1_arrastre',
+        't1_postcierre', 't1_postcierre_upload',
+      ])
+  })
+
+  it('shows only mode selection in WhatsApp mode', () => {
+    const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
+
+    expect(getVisibleFields(step, { t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp' })
+      .map(({ id }) => id)).toEqual(['t1_cuotas_modo'])
+  })
+
+  it('clears inactive card answers when changing card mode', () => {
+    expect(filterAnswersForActiveSteps({
+      p15_tarjetas: 1,
+      t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+      t1_resumen_ars: 100,
+      t1_upload_url: 'file-key',
+    })).toEqual({
+      p15_tarjetas: 1,
+      t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+    })
   })
 
   it('keeps fields grouped by step and validates requiredness independently from type', () => {
@@ -147,7 +189,7 @@ describe('onboarding draft', () => {
       p1_pesa: 'Otra',
       ing_total: 500000,
       p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
-    })).toBe(9)
+    })).toBe(7)
   })
 
   it('rejects a third priority selection', () => {
@@ -193,10 +235,10 @@ describe('onboarding draft', () => {
   it('removes known inactive answers before local persistence but preserves unknown system-safe answers', () => {
     const answers = filterAnswersForActiveSteps({
       p15_tarjetas: 1,
+      t1_cuotas_modo: 'Copiar el renglón mes a mes',
       t1_resumen_ars: 100,
       t2_resumen_ars: 200,
-      extra_tipo: 'No',
-      extra_monto: 300,
+      extra_tiene: 'No',
       unknownSystemValue: 'keep me',
     })
     saveDraft({
@@ -209,8 +251,9 @@ describe('onboarding draft', () => {
 
     expect(loadDraft()?.answers).toEqual({
       p15_tarjetas: 1,
+      t1_cuotas_modo: 'Copiar el renglón mes a mes',
       t1_resumen_ars: 100,
-      extra_tipo: 'No',
+      extra_tiene: 'No',
       unknownSystemValue: 'keep me',
     })
   })
@@ -218,8 +261,8 @@ describe('onboarding draft', () => {
   it('only exposes conditional follow-up fields when their answer applies', () => {
     const step = (id: string) => onboardingSteps.find(step => step.id === id)!
 
-    expect(getVisibleFields(step('p7'), { extra_tipo: 'No' })
-      .map(field => field.id)).toEqual(['extra_tipo'])
+    expect(getVisibleFields(step('p7'), { extra_tiene: 'No' })
+      .map(field => field.id)).toEqual(['extra_tiene'])
     expect(getVisibleFields(step('p14'), { p14_tiene_compras: 'No' })
       .map(field => field.id)).toEqual(['p14_tiene_compras'])
     expect(getVisibleFields(step('p14'), { p14_tiene_compras: 'Sí' })
@@ -331,11 +374,22 @@ describe('onboarding draft', () => {
     expect(validateStep(step, { p15_tarjetas: 5 })).toEqual({})
   })
 
-  it('requires the uploaded statement key when Option A is selected', () => {
-    const step = onboardingSteps.find(({ id }) => id === 't1_p17')
-    expect(validateStep(step, { t1_cuotas_modo: 'Subir foto del resumen' })).toEqual({
+  it('requires card mode or specific fields based on mode for consolidated p16 step', () => {
+    const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
+
+    expect(validateStep(step, {})).toEqual({
+      t1_cuotas_modo: 'Elegí una opción para continuar.',
+    })
+    expect(validateStep(step, { t1_cuotas_modo: 'Subir foto o archivo' })).toEqual({
       t1_upload_url: 'Subí el resumen para continuar.',
     })
+    expect(validateStep(step, { t1_cuotas_modo: 'Copiar el renglón mes a mes' })).toEqual({
+      t1_resumen_ars: 'Debe ingresar el monto de la tarjeta.',
+      t1_cuotas_m1: 'Completá al menos una cuota mensual.',
+    })
+    expect(validateStep(step, {
+      t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+    })).toEqual({})
   })
 
   it('scopes draft loading to the device ID', () => {
@@ -350,7 +404,7 @@ describe('onboarding draft', () => {
     expect(loadDraft('c2446e70-8555-44dc-a428-cb1185c8d4b3')).toBeNull()
   })
 
-  it('shows expiry dates only for selected income sources and the active extra', () => {
+  it('shows expiry dates only for selected income sources', () => {
     const step = onboardingSteps.find(({ id }) => id === 'p8a')!
 
     expect(getVisibleFields(step, {
@@ -359,12 +413,10 @@ describe('onboarding draft', () => {
         'Sueldo fijo (relación de dependencia)',
         'Jubilación / pensión',
       ],
-      extra_tipo: 'Aguinaldo',
     }).map(({ id }) => id)).toEqual([
       'p8a_tiene_vencimiento',
       'ing_sueldo_fijo_hasta',
       'ing_jubilacion_pension_hasta',
-      'extra_hasta',
     ])
   })
 

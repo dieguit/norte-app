@@ -41,7 +41,7 @@ describe('results mapping', () => {
     const key = `onboarding/${deviceId}/t1_upload_url/987f6543-e21b-32d1-b654-026614174000`
 
     expect(getUploadedFiles({ t1_upload_url: key })).toEqual([
-      { fieldId: 't1_upload_url', label: 'Subí el resumen (foto o PDF)', key },
+      { fieldId: 't1_upload_url', label: 'Subir foto o archivo', key },
     ])
   })
 })
