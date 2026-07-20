@@ -61,6 +61,11 @@ export type OnboardingField = {
   itemFields?: readonly RepeatedItemField[];
   addLabel?: string;
   maxItems?: number;
+  itemTitleKey?: keyof ExtraIncome;
+  itemTitlePrefix?: string;
+  itemVisibleWhen?: (item: ExtraIncome) => boolean;
+  allowAdd?: boolean;
+  allowRemove?: boolean;
 };
 
 const dayOptions = Array.from({ length: 31 }, (_, i) => String(i + 1));
@@ -109,18 +114,106 @@ const fixedExpenseExpiryFields = [
   ],
   ["fijo_seguros", "fijo_seguros_hasta", "Seguros"],
   ["fijo_ayuda", "fijo_ayuda_hasta", "Ayuda a familiares"],
-  ["fijo_otro1_monto", "fijo_otro1_hasta", "Otro 1", "fijo_otro1_concepto"],
-  ["fijo_otro2_monto", "fijo_otro2_hasta", "Otro 2", "fijo_otro2_concepto"],
 ] as const;
 
 function hasPositiveAmount(answers: OnboardingAnswers, id: string) {
-  return typeof answers[id] === "number" && answers[id] > 0;
+  const value = answers[id];
+  const amount =
+    typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  return typeof amount === "number" && Number.isFinite(amount) && amount > 0;
 }
 
-function hasDetailedFixedExpense(answers: OnboardingAnswers) {
-  return fixedExpenseExpiryFields.some(([amountId]) =>
-    hasPositiveAmount(answers, amountId),
+const legacyFixedOtherAmountIds = ["fijo_otro1_monto", "fijo_otro2_monto"];
+
+function inferFixedExpenseMode(answers: OnboardingAnswers) {
+  if (
+    answers.p9_modo === "Tengo el total en la cabeza" ||
+    answers.p9_modo === "Quiero desglosar"
+  ) {
+    return answers.p9_modo;
+  }
+  if (hasPositiveAmount(answers, "fijo_total_directo")) {
+    return "Tengo el total en la cabeza";
+  }
+  if (
+    fixedExpenseExpiryFields.some(([amountId]) =>
+      hasPositiveAmount(answers, amountId),
+    ) ||
+    legacyFixedOtherAmountIds.some((id) => hasPositiveAmount(answers, id)) ||
+    hasPositiveOther(answers)
+  ) {
+    return "Quiero desglosar";
+  }
+  return undefined;
+}
+
+function withInferredFixedExpenseMode(answers: OnboardingAnswers) {
+  const normalized = { ...answers };
+  if (!Array.isArray(normalized.fijo_otros)) {
+    const legacyOthers = [1, 2].flatMap((index) => {
+      const conceptKey = `fijo_otro${index}_concepto`;
+      const amountKey = `fijo_otro${index}_monto`;
+      const expiryKey = `fijo_otro${index}_hasta`;
+      if (
+        normalized[conceptKey] === undefined &&
+        normalized[amountKey] === undefined &&
+        normalized[expiryKey] === undefined
+      ) {
+        return [];
+      }
+      const amount = normalized[amountKey];
+      const numericAmount =
+        typeof amount === "string" && amount.trim() !== ""
+          ? Number(amount)
+          : amount;
+      return [{
+        concepto: typeof normalized[conceptKey] === "string"
+          ? normalized[conceptKey]
+          : "",
+        monto: typeof numericAmount === "number" && Number.isFinite(numericAmount)
+          ? numericAmount
+          : typeof amount === "string" || typeof amount === "number"
+            ? amount
+          : "",
+        desde: "",
+        hasta: typeof normalized[expiryKey] === "string"
+          ? normalized[expiryKey]
+          : "",
+      } satisfies ExtraIncome];
+    });
+    if (legacyOthers.length > 0) normalized.fijo_otros = legacyOthers;
+  }
+  for (const index of [1, 2]) {
+    delete normalized[`fijo_otro${index}_concepto`];
+    delete normalized[`fijo_otro${index}_monto`];
+    delete normalized[`fijo_otro${index}_hasta`];
+  }
+
+  const mode = inferFixedExpenseMode(normalized);
+  return mode && normalized.p9_modo === undefined
+    ? { ...normalized, p9_modo: mode }
+    : normalized;
+}
+
+export const isDetailedFixedExpense = (answers: OnboardingAnswers) =>
+  inferFixedExpenseMode(answers) === "Quiero desglosar";
+
+export const hasPositiveOther = (answers: OnboardingAnswers) =>
+  Array.isArray(answers.fijo_otros) &&
+  (answers.fijo_otros as (string | ExtraIncome)[]).some(
+    (item) => {
+      if (typeof item !== "object" || item === null) return false;
+      const rawMonto = (item as ExtraIncome).monto;
+      const monto =
+        typeof rawMonto === "string" && rawMonto.trim() !== ""
+          ? Number(rawMonto)
+          : rawMonto;
+      return typeof monto === "number" && Number.isFinite(monto) && monto > 0;
+    },
   );
+
+function hasDetailedFixedExpense(answers: OnboardingAnswers) {
+  return isDetailedFixedExpense(answers);
 }
 
 const incomeSourceExpiryFields = [
@@ -207,54 +300,54 @@ export const onboardingSteps: readonly OnboardingStep[] = [
   {
     id: "p2",
     title:
-      "Si tu ingreso cayera a la mitad por unos meses, ¿qué sería LO ÚLTIMO que cortarías?",
-    intro: "Selección múltiple, máximo 2.",
+      "Si tuvieses que cortar todos estos gastos, ¿cuál sería el último?",
     fields: [
       {
         id: "p2_ultimo",
-        type: "checkbox",
-        label: "Selecciona hasta 2 opciones",
-        maxSelections: 2,
+        type: "radio",
+        label: "Elegí una opción",
+        required: true,
+        requiredMessage: "Elegí una opción para continuar.",
         options: [
-          "Colegio de mis hijos",
-          "Actividades extraescolares de mis hijos",
-          "Alquiler / vivienda",
-          "Comida",
-          "Prepaga / cobertura médica",
-          "Terapias (psicólogo, tratamientos)",
-          "Mis actividades (gym, deporte, hobbies)",
-          "Salidas y gustos",
-          "Ayuda a familiares",
-          "Suscripciones y servicios digitales",
-          "Ropa",
-          "Cuidado personal",
+          "Colegio privado de mis hijos (pasarlo a uno público)",
+          "Actividades extraescolares de mis hijos (dejarlas por ahora)",
+          "Alquiler (mudarme a algo más chico)",
+          "Comida (comprar más barato)",
+          "Prepaga (atenderme por el plan básico)",
+          "Terapias (espaciarlas o pausarlas)",
+          "Mis actividades (dejar gym, deporte o hobbies)",
+          "Salidas con amigos el finde",
+          "Ayuda a familiares (reducirla por un tiempo)",
+          "Suscripciones y servicios digitales (dar de baja los que no uso)",
+          "Ropa (comprar solo si hace falta)",
+          "Cuidado personal (hacerlo en casa o espaciarlo)",
         ],
       },
     ],
   },
   {
     id: "p3",
-    title: "¿Y LO PRIMERO que cortarías?",
-    intro: "Selección múltiple, máximo 2.",
+    title: "Si tuvieses que cortar todos estos gastos, ¿cuál sería el primero?",
     fields: [
       {
         id: "p3_primero",
-        type: "checkbox",
-        label: "Selecciona hasta 2 opciones",
-        maxSelections: 2,
+        type: "radio",
+        label: "Elegí una opción",
+        required: true,
+        requiredMessage: "Elegí una opción para continuar.",
         options: [
-          "Colegio de mis hijos",
-          "Actividades extraescolares de mis hijos",
-          "Alquiler / vivienda",
-          "Comida",
-          "Prepaga / cobertura médica",
-          "Terapias (psicólogo, tratamientos)",
-          "Mis actividades (gym, deporte, hobbies)",
-          "Salidas y gustos",
-          "Ayuda a familiares",
-          "Suscripciones y servicios digitales",
-          "Ropa",
-          "Cuidado personal",
+          "Colegio privado de mis hijos (pasarlo a uno público)",
+          "Actividades extraescolares de mis hijos (dejarlas por ahora)",
+          "Alquiler (mudarme a algo más chico)",
+          "Comida (comprar más barato)",
+          "Prepaga (atenderme por el plan básico)",
+          "Terapias (espaciarlas o pausarlas)",
+          "Mis actividades (dejar gym, deporte o hobbies)",
+          "Salidas con amigos el finde",
+          "Ayuda a familiares (reducirla por un tiempo)",
+          "Suscripciones y servicios digitales (dar de baja los que no uso)",
+          "Ropa (comprar solo si hace falta)",
+          "Cuidado personal (hacerlo en casa o espaciarlo)",
         ],
       },
     ],
@@ -425,34 +518,74 @@ export const onboardingSteps: readonly OnboardingStep[] = [
     introWithName:
       "{name}, vamos a lo que pagás sí o sí todos los meses. Eso que no elegís: te toca. Completá lo que aplique, o si sos de los que tienen el número total en la cabeza, saltá directo al final. Sin contar inflación, el número de hoy alcanza.",
     fields: [
-      { id: "fijo_alquiler", type: "number", label: "Alquiler / vivienda ($)" },
-      { id: "fijo_colegio", type: "number", label: "Colegio ($)" },
-      { id: "fijo_prepaga", type: "number", label: "Prepaga / salud ($)" },
+      {
+        id: "p9_modo",
+        type: "radio",
+        label: "¿total en la cabeza o desglosás?",
+        options: ["Tengo el total en la cabeza", "Quiero desglosar"],
+        required: true,
+      },
+      {
+        id: "fijo_alquiler",
+        type: "number",
+        label: "Alquiler / vivienda ($)",
+        visibleWhen: (answers) => answers.p9_modo === "Quiero desglosar",
+      },
+      {
+        id: "fijo_colegio",
+        type: "number",
+        label: "Colegio ($)",
+        visibleWhen: (answers) => answers.p9_modo === "Quiero desglosar",
+      },
+      {
+        id: "fijo_prepaga",
+        type: "number",
+        label: "Prepaga / salud ($)",
+        visibleWhen: (answers) => answers.p9_modo === "Quiero desglosar",
+      },
       {
         id: "fijo_prestamos",
         type: "number",
         label: "Préstamos (cuotas mensuales) ($)",
+        visibleWhen: (answers) => answers.p9_modo === "Quiero desglosar",
       },
       {
         id: "fijo_servicios",
         type: "number",
         label: "Servicios (luz, gas, internet, celular) ($)",
+        visibleWhen: (answers) => answers.p9_modo === "Quiero desglosar",
       },
-      { id: "fijo_seguros", type: "number", label: "Seguros ($)" },
-      { id: "fijo_ayuda", type: "number", label: "Ayuda a familiares ($)" },
       {
-        id: "fijo_otro1_concepto",
-        type: "text",
-        label: "Otro (concepto)",
-        helpText: "No hace falta que llenes todos",
+        id: "fijo_seguros",
+        type: "number",
+        label: "Seguros ($)",
+        visibleWhen: (answers) => answers.p9_modo === "Quiero desglosar",
       },
-      { id: "fijo_otro1_monto", type: "number", label: "Otro ($)" },
-      { id: "fijo_otro2_concepto", type: "text", label: "Otro 2 (concepto)" },
-      { id: "fijo_otro2_monto", type: "number", label: "Otro 2 ($)" },
+      {
+        id: "fijo_ayuda",
+        type: "number",
+        label: "Ayuda a familiares ($)",
+        visibleWhen: (answers) => answers.p9_modo === "Quiero desglosar",
+      },
+      {
+        id: "fijo_otros",
+        type: "repeated",
+        label: "Otros gastos fijos",
+        addLabel: "Agregar otro",
+        maxItems: 5,
+        helpText: "No hace falta que llenes todos",
+        itemFields: [
+          { key: "concepto", type: "text", label: "Concepto", required: true },
+          { key: "monto", type: "number", label: "Monto ($)", required: true },
+        ],
+        visibleWhen: (answers) => answers.p9_modo === "Quiero desglosar",
+      },
       {
         id: "fijo_total_directo",
         type: "number",
-        label: "O directamente el total, si lo tenés en la cabeza ($)",
+        label: "Total aproximado ($)",
+        visibleWhen: (answers) =>
+          answers.p9_modo === "Tengo el total en la cabeza",
       },
     ],
   },
@@ -485,6 +618,27 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             hasPositiveAmount(answers, amountId),
         };
       }),
+      {
+        id: "fijo_otros",
+        type: "repeated",
+        label: "Vencimientos de otros gastos",
+        itemTitleKey: "concepto",
+        itemTitlePrefix: "¿Cuándo termina",
+        itemVisibleWhen: ({ monto }) => {
+          const amount =
+            typeof monto === "string" && monto.trim() !== ""
+              ? Number(monto)
+              : monto;
+          return typeof amount === "number" && Number.isFinite(amount) && amount > 0;
+        },
+        allowAdd: false,
+        allowRemove: false,
+        itemFields: [{ key: "hasta", type: "month", label: "¿Cuándo termina?" }],
+        visibleWhen: (answers) =>
+          answers.p10_tiene_vencimiento === "Sí" &&
+          isDetailedFixedExpense(answers) &&
+          hasPositiveOther(answers),
+      },
       ...(["fin1", "fin2", "fin3", "fin4"] as const).flatMap(
         (prefix, index) => [
           {
@@ -781,17 +935,30 @@ const definedAnswerIds = new Set(
 export function filterAnswersForActiveSteps(
   answers: OnboardingAnswers,
 ): OnboardingAnswers {
+  const normalizedAnswers = withInferredFixedExpenseMode(answers);
   const activeAnswerIds = new Set(
-    getActiveSteps(answers).flatMap((step) =>
-      getVisibleFields(step, answers).map((field) => field.id),
+    getActiveSteps(normalizedAnswers).flatMap((step) =>
+      getVisibleFields(step, normalizedAnswers).map((field) => field.id),
     ),
   );
 
-  return Object.fromEntries(
-    Object.entries(answers).filter(
+  const filteredAnswers = Object.fromEntries(
+    Object.entries(normalizedAnswers).filter(
       ([key]) => !definedAnswerIds.has(key) || activeAnswerIds.has(key),
     ),
-  );
+  ) as OnboardingAnswers;
+
+  if (Array.isArray(filteredAnswers.fijo_otros)) {
+    return {
+      ...filteredAnswers,
+      fijo_otros: (filteredAnswers.fijo_otros as ExtraIncome[]).map((item) => ({
+        ...item,
+        hasta: hasPositiveOther({ fijo_otros: [item] }) ? item.hasta : "",
+      })),
+    };
+  }
+
+  return filteredAnswers;
 }
 
 export function getInactiveAnswerIds(answers: OnboardingAnswers): string[] {
@@ -811,27 +978,10 @@ export function getVisibleFields(
   answers: OnboardingAnswers,
 ): readonly OnboardingField[] {
   if (!step) return [];
-  return step.fields
-    .filter((field) => field.visibleWhen?.(answers) !== false)
-    .map((field) => {
-      const expiryField = fixedExpenseExpiryFields.find(
-        (f) => f[1] === field.id,
-      );
-      if (expiryField && expiryField.length === 4) {
-        const conceptId = expiryField[3];
-        const conceptVal = answers[conceptId];
-        if (typeof conceptVal === "string") {
-          const trimmed = conceptVal.trim();
-          if (trimmed !== "") {
-            return {
-              ...field,
-              label: `¿Cuándo termina ${trimmed}?`,
-            };
-          }
-        }
-      }
-      return field;
-    });
+  const normalizedAnswers = withInferredFixedExpenseMode(answers);
+  return step.fields.filter(
+    (field) => field.visibleWhen?.(normalizedAnswers) !== false,
+  );
 }
 
 export function validateStep(
@@ -846,12 +996,11 @@ export function validateStep(
   }
   if (!step) return {};
 
+  const normalizedAnswers = withInferredFixedExpenseMode(answers);
   const errors: Record<string, string> = {};
 
   // 1. Generic non-negative validator for any field of type 'number' in the step
   const otherPairsMap: Record<string, string> = {
-    fijo_otro1_monto: "fijo_otro1_concepto",
-    fijo_otro2_monto: "fijo_otro2_concepto",
     var_otro1_monto: "var_otro1_concepto",
     var_otro2_monto: "var_otro2_concepto",
     var_otro3_monto: "var_otro3_concepto",
@@ -863,8 +1012,8 @@ export function validateStep(
     n3_monto: "n3_concepto",
   };
 
-  for (const field of getVisibleFields(step, answers)) {
-    const val = answers[field.id];
+  for (const field of getVisibleFields(step, normalizedAnswers)) {
+    const val = normalizedAnswers[field.id];
     const numVal =
       typeof val === "string" && val.trim() !== "" ? Number(val) : val;
     const hasSuppliedValue =
@@ -886,6 +1035,7 @@ export function validateStep(
       field.type !== "number" &&
       field.type !== "radio" &&
       field.type !== "checkbox" &&
+      field.type !== "repeated" &&
       hasSuppliedValue &&
       typeof val !== "string"
     ) {
@@ -936,20 +1086,6 @@ export function validateStep(
     }
   }
 
-  if (step.id === "p2") {
-    const val = answers.p2_ultimo;
-    if (Array.isArray(val) && val.length > 2) {
-      errors.p2_ultimo = "Seleccioná como máximo 2 opciones.";
-    }
-  }
-
-  if (step.id === "p3") {
-    const val = answers.p3_primero;
-    if (Array.isArray(val) && val.length > 2) {
-      errors.p3_primero = "Seleccioná como máximo 2 opciones.";
-    }
-  }
-
   if (step.id === "p4") {
     const val = answers.ing_total;
     if (
@@ -962,26 +1098,82 @@ export function validateStep(
   }
 
   if (step.id === "p9") {
-    const detailKeys = [
-      "fijo_alquiler",
-      "fijo_colegio",
-      "fijo_prepaga",
-      "fijo_prestamos",
-      "fijo_servicios",
-      "fijo_seguros",
-      "fijo_ayuda",
-      "fijo_otro1_monto",
-      "fijo_otro2_monto",
-    ];
-    const hasDetail = detailKeys.some((key) => {
-      const val = answers[key];
-      return typeof val === "number" && val > 0;
-    });
-    const totalDirecto = answers.fijo_total_directo;
-    const hasDirectTotal = typeof totalDirecto === "number" && totalDirecto > 0;
-    if (!hasDetail && !hasDirectTotal) {
-      errors.fijo_total_directo =
-        "Completá al menos un ítem o el total directo.";
+    const modo = inferFixedExpenseMode(normalizedAnswers);
+    if (modo === "Tengo el total en la cabeza") {
+      const totalDirecto = normalizedAnswers.fijo_total_directo;
+      const numVal =
+        typeof totalDirecto === "string" && totalDirecto.trim() !== ""
+          ? Number(totalDirecto)
+          : totalDirecto;
+      if (
+        typeof numVal !== "number" ||
+        !Number.isFinite(numVal) ||
+        numVal <= 0
+      ) {
+        errors.fijo_total_directo =
+          "Ingresá un total aproximado mayor a cero.";
+      }
+    } else if (modo === "Quiero desglosar") {
+      const detailKeys = [
+        "fijo_alquiler",
+        "fijo_colegio",
+        "fijo_prepaga",
+        "fijo_prestamos",
+        "fijo_servicios",
+        "fijo_seguros",
+        "fijo_ayuda",
+        ...legacyFixedOtherAmountIds,
+      ];
+      const hasPositiveCategory = detailKeys.some((key) => {
+        const val = normalizedAnswers[key];
+        const numVal =
+          typeof val === "string" && val.trim() !== "" ? Number(val) : val;
+        return typeof numVal === "number" && Number.isFinite(numVal) && numVal > 0;
+      });
+      const hasPositiveOther =
+        Array.isArray(normalizedAnswers.fijo_otros) &&
+        (normalizedAnswers.fijo_otros as ExtraIncome[]).some((item) => {
+          const numVal =
+            typeof item?.monto === "string" && item.monto.trim() !== ""
+              ? Number(item.monto)
+              : item?.monto;
+          return (
+            typeof numVal === "number" && Number.isFinite(numVal) && numVal > 0
+          );
+        });
+
+      if (!hasPositiveCategory && !hasPositiveOther) {
+        errors.fijo_alquiler = "Ingresá al menos un gasto fijo.";
+      }
+
+      if (Array.isArray(normalizedAnswers.fijo_otros)) {
+        (normalizedAnswers.fijo_otros as ExtraIncome[]).forEach((item, index) => {
+          const rawAmount = item?.monto;
+          const hasAmount =
+            rawAmount !== undefined &&
+            rawAmount !== null &&
+            (typeof rawAmount !== "string" || rawAmount.trim() !== "");
+          const numVal =
+            typeof rawAmount === "string" && rawAmount.trim() !== ""
+              ? Number(rawAmount)
+              : rawAmount;
+          if (hasAmount && (typeof numVal !== "number" || !Number.isFinite(numVal))) {
+            errors[`fijo_otros.${index}.monto`] = "Ingresá un número válido.";
+          } else if (
+            hasAmount &&
+            typeof numVal === "number" &&
+            numVal < 0
+          ) {
+            errors[`fijo_otros.${index}.monto`] = "El monto no puede ser negativo.";
+          }
+          const isPos =
+            typeof numVal === "number" && Number.isFinite(numVal) && numVal > 0;
+          if (isPos && (!item.concepto || item.concepto.trim() === "")) {
+            errors[`fijo_otros.${index}.concepto`] =
+              "Debe ingresar el concepto.";
+          }
+        });
+      }
     }
   }
 

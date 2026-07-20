@@ -109,11 +109,31 @@ describe('onboarding draft', () => {
     })
   })
 
-  it('rejects scalar values for checkbox options', () => {
-    const p2Step = onboardingSteps.find(s => s.id === 'p2')
-    expect(validateStep(p2Step, { p2_ultimo: 'Comida' })).toMatchObject({
-      p2_ultimo: 'Elegí una opción válida.',
+  it.each([
+    ['p2', 'p2_ultimo'],
+    ['p3', 'p3_primero'],
+  ] as const)('requires one priority choice in %s', (stepId, answerId) => {
+    const step = onboardingSteps.find(({ id }) => id === stepId)!
+    expect(validateStep(step, {})).toEqual({
+      [answerId]: 'Elegí una opción para continuar.',
     })
+  })
+
+  it.each([
+    ['p2', 'p2_ultimo'],
+    ['p3', 'p3_primero'],
+  ] as const)('rejects array priority answers in %s', (stepId, answerId) => {
+    const step = onboardingSteps.find(({ id }) => id === stepId)!
+    expect(validateStep(step, { [answerId]: ['Comida (comprar más barato)'] }))
+      .toEqual({ [answerId]: 'Elegí una opción válida.' })
+  })
+
+  it.each([
+    ['p2', 'p2_ultimo'],
+    ['p3', 'p3_primero'],
+  ] as const)('accepts one valid priority answer in %s', (stepId, answerId) => {
+    const step = onboardingSteps.find(({ id }) => id === stepId)!
+    expect(validateStep(step, { [answerId]: 'Comida (comprar más barato)' })).toEqual({})
   })
 
   it('rejects non-finite income values', () => {
@@ -181,7 +201,7 @@ describe('onboarding draft', () => {
   it('resumes at the first incomplete step', () => {
     // P1 is now the first required question.
     expect(getFirstIncompleteStep({})).toBe(0)
-    // Optional P2/P3 remain skipped until P4 becomes incomplete.
+    // Priority step P2 is now required when P1 answer exists but priority answers do not.
     expect(getFirstIncompleteStep({
       nombre: 'Ada',
       contacto_canal: 'Email',
@@ -189,13 +209,7 @@ describe('onboarding draft', () => {
       p1_pesa: 'Otra',
       ing_total: 500000,
       p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
-    })).toBe(7)
-  })
-
-  it('rejects a third priority selection', () => {
-    const step = getActiveSteps({}).find(({ id }) => id === 'p2')
-    expect(validateStep(step, { p2_ultimo: ['Comida', 'Alquiler / vivienda', 'Prepaga / cobertura medica'] }))
-      .toMatchObject({ p2_ultimo: expect.any(String) })
+    })).toBe(3)
   })
 
   it('round-trips a local draft', () => {
@@ -210,11 +224,11 @@ describe('onboarding draft', () => {
     expect(loadDraft()).toMatchObject({ stepIndex: 1, completed: false })
   })
 
-  it('round-trips multi-select and conditional values in a local draft', () => {
+  it('round-trips single-choice and conditional values in a local draft', () => {
     saveDraft({
       deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
       answers: {
-        p2_ultimo: ['Comida', 'Alquiler / vivienda'],
+        p2_ultimo: 'Comida (comprar más barato)',
         p5_fuentes: ['Aportes de un tercero'],
         ing_tercero_falla: 'Sí, a veces falla o se atrasa',
         ing_tercero_monto: 50000,
@@ -225,7 +239,7 @@ describe('onboarding draft', () => {
     })
 
     expect(loadDraft()?.answers).toEqual({
-      p2_ultimo: ['Comida', 'Alquiler / vivienda'],
+      p2_ultimo: 'Comida (comprar más barato)',
       p5_fuentes: ['Aportes de un tercero'],
       ing_tercero_falla: 'Sí, a veces falla o se atrasa',
       ing_tercero_monto: 50000,
@@ -301,19 +315,147 @@ describe('onboarding draft', () => {
     })
   })
 
+  it('shows only the direct total in P9 total mode and removes detail answers', () => {
+    const p9 = onboardingSteps.find(({ id }) => id === 'p9')!
+    expect(getVisibleFields(p9, { p9_modo: 'Tengo el total en la cabeza' })
+      .map(({ id }) => id)).toEqual(['p9_modo', 'fijo_total_directo'])
+    expect(filterAnswersForActiveSteps({
+      p9_modo: 'Tengo el total en la cabeza', fijo_alquiler: 1000,
+      fijo_otros: [{ concepto: 'Niñera', monto: 2000, desde: '', hasta: '' }],
+      fijo_total_directo: 3000,
+    })).toEqual({ p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 3000 })
+  })
+
+  it('infers direct-total mode for legacy fixed-payment drafts', () => {
+    const p9 = onboardingSteps.find(({ id }) => id === 'p9')!
+    const answers = {
+      fijo_total_directo: 3000,
+      fijo_alquiler: 1000,
+    }
+
+    expect(getVisibleFields(p9, answers).map(({ id }) => id)).toEqual([
+      'p9_modo', 'fijo_total_directo',
+    ])
+    expect(filterAnswersForActiveSteps(answers)).toEqual({
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 3000,
+    })
+  })
+
+  it('infers detailed mode for legacy fixed-payment drafts', () => {
+    const p9 = onboardingSteps.find(({ id }) => id === 'p9')!
+    const answers = {
+      fijo_otro1_concepto: 'Expensas',
+      fijo_otro1_monto: 2000,
+      fijo_total_directo: 0,
+    }
+
+    expect(getVisibleFields(p9, answers).map(({ id }) => id)).toContain('fijo_otros')
+    expect(getVisibleFields(p9, answers).map(({ id }) => id)).not.toContain('fijo_total_directo')
+    expect(filterAnswersForActiveSteps(answers)).toEqual({
+      p9_modo: 'Quiero desglosar',
+      fijo_otros: [{ concepto: 'Expensas', monto: 2000, desde: '', hasta: '' }],
+    })
+    expect(validateStep(p9, answers)).toEqual({})
+  })
+
+  it('migrates legacy fixed other rows into the editable collection', () => {
+    const legacyAnswers = {
+      fijo_otro1_concepto: 'Expensas',
+      fijo_otro1_monto: '25000',
+      fijo_otro1_hasta: 'dic-26',
+      fijo_otro2_concepto: 'Niñera',
+      fijo_otro2_monto: '200000',
+      fijo_otro2_hasta: '',
+    }
+
+    expect(filterAnswersForActiveSteps(legacyAnswers)).toEqual({
+      p9_modo: 'Quiero desglosar',
+      fijo_otros: [
+        { concepto: 'Expensas', monto: 25000, desde: '', hasta: 'dic-26' },
+        { concepto: 'Niñera', monto: 200000, desde: '', hasta: '' },
+      ],
+    })
+  })
+
+  it('infers detailed mode from a positive saved fixed-other string amount', () => {
+    const answers = {
+      fijo_otros: [{ concepto: 'Expensas', monto: '25000', desde: '', hasta: '' }],
+    }
+
+    expect(filterAnswersForActiveSteps(answers)).toEqual({
+      p9_modo: 'Quiero desglosar',
+      fijo_otros: answers.fijo_otros,
+    })
+  })
+
+  it('validates the concept of a migrated legacy fixed-other amount', () => {
+    const p9 = onboardingSteps.find(({ id }) => id === 'p9')!
+
+    expect(validateStep(p9, {
+      fijo_otro1_concepto: '',
+      fijo_otro1_monto: 2000,
+    })).toEqual({ 'fijo_otros.0.concepto': 'Debe ingresar el concepto.' })
+  })
+
+  it('rejects an invalid fixed-other amount even when another category is positive', () => {
+    const p9 = onboardingSteps.find(({ id }) => id === 'p9')!
+
+    expect(validateStep(p9, {
+      p9_modo: 'Quiero desglosar',
+      fijo_alquiler: 1000,
+      fijo_otros: [{ concepto: 'Expensas', monto: 'no es un número', desde: '', hasta: '' }],
+    })).toEqual({ 'fijo_otros.0.monto': 'Ingresá un número válido.' })
+  })
+
+  it('rejects a negative fixed-other amount independently of category totals', () => {
+    const p9 = onboardingSteps.find(({ id }) => id === 'p9')!
+
+    expect(validateStep(p9, {
+      p9_modo: 'Quiero desglosar',
+      fijo_alquiler: 1000,
+      fijo_otros: [{ concepto: 'Expensas', monto: -1, desde: '', hasta: '' }],
+    })).toEqual({ 'fijo_otros.0.monto': 'El monto no puede ser negativo.' })
+  })
+
+  it('allows a blank fixed-other row alongside a positive category', () => {
+    const p9 = onboardingSteps.find(({ id }) => id === 'p9')!
+
+    expect(validateStep(p9, {
+      p9_modo: 'Quiero desglosar',
+      fijo_alquiler: 1000,
+      fijo_otros: [{ concepto: '', monto: '', desde: '', hasta: '' }],
+    })).toEqual({})
+  })
+
+  it('requires a positive amount in the selected P9 mode and a concept for each other', () => {
+    const p9 = onboardingSteps.find(({ id }) => id === 'p9')!
+    expect(validateStep(p9, {})).toEqual({
+      p9_modo: 'Este campo es requerido.',
+    })
+    expect(validateStep(p9, { p9_modo: 'Otro modo' })).toEqual({
+      p9_modo: 'Elegí una opción válida.',
+    })
+    expect(validateStep(p9, { p9_modo: 'Tengo el total en la cabeza' }))
+      .toEqual({ fijo_total_directo: 'Ingresá un total aproximado mayor a cero.' })
+    expect(validateStep(p9, {
+      p9_modo: 'Quiero desglosar',
+      fijo_otros: [{ concepto: '', monto: 2000, desde: '', hasta: '' }],
+    })).toEqual({ 'fijo_otros.0.concepto': 'Debe ingresar el concepto.' })
+  })
+
+
   it('shows expiring-payment dates only for positive detailed P9 amounts', () => {
     const step = onboardingSteps.find(({ id }) => id === 'p10')!
 
     expect(getVisibleFields(step, {
+      p9_modo: 'Quiero desglosar',
       p10_tiene_vencimiento: 'Sí',
       fijo_alquiler: 100000,
       fijo_prestamos: 0,
-      fijo_otro1_concepto: 'Expensas',
-      fijo_otro1_monto: 25000,
     }).map(({ id, label }) => ({ id, label }))).toEqual([
       { id: 'p10_tiene_vencimiento', label: '¿Tiene vencimiento final?' },
       { id: 'fijo_alquiler_hasta', label: '¿Cuándo termina Alquiler / vivienda?' },
-      { id: 'fijo_otro1_hasta', label: '¿Cuándo termina Expensas?' },
     ])
   })
 
@@ -321,6 +463,7 @@ describe('onboarding draft', () => {
     const step = onboardingSteps.find(({ id }) => id === 'p10')!
 
     expect(getVisibleFields(step, {
+      p9_modo: 'Tengo el total en la cabeza',
       p10_tiene_vencimiento: 'Sí',
       fijo_total_directo: 100000,
     }).map(({ id }) => id)).toEqual([
@@ -332,12 +475,44 @@ describe('onboarding draft', () => {
     ])
   })
 
+  it('exposes the fixed-other expiry collection only in detailed mode', () => {
+    const p10 = onboardingSteps.find(({ id }) => id === 'p10')!
+
+    expect(getVisibleFields(p10, {
+      p9_modo: 'Quiero desglosar',
+      p10_tiene_vencimiento: 'Sí',
+      fijo_otros: [
+        { concepto: 'Expensas', monto: 25000, desde: '', hasta: '' },
+        { concepto: 'Niñera', monto: 0, desde: '', hasta: '' },
+      ],
+    }).map(({ id }) => id)).toContain('fijo_otros')
+  })
+
+  it('filters fixed-other expiry dates when the amount is no longer positive', () => {
+    expect(filterAnswersForActiveSteps({
+      p9_modo: 'Quiero desglosar',
+      p10_tiene_vencimiento: 'Sí',
+      fijo_otros: [
+        { concepto: 'Expensas', monto: 0, desde: '', hasta: 'sep-27' },
+        { concepto: 'Niñera', monto: 200000, desde: '', hasta: 'dic-26' },
+      ],
+    })).toEqual({
+      p9_modo: 'Quiero desglosar',
+      p10_tiene_vencimiento: 'Sí',
+      fijo_otros: [
+        { concepto: 'Expensas', monto: 0, desde: '', hasta: '' },
+        { concepto: 'Niñera', monto: 200000, desde: '', hasta: 'dic-26' },
+      ],
+    })
+  })
+
   it('filters fixed-expense expiry answers when the P9 amount is no longer positive', () => {
     expect(filterAnswersForActiveSteps({
+      p9_modo: 'Quiero desglosar',
       p10_tiene_vencimiento: 'Sí',
       fijo_alquiler: 0,
       fijo_alquiler_hasta: 'sep-27',
-    })).toEqual({ p10_tiene_vencimiento: 'Sí', fijo_alquiler: 0 })
+    })).toEqual({ p9_modo: 'Quiero desglosar', p10_tiene_vencimiento: 'Sí', fijo_alquiler: 0 })
   })
 
   it('shows P13 decisions only for positive P12 amounts', () => {

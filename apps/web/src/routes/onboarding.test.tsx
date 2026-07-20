@@ -3,6 +3,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, waitForElementToBeRemoved } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { OnboardingPage } from './onboarding'
+import { OnboardingRepeatedItems } from '../components/onboarding-repeated-items'
 import { getOnboardingDraft, saveOnboardingDraft, createOnboardingUpload, deleteOnboardingUpload } from '../onboarding/server'
 import { getActiveSteps, validateStep, type OnboardingAnswers } from '../onboarding/definition'
 import type { OnboardingDraft } from '../db/schema'
@@ -12,6 +13,8 @@ const initialAnswers: OnboardingAnswers = {
   nombre: 'Ada',
   contacto_canal: 'Email',
   email: 'ada@example.com',
+  p2_ultimo: 'Colegio privado de mis hijos (pasarlo a uno público)',
+  p3_primero: 'Colegio privado de mis hijos (pasarlo a uno público)',
   p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
   p8a_tiene_vencimiento: 'No',
   extra_tiene: 'No',
@@ -225,10 +228,10 @@ describe('OnboardingPage component tests', () => {
 
   it('clears conditional answers when their condition is turned off', async () => {
     const user = userEvent.setup()
-    setDraft({ p1_pesa: 'Otra', ing_total: 500000 })
+    setDraft({ p1_pesa: 'Otra', ing_total: 500000, p9_modo: 'Tengo el total en la cabeza' })
     render(<OnboardingPage />)
 
-    await user.type(await screen.findByLabelText(/directamente el total/i), '1')
+    await user.type(await screen.findByLabelText(/Total aproximado/i), '1')
     await user.click(screen.getByRole('button', { name: /continuar/i }))
     await user.click(await screen.findByRole('radio', { name: /^sí$/i }))
     const amount = (await screen.findAllByLabelText(/cuota mensual/i))[0]!
@@ -355,15 +358,15 @@ describe('OnboardingPage component tests', () => {
     }
     const cases: Array<{ answers: OnboardingAnswers; labels: RegExp[] }> = [
       {
-        answers: baseAnswers,
-        labels: [/alquiler \/ vivienda/i, /directamente el total/i],
+        answers: { ...baseAnswers, p9_modo: 'Quiero desglosar' },
+        labels: [/alquiler \/ vivienda/i],
       },
       {
-        answers: { ...baseAnswers, fijo_total_directo: 100000 },
+        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000 },
         labels: [/comida \/ súper/i, /el total, si lo tenés/i],
       },
       {
-        answers: { ...baseAnswers, fijo_total_directo: 100000, var_total_directo: 80000 },
+        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000, var_total_directo: 80000 },
         labels: [/salidas/i, /hobbies \/ actividades propias/i],
       },
     ]
@@ -550,8 +553,8 @@ describe('OnboardingPage component tests', () => {
     await user.click(await screen.findByRole('radio', { name: /otra/i }))
     await continueStep(user)
 
-    expect(await screen.findByText('Selección múltiple, máximo 2.')).toBeDefined()
-    expect(screen.queryByText('Ana, Selección múltiple, máximo 2.')).toBeNull()
+    expect(await screen.findByText('Elegí una opción')).toBeDefined()
+    expect(screen.queryByText('Ana, Elegí una opción')).toBeNull()
   })
 
   it('personalizes completion copy from the saved name', async () => {
@@ -815,11 +818,12 @@ describe('OnboardingPage component tests', () => {
     setDraft({
       p1_pesa: 'Otra',
       ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
       p8a_tiene_vencimiento: 'No',
       extra_tiene: 'No',
     })
     render(<OnboardingPage />)
-    await user.type(await screen.findByLabelText(/directamente el total/i), '100000')
+    await user.type(await screen.findByLabelText(/Total aproximado/i), '100000')
     await continueStep(user)
     await user.click(screen.getByRole('radio', { name: /^sí$/i }))
     const expiringPaymentHelper = await screen.findByText(helperText)
@@ -838,6 +842,7 @@ describe('OnboardingPage component tests', () => {
     setDraft({
       p1_pesa: 'Otra',
       ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
       p8a_tiene_vencimiento: 'No',
       extra_tiene: 'No',
       fijo_total_directo: 100000,
@@ -865,6 +870,7 @@ describe('OnboardingPage component tests', () => {
     setDraft({
       p1_pesa: 'Otra',
       ing_total: 500000,
+      p9_modo: 'Quiero desglosar',
       p8a_tiene_vencimiento: 'No',
       extra_tiene: 'No',
     })
@@ -872,9 +878,102 @@ describe('OnboardingPage component tests', () => {
     const fixedExpensesHelper = await screen.findByText(helperText)
     expect(
       fixedExpensesHelper.compareDocumentPosition(
-        screen.getByLabelText(/^Otro \(concepto\)$/i),
+        screen.getByRole('button', { name: /agregar otro/i }),
       ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  async function renderFixedExpenses(answers: OnboardingAnswers = {}) {
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+      ...answers,
+    })
+    render(<OnboardingPage />)
+    await screen.findByRole('heading', { name: /Lo que pagás sí o sí/i })
+  }
+
+  it('adds up to five named fixed others without income labels', async () => {
+    const user = userEvent.setup()
+    await renderFixedExpenses()
+    await user.click(screen.getByRole('radio', { name: 'Quiero desglosar' }))
+    await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+    await user.type(screen.getByLabelText(/^Concepto 1/), 'Niñera')
+
+    expect(screen.queryByText(/Ingreso #1/i)).toBeNull()
+    expect(screen.getByText('Niñera')).toBeDefined()
+
+    for (let index = 2; index <= 5; index++) {
+      await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+    }
+    expect(screen.getAllByLabelText(/Concepto/)).toHaveLength(5)
+    expect(screen.queryByRole('button', { name: /agregar otro/i })).toBeNull()
+  })
+
+  it('updates the detailed fixed-expense total as amounts are entered', async () => {
+    const user = userEvent.setup()
+    await renderFixedExpenses()
+    await user.click(screen.getByRole('radio', { name: 'Quiero desglosar' }))
+    await user.type(screen.getByLabelText(/Alquiler/i), '100000')
+    await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+    await user.type(screen.getByLabelText(/Monto \(\$\) 1/), '200000')
+
+    expect(screen.getByText('Total acumulado: $300.000')).toBeDefined()
+  })
+
+  it('includes finite numeric strings from a persisted fixed-expense draft', async () => {
+    await renderFixedExpenses({
+      p9_modo: 'Quiero desglosar',
+      fijo_alquiler: '100000',
+      fijo_prepaga: Infinity,
+      fijo_otros: [
+        { concepto: 'Expensas', monto: '200000', desde: '', hasta: '' },
+        { concepto: 'Inválido', monto: 'no es un número', desde: '', hasta: '' },
+      ],
+    })
+
+    expect(screen.getByText('Total acumulado: $300.000')).toBeDefined()
+  })
+
+  it('renders every onboarding help text at the larger size', async () => {
+    const user = userEvent.setup()
+    await renderFixedExpenses()
+    await user.click(screen.getByRole('radio', { name: 'Quiero desglosar' }))
+
+    expect(screen.getByText(/No hace falta que llenes todos/i).className)
+      .toContain('text-base')
+  })
+
+  it('shows only positive fixed others with their original expiry row', async () => {
+    render(
+      <OnboardingRepeatedItems
+        field={{
+          id: 'fijo_otros',
+          type: 'repeated',
+          label: 'Vencimientos de otros gastos',
+          itemTitleKey: 'concepto',
+          itemTitlePrefix: '¿Cuándo termina',
+          itemVisibleWhen: ({ monto }) => typeof monto === 'number' && monto > 0,
+          allowAdd: false,
+          allowRemove: false,
+          itemFields: [{ key: 'hasta', type: 'month', label: '¿Cuándo termina?' }],
+        }}
+        value={[
+          { concepto: 'Niñera', monto: 0, desde: '', hasta: '' },
+          { concepto: 'Expensas', monto: 25000, desde: '', hasta: '' },
+        ]}
+        errors={{}}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText(/¿Cuándo termina\? 2/)).toBeDefined()
+    expect(screen.getByText('¿Cuándo termina Expensas?')).toBeDefined()
+    expect(screen.queryByText('¿Cuándo termina Niñera?')).toBeNull()
   })
 
   it('shows the repeated-fields helper for daily expenses (p11)', async () => {
@@ -886,6 +985,7 @@ describe('OnboardingPage component tests', () => {
       ing_total: 500000,
       p8a_tiene_vencimiento: 'No',
       extra_tiene: 'No',
+      p9_modo: 'Tengo el total en la cabeza',
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
     })
@@ -907,6 +1007,7 @@ describe('OnboardingPage component tests', () => {
       ing_total: 500000,
       p8a_tiene_vencimiento: 'No',
       extra_tiene: 'No',
+      p9_modo: 'Tengo el total en la cabeza',
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
       var_total_directo: 100000,

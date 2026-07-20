@@ -51,6 +51,10 @@ export function OnboardingRepeatedItems({
     onChange([...items, newItem]);
   };
 
+  const visibleItems = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => field.itemVisibleWhen?.(item) !== false);
+
   const handleRemove = (indexToRemove: number) => {
     onChange(items.filter((_, idx) => idx !== indexToRemove));
   };
@@ -72,8 +76,15 @@ export function OnboardingRepeatedItems({
   return (
     <div className="space-y-6">
       <div className="space-y-6">
-        {items.map((item, index) => {
+        {visibleItems.map(({ item, index }) => {
           const suffix = index + 1;
+          const itemTitle =
+            item[field.itemTitleKey ?? "concepto"] ||
+            `${field.label} #${suffix}`;
+          const itemHeading = field.itemTitlePrefix
+            ? `${field.itemTitlePrefix} ${itemTitle}?`
+            : itemTitle;
+          const canRemove = field.allowRemove !== false;
           return (
             <div
               key={index}
@@ -81,19 +92,21 @@ export function OnboardingRepeatedItems({
             >
               <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
                 <span className="text-sm font-bold text-[var(--sea-ink-soft)] uppercase tracking-wider">
-                  Ingreso #{suffix}
+                  {itemHeading}
                 </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={disabled}
-                  onClick={() => handleRemove(index)}
-                  aria-label={`Eliminar ingreso ${suffix}`}
-                  className="h-auto px-2.5 py-1 text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="size-3.5" />
-                  Eliminar
-                </Button>
+                {canRemove && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={disabled}
+                    onClick={() => handleRemove(index)}
+                    aria-label={`Eliminar ${itemTitle}`}
+                    className="h-auto px-2.5 py-1 text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Eliminar
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -122,7 +135,7 @@ export function OnboardingRepeatedItems({
                       {itemField.helpText && (
                         <p
                           id={`${controlId}-help`}
-                          className="text-xs text-[var(--sea-ink-soft)] leading-normal"
+                          className="text-base text-[var(--sea-ink-soft)] leading-normal"
                         >
                           {itemField.helpText}
                         </p>
@@ -211,7 +224,7 @@ export function OnboardingRepeatedItems({
         })}
       </div>
 
-      {items.length < maxItems && (
+      {field.allowAdd !== false && items.length < maxItems && (
         <Button
           type="button"
           variant="outline"

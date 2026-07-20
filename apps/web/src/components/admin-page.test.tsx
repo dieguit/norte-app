@@ -41,18 +41,7 @@ describe('AdminPage', () => {
     })
   })
 
-  it('generates a shareable Spanish invitation and switches to results', async () => {
-    vi.stubGlobal('crypto', { randomUUID: () => '6f0a7482-29a0-4c03-a3e1-256add2f91a8' })
-    vi.stubGlobal('location', { origin: 'http://localhost:3000' })
-
-    render(<AdminPage authenticated />)
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Crear invitación' }))
-    expect(screen.getByDisplayValue(/\/onboarding\?invitado=6f0a7482/)).toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('tab', { name: 'Resultados' }))
-    expect(await screen.findByText('No se encontraron resultados.')).toBeInTheDocument()
-  })
-
-  describe('Results tab', () => {
+  describe('Results view', () => {
     it('displays the list of results and handles expansion with download links', async () => {
       // Mock URL methods
       const createObjectURLMock = vi.fn(() => 'blob:mock-url')
@@ -100,9 +89,6 @@ describe('AdminPage', () => {
 
       const user = userEvent.setup()
       render(<AdminPage authenticated />)
-
-      // Go to results tab
-      await user.click(screen.getByRole('tab', { name: 'Resultados' }))
 
       // Check results are displayed
       expect(await screen.findByText('Ana')).toBeInTheDocument()
@@ -161,10 +147,7 @@ describe('AdminPage', () => {
 
     it('renders empty list copy when no results are found', async () => {
       vi.mocked(listAdminResults).mockResolvedValue([])
-      const user = userEvent.setup()
       render(<AdminPage authenticated />)
-
-      await user.click(screen.getByRole('tab', { name: 'Resultados' }))
 
       expect(await screen.findByText('No se encontraron resultados.')).toBeInTheDocument()
     })
@@ -182,8 +165,6 @@ describe('AdminPage', () => {
 
       const user = userEvent.setup()
       render(<AdminPage authenticated />)
-
-      await user.click(screen.getByRole('tab', { name: 'Resultados' }))
 
       expect(await screen.findByText('Error al cargar los resultados.')).toBeInTheDocument()
       
@@ -208,7 +189,6 @@ describe('AdminPage', () => {
       const user = userEvent.setup()
       render(<AdminPage authenticated />)
 
-      await user.click(screen.getByRole('tab', { name: 'Resultados' }))
       expect(await screen.findByText('Ana')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Ana' }))
@@ -230,7 +210,6 @@ describe('AdminPage', () => {
       const user = userEvent.setup()
       render(<AdminPage authenticated />)
 
-      await user.click(screen.getByRole('tab', { name: 'Resultados' }))
       expect(await screen.findByText('Ana')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Ana' }))

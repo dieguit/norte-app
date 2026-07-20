@@ -14,6 +14,7 @@ import {
   filterAnswersForActiveSteps,
   type OnboardingAnswers,
   type OnboardingField,
+  type ExtraIncome,
   getMonthlyDateOptions,
 } from "../onboarding/definition";
 import { loadDraft, saveDraft as saveLocalDraft } from "../onboarding/draft";
@@ -25,6 +26,7 @@ import {
   deleteOnboardingUpload,
 } from "../onboarding/server";
 import OnboardingUpload, { putFile } from "../components/onboarding-upload";
+import { OnboardingRepeatedItems } from "../components/onboarding-repeated-items";
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,6 +49,23 @@ function parseNumber(value: string) {
   const digits = value.replace(/[.,\s]/g, "");
   return digits === "" ? "" : Number(digits);
 }
+
+function getFiniteNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value !== "string" || value.trim() === "") return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+const fixedExpenseIds = [
+  "fijo_alquiler",
+  "fijo_colegio",
+  "fijo_prepaga",
+  "fijo_prestamos",
+  "fijo_servicios",
+  "fijo_seguros",
+  "fijo_ayuda",
+] as const;
 
 function getAriaDescribedBy(
   fieldId: string,
@@ -275,6 +294,16 @@ export function OnboardingPage() {
     ? currentStep.introWithName.replaceAll('{name}', displayName)
     : currentStep.intro
 
+  const fixedDetailedTotal = fixedExpenseIds.reduce(
+    (total, id) => total + getFiniteNumber(formAnswers[id]),
+    0,
+  ) + (Array.isArray(formAnswers.fijo_otros)
+    ? formAnswers.fijo_otros.reduce(
+        (total, item) => total + (typeof item === "object" && item !== null ? getFiniteNumber(item.monto) : 0),
+        0,
+      )
+    : 0);
+
   const progressPercent =
     activeSteps.length > 0
       ? Math.round(((safeStepIndex + 1) / activeSteps.length) * 100)
@@ -492,7 +521,7 @@ export function OnboardingPage() {
                 {getVisibleFields(currentStep, formAnswers).map((field) => (
                   <div key={field.id} className="space-y-2">
                     {field.helpText && (
-                      <p id={`${field.id}-help`} className="text-sm text-[var(--sea-ink-soft)]">
+                      <p id={`${field.id}-help`} className="text-base text-[var(--sea-ink-soft)]">
                         {field.helpText}
                       </p>
                     )}
@@ -697,6 +726,20 @@ export function OnboardingPage() {
                                 </select>
                               </div>
                             );
+                          case "repeated":
+                            return (
+                              <OnboardingRepeatedItems
+                                field={field}
+                                value={
+                                  Array.isArray(fieldState.state.value)
+                                    ? fieldState.state.value as ExtraIncome[]
+                                    : []
+                                }
+                                errors={validationErrors}
+                                disabled={isSaving}
+                                onChange={fieldState.handleChange}
+                              />
+                            );
                           default:
                             if (field.type === "number") {
                               return (
@@ -755,6 +798,13 @@ export function OnboardingPage() {
                     )}
                   </div>
                 ))}
+
+                {currentStep.id === "p9" &&
+                  formAnswers.p9_modo === "Quiero desglosar" && (
+                    <output className="block rounded-xl bg-[var(--foam)] px-4 py-3 text-lg font-bold text-[var(--sea-ink)]">
+                      Total acumulado: ${formatNumber(fixedDetailedTotal)}
+                    </output>
+                  )}
 
                 {/* Save/Retry Error */}
                 {saveError && (
