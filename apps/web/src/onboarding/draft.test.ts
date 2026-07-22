@@ -246,6 +246,34 @@ describe('onboarding draft', () => {
     })
   })
 
+  it('places a fieldless expense classifier before fixed payments', () => {
+    const classifier = onboardingSteps.find(({ id }) => id === 'p8b')!
+    const activeSteps = getActiveSteps({})
+
+    expect(classifier).toMatchObject({
+      title: 'Ahora vamos a los gastos',
+      intro:
+        'Los vamos a mirar en tres grupos:\n\n**Pagos fijos**: los que tenés que pagar sí o sí todos los meses, como el alquiler o el colegio.\n\n**Gastos necesarios**: los que cambian según el mes y tus decisiones, pero siempre están, como la comida o la nafta.\n\n**Gustitos**: esos vienen después.',
+      fields: [],
+    })
+    expect(activeSteps.findIndex(({ id }) => id === 'p8b')).toBe(
+      activeSteps.findIndex(({ id }) => id === 'p9') - 1,
+    )
+    expect(validateStep(classifier, {})).toEqual({})
+    expect(getFirstIncompleteStep({
+      nombre: 'Ada',
+      contacto_canal: 'Email',
+      email: 'ada@example.com',
+      p1_pesa: 'Otra',
+      p2_ultimo: 'Comida (comprar más barato)',
+      p3_primero: 'Comida (comprar más barato)',
+      ing_total: 500000,
+      p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+    })).toBe(activeSteps.findIndex(({ id }) => id === 'p9'))
+  })
+
   it('resumes at the first incomplete step', () => {
     // P1 is now the first required question.
     expect(getFirstIncompleteStep({})).toBe(0)

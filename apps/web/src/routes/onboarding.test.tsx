@@ -944,6 +944,32 @@ describe('OnboardingPage component tests', () => {
     expect(getOnboardingDraft).toHaveBeenCalledWith({ data: { deviceId: 'c2446e70-8555-44dc-a428-cb1185c8d4b3' } })
   })
 
+  it('shows the expense classifier before fixed payments and returns to it', async () => {
+    const user = userEvent.setup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+    })
+    render(<OnboardingPage />)
+
+    await screen.findByRole('heading', { name: /lo que pagás sí o sí/i })
+    await user.click(screen.getByRole('button', { name: /volver/i }))
+
+    expect(await screen.findByRole('heading', { name: 'Ahora vamos a los gastos' })).toBeDefined()
+    expect(screen.getByText(/Los vamos a mirar en tres grupos/)).toBeDefined()
+    expect(screen.getByText('Pagos fijos')).toBeDefined()
+    expect(screen.getByText('Gastos necesarios')).toBeDefined()
+    expect(screen.getByText('Gustitos')).toBeDefined()
+    expect(screen.queryByLabelText(/total aproximado/i)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+    expect(await screen.findByRole('heading', { name: /lo que pagás sí o sí/i })).toBeDefined()
+  })
+
   it('shows the repeated-fields helper for expiring payments (p10)', async () => {
     const user = userEvent.setup()
     const helperText = 'No hace falta que llenes todos'

@@ -508,9 +508,31 @@ export function OnboardingPage() {
                 {stepTitle}
               </h1>
               {stepIntro && (
-                <p className="mt-2 text-sm text-[var(--sea-ink-soft)] leading-relaxed">
-                  {stepIntro}
-                </p>
+                <div className="mt-4 space-y-3">
+                  {stepIntro.split("\n\n").map((paragraph, i) => (
+                    <p
+                      key={i}
+                      className={`text-[var(--sea-ink-soft)] leading-relaxed ${
+                        currentStep.fields.length === 0
+                          ? "text-base sm:text-lg"
+                          : "text-sm sm:text-base"
+                      }`}
+                    >
+                      {paragraph.split(/(\*\*.*?\*\*)/g).map((part, idx) =>
+                        part.startsWith("**") && part.endsWith("**") ? (
+                          <strong
+                            key={idx}
+                            className="font-bold text-[var(--sea-ink)]"
+                          >
+                            {part.slice(2, -2)}
+                          </strong>
+                        ) : (
+                          part
+                        )
+                      )}
+                    </p>
+                  ))}
+                </div>
               )}
             </div>
 

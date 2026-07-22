@@ -516,6 +516,13 @@ export const onboardingSteps: readonly OnboardingStep[] = [
     ],
   },
   {
+    id: 'p8b',
+    title: 'Ahora vamos a los gastos',
+    intro:
+      'Los vamos a mirar en tres grupos:\n\n**Pagos fijos**: los que tenés que pagar sí o sí todos los meses, como el alquiler o el colegio.\n\n**Gastos necesarios**: los que cambian según el mes y tus decisiones, pero siempre están, como la comida o la nafta.\n\n**Gustitos**: esos vienen después.',
+    fields: [],
+  },
+  {
     id: "p9",
     title: "Lo que pagás sí o sí todos los meses",
     intro:
