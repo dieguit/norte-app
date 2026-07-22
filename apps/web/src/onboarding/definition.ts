@@ -147,7 +147,7 @@ function inferFixedExpenseMode(answers: OnboardingAnswers) {
   return undefined;
 }
 
-function withInferredFixedExpenseMode(answers: OnboardingAnswers) {
+function withInferredFixedExpenseMode(answers: OnboardingAnswers): OnboardingAnswers {
   const normalized = { ...answers };
   if (!Array.isArray(normalized.fijo_otros)) {
     const legacyOthers = [1, 2].flatMap((index) => {
