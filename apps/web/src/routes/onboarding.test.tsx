@@ -434,11 +434,11 @@ describe('OnboardingPage component tests', () => {
         labels: [/alquiler \/ vivienda/i],
       },
       {
-        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000 },
-        labels: [/comida \/ súper/i, /el total, si lo tenés/i],
+        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000, p11_modo: 'Quiero desglosar' },
+        labels: [/comida \/ súper/i],
       },
       {
-        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000, var_total_directo: 80000 },
+        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000, var_total_directo: 80000, p12_modo: 'Quiero desglosar' },
         labels: [/salidas/i, /hobbies \/ actividades propias/i],
       },
     ]
@@ -461,6 +461,7 @@ describe('OnboardingPage component tests', () => {
       ing_total: 500000,
       fijo_total_directo: 100000,
       var_total_directo: 80000,
+      p12_modo: 'Quiero desglosar',
     })
     render(<OnboardingPage />)
 
@@ -478,6 +479,7 @@ describe('OnboardingPage component tests', () => {
       ing_total: 500000,
       fijo_total_directo: 100000,
       var_total_directo: 80000,
+      p12_modo: 'Quiero desglosar',
     })
     render(<OnboardingPage />)
 
@@ -1008,6 +1010,7 @@ describe('OnboardingPage component tests', () => {
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
       var_total_directo: 100000,
+      p12_modo: 'Quiero desglosar',
     })
     render(<OnboardingPage />)
     await user.type(await screen.findByLabelText(/salidas/i), '100000')
@@ -1174,6 +1177,7 @@ describe('OnboardingPage component tests', () => {
       p9_modo: 'Tengo el total en la cabeza',
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Quiero desglosar',
     })
     render(<OnboardingPage />)
     const dailyExpensesHelper = await screen.findByText(helperText)
@@ -1197,6 +1201,7 @@ describe('OnboardingPage component tests', () => {
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
       var_total_directo: 100000,
+      p12_modo: 'Quiero desglosar',
     })
     render(<OnboardingPage />)
     const gustitosHelper = await screen.findByText(helperText)

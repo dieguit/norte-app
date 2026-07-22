@@ -617,6 +617,57 @@ describe('onboarding draft', () => {
       .toEqual(['e13_salidas'])
   })
 
+  it('shows only the selected daily-expense mode and filters hidden answers', () => {
+    const p11 = onboardingSteps.find(({ id }) => id === 'p11')!
+
+    expect(getVisibleFields(p11, { p11_modo: 'Tengo el total en la cabeza' })
+      .map(({ id }) => id)).toEqual(['p11_modo', 'var_total_directo'])
+    expect(filterAnswersForActiveSteps({
+      p11_modo: 'Tengo el total en la cabeza',
+      var_comida: 1000,
+      var_total_directo: 5000,
+    })).toEqual({ p11_modo: 'Tengo el total en la cabeza', var_total_directo: 5000 })
+  })
+
+  it('requires a positive total or detailed daily expense and names positive others', () => {
+    const p11 = onboardingSteps.find(({ id }) => id === 'p11')!
+
+    expect(validateStep(p11, { p11_modo: 'Tengo el total en la cabeza' }))
+      .toEqual({ var_total_directo: 'Ingresá un total aproximado mayor a cero.' })
+    expect(validateStep(p11, { p11_modo: 'Quiero desglosar' }))
+      .toEqual({ var_comida: 'Completá al menos un gasto de vida diaria.' })
+    expect(validateStep(p11, { p11_modo: 'Quiero desglosar', var_otro1_monto: 500 }))
+      .toEqual({ var_otro1_concepto: 'Debe ingresar el concepto.' })
+  })
+
+  it('shows direct total mode and fixed reduction choices for discretionary spending', () => {
+    const p12 = onboardingSteps.find(({ id }) => id === 'p12')!
+    const p13 = onboardingSteps.find(({ id }) => id === 'p13')!
+
+    expect(getVisibleFields(p12, { p12_modo: 'Tengo el total en la cabeza' })
+      .map(({ id }) => id)).toEqual(['p12_modo', 'd_total_directo'])
+    expect(filterAnswersForActiveSteps({
+      p12_modo: 'Tengo el total en la cabeza',
+      d_salidas: 1000,
+      d_total_directo: 5000,
+    })).toEqual({ p12_modo: 'Tengo el total en la cabeza', d_total_directo: 5000 })
+    expect(getVisibleFields(p13, { p12_modo: 'Tengo el total en la cabeza' })
+      .map(({ id }) => id)).toEqual([
+        'e13_salidas', 'e13_ropa', 'e13_delivery', 'e13_susc', 'e13_hobbies',
+      ])
+  })
+
+  it('requires a positive discretionary total or detail and a name for positive others', () => {
+    const p12 = onboardingSteps.find(({ id }) => id === 'p12')!
+
+    expect(validateStep(p12, { p12_modo: 'Tengo el total en la cabeza' }))
+      .toEqual({ d_total_directo: 'Ingresá un total aproximado mayor a cero.' })
+    expect(validateStep(p12, { p12_modo: 'Quiero desglosar' }))
+      .toEqual({ d_salidas: 'Completá al menos un gasto de gustitos.' })
+    expect(validateStep(p12, { p12_modo: 'Quiero desglosar', d_otro1_monto: 500 }))
+      .toEqual({ d_otro1_concepto: 'Debe ingresar el concepto.' })
+  })
+
   it('skips required validation for hidden fields', () => {
     const step = {
       id: 'conditional-test',

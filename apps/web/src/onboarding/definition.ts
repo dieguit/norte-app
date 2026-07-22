@@ -147,6 +147,56 @@ function inferFixedExpenseMode(answers: OnboardingAnswers) {
   return undefined;
 }
 
+function inferDailyExpenseMode(answers: OnboardingAnswers) {
+  if (
+    answers.p11_modo === "Tengo el total en la cabeza" ||
+    answers.p11_modo === "Quiero desglosar"
+  ) {
+    return answers.p11_modo;
+  }
+  if (hasPositiveAmount(answers, "var_total_directo")) {
+    return "Tengo el total en la cabeza";
+  }
+  const detailKeys = [
+    "var_comida",
+    "var_transporte",
+    "var_farmacia",
+    "var_otro1_monto",
+    "var_otro2_monto",
+    "var_otro3_monto",
+  ];
+  if (detailKeys.some((key) => hasPositiveAmount(answers, key))) {
+    return "Quiero desglosar";
+  }
+  return undefined;
+}
+
+function inferDiscretionaryExpenseMode(answers: OnboardingAnswers) {
+  if (
+    answers.p12_modo === "Tengo el total en la cabeza" ||
+    answers.p12_modo === "Quiero desglosar"
+  ) {
+    return answers.p12_modo;
+  }
+  if (hasPositiveAmount(answers, "d_total_directo")) {
+    return "Tengo el total en la cabeza";
+  }
+  const detailKeys = [
+    "d_salidas",
+    "d_ropa",
+    "d_delivery",
+    "d_susc",
+    "d_hobbies",
+    "d_otro1_monto",
+    "d_otro2_monto",
+    "d_otro3_monto",
+  ];
+  if (detailKeys.some((key) => hasPositiveAmount(answers, key))) {
+    return "Quiero desglosar";
+  }
+  return undefined;
+}
+
 function withInferredFixedExpenseMode(answers: OnboardingAnswers) {
   const normalized = { ...answers };
   if (!Array.isArray(normalized.fijo_otros)) {
@@ -189,10 +239,16 @@ function withInferredFixedExpenseMode(answers: OnboardingAnswers) {
     delete normalized[`fijo_otro${index}_hasta`];
   }
 
-  const mode = inferFixedExpenseMode(normalized);
-  return mode && normalized.p9_modo === undefined
-    ? { ...normalized, p9_modo: mode }
-    : normalized;
+  const p9Mode = inferFixedExpenseMode(normalized);
+  const p11Mode = inferDailyExpenseMode(normalized);
+  const p12Mode = inferDiscretionaryExpenseMode(normalized);
+
+  return {
+    ...normalized,
+    ...(p9Mode && normalized.p9_modo === undefined ? { p9_modo: p9Mode } : {}),
+    ...(p11Mode && normalized.p11_modo === undefined ? { p11_modo: p11Mode } : {}),
+    ...(p12Mode && normalized.p12_modo === undefined ? { p12_modo: p12Mode } : {}),
+  };
 }
 
 export const isDetailedFixedExpense = (answers: OnboardingAnswers) =>
@@ -689,24 +745,74 @@ export const onboardingSteps: readonly OnboardingStep[] = [
     intro:
       "Ahora la vida de todos los días. Cosas necesarias, más variables que las fijas de arriba, pero que siempre están. Y no te preocupes: los gustitos vienen después, no los mezcles acá.",
     fields: [
-      { id: "var_comida", type: "number", label: "Comida / súper ($)" },
-      { id: "var_transporte", type: "number", label: "Nafta / transporte ($)" },
-      { id: "var_farmacia", type: "number", label: "Farmacia ($)" },
+      {
+        id: "p11_modo",
+        type: "radio",
+        label: "¿total en la cabeza o desglosás?",
+        options: ["Tengo el total en la cabeza", "Quiero desglosar"],
+        required: true,
+      },
+      {
+        id: "var_comida",
+        type: "number",
+        label: "Comida / súper ($)",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
+      },
+      {
+        id: "var_transporte",
+        type: "number",
+        label: "Nafta / transporte ($)",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
+      },
+      {
+        id: "var_farmacia",
+        type: "number",
+        label: "Farmacia ($)",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
+      },
       {
         id: "var_otro1_concepto",
         type: "text",
         label: "Otro 1 (concepto)",
         helpText: "No hace falta que llenes todos",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
       },
-      { id: "var_otro1_monto", type: "number", label: "Otro 1 ($)" },
-      { id: "var_otro2_concepto", type: "text", label: "Otro 2 (concepto)" },
-      { id: "var_otro2_monto", type: "number", label: "Otro 2 ($)" },
-      { id: "var_otro3_concepto", type: "text", label: "Otro 3 (concepto)" },
-      { id: "var_otro3_monto", type: "number", label: "Otro 3 ($)" },
+      {
+        id: "var_otro1_monto",
+        type: "number",
+        label: "Otro 1 ($)",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
+      },
+      {
+        id: "var_otro2_concepto",
+        type: "text",
+        label: "Otro 2 (concepto)",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
+      },
+      {
+        id: "var_otro2_monto",
+        type: "number",
+        label: "Otro 2 ($)",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
+      },
+      {
+        id: "var_otro3_concepto",
+        type: "text",
+        label: "Otro 3 (concepto)",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
+      },
+      {
+        id: "var_otro3_monto",
+        type: "number",
+        label: "Otro 3 ($)",
+        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
+      },
       {
         id: "var_total_directo",
         type: "number",
-        label: "O el total, si lo tenés en la cabeza ($)",
+        label: "Total aproximado ($)",
+        visibleWhen: (answers) =>
+          answers.p11_modo === "Tengo el total en la cabeza",
       },
     ],
   },
@@ -716,26 +822,87 @@ export const onboardingSteps: readonly OnboardingStep[] = [
     intro:
       "Ahora sí: los gustitos pecaminosos. Esos que te das porque te los merecés, y está perfecto. Solo queremos saber cuánto pesan. Acá nadie te reta.",
     fields: [
-      { id: "d_salidas", type: "number", label: "Salidas ($)" },
-      { id: "d_ropa", type: "number", label: "Ropa ($)" },
-      { id: "d_delivery", type: "number", label: "Delivery ($)" },
-      { id: "d_susc", type: "number", label: "Suscripciones ($)" },
+      {
+        id: "p12_modo",
+        type: "radio",
+        label: "¿total en la cabeza o desglosás?",
+        options: ["Tengo el total en la cabeza", "Quiero desglosar"],
+        required: true,
+      },
+      {
+        id: "d_salidas",
+        type: "number",
+        label: "Salidas ($)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
+      {
+        id: "d_ropa",
+        type: "number",
+        label: "Ropa ($)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
+      {
+        id: "d_delivery",
+        type: "number",
+        label: "Delivery ($)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
+      {
+        id: "d_susc",
+        type: "number",
+        label: "Suscripciones ($)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
       {
         id: "d_hobbies",
         type: "number",
         label: "Hobbies / actividades propias ($)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
       },
       {
         id: "d_otro1_concepto",
         type: "text",
         label: "Otro 1 (concepto)",
         helpText: "No hace falta que llenes todos",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
       },
-      { id: "d_otro1_monto", type: "number", label: "Otro 1 ($)" },
-      { id: "d_otro2_concepto", type: "text", label: "Otro 2 (concepto)" },
-      { id: "d_otro2_monto", type: "number", label: "Otro 2 ($)" },
-      { id: "d_otro3_concepto", type: "text", label: "Otro 3 (concepto)" },
-      { id: "d_otro3_monto", type: "number", label: "Otro 3 ($)" },
+      {
+        id: "d_otro1_monto",
+        type: "number",
+        label: "Otro 1 ($)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
+      {
+        id: "d_otro2_concepto",
+        type: "text",
+        label: "Otro 2 (concepto)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
+      {
+        id: "d_otro2_monto",
+        type: "number",
+        label: "Otro 2 ($)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
+      {
+        id: "d_otro3_concepto",
+        type: "text",
+        label: "Otro 3 (concepto)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
+      {
+        id: "d_otro3_monto",
+        type: "number",
+        label: "Otro 3 ($)",
+        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
+      },
+      {
+        id: "d_total_directo",
+        type: "number",
+        label: "Total aproximado ($)",
+        visibleWhen: (answers) =>
+          answers.p12_modo === "Tengo el total en la cabeza",
+      },
     ],
   },
   {
@@ -765,7 +932,9 @@ export const onboardingSteps: readonly OnboardingStep[] = [
           "No lo toco ni en crisis",
         ],
         visibleWhen: (answers: OnboardingAnswers) =>
-          hasPositiveAmount(answers, answerId),
+          answers.p12_modo === "Tengo el total en la cabeza"
+            ? !id.startsWith("e13_otro")
+            : hasPositiveAmount(answers, answerId),
       })),
     ],
   },
@@ -1218,6 +1387,7 @@ export function validateStep(
   }
 
   if (step.id === "p11") {
+    const mode = normalizedAnswers.p11_modo;
     const detailKeys = [
       "var_comida",
       "var_transporte",
@@ -1226,19 +1396,21 @@ export function validateStep(
       "var_otro2_monto",
       "var_otro3_monto",
     ];
-    const hasDetail = detailKeys.some((key) => {
-      const val = answers[key];
-      return typeof val === "number" && val > 0;
-    });
-    const totalDirecto = answers.var_total_directo;
-    const hasDirectTotal = typeof totalDirecto === "number" && totalDirecto > 0;
-    if (!hasDetail && !hasDirectTotal) {
-      errors.var_total_directo =
-        "Completá al menos un ítem o el total directo.";
+    if (
+      mode === "Tengo el total en la cabeza" &&
+      !hasPositiveAmount(normalizedAnswers, "var_total_directo")
+    ) {
+      errors.var_total_directo = "Ingresá un total aproximado mayor a cero.";
+    } else if (
+      mode === "Quiero desglosar" &&
+      !detailKeys.some((key) => hasPositiveAmount(normalizedAnswers, key))
+    ) {
+      errors.var_comida = "Completá al menos un gasto de vida diaria.";
     }
   }
 
   if (step.id === "p12") {
+    const mode = normalizedAnswers.p12_modo;
     const detailKeys = [
       "d_salidas",
       "d_ropa",
@@ -1249,11 +1421,15 @@ export function validateStep(
       "d_otro2_monto",
       "d_otro3_monto",
     ];
-    const hasDetail = detailKeys.some((key) => {
-      const val = answers[key];
-      return typeof val === "number" && val > 0;
-    });
-    if (!hasDetail) {
+    if (
+      mode === "Tengo el total en la cabeza" &&
+      !hasPositiveAmount(normalizedAnswers, "d_total_directo")
+    ) {
+      errors.d_total_directo = "Ingresá un total aproximado mayor a cero.";
+    } else if (
+      mode === "Quiero desglosar" &&
+      !detailKeys.some((key) => hasPositiveAmount(normalizedAnswers, key))
+    ) {
       errors.d_salidas = "Completá al menos un gasto de gustitos.";
     }
   }
