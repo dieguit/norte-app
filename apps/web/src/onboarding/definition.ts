@@ -387,7 +387,8 @@ export const onboardingSteps: readonly OnboardingStep[] = [
   },
   {
     id: "p6",
-    title: "¿Ese ingreso de un tercero puede fallar o atrasarse?",
+    title:
+      "Dijiste que recibís ingresos de un tercero. ¿Puede fallar o atrasarse?",
     visibleWhen: (answers) => {
       const fuentes = answers.p5_fuentes;
       if (Array.isArray(fuentes)) {
@@ -471,6 +472,8 @@ export const onboardingSteps: readonly OnboardingStep[] = [
   {
     id: "p7",
     title: "¿Tenés algún ingreso extra YA definido para los próximos 12 meses?",
+    intro:
+      "Por ejemplo: aguinaldo, bono por resultados, una clase extra, una venta.",
     fields: [
       {
         id: "extra_tiene",
@@ -497,13 +500,15 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             key: "desde",
             type: "month",
             label: "Desde cuándo",
+            helpText: "Elegí el primer mes en que lo vas a recibir.",
             required: true,
           },
           {
             key: "hasta",
             type: "month",
             label: "Hasta cuándo",
-            helpText: "Si es indefinido, podés dejarlo vacío",
+            helpText:
+              "Elegí el último mes. Si elegís el mismo que en Desde cuándo, cuenta solo para ese mes.",
           },
         ],
         visibleWhen: (answers) => answers.extra_tiene === "Sí",

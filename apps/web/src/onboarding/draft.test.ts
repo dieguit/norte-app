@@ -339,6 +339,26 @@ describe('onboarding draft', () => {
       ])
   })
 
+  it('describes extra incomes and one-month periods', () => {
+    const step = onboardingSteps.find(({ id }) => id === 'p7')!
+    const extraIncome = getVisibleFields(step, { extra_tiene: 'Sí' })
+      .find(({ id }) => id === 'ingresos_extra')!
+
+    expect(step.intro).toBe(
+      'Por ejemplo: aguinaldo, bono por resultados, una clase extra, una venta.',
+    )
+    expect(extraIncome.itemFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'desde',
+        helpText: 'Elegí el primer mes en que lo vas a recibir.',
+      }),
+      expect.objectContaining({
+        key: 'hasta',
+        helpText: 'Elegí el último mes. Si elegís el mismo que en Desde cuándo, cuenta solo para ese mes.',
+      }),
+    ]))
+  })
+
   it('filters hidden P14 purchase pairs and validates each visible amount concept', () => {
     expect(filterAnswersForActiveSteps({
       p14_tiene_compras: 'No',

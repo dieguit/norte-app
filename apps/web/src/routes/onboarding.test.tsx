@@ -418,7 +418,9 @@ describe('OnboardingPage component tests', () => {
     await user.click(screen.getByRole('checkbox', { name: /aportes de un tercero/i }))
     await continueStep(user)
 
-    expect(await screen.findByRole('heading', { name: /ese ingreso de un tercero/i })).toBeDefined()
+    expect(await screen.findByRole('heading', {
+      name: 'Dijiste que recibís ingresos de un tercero. ¿Puede fallar o atrasarse?',
+    })).toBeDefined()
   })
 
   it('renders P9, P11, and P12 rows as independent inputs without a table', async () => {

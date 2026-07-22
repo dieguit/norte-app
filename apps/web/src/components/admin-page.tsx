@@ -102,22 +102,6 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
     }
   }
 
-  function createInvitation() {
-    const id = crypto.randomUUID()
-    setLink(`${window.location.origin}/onboarding?invitado=${id}`)
-    setCopyMessage(null)
-  }
-
-  async function copyInvitation() {
-    if (!link) return
-    try {
-      await navigator.clipboard.writeText(link)
-      setCopyMessage('Enlace copiado.')
-    } catch {
-      setCopyMessage('No se pudo copiar el enlace. Podés copiarlo manualmente.')
-    }
-  }
-
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
