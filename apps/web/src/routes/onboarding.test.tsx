@@ -43,8 +43,11 @@ async function advanceToCard(cardIndex: number) {
   setDraft({
     p1_pesa: 'Otra',
     ing_total: 500000,
+    p9_modo: 'Tengo el total en la cabeza',
     fijo_total_directo: 1,
+    p11_modo: 'Tengo el total en la cabeza',
     var_total_directo: 1,
+    p12_modo: 'Quiero desglosar',
     d_salidas: 1,
     p15_tarjetas: cardIndex,
   })
@@ -438,7 +441,7 @@ describe('OnboardingPage component tests', () => {
         labels: [/comida \/ súper/i],
       },
       {
-        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000, var_total_directo: 80000, p12_modo: 'Quiero desglosar' },
+        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000, p11_modo: 'Tengo el total en la cabeza', var_total_directo: 80000, p12_modo: 'Quiero desglosar' },
         labels: [/salidas/i, /hobbies \/ actividades propias/i],
       },
     ]
@@ -459,7 +462,9 @@ describe('OnboardingPage component tests', () => {
     setDraft({
       p1_pesa: 'Otra',
       ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
       fijo_total_directo: 100000,
+      p11_modo: 'Tengo el total en la cabeza',
       var_total_directo: 80000,
       p12_modo: 'Quiero desglosar',
     })
@@ -477,7 +482,9 @@ describe('OnboardingPage component tests', () => {
     setDraft({
       p1_pesa: 'Otra',
       ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
       fijo_total_directo: 100000,
+      p11_modo: 'Tengo el total en la cabeza',
       var_total_directo: 80000,
       p12_modo: 'Quiero desglosar',
     })
@@ -860,8 +867,11 @@ describe('OnboardingPage component tests', () => {
     setDraft({
       p1_pesa: 'Otra',
       ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
       fijo_total_directo: 1,
+      p11_modo: 'Tengo el total en la cabeza',
       var_total_directo: 1,
+      p12_modo: 'Quiero desglosar',
       d_salidas: 1,
       p15_tarjetas: 1,
       t1_cuotas_modo: 'Subir foto o archivo',
@@ -1009,6 +1019,7 @@ describe('OnboardingPage component tests', () => {
       extra_tiene: 'No',
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Tengo el total en la cabeza',
       var_total_directo: 100000,
       p12_modo: 'Quiero desglosar',
     })
@@ -1200,6 +1211,7 @@ describe('OnboardingPage component tests', () => {
       p9_modo: 'Tengo el total en la cabeza',
       fijo_total_directo: 100000,
       p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Tengo el total en la cabeza',
       var_total_directo: 100000,
       p12_modo: 'Quiero desglosar',
     })

@@ -147,56 +147,6 @@ function inferFixedExpenseMode(answers: OnboardingAnswers) {
   return undefined;
 }
 
-function inferDailyExpenseMode(answers: OnboardingAnswers) {
-  if (
-    answers.p11_modo === "Tengo el total en la cabeza" ||
-    answers.p11_modo === "Quiero desglosar"
-  ) {
-    return answers.p11_modo;
-  }
-  if (hasPositiveAmount(answers, "var_total_directo")) {
-    return "Tengo el total en la cabeza";
-  }
-  const detailKeys = [
-    "var_comida",
-    "var_transporte",
-    "var_farmacia",
-    "var_otro1_monto",
-    "var_otro2_monto",
-    "var_otro3_monto",
-  ];
-  if (detailKeys.some((key) => hasPositiveAmount(answers, key))) {
-    return "Quiero desglosar";
-  }
-  return undefined;
-}
-
-function inferDiscretionaryExpenseMode(answers: OnboardingAnswers) {
-  if (
-    answers.p12_modo === "Tengo el total en la cabeza" ||
-    answers.p12_modo === "Quiero desglosar"
-  ) {
-    return answers.p12_modo;
-  }
-  if (hasPositiveAmount(answers, "d_total_directo")) {
-    return "Tengo el total en la cabeza";
-  }
-  const detailKeys = [
-    "d_salidas",
-    "d_ropa",
-    "d_delivery",
-    "d_susc",
-    "d_hobbies",
-    "d_otro1_monto",
-    "d_otro2_monto",
-    "d_otro3_monto",
-  ];
-  if (detailKeys.some((key) => hasPositiveAmount(answers, key))) {
-    return "Quiero desglosar";
-  }
-  return undefined;
-}
-
 function withInferredFixedExpenseMode(answers: OnboardingAnswers) {
   const normalized = { ...answers };
   if (!Array.isArray(normalized.fijo_otros)) {
@@ -240,14 +190,10 @@ function withInferredFixedExpenseMode(answers: OnboardingAnswers) {
   }
 
   const p9Mode = inferFixedExpenseMode(normalized);
-  const p11Mode = inferDailyExpenseMode(normalized);
-  const p12Mode = inferDiscretionaryExpenseMode(normalized);
 
   return {
     ...normalized,
     ...(p9Mode && normalized.p9_modo === undefined ? { p9_modo: p9Mode } : {}),
-    ...(p11Mode && normalized.p11_modo === undefined ? { p11_modo: p11Mode } : {}),
-    ...(p12Mode && normalized.p12_modo === undefined ? { p12_modo: p12Mode } : {}),
   };
 }
 
