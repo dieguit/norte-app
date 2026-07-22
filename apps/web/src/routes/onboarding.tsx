@@ -544,81 +544,86 @@ export function OnboardingPage() {
               <div className="flex-1 space-y-6">
                 {getVisibleFields(currentStep, formAnswers).map((field, index, fields) => {
                   const nextField = fields[index + 1];
-                  const renderField = (field: (typeof fields)[number]) => (
-                  <div key={field.id} className="space-y-2">
-                    {field.type !== "radio" && field.type !== "checkbox" && (
-                      <label
-                        htmlFor={field.id}
-                        className="block text-sm font-bold text-[var(--sea-ink)]"
-                      >
-                        {field.label}
-                        {field.required && (
-                          <span className="text-rose-500 ml-0.5">*</span>
-                        )}
-                      </label>
-                    )}
+                  const renderField = (field: (typeof fields)[number]) => {
+                    const otherIndex = field.id.match(/^e13_otro([1-3])$/)?.[1];
+                    const concept = otherIndex ? formAnswers[`d_otro${otherIndex}_concepto`] : undefined;
+                    const fieldLabel =
+                      typeof concept === "string" && concept.trim() !== "" ? concept.trim() : field.label;
+                    return (
+                    <div key={field.id} className="space-y-2">
+                      {field.type !== "radio" && field.type !== "checkbox" && (
+                        <label
+                          htmlFor={field.id}
+                          className="block text-sm font-bold text-[var(--sea-ink)]"
+                        >
+                          {fieldLabel}
+                          {field.required && (
+                            <span className="text-rose-500 ml-0.5">*</span>
+                          )}
+                        </label>
+                      )}
 
-                    <form.Field name={field.id}>
-                      {(fieldState) => {
-                        switch (field.type) {
-                          case "radio":
-                            return (
-                              <fieldset
-                                aria-describedby={getAriaDescribedBy(field.id, !!field.helpText, !!validationErrors[field.id])}
-                                className="flex flex-col gap-2"
-                              >
-                                <legend className="mb-2 block text-sm font-bold text-[var(--sea-ink)]">
-                                  {field.label}
-                                  {field.required && (
-                                    <span className="text-rose-500 ml-0.5">
-                                      *
-                                    </span>
-                                  )}
-                                </legend>
-                                {field.options?.map((option) => {
-                                  const isDisabled =
-                                    field.disabledOptions?.includes(option) ??
-                                    false;
-                                  return (
-                                    <label
-                                      key={option}
-                                      htmlFor={`${field.id}-${option}`}
-                                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] text-base font-medium text-[var(--sea-ink)] transition-all focus-within:ring-2 focus-within:ring-[var(--lagoon-deep)] ${isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-[var(--foam)] active:scale-[0.99]"}`}
-                                    >
-                                      <input
-                                        id={`${field.id}-${option}`}
-                                        type="radio"
-                                        name={field.id}
-                                        value={option}
-                                        checked={
-                                          fieldState.state.value === option
-                                        }
-                                        disabled={isDisabled}
-                                        onChange={() =>
-                                          fieldState.handleChange(option)
-                                        }
-                                        className="size-5 accent-[var(--lagoon-deep)] cursor-pointer"
-                                      />
-                                      {option}
-                                    </label>
-                                  );
-                                })}
-                              </fieldset>
-                            );
-                          case "checkbox":
-                            return (
-                              <fieldset
-                                aria-describedby={getAriaDescribedBy(field.id, !!field.helpText, !!validationErrors[field.id])}
-                                className="flex flex-col gap-2"
-                              >
-                                <legend className="mb-2 block text-sm font-bold text-[var(--sea-ink)]">
-                                  {field.label}
-                                  {field.required && (
-                                    <span className="text-rose-500 ml-0.5">
-                                      *
-                                    </span>
-                                  )}
-                                </legend>
+                      <form.Field name={field.id}>
+                        {(fieldState) => {
+                          switch (field.type) {
+                            case "radio":
+                              return (
+                                <fieldset
+                                  aria-describedby={getAriaDescribedBy(field.id, !!field.helpText, !!validationErrors[field.id])}
+                                  className="flex flex-col gap-2"
+                                >
+                                  <legend className="mb-2 block text-sm font-bold text-[var(--sea-ink)]">
+                                    {fieldLabel}
+                                    {field.required && (
+                                      <span className="text-rose-500 ml-0.5">
+                                        *
+                                      </span>
+                                    )}
+                                  </legend>
+                                  {field.options?.map((option) => {
+                                    const isDisabled =
+                                      field.disabledOptions?.includes(option) ??
+                                      false;
+                                    return (
+                                      <label
+                                        key={option}
+                                        htmlFor={`${field.id}-${option}`}
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] text-base font-medium text-[var(--sea-ink)] transition-all focus-within:ring-2 focus-within:ring-[var(--lagoon-deep)] ${isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-[var(--foam)] active:scale-[0.99]"}`}
+                                      >
+                                        <input
+                                          id={`${field.id}-${option}`}
+                                          type="radio"
+                                          name={field.id}
+                                          value={option}
+                                          checked={
+                                            fieldState.state.value === option
+                                          }
+                                          disabled={isDisabled}
+                                          onChange={() =>
+                                            fieldState.handleChange(option)
+                                          }
+                                          className="size-5 accent-[var(--lagoon-deep)] cursor-pointer"
+                                        />
+                                        {option}
+                                      </label>
+                                    );
+                                  })}
+                                </fieldset>
+                              );
+                            case "checkbox":
+                              return (
+                                <fieldset
+                                  aria-describedby={getAriaDescribedBy(field.id, !!field.helpText, !!validationErrors[field.id])}
+                                  className="flex flex-col gap-2"
+                                >
+                                  <legend className="mb-2 block text-sm font-bold text-[var(--sea-ink)]">
+                                    {fieldLabel}
+                                    {field.required && (
+                                      <span className="text-rose-500 ml-0.5">
+                                        *
+                                      </span>
+                                    )}
+                                  </legend>
                                 {field.options?.map((option) => {
                                   const selected = Array.isArray(
                                     fieldState.state.value,
@@ -825,7 +830,8 @@ export function OnboardingPage() {
                       </p>
                     )}
                   </div>
-                  );
+                );
+              };
                   if (field.id.endsWith("_postcierre_cuotas_cantidad") && fields[index - 1]?.id.endsWith("_postcierre_cuotas")) {
                     return null;
                   }

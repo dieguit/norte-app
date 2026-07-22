@@ -477,6 +477,33 @@ describe('OnboardingPage component tests', () => {
     expect(screen.queryByRole('radio', { name: /ropa/i })).toBeNull()
   })
 
+  it('uses the declared discretionary-other concept in reduction decisions', async () => {
+    const user = userEvent.setup()
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Tengo el total en la cabeza',
+      var_total_directo: 100000,
+      p12_modo: 'Quiero desglosar',
+      d_otro1_concepto: 'Regalos',
+    })
+
+    render(<OnboardingPage />)
+
+    const otro1Input = await screen.findByLabelText('Otro 1 ($)')
+    await user.type(otro1Input, '5000')
+    await continueStep(user)
+
+    expect(await screen.findByRole('heading', { name: /qué harías con cada gustito/i })).toBeDefined()
+    expect(screen.getByText('Regalos')).toBeDefined()
+    expect(screen.queryByText('Otro 1')).toBeNull()
+  })
+
   it('shows P14 purchase rows only after selecting Sí', async () => {
     const user = userEvent.setup()
     setDraft({
