@@ -533,16 +533,44 @@ describe('OnboardingPage component tests', () => {
     expect(screen.queryByRole('table')).toBeNull()
   })
 
-  it('shows only upload field for the statement path', async () => {
+  it('reveals optional post-close inputs after uploading the statement', async () => {
     const user = userEvent.setup()
     await advanceToCard(1)
     await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
 
-    expect(screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' })).toBeDefined()
-    expect(screen.queryByLabelText(/a ojo/i)).toBeNull()
-    expect(screen.queryByLabelText(/en pesos/i)).toBeNull()
-    expect(screen.queryByLabelText(/monto impago/i)).toBeNull()
-    expect(screen.queryByLabelText(/día de cierre/i)).toBeNull()
+    expect(screen.queryByLabelText(/cuánto gastaste desde el cierre/i)).toBeNull()
+    expect(screen.queryByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toBeNull()
+
+    const mockXHR = {
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+      upload: {} as any,
+      status: 200,
+      onload: null as any,
+    }
+    mockXHR.send.mockImplementation(() => {
+      mockXHR.upload.onprogress?.({ lengthComputable: true, loaded: 1, total: 1 })
+      mockXHR.onload?.()
+    })
+    vi.stubGlobal('XMLHttpRequest', function MockXMLHttpRequest() {
+      return mockXHR
+    })
+    const file = new File(['a'], 'resumen.pdf', { type: 'application/pdf' })
+    await user.upload(
+      screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' }),
+      file,
+    )
+
+    expect(await screen.findByLabelText(/cuánto gastaste desde el cierre/i)).toBeDefined()
+    expect(screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toBeDefined()
+    expect(screen.getByLabelText(/subí una captura de los últimos movimientos/i)).toBeDefined()
+    expect(screen.queryByLabelText('¿En cuántas cuotas?')).toBeNull()
+
+    await user.click(within(screen.getByRole('group', {
+      name: '¿Algo de eso fue en cuotas?',
+    })).getByRole('radio', { name: 'Sí' }))
+    expect(screen.getByLabelText('¿En cuántas cuotas?')).toBeDefined()
   })
 
   it('keeps all manual card inputs on one screen', async () => {
