@@ -1404,11 +1404,12 @@ export function validateStep(
   if (step.id.endsWith("_p16")) {
     const prefix = step.id.split("_")[0];
     const mode = answers[`${prefix}_cuotas_modo`];
+    const uploadUrl = answers[`${prefix}_upload_url`];
     const hasPostCloseFields =
       mode === "Copiar el renglón mes a mes" ||
       (mode === "Subir foto o archivo" &&
-        typeof answers[`${prefix}_upload_url`] === "string" &&
-        answers[`${prefix}_upload_url`].trim() !== "");
+        typeof uploadUrl === "string" &&
+        uploadUrl.trim() !== "");
 
     if (!mode) {
       errors[`${prefix}_cuotas_modo`] = "Elegí una opción para continuar.";
