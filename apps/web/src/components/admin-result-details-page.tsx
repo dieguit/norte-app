@@ -10,7 +10,7 @@ function isBlank(value: unknown) {
 }
 
 function formatValue(field: OnboardingField | RepeatedItemField, value: unknown) {
-  if (isBlank(value)) return 'Sin respuesta'
+  if (isBlank(value)) return '-'
   if (typeof value === 'boolean') return value ? 'Sí' : 'No'
   if (field.type === 'number' || field.type === 'currency') {
     const number = typeof value === 'number' ? value : Number(value)
@@ -31,7 +31,7 @@ function AnswerValue({
   if (field.type === 'upload') {
     const fileUrl = files[field.id]
     if (!fileUrl) {
-      return <span>Sin respuesta</span>
+      return <span>-</span>
     }
     return (
       <a
@@ -47,7 +47,7 @@ function AnswerValue({
 
   if (field.type === 'repeated') {
     if (isBlank(value) || !Array.isArray(value) || value.length === 0) {
-      return <span>Sin respuesta</span>
+      return <span>-</span>
     }
     const itemFields = field.itemFields || []
     const titleKey = (field.itemTitleKey as string) ?? 'concepto'

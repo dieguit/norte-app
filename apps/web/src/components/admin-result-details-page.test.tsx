@@ -65,7 +65,7 @@ describe('AdminResultDetailsPage', () => {
     expect(screen.getByText('Clases')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /descargar subir foto o archivo/i }))
       .toHaveAttribute('href', 'https://download.example/statement')
-    expect(screen.getAllByText('Sin respuesta').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('-').length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'Volver a administración' }))
       .toHaveAttribute('href', '/admin')
   })

@@ -1,6 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { getAdminSession } from '../admin/auth'
-import { AdminPage } from '../components/admin-page'
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async () => {
@@ -19,6 +18,5 @@ export const Route = createFileRoute('/admin')({
 })
 
 function AdminComponent() {
-  const { authenticated } = Route.useRouteContext()
-  return <AdminPage authenticated={authenticated} />
+  return <Outlet />
 }

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getAdminSession } from '../admin/auth'
-import { AdminResultDetailsPage } from '../components/admin-result-details-page'
+import { getAdminSession } from '../../admin/auth'
+import { AdminResultDetailsPage } from '../../components/admin-result-details-page'
 
 export const Route = createFileRoute('/admin/resultados/$deviceId')({
   beforeLoad: async () => ({ authenticated: await getAdminSession() }),
