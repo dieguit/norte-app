@@ -258,6 +258,12 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                           <tr>
                             <td colSpan={3} className="bg-[color-mix(in_oklab,var(--chip-bg)_92%,black_8%)] dark:bg-[color-mix(in_oklab,var(--chip-bg)_92%,white_8%)]">
                               <div id={`files-container-${device.deviceId}`} className="p-2 space-y-2">
+                                <a
+                                  href={`/admin/resultados/${device.deviceId}`}
+                                  className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] px-2.5 text-sm font-medium text-[var(--sea-ink)] hover:bg-[var(--chip-bg)]"
+                                >
+                                  Ver resultados
+                                </a>
                                 {device.status === 'completed' && (
                                   <Button
                                     type="button"

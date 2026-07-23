@@ -121,6 +121,9 @@ describe('AdminPage', () => {
       expect(anaButton).toHaveAttribute('aria-expanded', 'true')
       expect(getAdminResultFiles).toHaveBeenCalledWith({ data: { deviceId: 'device-ana' } })
 
+      const detailLink = screen.getByRole('link', { name: 'Ver resultados' })
+      expect(detailLink).toHaveAttribute('href', '/admin/resultados/device-ana')
+
       // Individual download calls getAdminCsvRow with the proper device ID and triggers download
       const rowCsvButton = screen.getByRole('button', { name: 'Descargar CSV para Ana' })
       expect(rowCsvButton).toBeInTheDocument()

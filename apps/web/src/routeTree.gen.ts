@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminResultadosDeviceIdRouteImport } from './routes/admin.resultados.$deviceId'
 
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
@@ -28,34 +29,43 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminResultadosDeviceIdRoute = AdminResultadosDeviceIdRouteImport.update({
+  id: '/resultados/$deviceId',
+  path: '/resultados/$deviceId',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/admin/resultados/$deviceId': typeof AdminResultadosDeviceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/admin/resultados/$deviceId': typeof AdminResultadosDeviceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/admin/resultados/$deviceId': typeof AdminResultadosDeviceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/onboarding'
+  fullPaths: '/' | '/admin' | '/onboarding' | '/admin/resultados/$deviceId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/onboarding'
-  id: '__root__' | '/' | '/admin' | '/onboarding'
+  to: '/' | '/admin' | '/onboarding' | '/admin/resultados/$deviceId'
+  id:
+    '__root__' | '/' | '/admin' | '/onboarding' | '/admin/resultados/$deviceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
 }
 
@@ -82,23 +92,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/resultados/$deviceId': {
+      id: '/admin/resultados/$deviceId'
+      path: '/resultados/$deviceId'
+      fullPath: '/admin/resultados/$deviceId'
+      preLoaderRoute: typeof AdminResultadosDeviceIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminResultadosDeviceIdRoute: typeof AdminResultadosDeviceIdRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminResultadosDeviceIdRoute: AdminResultadosDeviceIdRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
