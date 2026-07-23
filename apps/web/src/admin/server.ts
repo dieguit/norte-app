@@ -41,3 +41,19 @@ export const getAdminCsvRow = createServerFn({ method: 'GET' })
     if (!draft?.completedAt) throw new Error('Completed draft not found')
     return { headers: csvHeaders, rows: [toAdminCsvRow(draft)] }
   })
+
+export const getAdminResultDetails = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => z.object({ deviceId: z.uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    await requireAdminSession()
+    const draft = await getDraft(data.deviceId)
+    if (!draft) return null
+
+    const files = Object.fromEntries(await Promise.all(
+      getUploadedFiles(draft).map(async (file) => [
+        file.fieldId,
+        await signDownload(file.key),
+      ]),
+    ))
+    return { draft, files }
+  })

@@ -1,16 +1,27 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { toAdminResult, getUploadedFiles } from './results'
-import { listAdminCsvRows, getAdminCsvRow } from './server'
+import { listAdminCsvRows, getAdminCsvRow, getAdminResultDetails } from './server'
 import { requireAdminSession } from './auth'
 import { listDrafts, getDraft } from '../onboarding/repository'
+import { signDownload } from '../onboarding/r2'
 import { csvHeaders } from './csv'
 
 vi.mock('@tanstack/react-start', () => ({
-  createServerFn: vi.fn().mockReturnValue({
-    validator: vi.fn().mockReturnThis(),
-    handler: vi.fn().mockImplementation((handlerFn) => {
-      return vi.fn().mockImplementation((arg) => handlerFn(arg))
-    }),
+  createServerFn: vi.fn().mockImplementation(() => {
+    let validatorFn: ((input: unknown) => unknown) | undefined
+    const builder = {
+      validator: vi.fn().mockImplementation((fn) => {
+        validatorFn = fn
+        return builder
+      }),
+      handler: vi.fn().mockImplementation((handlerFn) => {
+        return vi.fn().mockImplementation(async (arg) => {
+          const data = validatorFn ? validatorFn(arg?.data) : arg?.data
+          return handlerFn({ ...arg, data })
+        })
+      }),
+    }
+    return builder
   }),
 }))
 
@@ -21,6 +32,10 @@ vi.mock('./auth', () => ({
 vi.mock('../onboarding/repository', () => ({
   listDrafts: vi.fn(),
   getDraft: vi.fn(),
+}))
+
+vi.mock('../onboarding/r2', () => ({
+  signDownload: vi.fn(),
 }))
 
 describe('results mapping', () => {
@@ -140,5 +155,45 @@ describe('CSV export server functions', () => {
     )
     expect(requireAdminSession).toHaveBeenCalled()
     expect(getDraft).toHaveBeenCalledWith(deviceId)
+  })
+})
+
+describe('getAdminResultDetails', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('gets a draft with signed URLs for owned uploads', async () => {
+    const deviceId = '123e4567-e89b-12d3-a456-426614174000'
+    const key = `onboarding/${deviceId}/t1_upload_url/987f6543-e21b-32d1-b654-026614174000`
+    vi.mocked(getDraft).mockResolvedValue({
+      deviceId,
+      answers: { nombre: 'Ana', t1_upload_url: key },
+      completedAt: new Date('2026-07-16T12:00:00Z'),
+      updatedAt: new Date('2026-07-16T12:00:00Z'),
+    } as any)
+    vi.mocked(signDownload).mockResolvedValue('https://download.example/statement')
+
+    await expect(getAdminResultDetails({ data: { deviceId } })).resolves.toMatchObject({
+      draft: { deviceId, answers: { nombre: 'Ana' } },
+      files: { t1_upload_url: 'https://download.example/statement' },
+    })
+    expect(requireAdminSession).toHaveBeenCalled()
+    expect(getDraft).toHaveBeenCalledWith(deviceId)
+    expect(signDownload).toHaveBeenCalledWith(key)
+  })
+
+  it('returns null when the requested draft does not exist', async () => {
+    vi.mocked(getDraft).mockResolvedValue(undefined as any)
+
+    await expect(getAdminResultDetails({
+      data: { deviceId: '00000000-0000-0000-0000-000000000000' },
+    })).resolves.toBeNull()
+  })
+
+  it('rejects an invalid device ID before querying the database', async () => {
+    await expect(getAdminResultDetails({ data: { deviceId: 'not-a-uuid' } }))
+      .rejects.toThrow()
+    expect(getDraft).not.toHaveBeenCalled()
   })
 })
