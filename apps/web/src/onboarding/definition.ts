@@ -951,6 +951,13 @@ export const onboardingSteps: readonly OnboardingStep[] = [
       answers[`t${n}_cuotas_modo`] === "Copiar el renglón mes a mes";
     const uploadMode = (answers: OnboardingAnswers) =>
       answers[`t${n}_cuotas_modo`] === "Subir foto o archivo";
+    const hasUploadedStatement = (answers: OnboardingAnswers) => {
+      if (!uploadMode(answers)) return false;
+      const url = answers[`t${n}_upload_url`];
+      return typeof url === "string" && url.trim() !== "";
+    };
+    const postCierreVisible = (answers: OnboardingAnswers) =>
+      manualMode(answers) || hasUploadedStatement(answers);
 
     return [
       {
@@ -1041,7 +1048,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             type: "number",
             label: "Cuánto gastaste desde el cierre hasta ahora? A ojo ($)",
             helpText: "Cargá lo que gastaste desde el cierre del último resumen hasta hoy.",
-            visibleWhen: manualMode,
+            visibleWhen: postCierreVisible,
           },
           {
             id: `t${n}_postcierre_cuotas`,
@@ -1049,7 +1056,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             label: "¿Algo de eso fue en cuotas?",
             options: ["Sí", "No"],
             helpText: "Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.",
-            visibleWhen: manualMode,
+            visibleWhen: postCierreVisible,
           },
           {
             id: `t${n}_postcierre_cuotas_cantidad`,
@@ -1058,7 +1065,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             options: Array.from({ length: 18 }, (_, index) => String(index + 1)),
             helpText: "Elegí en cuántas cuotas se hizo esa compra.",
             visibleWhen: (answers: OnboardingAnswers) =>
-              manualMode(answers) &&
+              postCierreVisible(answers) &&
               answers[`t${n}_postcierre_cuotas`] === "Sí",
           },
           {
@@ -1067,7 +1074,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             label:
               "O subí una captura de los últimos movimientos desde el cierre",
             helpText: "Subí una captura de los movimientos desde el cierre, si te resulta más fácil.",
-            visibleWhen: manualMode,
+            visibleWhen: postCierreVisible,
           },
         ],
       },
@@ -1413,13 +1420,13 @@ export function validateStep(
       if (!months.some((key) => typeof answers[key] === "number")) {
         errors[`${prefix}_cuotas_m1`] = "Completá al menos una cuota mensual.";
       }
-      if (
-        answers[`${prefix}_postcierre_cuotas`] === "Sí" &&
-        !answers[`${prefix}_postcierre_cuotas_cantidad`]
-      ) {
-        errors[`${prefix}_postcierre_cuotas_cantidad`] =
-          "Elegí una opción para continuar.";
-      }
+    }
+    if (
+      answers[`${prefix}_postcierre_cuotas`] === "Sí" &&
+      !answers[`${prefix}_postcierre_cuotas_cantidad`]
+    ) {
+      errors[`${prefix}_postcierre_cuotas_cantidad`] =
+        "Elegí una opción para continuar.";
     }
   }
 

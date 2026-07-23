@@ -29,7 +29,7 @@ describe('onboarding draft', () => {
     expect(ids).not.toEqual(expect.arrayContaining(['t1_p17', 't1_p18', 't1_p19', 't1_p20']))
   })
 
-  it('shows only the statement upload field in upload mode', () => {
+  it('shows only the statement upload field in upload mode when no statement file is uploaded', () => {
     const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
 
     expect(getVisibleFields(step, { t1_cuotas_modo: 'Subir foto o archivo' })
@@ -37,6 +37,57 @@ describe('onboarding draft', () => {
         't1_cuotas_modo', 't1_upload_url',
       ])
   })
+
+  it('shows post-cierre optional fields in upload mode when statement file is uploaded', () => {
+    const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
+
+    expect(getVisibleFields(step, {
+      t1_cuotas_modo: 'Subir foto o archivo',
+      t1_upload_url: 'http://example.com/statement.pdf',
+    }).map(({ id }) => id)).toEqual([
+      't1_cuotas_modo', 't1_upload_url',
+      't1_postcierre', 't1_postcierre_cuotas', 't1_postcierre_upload',
+    ])
+
+    expect(getVisibleFields(step, {
+      t1_cuotas_modo: 'Subir foto o archivo',
+      t1_upload_url: 'http://example.com/statement.pdf',
+      t1_postcierre_cuotas: 'Sí',
+    }).map(({ id }) => id)).toEqual([
+      't1_cuotas_modo', 't1_upload_url',
+      't1_postcierre', 't1_postcierre_cuotas', 't1_postcierre_cuotas_cantidad', 't1_postcierre_upload',
+    ])
+  })
+
+  it('preserves post-cierre answers and validates post-cierre cuotas in upload mode when statement file is uploaded', () => {
+    const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
+
+    expect(filterAnswersForActiveSteps({
+      p15_tarjetas: 1,
+      t1_cuotas_modo: 'Subir foto o archivo',
+      t1_upload_url: 'file-key',
+      t1_postcierre: 5000,
+      t1_postcierre_cuotas: 'Sí',
+      t1_postcierre_cuotas_cantidad: '3',
+      t1_resumen_ars: 100,
+    })).toEqual({
+      p15_tarjetas: 1,
+      t1_cuotas_modo: 'Subir foto o archivo',
+      t1_upload_url: 'file-key',
+      t1_postcierre: 5000,
+      t1_postcierre_cuotas: 'Sí',
+      t1_postcierre_cuotas_cantidad: '3',
+    })
+
+    expect(validateStep(step, {
+      t1_cuotas_modo: 'Subir foto o archivo',
+      t1_upload_url: 'file-key',
+      t1_postcierre_cuotas: 'Sí',
+    })).toEqual({
+      t1_postcierre_cuotas_cantidad: 'Elegí una opción para continuar.',
+    })
+  })
+
 
   it('shows every manual card field in month-by-month mode', () => {
     const step = onboardingSteps.find(({ id }) => id === 't1_p16')!
