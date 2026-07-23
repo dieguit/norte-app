@@ -88,6 +88,27 @@ describe('onboarding draft', () => {
     })
   })
 
+  it('keeps post-close upload answers in upload mode and removes them after changing route', () => {
+    const postCloseAnswers = {
+      p15_tarjetas: 1,
+      t1_cuotas_modo: 'Subir foto o archivo',
+      t1_upload_url: 'file-key',
+      t1_postcierre: 25000,
+      t1_postcierre_cuotas: 'Sí',
+      t1_postcierre_cuotas_cantidad: '3',
+      t1_postcierre_upload: 'movement-key',
+    }
+
+    expect(filterAnswersForActiveSteps(postCloseAnswers)).toEqual(postCloseAnswers)
+    expect(filterAnswersForActiveSteps({
+      ...postCloseAnswers,
+      t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+    })).toEqual({
+      p15_tarjetas: 1,
+      t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+    })
+  })
+
 
   it('shows every manual card field in month-by-month mode', () => {
     const step = onboardingSteps.find(({ id }) => id === 't1_p16')!

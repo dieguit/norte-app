@@ -1404,6 +1404,12 @@ export function validateStep(
   if (step.id.endsWith("_p16")) {
     const prefix = step.id.split("_")[0];
     const mode = answers[`${prefix}_cuotas_modo`];
+    const hasPostCloseFields =
+      mode === "Copiar el renglón mes a mes" ||
+      (mode === "Subir foto o archivo" &&
+        typeof answers[`${prefix}_upload_url`] === "string" &&
+        answers[`${prefix}_upload_url`].trim() !== "");
+
     if (!mode) {
       errors[`${prefix}_cuotas_modo`] = "Elegí una opción para continuar.";
     } else if (mode === "Subir foto o archivo") {
@@ -1422,6 +1428,7 @@ export function validateStep(
       }
     }
     if (
+      hasPostCloseFields &&
       answers[`${prefix}_postcierre_cuotas`] === "Sí" &&
       !answers[`${prefix}_postcierre_cuotas_cantidad`]
     ) {
