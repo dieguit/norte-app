@@ -57,7 +57,11 @@ export const csvHeaders = [
   ]),
   'd_total_directo',
   'e13_salidas', 'e13_ropa', 'e13_delivery', 'e13_susc', 'e13_hobbies',
-  'n1_concepto', 'n1_monto', 'n2_concepto', 'n2_monto', 'n3_concepto', 'n3_monto',
+  ...[1, 2, 3, 4, 5].flatMap((number) => [
+    `compra_necesaria_${number}_concepto`,
+    `compra_necesaria_${number}_monto`,
+    `compra_necesaria_${number}_fecha`,
+  ]),
   'p14_tiene_compras', 'p15_tarjetas', ...cardHeaders,
 ] as const
 
@@ -134,6 +138,19 @@ export function toAdminCsvRow(draft: CompletedDraft): CsvRow {
       item && typeof item === 'object' ? fixedOtherAmount(item.monto) : ''
     row[`decision_gustito_adicional_${number}`] =
       value(answers, `e13_gustito_adicional${number}`)
+  }
+
+  for (let index = 0; index < 5; index++) {
+    const number = index + 1
+    const item = Array.isArray(answers.compras_necesarias)
+      ? answers.compras_necesarias[index]
+      : undefined
+    row[`compra_necesaria_${number}_concepto`] =
+      item && typeof item === 'object' ? fixedOtherValue(item.concepto) : ''
+    row[`compra_necesaria_${number}_monto`] =
+      item && typeof item === 'object' ? fixedOtherAmount(item.monto) : ''
+    row[`compra_necesaria_${number}_fecha`] =
+      item && typeof item === 'object' ? fixedOtherValue(item.fecha) : ''
   }
 
   return row

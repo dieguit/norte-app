@@ -49,6 +49,7 @@ export function OnboardingRepeatedItems({
       monto: "",
       desde: "",
       hasta: "",
+      fecha: "",
     };
     onChange([...items, newItem]);
   };

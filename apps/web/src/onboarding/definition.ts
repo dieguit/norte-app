@@ -5,6 +5,7 @@ export type ExtraIncome = {
   monto: string | number;
   desde: string;
   hasta: string;
+  fecha?: string;
 };
 
 export type OnboardingAnswer =
@@ -16,6 +17,7 @@ const extraIncomeSchema = z.object({
   monto: z.union([z.string(), z.number()]),
   desde: z.string(),
   hasta: z.string(),
+  fecha: z.string().optional(),
 });
 
 export const onboardingAnswerSchema = z.union([
@@ -600,7 +602,6 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         label: "Otros gastos fijos",
         addLabel: "Agregar otro",
         maxItems: 5,
-        helpText: "No hace falta que llenes todos",
         itemFields: [
           { key: "concepto", type: "text", label: "Concepto", required: true },
           { key: "monto", type: "number", label: "Monto ($)", required: true },
@@ -672,8 +673,6 @@ export const onboardingSteps: readonly OnboardingStep[] = [
             id: `${prefix}_concepto`,
             type: "text" as const,
             label: `Concepto ${index + 1}`,
-            helpText:
-              index === 0 ? "No hace falta que llenes todos" : undefined,
             visibleWhen: (answers: OnboardingAnswers) =>
               answers.p10_tiene_vencimiento === "Sí" &&
               !hasDetailedFixedExpense(answers),
@@ -735,7 +734,6 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         label: "Otros gastos diarios",
         addLabel: "Agregar otro",
         maxItems: 5,
-        helpText: "No hace falta que llenes todos",
         itemFields: [
           { key: "concepto", type: "text", label: "Concepto", required: true },
           { key: "monto", type: "number", label: "Monto ($)", required: true },
@@ -800,7 +798,6 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         label: "Otros gustitos",
         addLabel: "Agregar otro",
         maxItems: 5,
-        helpText: "No hace falta que llenes todos",
         itemFields: [
           { key: "concepto", type: "text", label: "Concepto", required: true },
           { key: "monto", type: "number", label: "Monto ($)", required: true },
@@ -872,40 +869,16 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         options: ["Sí", "No"],
       },
       {
-        id: "n1_concepto",
-        type: "text",
-        label: "Concepto 1",
-        helpText: "No hace falta que llenes todos",
-        visibleWhen: (answers) => answers.p14_tiene_compras === "Sí",
-      },
-      {
-        id: "n1_monto",
-        type: "number",
-        label: "Monto aproximado 1 ($)",
-        visibleWhen: (answers) => answers.p14_tiene_compras === "Sí",
-      },
-      {
-        id: "n2_concepto",
-        type: "text",
-        label: "Concepto 2",
-        visibleWhen: (answers) => answers.p14_tiene_compras === "Sí",
-      },
-      {
-        id: "n2_monto",
-        type: "number",
-        label: "Monto aproximado 2 ($)",
-        visibleWhen: (answers) => answers.p14_tiene_compras === "Sí",
-      },
-      {
-        id: "n3_concepto",
-        type: "text",
-        label: "Concepto 3",
-        visibleWhen: (answers) => answers.p14_tiene_compras === "Sí",
-      },
-      {
-        id: "n3_monto",
-        type: "number",
-        label: "Monto aproximado 3 ($)",
+        id: "compras_necesarias",
+        type: "repeated",
+        label: "Compras necesarias",
+        addLabel: "Agregar compra",
+        maxItems: 5,
+        itemFields: [
+          { key: "concepto", type: "text", label: "Concepto", required: true },
+          { key: "monto", type: "number", label: "Monto ($)", required: true },
+          { key: "fecha", type: "month", label: "Fecha", required: true },
+        ],
         visibleWhen: (answers) => answers.p14_tiene_compras === "Sí",
       },
     ],
@@ -1136,11 +1109,7 @@ export function validateStep(
   const normalizedAnswers = withInferredFixedExpenseMode(answers);
   const errors: Record<string, string> = {};
 
-  const otherPairsMap: Record<string, string> = {
-    n1_monto: "n1_concepto",
-    n2_monto: "n2_concepto",
-    n3_monto: "n3_concepto",
-  };
+  const otherPairsMap: Record<string, string> = {};
 
   const validateRepeatedExpenses = (id: string) => {
     repeatedItems(normalizedAnswers, id).forEach((item, index) => {
@@ -1378,6 +1347,36 @@ export function validateStep(
     }
     if (mode === "Quiero desglosar") {
       validateRepeatedExpenses("d_otros");
+    }
+  }
+
+  if (step.id === "p14") {
+    if (normalizedAnswers.p14_tiene_compras === "Sí") {
+      const items = repeatedItems(normalizedAnswers, "compras_necesarias");
+      if (items.length === 0) {
+        errors.compras_necesarias = 'Agregá una compra o elegí "No".';
+      } else {
+        validateRepeatedExpenses("compras_necesarias");
+        items.forEach((item, index) => {
+          if (!item.concepto || item.concepto.trim() === "") {
+            errors[`compras_necesarias.${index}.concepto`] =
+              "Este campo es requerido.";
+          }
+          const rawAmount = item.monto;
+          if (
+            rawAmount === "" ||
+            rawAmount === undefined ||
+            rawAmount === null
+          ) {
+            errors[`compras_necesarias.${index}.monto`] =
+              "Este campo es requerido.";
+          }
+          if (!item.fecha || item.fecha.trim() === "") {
+            errors[`compras_necesarias.${index}.fecha`] =
+              "Este campo es requerido.";
+          }
+        });
+      }
     }
   }
 

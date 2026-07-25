@@ -430,13 +430,21 @@ describe('onboarding draft', () => {
     expect(getVisibleFields(step('p14'), { p14_tiene_compras: 'Sí' })
       .map(field => field.id)).toEqual([
         'p14_tiene_compras',
-        'n1_concepto',
-        'n1_monto',
-        'n2_concepto',
-        'n2_monto',
-        'n3_concepto',
-        'n3_monto',
+        'compras_necesarias',
       ])
+
+    const purchases = getVisibleFields(step('p14'), { p14_tiene_compras: 'Sí' })[1]
+    expect(purchases).toMatchObject({
+      id: 'compras_necesarias',
+      type: 'repeated',
+      addLabel: 'Agregar compra',
+      maxItems: 5,
+      itemFields: [
+        { key: 'concepto', type: 'text', label: 'Concepto', required: true },
+        { key: 'monto', type: 'number', label: 'Monto ($)', required: true },
+        { key: 'fecha', type: 'month', label: 'Fecha', required: true },
+      ],
+    })
   })
 
   it('describes extra incomes and one-month periods', () => {
@@ -459,27 +467,24 @@ describe('onboarding draft', () => {
     ]))
   })
 
-  it('filters hidden P14 purchase pairs and validates each visible amount concept', () => {
+  it('filters hidden P14 dynamic purchases and validates required fields', () => {
     expect(filterAnswersForActiveSteps({
       p14_tiene_compras: 'No',
-      n1_concepto: 'Auto',
-      n1_monto: 1000,
-      n2_concepto: 'Anteojos',
-      n2_monto: 2000,
-      n3_concepto: 'Lavarropas',
-      n3_monto: 3000,
+      compras_necesarias: [{ concepto: 'Auto', monto: 1000, desde: '', hasta: '', fecha: 'oct-27' }],
     })).toEqual({ p14_tiene_compras: 'No' })
 
-    const step = onboardingSteps.find(({ id }) => id === 'p14')
+    const step = onboardingSteps.find(({ id }) => id === 'p14')!
+    expect(validateStep(step, { p14_tiene_compras: 'Sí' })).toEqual({
+      compras_necesarias: 'Agregá una compra o elegí "No".',
+    })
+
     expect(validateStep(step, {
       p14_tiene_compras: 'Sí',
-      n1_monto: 1000,
-      n2_monto: 2000,
-      n3_monto: 3000,
+      compras_necesarias: [{ concepto: '', monto: '', desde: '', hasta: '', fecha: '' }],
     })).toEqual({
-      n1_concepto: 'Debe ingresar el concepto.',
-      n2_concepto: 'Debe ingresar el concepto.',
-      n3_concepto: 'Debe ingresar el concepto.',
+      'compras_necesarias.0.concepto': 'Este campo es requerido.',
+      'compras_necesarias.0.monto': 'Este campo es requerido.',
+      'compras_necesarias.0.fecha': 'Este campo es requerido.',
     })
   })
 

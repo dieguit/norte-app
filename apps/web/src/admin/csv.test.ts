@@ -100,13 +100,18 @@ describe('admin CSV export', () => {
       ]),
       'd_total_directo',
       'e13_salidas', 'e13_ropa', 'e13_delivery', 'e13_susc', 'e13_hobbies',
-      'n1_concepto', 'n1_monto', 'n2_concepto', 'n2_monto', 'n3_concepto', 'n3_monto',
+      ...[1, 2, 3, 4, 5].flatMap((number) => [
+        `compra_necesaria_${number}_concepto`,
+        `compra_necesaria_${number}_monto`,
+        `compra_necesaria_${number}_fecha`,
+      ]),
       'p14_tiene_compras', 'p15_tarjetas',
       ...expectedCardHeaders,
     ]
 
     expect(csvHeaders).toEqual(expectedHeaders)
     expect(Object.keys(cardAnswers).sort()).toEqual([...expectedCardHeaders].sort())
+    expect(csvHeaders).not.toContain('n1_concepto')
     expect(csvHeaders).not.toContain('extra_tipo')
     expect(csvHeaders).not.toContain('extra_monto')
     expect(csvHeaders).not.toContain('extra_cuando')
@@ -199,8 +204,11 @@ describe('admin CSV export', () => {
       e13_salidas: 'Lo reduzco a la mitad', e13_ropa: 'Lo llevo a cero',
       e13_delivery: 'Lo reduzco a la mitad', e13_susc: 'No lo toco ni en crisis',
       e13_hobbies: 'No lo toco ni en crisis',
-      p14_tiene_compras: 'Sí', n1_concepto: 'Lavarropas', n1_monto: 500000,
-      n2_concepto: 'Anteojos', n2_monto: 100000, n3_concepto: 'Auto', n3_monto: 1500000,
+      p14_tiene_compras: 'Sí',
+      compras_necesarias: [
+        { concepto: 'Lavarropas', monto: 500000, fecha: 'oct-27', desde: '', hasta: '' },
+        { concepto: 'Anteojos', monto: 100000, fecha: 'nov-27', desde: '', hasta: '' },
+      ],
       p15_tarjetas: 4,
       ...cardAnswers,
     }
@@ -233,13 +241,23 @@ describe('admin CSV export', () => {
       e13_salidas: 'Lo reduzco a la mitad', e13_ropa: 'Lo llevo a cero',
       e13_delivery: 'Lo reduzco a la mitad', e13_susc: 'No lo toco ni en crisis',
       e13_hobbies: 'No lo toco ni en crisis',
-      p14_tiene_compras: 'Sí', n1_concepto: 'Lavarropas', n1_monto: 500000,
-      n2_concepto: 'Anteojos', n2_monto: 100000, n3_concepto: 'Auto', n3_monto: 1500000,
+      p14_tiene_compras: 'Sí',
       p15_tarjetas: 4,
     }
 
     for (const [header, answer] of Object.entries(expectedValues)) {
       expect(row[header]).toBe(answer)
+    }
+    expect(row.compra_necesaria_1_concepto).toBe('Lavarropas')
+    expect(row.compra_necesaria_1_monto).toBe(500000)
+    expect(row.compra_necesaria_1_fecha).toBe('oct-27')
+    expect(row.compra_necesaria_2_concepto).toBe('Anteojos')
+    expect(row.compra_necesaria_2_monto).toBe(100000)
+    expect(row.compra_necesaria_2_fecha).toBe('nov-27')
+    for (let slot = 3; slot <= 5; slot++) {
+      expect(row[`compra_necesaria_${slot}_concepto`]).toBe('')
+      expect(row[`compra_necesaria_${slot}_monto`]).toBe('')
+      expect(row[`compra_necesaria_${slot}_fecha`]).toBe('')
     }
     expect(serializeCsv(['ing_tercero_falla'], [row]))
       .toBe('\uFEFFing_tercero_falla\r\n"No, es confiable"')
@@ -404,6 +422,34 @@ describe('admin CSV export', () => {
       expect(row[`gustito_adicional_${slot}_monto`]).toBe('')
       expect(row[`decision_gustito_adicional_${slot}`]).toBe('')
     }
+  })
+
+  it('flattens five fixed purchase slots and handles empty or partial items', () => {
+    const row = toAdminCsvRow({
+      completedAt,
+      answers: {
+        compras_necesarias: [
+          { concepto: 'Lavarropas', monto: 500000, fecha: 'oct-27', desde: '', hasta: '' },
+          { concepto: 'Anteojos', monto: '100000', fecha: 'nov-27', desde: '', hasta: '' },
+          { concepto: 'Auto', monto: 1500000, fecha: 'dic-27', desde: '', hasta: '' },
+          { concepto: 'TV', monto: 250000, fecha: 'ene-28', desde: '', hasta: '' },
+          { concepto: 'Sillón', monto: 180000, fecha: 'feb-28', desde: '', hasta: '' },
+        ],
+      },
+    })
+
+    for (let slot = 1; slot <= 5; slot++) {
+      expect(row[`compra_necesaria_${slot}_concepto`]).not.toBeUndefined()
+      expect(row[`compra_necesaria_${slot}_monto`]).not.toBeUndefined()
+      expect(row[`compra_necesaria_${slot}_fecha`]).not.toBeUndefined()
+    }
+    expect(row.compra_necesaria_1_concepto).toBe('Lavarropas')
+    expect(row.compra_necesaria_1_monto).toBe(500000)
+    expect(row.compra_necesaria_1_fecha).toBe('oct-27')
+    expect(row.compra_necesaria_2_monto).toBe('100000')
+    expect(row.compra_necesaria_5_concepto).toBe('Sillón')
+    expect(row.compra_necesaria_5_monto).toBe(180000)
+    expect(row.compra_necesaria_5_fecha).toBe('feb-28')
   })
 
   it('rejects incomplete drafts', () => {

@@ -500,7 +500,7 @@ describe('OnboardingPage component tests', () => {
     expect(screen.queryByText('Gustito adicional 1')).toBeNull()
   })
 
-  it('shows P14 purchase rows only after selecting Sí', async () => {
+  it('shows P14 purchase inputs only after selecting Sí', async () => {
     const user = userEvent.setup()
     setDraft({
       p1_pesa: 'Otra',
@@ -517,16 +517,9 @@ describe('OnboardingPage component tests', () => {
     await continueStep(user)
     await continueStep(user)
     expect(await screen.findByRole('heading', { name: /compras necesarias/i })).toBeDefined()
-    expect(screen.queryByLabelText(/^concepto$/i)).toBeNull()
-    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.queryByRole('button', { name: /agregar compra/i })).toBeNull()
     await user.click(screen.getByRole('radio', { name: /^sí$/i }))
-    for (const label of [/^concepto 1$/i, /^concepto 2$/i, /^concepto 3$/i]) {
-      expect(screen.getByLabelText(label)).toBeDefined()
-    }
-    for (const label of [/monto aproximado 1/i, /monto aproximado 2/i, /monto aproximado 3/i]) {
-      expect(screen.getByLabelText(label)).toBeDefined()
-    }
-    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getByRole('button', { name: /agregar compra/i })).toBeDefined()
   })
 
   it('reveals optional post-close inputs after uploading the statement', async () => {
@@ -1033,33 +1026,8 @@ describe('OnboardingPage component tests', () => {
     expect(await screen.findByRole('heading', { name: /lo que pagás sí o sí/i })).toBeDefined()
   })
 
-  it('shows the repeated-fields helper for expiring payments (p10)', async () => {
+  it('allows managing dynamic planned purchases in p14', async () => {
     const user = userEvent.setup()
-    const helperText = 'No hace falta que llenes todos'
-    localStorage.clear()
-    localStorage.setItem('onboarding-welcome-seen', 'true')
-    setDraft({
-      p1_pesa: 'Otra',
-      ing_total: 500000,
-      p9_modo: 'Tengo el total en la cabeza',
-      p8a_tiene_vencimiento: 'No',
-      extra_tiene: 'No',
-    })
-    render(<OnboardingPage />)
-    await user.type(await screen.findByLabelText(/Total aproximado/i), '100000')
-    await continueStep(user)
-    await user.click(screen.getByRole('radio', { name: /^sí$/i }))
-    const expiringPaymentHelper = await screen.findByText(helperText)
-    expect(
-      screen.getByLabelText(/^Concepto 1$/i).compareDocumentPosition(
-        expiringPaymentHelper,
-      ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-  })
-
-  it('shows the repeated-fields helper for planned purchases (p14)', async () => {
-    const user = userEvent.setup()
-    const helperText = 'No hace falta que llenes todos'
     localStorage.clear()
     localStorage.setItem('onboarding-welcome-seen', 'true')
     setDraft({
@@ -1079,33 +1047,22 @@ describe('OnboardingPage component tests', () => {
     await continueStep(user)
     await screen.findByRole('heading', { name: /qué harías con cada gustito/i })
     await continueStep(user)
-    await user.click(screen.getByRole('radio', { name: /^sí$/i }))
-    const plannedPurchaseHelper = await screen.findByText(helperText)
-    expect(
-      screen.getByLabelText(/^Concepto 1$/i).compareDocumentPosition(
-        plannedPurchaseHelper,
-      ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-  })
 
-  it('shows the repeated-fields helper for other fixed expenses (p9)', async () => {
-    const helperText = 'No hace falta que llenes todos'
-    localStorage.clear()
-    localStorage.setItem('onboarding-welcome-seen', 'true')
-    setDraft({
-      p1_pesa: 'Otra',
-      ing_total: 500000,
-      p9_modo: 'Quiero desglosar',
-      p8a_tiene_vencimiento: 'No',
-      extra_tiene: 'No',
-    })
-    render(<OnboardingPage />)
-    const fixedExpensesHelper = await screen.findByText(helperText)
-    expect(
-      screen.getByRole('button', { name: /agregar otro/i }).compareDocumentPosition(
-        fixedExpensesHelper,
-      ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    await user.click(screen.getByRole('radio', { name: /^sí$/i }))
+    await user.click(screen.getByRole('button', { name: /agregar compra/i }))
+    expect(screen.getByLabelText(/^Concepto 1/i)).toBeDefined()
+    expect(screen.getByLabelText(/^Monto \(\$\) 1/i)).toBeDefined()
+    expect(screen.getByLabelText(/^Fecha 1/i)).toBeDefined()
+    await user.selectOptions(screen.getByLabelText(/^Fecha 1/i), 'oct-27')
+    await user.type(screen.getByLabelText(/^Concepto 1/i), 'Auto')
+    await user.click(screen.getByRole('button', { name: /Eliminar Auto/i }))
+    expect(screen.queryByLabelText(/^Concepto 1/i)).toBeNull()
+
+    for (let index = 1; index <= 5; index++) {
+      await user.click(screen.getByRole('button', { name: /agregar compra/i }))
+      expect(screen.getByLabelText(new RegExp(`^Concepto ${index}`))).toBeDefined()
+    }
+    expect(screen.queryByRole('button', { name: /agregar compra/i })).toBeNull()
   })
 
   async function renderFixedExpenses(answers: OnboardingAnswers = {}) {
@@ -1224,13 +1181,27 @@ describe('OnboardingPage component tests', () => {
     expect(screen.getByText('Total acumulado: $300.000')).toBeDefined()
   })
 
-  it('renders every onboarding help text at the larger size', async () => {
-    const user = userEvent.setup()
-    await renderFixedExpenses()
-    await user.click(screen.getByRole('radio', { name: 'Quiero desglosar' }))
+  it('renders every onboarding help text at the larger size', () => {
+    render(
+      <OnboardingRepeatedItems
+        field={{
+          id: 'extra_ingresos',
+          type: 'repeated',
+          label: 'Ingresos extra',
+          itemFields: [{
+            key: 'desde',
+            type: 'month',
+            label: 'Desde',
+            helpText: 'Elegí el mes de inicio.',
+          }],
+        }}
+        value={[{ concepto: '', monto: '', desde: '', hasta: '' }]}
+        errors={{}}
+        onChange={vi.fn()}
+      />,
+    )
 
-    expect(screen.getByText(/No hace falta que llenes todos/i).className)
-      .toContain('text-base')
+    expect(screen.getByText('Elegí el mes de inicio.').className).toContain('text-base')
   })
 
   it('shows only positive fixed others with their original expiry row', async () => {
@@ -1287,51 +1258,4 @@ describe('OnboardingPage component tests', () => {
     expect(control.compareDocumentPosition(help)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
-  it('shows the repeated-fields helper for daily expenses (p11)', async () => {
-    const helperText = 'No hace falta que llenes todos'
-    localStorage.clear()
-    localStorage.setItem('onboarding-welcome-seen', 'true')
-    setDraft({
-      p1_pesa: 'Otra',
-      ing_total: 500000,
-      p8a_tiene_vencimiento: 'No',
-      extra_tiene: 'No',
-      p9_modo: 'Tengo el total en la cabeza',
-      fijo_total_directo: 100000,
-      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
-      p11_modo: 'Quiero desglosar',
-    })
-    render(<OnboardingPage />)
-    const dailyExpensesHelper = await screen.findByText(helperText)
-    expect(
-      screen.getByRole('button', { name: /agregar otro/i }).compareDocumentPosition(
-        dailyExpensesHelper,
-      ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-  })
-
-  it('shows the repeated-fields helper for gustitos (p12)', async () => {
-    const helperText = 'No hace falta que llenes todos'
-    localStorage.clear()
-    localStorage.setItem('onboarding-welcome-seen', 'true')
-    setDraft({
-      p1_pesa: 'Otra',
-      ing_total: 500000,
-      p8a_tiene_vencimiento: 'No',
-      extra_tiene: 'No',
-      p9_modo: 'Tengo el total en la cabeza',
-      fijo_total_directo: 100000,
-      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
-      p11_modo: 'Tengo el total en la cabeza',
-      var_total_directo: 100000,
-      p12_modo: 'Quiero desglosar',
-    })
-    render(<OnboardingPage />)
-    const gustitosHelper = await screen.findByText(helperText)
-    expect(
-      screen.getByRole('button', { name: /agregar otro/i }).compareDocumentPosition(
-        gustitosHelper,
-      ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-  })
 })
