@@ -63,7 +63,7 @@ describe('AdminResultDetailsPage', () => {
     expect(screen.getByText('1.500.000')).toBeInTheDocument()
     expect(screen.getByText('Sueldo fijo (relación de dependencia), Otro')).toBeInTheDocument()
     expect(screen.getByText('Clases')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /descargar subir foto o archivo/i }))
+    expect(screen.getByRole('link', { name: 'Descargar Tarjeta 1 Resumen' }))
       .toHaveAttribute('href', 'https://download.example/statement')
     expect(screen.getAllByText('-').length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'Volver a administración' }))

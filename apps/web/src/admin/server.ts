@@ -19,6 +19,7 @@ export const getAdminResultFiles = createServerFn({ method: 'GET' })
     const draft = await getDraft(data.deviceId)
     if (!draft) throw new Error('Draft not found')
     return Promise.all(getUploadedFiles(draft).map(async (file) => ({
+      fieldId: file.fieldId,
       label: file.label,
       url: await signDownload(file.key),
     })))

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AdminPage } from './admin-page'
 import { getAdminResultDetails } from '../admin/server'
 import { onboardingSteps, type OnboardingField, type RepeatedItemField } from '../onboarding/definition'
+import { formatAdminDownloadLabel } from '../admin/download-label'
 
 const numberFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
 
@@ -40,7 +41,7 @@ function AnswerValue({
         rel="noreferrer"
         className="inline-flex items-center text-sm font-semibold text-[var(--lagoon-deep)] hover:underline"
       >
-        Descargar {field.label}
+        {formatAdminDownloadLabel(field.id, field.label)}
       </a>
     )
   }

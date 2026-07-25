@@ -74,6 +74,7 @@ describe('AdminPage', () => {
       vi.mocked(listAdminResults).mockResolvedValue(results)
       vi.mocked(getAdminResultFiles).mockResolvedValue([
         {
+          fieldId: 't1_upload_url',
           label: 'Subí el resumen (foto o PDF)',
           url: 'https://download.example/file',
         },
@@ -137,7 +138,9 @@ describe('AdminPage', () => {
       expect(clickMock).toHaveBeenCalledWith('blob:mock-url', 'norte-device-ana-ana.csv')
 
       // Check download link is displayed
-      const downloadLink = await screen.findByRole('link', { name: 'Descargar Subí el resumen (foto o PDF)' })
+      const downloadLink = await screen.findByRole('link', {
+        name: 'Descargar Tarjeta 1 Resumen',
+      })
       expect(downloadLink).toBeInTheDocument()
       expect(downloadLink).toHaveAttribute('href', 'https://download.example/file')
       expect(downloadLink).toHaveAttribute('target', '_blank')

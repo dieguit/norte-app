@@ -4,6 +4,7 @@ import { Input } from './ui/input'
 import { loginAdmin } from '../admin/auth'
 import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow } from '../admin/server'
 import { serializeCsv } from '../admin/csv'
+import { formatAdminDownloadLabel } from '../admin/download-label'
 
 export function AdminPage({ authenticated }: { authenticated: boolean }) {
   // Login form state
@@ -299,7 +300,7 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                                           rel="noreferrer"
                                           className="inline-flex items-center text-sm font-semibold text-[var(--lagoon-deep)] hover:underline"
                                         >
-                                          Descargar {file.label}
+                                          {formatAdminDownloadLabel(file.fieldId, file.label)}
                                         </a>
                                       ))}
                                     </div>
