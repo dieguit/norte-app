@@ -899,13 +899,8 @@ export const onboardingSteps: readonly OnboardingStep[] = [
       answers[`t${n}_cuotas_modo`] === "Copiar el renglón mes a mes";
     const uploadMode = (answers: OnboardingAnswers) =>
       answers[`t${n}_cuotas_modo`] === "Subir foto o archivo";
-    const hasUploadedStatement = (answers: OnboardingAnswers) => {
-      if (!uploadMode(answers)) return false;
-      const url = answers[`t${n}_upload_url`];
-      return typeof url === "string" && url.trim() !== "";
-    };
     const postCierreVisible = (answers: OnboardingAnswers) =>
-      manualMode(answers) || hasUploadedStatement(answers);
+      manualMode(answers) || uploadMode(answers);
 
     return [
       {
@@ -1397,12 +1392,6 @@ export function validateStep(
   if (step.id.endsWith("_p16")) {
     const prefix = step.id.split("_")[0];
     const mode = answers[`${prefix}_cuotas_modo`];
-    const uploadUrl = answers[`${prefix}_upload_url`];
-    const hasPostCloseFields =
-      mode === "Copiar el renglón mes a mes" ||
-      (mode === "Subir foto o archivo" &&
-        typeof uploadUrl === "string" &&
-        uploadUrl.trim() !== "");
 
     if (!mode) {
       errors[`${prefix}_cuotas_modo`] = "Elegí una opción para continuar.";
@@ -1420,14 +1409,6 @@ export function validateStep(
       if (!months.some((key) => typeof answers[key] === "number")) {
         errors[`${prefix}_cuotas_m1`] = "Completá al menos una cuota mensual.";
       }
-    }
-    if (
-      hasPostCloseFields &&
-      answers[`${prefix}_postcierre_cuotas`] === "Sí" &&
-      !answers[`${prefix}_postcierre_cuotas_cantidad`]
-    ) {
-      errors[`${prefix}_postcierre_cuotas_cantidad`] =
-        "Elegí una opción para continuar.";
     }
   }
 

@@ -522,36 +522,12 @@ describe('OnboardingPage component tests', () => {
     expect(screen.getByRole('button', { name: /agregar compra/i })).toBeDefined()
   })
 
-  it('reveals optional post-close inputs after uploading the statement', async () => {
+  it('shows optional post-close inputs immediately in the statement upload route', async () => {
     const user = userEvent.setup()
     await advanceToCard(1)
     await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
 
-    expect(screen.queryByLabelText(/cuánto gastaste desde el cierre/i)).toBeNull()
-    expect(screen.queryByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toBeNull()
-
-    const mockXHR = {
-      open: vi.fn(),
-      setRequestHeader: vi.fn(),
-      send: vi.fn(),
-      upload: {} as any,
-      status: 200,
-      onload: null as any,
-    }
-    mockXHR.send.mockImplementation(() => {
-      mockXHR.upload.onprogress?.({ lengthComputable: true, loaded: 1, total: 1 })
-      mockXHR.onload?.()
-    })
-    vi.stubGlobal('XMLHttpRequest', function MockXMLHttpRequest() {
-      return mockXHR
-    })
-    const file = new File(['a'], 'resumen.pdf', { type: 'application/pdf' })
-    await user.upload(
-      screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' }),
-      file,
-    )
-
-    expect(await screen.findByLabelText(/cuánto gastaste desde el cierre/i)).toBeDefined()
+    expect(screen.getByLabelText(/cuánto gastaste desde el cierre/i)).toBeDefined()
     expect(screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toBeDefined()
     expect(screen.getByLabelText(/subí una captura de los últimos movimientos/i)).toBeDefined()
     expect(screen.queryByLabelText('¿En cuántas cuotas?')).toBeNull()
