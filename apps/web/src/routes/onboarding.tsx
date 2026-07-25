@@ -545,8 +545,15 @@ export function OnboardingPage() {
                 {getVisibleFields(currentStep, formAnswers).map((field, index, fields) => {
                   const nextField = fields[index + 1];
                   const renderField = (field: (typeof fields)[number]) => {
-                    const otherIndex = field.id.match(/^e13_otro([1-3])$/)?.[1];
-                    const concept = otherIndex ? formAnswers[`d_otro${otherIndex}_concepto`] : undefined;
+                    const additionalIndex = field.id.match(/^e13_gustito_adicional([1-5])$/)?.[1];
+                    const additional =
+                      additionalIndex && Array.isArray(formAnswers.d_otros)
+                        ? formAnswers.d_otros[Number(additionalIndex) - 1]
+                        : undefined;
+                    const concept =
+                      typeof additional === "object" && additional !== null
+                        ? additional.concepto
+                        : undefined;
                     const fieldLabel =
                       typeof concept === "string" && concept.trim() !== "" ? concept.trim() : field.label;
                     return (

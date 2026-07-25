@@ -214,6 +214,19 @@ export const hasPositiveOther = (answers: OnboardingAnswers) =>
     },
   );
 
+function repeatedItems(answers: OnboardingAnswers, id: string): ExtraIncome[] {
+  const value = answers[id];
+  return Array.isArray(value)
+    ? value.filter((item): item is ExtraIncome => typeof item === "object" && item !== null)
+    : [];
+}
+
+function hasPositiveRepeatedItem(answers: OnboardingAnswers, id: string, index?: number) {
+  const items = repeatedItems(answers, id);
+  const candidates = index === undefined ? items : [items[index]];
+  return candidates.some((item) => hasPositiveAmount({ monto: item?.monto }, "monto"));
+}
+
 function hasDetailedFixedExpense(answers: OnboardingAnswers) {
   return isDetailedFixedExpense(answers);
 }
@@ -717,40 +730,16 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
       },
       {
-        id: "var_otro1_concepto",
-        type: "text",
-        label: "Otro 1 (concepto)",
+        id: "var_otros",
+        type: "repeated",
+        label: "Otros gastos diarios",
+        addLabel: "Agregar otro",
+        maxItems: 5,
         helpText: "No hace falta que llenes todos",
-        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
-      },
-      {
-        id: "var_otro1_monto",
-        type: "number",
-        label: "Otro 1 ($)",
-        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
-      },
-      {
-        id: "var_otro2_concepto",
-        type: "text",
-        label: "Otro 2 (concepto)",
-        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
-      },
-      {
-        id: "var_otro2_monto",
-        type: "number",
-        label: "Otro 2 ($)",
-        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
-      },
-      {
-        id: "var_otro3_concepto",
-        type: "text",
-        label: "Otro 3 (concepto)",
-        visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
-      },
-      {
-        id: "var_otro3_monto",
-        type: "number",
-        label: "Otro 3 ($)",
+        itemFields: [
+          { key: "concepto", type: "text", label: "Concepto", required: true },
+          { key: "monto", type: "number", label: "Monto ($)", required: true },
+        ],
         visibleWhen: (answers) => answers.p11_modo === "Quiero desglosar",
       },
       {
@@ -806,40 +795,16 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
       },
       {
-        id: "d_otro1_concepto",
-        type: "text",
-        label: "Otro 1 (concepto)",
+        id: "d_otros",
+        type: "repeated",
+        label: "Otros gustitos",
+        addLabel: "Agregar otro",
+        maxItems: 5,
         helpText: "No hace falta que llenes todos",
-        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
-      },
-      {
-        id: "d_otro1_monto",
-        type: "number",
-        label: "Otro 1 ($)",
-        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
-      },
-      {
-        id: "d_otro2_concepto",
-        type: "text",
-        label: "Otro 2 (concepto)",
-        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
-      },
-      {
-        id: "d_otro2_monto",
-        type: "number",
-        label: "Otro 2 ($)",
-        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
-      },
-      {
-        id: "d_otro3_concepto",
-        type: "text",
-        label: "Otro 3 (concepto)",
-        visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
-      },
-      {
-        id: "d_otro3_monto",
-        type: "number",
-        label: "Otro 3 ($)",
+        itemFields: [
+          { key: "concepto", type: "text", label: "Concepto", required: true },
+          { key: "monto", type: "number", label: "Monto ($)", required: true },
+        ],
         visibleWhen: (answers) => answers.p12_modo === "Quiero desglosar",
       },
       {
@@ -864,9 +829,6 @@ export const onboardingSteps: readonly OnboardingStep[] = [
           ["e13_delivery", "Delivery", "d_delivery"],
           ["e13_susc", "Suscripciones", "d_susc"],
           ["e13_hobbies", "Hobbies", "d_hobbies"],
-          ["e13_otro1", "Otro 1", "d_otro1_monto"],
-          ["e13_otro2", "Otro 2", "d_otro2_monto"],
-          ["e13_otro3", "Otro 3", "d_otro3_monto"],
         ] as const
       ).map(([id, label, answerId]) => ({
         id,
@@ -879,8 +841,21 @@ export const onboardingSteps: readonly OnboardingStep[] = [
         ],
         visibleWhen: (answers: OnboardingAnswers) =>
           answers.p12_modo === "Tengo el total en la cabeza"
-            ? !id.startsWith("e13_otro")
+            ? true
             : hasPositiveAmount(answers, answerId),
+      })),
+      ...Array.from({ length: 5 }, (_, index) => ({
+        id: `e13_gustito_adicional${index + 1}`,
+        type: "radio" as const,
+        label: `Gustito adicional ${index + 1}`,
+        options: [
+          "Lo llevo a cero",
+          "Lo reduzco a la mitad",
+          "No lo toco ni en crisis",
+        ],
+        visibleWhen: (answers: OnboardingAnswers) =>
+          answers.p12_modo === "Quiero desglosar" &&
+          hasPositiveRepeatedItem(answers, "d_otros", index),
       })),
     ],
   },
@@ -1161,17 +1136,34 @@ export function validateStep(
   const normalizedAnswers = withInferredFixedExpenseMode(answers);
   const errors: Record<string, string> = {};
 
-  // 1. Generic non-negative validator for any field of type 'number' in the step
   const otherPairsMap: Record<string, string> = {
-    var_otro1_monto: "var_otro1_concepto",
-    var_otro2_monto: "var_otro2_concepto",
-    var_otro3_monto: "var_otro3_concepto",
-    d_otro1_monto: "d_otro1_concepto",
-    d_otro2_monto: "d_otro2_concepto",
-    d_otro3_monto: "d_otro3_concepto",
     n1_monto: "n1_concepto",
     n2_monto: "n2_concepto",
     n3_monto: "n3_concepto",
+  };
+
+  const validateRepeatedExpenses = (id: string) => {
+    repeatedItems(normalizedAnswers, id).forEach((item, index) => {
+      const rawAmount = item.monto;
+      const hasAmount =
+        rawAmount !== "" && rawAmount !== undefined && rawAmount !== null;
+      const amount =
+        typeof rawAmount === "string" ? Number(rawAmount) : rawAmount;
+      if (
+        hasAmount &&
+        (typeof amount !== "number" || !Number.isFinite(amount))
+      ) {
+        errors[`${id}.${index}.monto`] = "Ingresá un número válido.";
+      } else if (hasAmount && typeof amount === "number" && amount < 0) {
+        errors[`${id}.${index}.monto`] = "El monto no puede ser negativo.";
+      } else if (
+        typeof amount === "number" &&
+        amount > 0 &&
+        item.concepto.trim() === ""
+      ) {
+        errors[`${id}.${index}.concepto`] = "Debe ingresar el concepto.";
+      }
+    });
   };
 
   for (const field of getVisibleFields(step, normalizedAnswers)) {
@@ -1345,9 +1337,6 @@ export function validateStep(
       "var_comida",
       "var_transporte",
       "var_farmacia",
-      "var_otro1_monto",
-      "var_otro2_monto",
-      "var_otro3_monto",
     ];
     if (
       mode === "Tengo el total en la cabeza" &&
@@ -1356,9 +1345,13 @@ export function validateStep(
       errors.var_total_directo = "Ingresá un total aproximado mayor a cero.";
     } else if (
       mode === "Quiero desglosar" &&
-      !detailKeys.some((key) => hasPositiveAmount(normalizedAnswers, key))
+      !detailKeys.some((key) => hasPositiveAmount(normalizedAnswers, key)) &&
+      !hasPositiveRepeatedItem(normalizedAnswers, "var_otros")
     ) {
       errors.var_comida = "Completá al menos un gasto de vida diaria.";
+    }
+    if (mode === "Quiero desglosar") {
+      validateRepeatedExpenses("var_otros");
     }
   }
 
@@ -1370,9 +1363,6 @@ export function validateStep(
       "d_delivery",
       "d_susc",
       "d_hobbies",
-      "d_otro1_monto",
-      "d_otro2_monto",
-      "d_otro3_monto",
     ];
     if (
       mode === "Tengo el total en la cabeza" &&
@@ -1381,9 +1371,13 @@ export function validateStep(
       errors.d_total_directo = "Ingresá un total aproximado mayor a cero.";
     } else if (
       mode === "Quiero desglosar" &&
-      !detailKeys.some((key) => hasPositiveAmount(normalizedAnswers, key))
+      !detailKeys.some((key) => hasPositiveAmount(normalizedAnswers, key)) &&
+      !hasPositiveRepeatedItem(normalizedAnswers, "d_otros")
     ) {
       errors.d_salidas = "Completá al menos un gasto de gustitos.";
+    }
+    if (mode === "Quiero desglosar") {
+      validateRepeatedExpenses("d_otros");
     }
   }
 

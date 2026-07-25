@@ -86,13 +86,20 @@ describe('admin CSV export', () => {
       ...['fin1', 'fin2', 'fin3', 'fin4'].flatMap((prefix) => [`${prefix}_concepto`, `${prefix}_cuota`, `${prefix}_hasta`]),
       'p11_modo',
       'var_comida', 'var_transporte', 'var_farmacia',
-      ...['var_otro1', 'var_otro2', 'var_otro3'].flatMap((prefix) => [`${prefix}_concepto`, `${prefix}_monto`]),
+      ...[1, 2, 3, 4, 5].flatMap((number) => [
+        `gasto_diario_adicional_${number}_concepto`,
+        `gasto_diario_adicional_${number}_monto`,
+      ]),
       'var_total_directo',
       'p12_modo',
       'd_salidas', 'd_ropa', 'd_delivery', 'd_susc', 'd_hobbies',
-      ...['d_otro1', 'd_otro2', 'd_otro3'].flatMap((prefix) => [`${prefix}_concepto`, `${prefix}_monto`]),
+      ...[1, 2, 3, 4, 5].flatMap((number) => [
+        `gustito_adicional_${number}_concepto`,
+        `gustito_adicional_${number}_monto`,
+        `decision_gustito_adicional_${number}`,
+      ]),
       'd_total_directo',
-      'e13_salidas', 'e13_ropa', 'e13_delivery', 'e13_susc', 'e13_hobbies', 'e13_otro1', 'e13_otro2', 'e13_otro3',
+      'e13_salidas', 'e13_ropa', 'e13_delivery', 'e13_susc', 'e13_hobbies',
       'n1_concepto', 'n1_monto', 'n2_concepto', 'n2_monto', 'n3_concepto', 'n3_monto',
       'p14_tiene_compras', 'p15_tarjetas',
       ...expectedCardHeaders,
@@ -185,17 +192,13 @@ describe('admin CSV export', () => {
       fin4_concepto: 'Seguro extra', fin4_cuota: 8000, fin4_hasta: 'may-28',
       p11_modo: 'Quiero desglosar',
       var_comida: 110000, var_transporte: 50000, var_farmacia: 16000,
-      var_otro1_concepto: 'Mascota', var_otro1_monto: 14000,
-      var_otro2_concepto: 'Limpieza', var_otro2_monto: 9000,
-      var_otro3_concepto: 'Regalos', var_otro3_monto: 7000, var_total_directo: 206000,
+      var_total_directo: 206000,
       p12_modo: 'Quiero desglosar',
       d_salidas: 30000, d_ropa: 22000, d_delivery: 18000, d_susc: 6000, d_hobbies: 28000,
-      d_otro1_concepto: 'Café', d_otro1_monto: 5000, d_otro2_concepto: 'Juegos', d_otro2_monto: 4000,
-      d_otro3_concepto: 'Viajes', d_otro3_monto: 55000, d_total_directo: 123000,
+      d_total_directo: 123000,
       e13_salidas: 'Lo reduzco a la mitad', e13_ropa: 'Lo llevo a cero',
       e13_delivery: 'Lo reduzco a la mitad', e13_susc: 'No lo toco ni en crisis',
-      e13_hobbies: 'No lo toco ni en crisis', e13_otro1: 'Lo llevo a cero',
-      e13_otro2: 'Lo reduzco a la mitad', e13_otro3: 'No lo toco ni en crisis',
+      e13_hobbies: 'No lo toco ni en crisis',
       p14_tiene_compras: 'Sí', n1_concepto: 'Lavarropas', n1_monto: 500000,
       n2_concepto: 'Anteojos', n2_monto: 100000, n3_concepto: 'Auto', n3_monto: 1500000,
       p15_tarjetas: 4,
@@ -223,16 +226,13 @@ describe('admin CSV export', () => {
       fin4_concepto: 'Seguro extra', fin4_cuota: 8000, fin4_hasta: 'may-28',
       p11_modo: 'Quiero desglosar',
       var_comida: 110000, var_transporte: 50000, var_farmacia: 16000,
-      var_otro1_concepto: 'Mascota', var_otro1_monto: 14000, var_otro2_concepto: 'Limpieza', var_otro2_monto: 9000,
-      var_otro3_concepto: 'Regalos', var_otro3_monto: 7000, var_total_directo: 206000,
+      var_total_directo: 206000,
       p12_modo: 'Quiero desglosar',
       d_salidas: 30000, d_ropa: 22000, d_delivery: 18000, d_susc: 6000, d_hobbies: 28000,
-      d_otro1_concepto: 'Café', d_otro1_monto: 5000, d_otro2_concepto: 'Juegos', d_otro2_monto: 4000,
-      d_otro3_concepto: 'Viajes', d_otro3_monto: 55000, d_total_directo: 123000,
+      d_total_directo: 123000,
       e13_salidas: 'Lo reduzco a la mitad', e13_ropa: 'Lo llevo a cero',
       e13_delivery: 'Lo reduzco a la mitad', e13_susc: 'No lo toco ni en crisis',
-      e13_hobbies: 'No lo toco ni en crisis', e13_otro1: 'Lo llevo a cero',
-      e13_otro2: 'Lo reduzco a la mitad', e13_otro3: 'No lo toco ni en crisis',
+      e13_hobbies: 'No lo toco ni en crisis',
       p14_tiene_compras: 'Sí', n1_concepto: 'Lavarropas', n1_monto: 500000,
       n2_concepto: 'Anteojos', n2_monto: 100000, n3_concepto: 'Auto', n3_monto: 1500000,
       p15_tarjetas: 4,
@@ -341,6 +341,69 @@ describe('admin CSV export', () => {
       fijo_otro1_concepto: 'Legacy expensas', fijo_otro1_monto: '30000', fijo_otro1_hasta: 'dic-26',
       fijo_otro2_concepto: 'Legacy cochera', fijo_otro2_monto: '', fijo_otro2_hasta: 'ene-27',
     })
+  })
+
+  it('flattens five daily expenses, five discretionary expenses, and five discretionary decisions', () => {
+    const row = toAdminCsvRow({
+      completedAt,
+      answers: {
+        var_otros: Array.from({ length: 5 }, (_, index) => ({
+          concepto: `Var ${index + 1}`,
+          monto: (index + 1) * 1000,
+          desde: '',
+          hasta: '',
+        })),
+        d_otros: Array.from({ length: 5 }, (_, index) => ({
+          concepto: `Gustito ${index + 1}`,
+          monto: (index + 1) * 2000,
+          desde: '',
+          hasta: '',
+        })),
+        e13_gustito_adicional1: 'Lo llevo a cero',
+        e13_gustito_adicional2: 'Lo reduzco a la mitad',
+        e13_gustito_adicional3: 'No lo toco ni en crisis',
+        e13_gustito_adicional4: 'Lo llevo a cero',
+        e13_gustito_adicional5: 'Lo reduzco a la mitad',
+      },
+    })
+
+    expect(row.gasto_diario_adicional_1_concepto).toBe('Var 1')
+    expect(row.gasto_diario_adicional_1_monto).toBe(1000)
+    expect(row.gasto_diario_adicional_5_concepto).toBe('Var 5')
+    expect(row.gasto_diario_adicional_5_monto).toBe(5000)
+
+    expect(row.gustito_adicional_1_concepto).toBe('Gustito 1')
+    expect(row.gustito_adicional_1_monto).toBe(2000)
+    expect(row.decision_gustito_adicional_1).toBe('Lo llevo a cero')
+
+    expect(row.gustito_adicional_5_concepto).toBe('Gustito 5')
+    expect(row.gustito_adicional_5_monto).toBe(10000)
+    expect(row.decision_gustito_adicional_5).toBe('Lo reduzco a la mitad')
+  })
+
+  it('blanks unused daily, discretionary, and decision slots for shorter collections', () => {
+    const row = toAdminCsvRow({
+      completedAt,
+      answers: {
+        var_otros: [{ concepto: 'Mascota', monto: 15000, desde: '', hasta: '' }],
+        d_otros: [{ concepto: 'Cine', monto: 8000, desde: '', hasta: '' }],
+        e13_gustito_adicional1: 'Lo reduzco a la mitad',
+      },
+    })
+
+    expect(row.gasto_diario_adicional_1_concepto).toBe('Mascota')
+    expect(row.gasto_diario_adicional_1_monto).toBe(15000)
+    expect(row.gustito_adicional_1_concepto).toBe('Cine')
+    expect(row.gustito_adicional_1_monto).toBe(8000)
+    expect(row.decision_gustito_adicional_1).toBe('Lo reduzco a la mitad')
+
+    for (let slot = 2; slot <= 5; slot++) {
+      expect(row[`gasto_diario_adicional_${slot}_concepto`]).toBe('')
+      expect(row[`gasto_diario_adicional_${slot}_monto`]).toBe('')
+      expect(row[`gustito_adicional_${slot}_concepto`]).toBe('')
+      expect(row[`gustito_adicional_${slot}_monto`]).toBe('')
+      expect(row[`decision_gustito_adicional_${slot}`]).toBe('')
+    }
   })
 
   it('rejects incomplete drafts', () => {

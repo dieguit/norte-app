@@ -43,13 +43,20 @@ export const csvHeaders = [
   ...['fin1', 'fin2', 'fin3', 'fin4'].flatMap((prefix) => [`${prefix}_concepto`, `${prefix}_cuota`, `${prefix}_hasta`]),
   'p11_modo',
   'var_comida', 'var_transporte', 'var_farmacia',
-  ...['var_otro1', 'var_otro2', 'var_otro3'].flatMap((prefix) => [`${prefix}_concepto`, `${prefix}_monto`]),
+  ...[1, 2, 3, 4, 5].flatMap((number) => [
+    `gasto_diario_adicional_${number}_concepto`,
+    `gasto_diario_adicional_${number}_monto`,
+  ]),
   'var_total_directo',
   'p12_modo',
   'd_salidas', 'd_ropa', 'd_delivery', 'd_susc', 'd_hobbies',
-  ...['d_otro1', 'd_otro2', 'd_otro3'].flatMap((prefix) => [`${prefix}_concepto`, `${prefix}_monto`]),
+  ...[1, 2, 3, 4, 5].flatMap((number) => [
+    `gustito_adicional_${number}_concepto`,
+    `gustito_adicional_${number}_monto`,
+    `decision_gustito_adicional_${number}`,
+  ]),
   'd_total_directo',
-  'e13_salidas', 'e13_ropa', 'e13_delivery', 'e13_susc', 'e13_hobbies', 'e13_otro1', 'e13_otro2', 'e13_otro3',
+  'e13_salidas', 'e13_ropa', 'e13_delivery', 'e13_susc', 'e13_hobbies',
   'n1_concepto', 'n1_monto', 'n2_concepto', 'n2_monto', 'n3_concepto', 'n3_monto',
   'p14_tiene_compras', 'p15_tarjetas', ...cardHeaders,
 ] as const
@@ -108,6 +115,27 @@ export function toAdminCsvRow(draft: CompletedDraft): CsvRow {
       row[`fijo_otro${index}_hasta`] = fixedOtherValue(answers[`fijo_otro${index}_hasta`])
     }
   }
+
+  for (let index = 0; index < 5; index++) {
+    const number = index + 1
+    const item = Array.isArray(answers.var_otros) ? answers.var_otros[index] : undefined
+    row[`gasto_diario_adicional_${number}_concepto`] =
+      item && typeof item === 'object' ? fixedOtherValue(item.concepto) : ''
+    row[`gasto_diario_adicional_${number}_monto`] =
+      item && typeof item === 'object' ? fixedOtherAmount(item.monto) : ''
+  }
+
+  for (let index = 0; index < 5; index++) {
+    const number = index + 1
+    const item = Array.isArray(answers.d_otros) ? answers.d_otros[index] : undefined
+    row[`gustito_adicional_${number}_concepto`] =
+      item && typeof item === 'object' ? fixedOtherValue(item.concepto) : ''
+    row[`gustito_adicional_${number}_monto`] =
+      item && typeof item === 'object' ? fixedOtherAmount(item.monto) : ''
+    row[`decision_gustito_adicional_${number}`] =
+      value(answers, `e13_gustito_adicional${number}`)
+  }
+
   return row
 }
 

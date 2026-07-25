@@ -699,6 +699,11 @@ describe('onboarding draft', () => {
       var_comida: 1000,
       var_total_directo: 5000,
     })).toEqual({ p11_modo: 'Tengo el total en la cabeza', var_total_directo: 5000 })
+    expect(filterAnswersForActiveSteps({
+      p11_modo: 'Tengo el total en la cabeza',
+      var_otros: [{ concepto: 'Mascota', monto: 1000, desde: '', hasta: '' }],
+      var_total_directo: 5000,
+    })).toEqual({ p11_modo: 'Tengo el total en la cabeza', var_total_directo: 5000 })
   })
 
   it('requires a positive total or detailed daily expense and names positive others', () => {
@@ -708,8 +713,10 @@ describe('onboarding draft', () => {
       .toEqual({ var_total_directo: 'Ingresá un total aproximado mayor a cero.' })
     expect(validateStep(p11, { p11_modo: 'Quiero desglosar' }))
       .toEqual({ var_comida: 'Completá al menos un gasto de vida diaria.' })
-    expect(validateStep(p11, { p11_modo: 'Quiero desglosar', var_otro1_monto: 500 }))
-      .toEqual({ var_otro1_concepto: 'Debe ingresar el concepto.' })
+    expect(validateStep(p11, {
+      p11_modo: 'Quiero desglosar',
+      var_otros: [{ concepto: '', monto: 500, desde: '', hasta: '' }],
+    })).toEqual({ 'var_otros.0.concepto': 'Debe ingresar el concepto.' })
   })
 
   it('shows direct total mode and fixed reduction choices for discretionary spending', () => {
@@ -731,13 +738,26 @@ describe('onboarding draft', () => {
 
   it('requires a positive discretionary total or detail and a name for positive others', () => {
     const p12 = onboardingSteps.find(({ id }) => id === 'p12')!
+    const p13 = onboardingSteps.find(({ id }) => id === 'p13')!
 
     expect(validateStep(p12, { p12_modo: 'Tengo el total en la cabeza' }))
       .toEqual({ d_total_directo: 'Ingresá un total aproximado mayor a cero.' })
     expect(validateStep(p12, { p12_modo: 'Quiero desglosar' }))
       .toEqual({ d_salidas: 'Completá al menos un gasto de gustitos.' })
-    expect(validateStep(p12, { p12_modo: 'Quiero desglosar', d_otro1_monto: 500 }))
-      .toEqual({ d_otro1_concepto: 'Debe ingresar el concepto.' })
+    expect(validateStep(p12, {
+      p12_modo: 'Quiero desglosar',
+      d_otros: [{ concepto: 'Regalos', monto: 500, desde: '', hasta: '' }],
+    })).toEqual({})
+
+    expect(getVisibleFields(p13, {
+      p12_modo: 'Quiero desglosar',
+      d_otros: [{ concepto: 'Regalos', monto: 500, desde: '', hasta: '' }],
+    }).map(({ id }) => id)).toEqual(['e13_gustito_adicional1'])
+
+    expect(getVisibleFields(p13, {
+      p12_modo: 'Quiero desglosar',
+      d_otros: [{ concepto: 'Regalos', monto: 0, desde: '', hasta: '' }],
+    })).toEqual([])
   })
 
   it('skips required validation for hidden fields', () => {

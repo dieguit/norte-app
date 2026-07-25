@@ -482,26 +482,22 @@ describe('OnboardingPage component tests', () => {
     setDraft({
       p1_pesa: 'Otra',
       ing_total: 500000,
-      p8a_tiene_vencimiento: 'No',
-      extra_tiene: 'No',
       p9_modo: 'Tengo el total en la cabeza',
       fijo_total_directo: 100000,
-      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
       p11_modo: 'Tengo el total en la cabeza',
-      var_total_directo: 100000,
+      var_total_directo: 80000,
       p12_modo: 'Quiero desglosar',
-      d_otro1_concepto: 'Regalos',
     })
-
     render(<OnboardingPage />)
 
-    const otro1Input = await screen.findByLabelText('Otro 1 ($)')
-    await user.type(otro1Input, '5000')
+    await user.click(await screen.findByRole('button', { name: /agregar otro/i }))
+    await user.type(screen.getByLabelText(/concepto 1/i), 'Regalos')
+    await user.type(screen.getByLabelText(/monto \(\$\) 1/i), '5000')
     await continueStep(user)
 
     expect(await screen.findByRole('heading', { name: /qué harías con cada gustito/i })).toBeDefined()
     expect(screen.getByText('Regalos')).toBeDefined()
-    expect(screen.queryByText('Otro 1')).toBeNull()
+    expect(screen.queryByText('Gustito adicional 1')).toBeNull()
   })
 
   it('shows P14 purchase rows only after selecting Sí', async () => {
@@ -1143,6 +1139,66 @@ describe('OnboardingPage component tests', () => {
     expect(screen.queryByRole('button', { name: /agregar otro/i })).toBeNull()
   })
 
+  async function renderDailyExpenses(answers: OnboardingAnswers = {}) {
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Quiero desglosar',
+      ...answers,
+    })
+    render(<OnboardingPage />)
+    await screen.findByRole('heading', { name: /La vida de todos los días/i })
+  }
+
+  it('adds up to five daily expense others with Concepto 1 to 5 labels', async () => {
+    const user = userEvent.setup()
+    await renderDailyExpenses()
+    for (let index = 1; index <= 5; index++) {
+      await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+      expect(screen.getByLabelText(new RegExp(`^Concepto ${index}`))).toBeDefined()
+    }
+    expect(screen.getAllByLabelText(/^Concepto /)).toHaveLength(5)
+    expect(screen.queryByRole('button', { name: /agregar otro/i })).toBeNull()
+  })
+
+  async function renderGustitos(answers: OnboardingAnswers = {}) {
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Tengo el total en la cabeza',
+      var_total_directo: 100000,
+      p12_modo: 'Quiero desglosar',
+      ...answers,
+    })
+    render(<OnboardingPage />)
+    await screen.findByRole('heading', { name: /Los gustitos/i })
+  }
+
+  it('adds up to five gustito others with Concepto 1 to 5 labels', async () => {
+    const user = userEvent.setup()
+    await renderGustitos()
+    for (let index = 1; index <= 5; index++) {
+      await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+      expect(screen.getByLabelText(new RegExp(`^Concepto ${index}`))).toBeDefined()
+    }
+    expect(screen.getAllByLabelText(/^Concepto /)).toHaveLength(5)
+    expect(screen.queryByRole('button', { name: /agregar otro/i })).toBeNull()
+  })
+
   it('updates the detailed fixed-expense total as amounts are entered', async () => {
     const user = userEvent.setup()
     await renderFixedExpenses()
@@ -1248,7 +1304,7 @@ describe('OnboardingPage component tests', () => {
     render(<OnboardingPage />)
     const dailyExpensesHelper = await screen.findByText(helperText)
     expect(
-      screen.getByLabelText(/^Otro 1 \(concepto\)$/i).compareDocumentPosition(
+      screen.getByRole('button', { name: /agregar otro/i }).compareDocumentPosition(
         dailyExpensesHelper,
       ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
@@ -1273,7 +1329,7 @@ describe('OnboardingPage component tests', () => {
     render(<OnboardingPage />)
     const gustitosHelper = await screen.findByText(helperText)
     expect(
-      screen.getByLabelText(/^Otro 1 \(concepto\)$/i).compareDocumentPosition(
+      screen.getByRole('button', { name: /agregar otro/i }).compareDocumentPosition(
         gustitosHelper,
       ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
