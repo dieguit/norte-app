@@ -87,7 +87,7 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
   async function handleCopyLink(deviceId: string) {
     setCopyErrorByDevice((prev) => ({ ...prev, [deviceId]: null }))
     try {
-      await navigator.clipboard.writeText(`/informe/${deviceId}`)
+      await navigator.clipboard.writeText(`${window.location.origin}/informe/${deviceId}`)
     } catch (err) {
       setCopyErrorByDevice((prev) => ({ ...prev, [deviceId]: 'No se pudo copiar el enlace.' }))
     }

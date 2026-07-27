@@ -345,7 +345,7 @@ describe('AdminPage', () => {
       // Test copy link success
       const copyBtn = screen.getByRole('button', { name: 'Copiar enlace' })
       await user.click(copyBtn)
-      expect(writeTextMock).toHaveBeenCalledWith('/informe/device-ana')
+      expect(writeTextMock).toHaveBeenCalledWith(`${window.location.origin}/informe/device-ana`)
 
       // Test copy link error
       writeTextMock.mockRejectedValueOnce(new Error('Clipboard error'))
