@@ -1,0 +1,479 @@
+import { useState } from 'react'
+import data from '../informe/demo.json'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
+import { Pie, PieChart } from 'recharts'
+
+const formatMoney = (value: number) =>
+  `$${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(value)}`
+const formatMillions = (value: number) =>
+  `$${(value / 1_000_000).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} M`
+
+function MonthlyLegend({
+  items,
+}: {
+  items: Array<{ key: string; label: string; percentage: number; color: string }>
+}) {
+  return (
+    <ul className="mt-4 grid gap-2 text-sm text-[var(--sea-ink-soft)] sm:grid-cols-2">
+      {items.map((item) => (
+        <li key={item.key} className="flex items-start gap-2">
+          <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+          <span>{item.label} ({(item.percentage * 100).toFixed(1)}%)</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function InformePage() {
+  const [reduction, setReduction] = useState(0)
+
+  const monthlyBreakdown = [
+    {
+      key: 'fixed',
+      label: 'Compromisos fijos que no se tocan',
+      amount: data.bloque2.P_monto,
+      percentage: data.bloque2.P_pct,
+      color: '#047857',
+    },
+    {
+      key: 'daily',
+      label: 'Vida de todos los días (y que quizás puedas ajustar)',
+      amount: data.bloque2.V_monto,
+      percentage: data.bloque2.V_pct,
+      color: '#0D9488',
+    },
+    {
+      key: 'discretionary',
+      label: 'Cosas que podrías recortar — incluso hasta cero',
+      amount: data.bloque2.D_monto,
+      percentage: data.bloque2.D_pct,
+      color: '#D97706',
+    },
+    {
+      key: 'free',
+      label: 'Lo que te queda libre',
+      amount: data.bloque2.margen_monto,
+      percentage: data.bloque2.margen_pct,
+      color: '#0284C7',
+    },
+  ]
+  const monthlyTotal = monthlyBreakdown.reduce((total, item) => total + item.amount, 0)
+  const monthlyChartConfig = Object.fromEntries(
+    monthlyBreakdown.map((item) => [item.key, { label: item.label, color: item.color }])
+  ) satisfies ChartConfig
+  const [gastoConcepto, gastoMontoRaw] = data.bloque1.gastoN_concepto.split(' — ')
+  const gastoMonto = gastoMontoRaw ? Number(gastoMontoRaw.replace(/[^0-9]/g, '')) : 0
+  const horizon = data.bloque3.meses.length
+  const curve = data.bloque3.acum_A.map(
+    (current, index) => current + (data.bloque3.acum_C[index] - current) * (reduction / 100)
+  )
+  const arrival = curve.findIndex((amount) => amount >= data.bloque3.colchon_objetivo)
+  const arrivalLabel = arrival === -1 ? `No llega en ${horizon} meses` : data.bloque3.meses[arrival]
+
+  const acumAPoints = data.bloque3.acum_A.map(
+    (value, index) =>
+      `${(index / (data.bloque3.acum_A.length - 1)) * 100},${
+        50 - Math.max(0, Math.min(50, (value / data.bloque3.colchon_objetivo) * 50))
+      }`
+  ).join(' ')
+
+  const acumCPoints = data.bloque3.acum_C.map(
+    (value, index) =>
+      `${(index / (data.bloque3.acum_C.length - 1)) * 100},${
+        50 - Math.max(0, Math.min(50, (value / data.bloque3.colchon_objetivo) * 50))
+      }`
+  ).join(' ')
+
+  const curvePoints = curve
+    .map(
+      (value, index) =>
+        `${(index / (curve.length - 1)) * 100},${
+          50 - Math.max(0, Math.min(50, (value / data.bloque3.colchon_objetivo) * 50))
+        }`
+    )
+    .join(' ')
+
+  return (
+    <main id="main" className="page-wrap py-8 sm:py-12 space-y-10">
+      {/* Header / Apertura */}
+      <section className="demo-panel space-y-4">
+        <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
+          <span className="island-kicker">Informe inicial de claridad</span>
+          <span className="text-xs font-semibold text-[var(--sea-ink-soft)]">
+            {data.meta.nombre} — {data.meta.fecha}
+          </span>
+        </div>
+        <p className="text-xl font-medium leading-relaxed text-[var(--sea-ink)]">
+          {data.apertura.frase_apertura}
+        </p>
+        <p className="text-base leading-relaxed text-[var(--sea-ink-soft)]">
+          {data.apertura.frase_sub}
+        </p>
+      </section>
+
+      {/* Bloque 1: Tu posición real */}
+      <section aria-labelledby="posicion-real" className="demo-panel space-y-6">
+        <h1 id="posicion-real" className="demo-title">
+          Tu posición real
+        </h1>
+
+        <p className="text-base leading-relaxed text-[var(--sea-ink-soft)]">
+          La información financiera generalmente está dispersa entre recibos, cuentas y resúmenes. Acá,
+          todo en un solo lugar, mirando el año completo:
+        </p>
+
+        <div className="space-y-4">
+          <div className="rounded-xl p-4 border border-[rgba(45,122,79,0.25)] bg-[rgba(45,122,79,0.12)] space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#2D7A4F]">
+              Todo lo que vas a ganar este año
+            </span>
+            <p className="text-2xl font-bold text-[#2D7A4F]">
+              {formatMillions(data.bloque1.ingreso_anual)}
+            </p>
+            <p className="text-xs text-[var(--sea-ink-soft)]">
+              {data.bloque1.ingreso_anual_detalle}
+            </p>
+          </div>
+
+          <div className="rounded-xl p-4 border border-[rgba(176,58,46,0.2)] bg-[rgba(176,58,46,0.08)] space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#B03A2E]">
+              Lo que tenés que pagar sí o sí
+            </span>
+            <p className="text-2xl font-bold text-[#B03A2E]">
+              {formatMillions(data.bloque1.pagar_anual)}
+            </p>
+            <p className="text-xs text-[var(--sea-ink-soft)]">
+              {data.bloque1.pagar_anual_desc}
+            </p>
+          </div>
+
+          <div className="rounded-xl p-4 border border-[rgba(180,83,9,0.25)] bg-[#FEF3C7] space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#B45309]">
+              Cosas que podrías ajustar si quisieras
+            </span>
+            <p className="text-2xl font-bold text-[#B45309]">
+              {formatMillions(data.bloque1.ajustable_anual)}
+            </p>
+            <p className="text-xs text-[var(--sea-ink-soft)]">
+              {data.bloque1.ajustable_desc}
+            </p>
+          </div>
+
+          <div className="rounded-xl p-4 border border-[rgba(176,58,46,0.2)] bg-[rgba(176,58,46,0.08)] space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#B03A2E]">
+              Un gasto necesario que ya sabés que viene
+            </span>
+            <p className="text-2xl font-bold text-[#B03A2E]">
+              {formatMillions(gastoMonto)}
+            </p>
+            <p className="text-xs text-[var(--sea-ink-soft)]">
+              {gastoConcepto}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border-2 border-[var(--sea-ink)] bg-[var(--surface-strong)] p-4 space-y-1 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink)]">
+            Lo que posiblemente te quedás libre en el año
+          </p>
+          <p className="text-2xl font-extrabold text-[var(--sea-ink)]">
+            {formatMoney(data.bloque1.libre_anual_pre_tc)}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-4 space-y-3">
+          <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+            Pero hay algo más a tener en cuenta: también tenés compromisos de tarjeta que ya existen y pueden
+            ser de cualquier origen. <em>Lo más probable es que ni vos te acordés en detalle — pero existen.</em>
+          </p>
+          <div className="space-y-1">
+            <span className="block text-xs font-semibold uppercase tracking-wider text-[#B03A2E]">
+              Total comprometido en tarjeta este año
+            </span>
+            <strong className="block text-2xl font-bold text-[#B03A2E]">
+              {formatMoney(data.bloque1.tarjeta_anual)}
+            </strong>
+          </div>
+        </div>
+
+        <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+          {data.bloque1.texto_contexto}
+        </p>
+      </section>
+
+      {/* Bloque 2: Radiografía */}
+      <section aria-labelledby="radiografia-mes" className="demo-panel space-y-6">
+        <p className="island-kicker">2 · Radiografía</p>
+        <h2 id="radiografia-mes" className="text-2xl font-bold text-[var(--sea-ink)]">
+          La radiografía de tu mes
+        </h2>
+        <p className="text-base leading-relaxed text-[var(--sea-ink-soft)]">
+          {data.bloque2.subtitulo}
+        </p>
+
+        <Tabs defaultValue="cards" className="space-y-4">
+          <TabsList aria-label="Visualización de la radiografía mensual" className="w-full sm:w-fit">
+            <TabsTrigger value="cards">Opción 1</TabsTrigger>
+            <TabsTrigger value="pie">Opción 2</TabsTrigger>
+            <TabsTrigger value="donut">Opción 3</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="cards">
+            <div className="space-y-4">
+              {monthlyBreakdown.map((item) => (
+                <div key={item.key} className="demo-card space-y-2">
+                  <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
+                    <span className="text-sm font-medium text-[var(--sea-ink)]">{item.label}</span>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[var(--sea-ink)]">
+                      <span>{formatMoney(item.amount)}</span>
+                      <span className="text-xs font-normal text-[var(--sea-ink-soft)]">
+                        ({(item.percentage * 100).toFixed(1)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full border border-[var(--line)] bg-[var(--surface-strong)]">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ backgroundColor: item.color, width: `${Math.max(0.5, item.percentage * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="pie">
+            <ChartContainer data-testid="monthly-solid-pie" config={monthlyChartConfig} className="mx-auto aspect-square max-h-80 w-full">
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent nameKey="label" formatter={(value) => formatMoney(Number(value))} />} />
+                <Pie data={monthlyBreakdown} dataKey="amount" nameKey="label" outerRadius="85%" />
+              </PieChart>
+            </ChartContainer>
+            <MonthlyLegend items={monthlyBreakdown} />
+          </TabsContent>
+
+          <TabsContent value="donut">
+            <div className="relative">
+              <ChartContainer data-testid="monthly-donut" config={monthlyChartConfig} className="mx-auto aspect-square max-h-80 w-full">
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent nameKey="label" formatter={(value) => formatMoney(Number(value))} />} />
+                  <Pie data={monthlyBreakdown} dataKey="amount" nameKey="label" innerRadius="58%" outerRadius="85%" />
+                </PieChart>
+              </ChartContainer>
+              <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-lg font-bold text-[var(--sea-ink)]">
+                {formatMoney(monthlyTotal)}
+              </p>
+            </div>
+            <MonthlyLegend items={monthlyBreakdown} />
+          </TabsContent>
+        </Tabs>
+
+        <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-4 space-y-2">
+          <p className="text-sm font-semibold text-[var(--sea-ink)]">
+            Margen libre ({formatMoney(data.bloque2.margen_monto)}) vs. Compromisos próximo mes ({formatMoney(data.bloque2.comp_prox_mes)})
+          </p>
+          <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+            {data.bloque2.texto_analisis}
+          </p>
+        </div>
+      </section>
+
+      {/* Bloque 3: Tu camino */}
+      <section aria-labelledby="camino-colchon" className="demo-panel space-y-6">
+        <p className="island-kicker">3 · Tu camino</p>
+        <h2 id="camino-colchon" className="text-2xl font-bold text-[var(--sea-ink)]">
+          Tu camino al colchón
+        </h2>
+
+        <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-4 space-y-3">
+          <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+            Para este cálculo usamos un colchón de <strong>3 meses</strong> de tus compromisos fijos y
+            variables. Partimos del supuesto de que hoy tenés cero ahorros — puede ser verdad o no, pero es
+            el punto de partida más conservador.
+          </p>
+          <div className="flex items-center justify-between border-t border-[var(--line)] pt-3">
+            <span className="text-xs text-[var(--sea-ink-soft)]">Tu colchón objetivo:</span>
+            <strong className="text-xl font-bold text-[var(--sea-ink)]">
+              {formatMoney(data.bloque3.colchon_objetivo)}
+            </strong>
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-4">
+          <div className="flex items-center justify-between gap-4">
+            <label htmlFor="discretionary-reduction" className="font-semibold text-[var(--sea-ink)]">
+              ¿Cuánto recortás tus gustitos?
+            </label>
+            <output className="font-mono text-lg font-bold text-[var(--palm)]">{reduction}%</output>
+          </div>
+
+          <input
+            id="discretionary-reduction"
+            aria-label="Recorte de gastos discrecionales"
+            type="range"
+            min="0"
+            max="100"
+            value={reduction}
+            onChange={(event) => setReduction(Number(event.target.value))}
+            className="w-full accent-[var(--palm)] cursor-pointer"
+          />
+
+          <div className="flex justify-between text-xs text-[var(--sea-ink-soft)]">
+            <span>Sin cambios</span>
+            <span>Todo a cero</span>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-[var(--line)]">
+            <span className="text-sm text-[var(--sea-ink-soft)]">¿Cuándo llegás al colchón?</span>
+            <p aria-live="polite" className="text-lg font-bold text-[var(--palm)]">
+              {arrivalLabel}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <svg
+            viewBox="0 0 100 50"
+            role="img"
+            aria-label="Proyección hacia el colchón"
+            className="h-56 w-full overflow-visible"
+          >
+            {/* Target Line */}
+            <line
+              x1="0"
+              y1="0"
+              x2="100"
+              y2="0"
+              stroke="currentColor"
+              strokeDasharray="2 2"
+              className="text-emerald-600 opacity-70"
+              strokeWidth="1"
+            />
+            {/* Baseline Curve */}
+            <polyline
+              fill="none"
+              points={acumAPoints}
+              stroke="var(--sea-ink-soft)"
+              strokeWidth="1"
+              strokeDasharray="2 2"
+              opacity="0.5"
+            />
+            {/* Maximal Curve */}
+            <polyline
+              fill="none"
+              points={acumCPoints}
+              stroke="var(--lagoon)"
+              strokeWidth="1"
+              opacity="0.5"
+            />
+            {/* Selected Projection Curve */}
+            <polyline fill="none" points={curvePoints} stroke="var(--palm)" strokeWidth="2.5" />
+          </svg>
+          <div className="flex justify-between text-xs text-[var(--sea-ink-soft)] font-mono px-1">
+            <span>{data.bloque3.meses[0]}</span>
+            <span>{data.bloque3.meses[Math.floor(data.bloque3.meses.length / 2)]}</span>
+            <span>{data.bloque3.meses[data.bloque3.meses.length - 1]}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-[var(--sea-ink-soft)]">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-4 border-b border-dashed border-[var(--sea-ink-soft)]" />
+            <span>Sin tocar nada</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-4 h-0.5 bg-[var(--palm)]" />
+            <span>Tu ajuste (slider)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-4 border-b border-solid border-[var(--lagoon)]" />
+            <span>Máximo posible</span>
+          </div>
+        </div>
+
+        <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)] border-t border-[var(--line)] pt-4">
+          {data.bloque3.texto_hitos}
+        </p>
+
+        <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-3 text-xs text-[var(--sea-ink-soft)] leading-relaxed">
+          <p>
+            <strong>ℹ️ Informe ilustrativo.</strong> Estamos desarrollando Norte y este prototipo puede
+            contener errores. Los datos ingresados son aproximados — los resultados son orientativos, no
+            asesoramiento financiero.
+          </p>
+        </div>
+      </section>
+
+      {/* Bloque 4: Qué es Norte */}
+      <section aria-labelledby="vision-norte" className="demo-panel space-y-6">
+        <p className="island-kicker">4 · Qué es Norte</p>
+        <h2 id="vision-norte" className="text-2xl font-bold text-[var(--sea-ink)] leading-snug">
+          {data.bloque4.titulo_gancho}
+        </h2>
+
+        <div className="space-y-4 text-base leading-relaxed text-[var(--sea-ink-soft)]">
+          <p>{data.bloque4.p1}</p>
+          <p>{data.bloque4.p2}</p>
+          <p>{data.bloque4.p3}</p>
+          <p>{data.bloque4.p4}</p>
+
+          <blockquote className="my-6 border-l-4 border-l-[var(--palm)] pl-4 font-serif italic text-lg text-[var(--sea-ink)]">
+            "{data.bloque4.quote}"
+          </blockquote>
+
+          <p>{data.bloque4.p5}</p>
+        </div>
+
+        {/* WhatsApp Preview */}
+        <div className="my-6 rounded-2xl border border-gray-700 bg-[#0b141a] p-4 text-white shadow-lg max-w-md mx-auto space-y-3">
+          <div className="text-center">
+            <span className="rounded-full bg-gray-800 px-3 py-1 text-[10px] text-gray-400">
+              Diciembre 2026
+            </span>
+          </div>
+
+          <div className="mr-auto max-w-[85%] rounded-xl bg-[#202c33] p-3 text-gray-100 shadow">
+            <p className="text-sm leading-relaxed">
+              <strong>Norte:</strong> Hoy entra tu aguinaldo — $4.500.000. Antes de que se mezcle con el
+              mes, te propongo separar $2.800.000 directo al colchón. ¿Lo hacemos antes de las fiestas?
+            </p>
+            <span className="block text-right text-[10px] text-gray-400 mt-1">09:15</span>
+          </div>
+
+          <div className="ml-auto max-w-[85%] rounded-xl bg-[#005c4b] p-3 text-emerald-50 shadow">
+            <p className="text-sm leading-relaxed">
+              Ay, pero quiero comprar algo para las fiestas. ¿Puedo?
+            </p>
+            <span className="block text-right text-[10px] text-emerald-200 mt-1">18:40</span>
+          </div>
+
+          <div className="mr-auto max-w-[85%] rounded-xl bg-[#202c33] p-3 text-gray-100 shadow">
+            <p className="text-sm leading-relaxed">
+              <strong>Norte:</strong> Con tu foto de hoy: si destinás $2.800.000 al colchón y guardás
+              $700.000 para fiestas, llegás igual en septiembre. Si lo mezclás todo, se corre un mes. Vos
+              decidís — ahora con los números adelante.
+            </p>
+            <span className="block text-right text-[10px] text-gray-400 mt-1">18:42</span>
+          </div>
+        </div>
+
+        <div className="pt-2 text-center space-y-4">
+          <button type="button" className="demo-button text-base px-6 py-3 w-full sm:w-auto">
+            {data.bloque4.cta_label}
+          </button>
+
+          <p className="text-sm font-medium text-[var(--sea-ink)] italic max-w-xl mx-auto pt-2">
+            {data.bloque4.frase_cierre}
+          </p>
+        </div>
+      </section>
+    </main>
+  )
+}
