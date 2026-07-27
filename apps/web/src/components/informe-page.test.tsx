@@ -1,6 +1,19 @@
 // @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('recharts')>()
+
+  return {
+    ...actual,
+    XAxis: ({ interval }: { interval?: number | string }) => (
+      <span data-testid="projection-x-axis">{interval}</span>
+    ),
+  }
+})
+
 import { InformePage } from './informe-page'
 
 beforeAll(() => {
@@ -40,7 +53,9 @@ describe('InformePage', () => {
     ).toBeDefined()
     expect(screen.getByText('No llegás con este recorte')).toBeDefined()
     expect(screen.getByTestId('projection-chart')).toBeDefined()
-    expect(screen.getByText('Ene-27')).toBeDefined()
+    expect(screen.getByTestId('projection-x-axis')).toHaveTextContent(
+      'preserveStartEnd',
+    )
 
     fireEvent.change(slider, { target: { value: '100' } })
 

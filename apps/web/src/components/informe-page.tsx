@@ -501,7 +501,7 @@ export function InformePage() {
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              interval={0}
+              interval="preserveStartEnd"
             />
             <YAxis
               tickLine={false}
