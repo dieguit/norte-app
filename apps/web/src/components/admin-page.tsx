@@ -319,9 +319,19 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                             </span>
                           </td>
                           <td>
-                            <span className="demo-pill font-bold">
-                              {device.status === 'completed' ? 'Completado' : 'Borrador'}
-                            </span>
+                            {device.reportSentOn ? (
+                              <span className="demo-pill bg-[color-mix(in_oklab,#2e7d32_15%,transparent)] text-[#1b5e20] border-[#2e7d32]/30 font-bold">
+                                Informe Enviado
+                              </span>
+                            ) : device.hasReport ? (
+                              <span className="demo-pill font-bold">
+                                Informe Listo
+                              </span>
+                            ) : (
+                              <span className="demo-pill font-bold">
+                                {device.status === 'completed' ? 'Completado' : 'Borrador'}
+                              </span>
+                            )}
                           </td>
                         </tr>
                         {isExpanded && (
@@ -346,6 +356,38 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                                     </Button>
                                   )}
                                 </div>
+
+                                {deviceState.isLoading && (
+                                  <p className="text-sm text-[var(--sea-ink-soft)] animate-pulse">
+                                    Cargando archivos...
+                                  </p>
+                                )}
+                                {deviceState.error && (
+                                  <p className="text-sm text-[var(--error)] font-medium">
+                                    {deviceState.error}
+                                  </p>
+                                )}
+                                {!deviceState.isLoading && !deviceState.error && deviceState.files && (
+                                  deviceState.files.length === 0 ? (
+                                    <p className="text-sm text-[var(--sea-ink-soft)]">
+                                      No se encontraron archivos.
+                                    </p>
+                                  ) : (
+                                    <div className="flex flex-col gap-2 pl-3 border-l-2 border-[var(--lagoon-deep)]">
+                                      {deviceState.files.map((file: any, idx: number) => (
+                                        <a
+                                          key={idx}
+                                          href={file.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center text-sm font-semibold text-[var(--lagoon-deep)] hover:underline"
+                                        >
+                                          {formatAdminDownloadLabel(file.fieldId, file.label)}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )
+                                )}
 
                                 <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[var(--line)]">
                                   {device.hasReport ? (
@@ -402,38 +444,6 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                                       </Button>
                                     </div>
                                   </div>
-                                )}
-
-                                {deviceState.isLoading && (
-                                  <p className="text-sm text-[var(--sea-ink-soft)] animate-pulse">
-                                    Cargando archivos...
-                                  </p>
-                                )}
-                                {deviceState.error && (
-                                  <p className="text-sm text-[var(--error)] font-medium">
-                                    {deviceState.error}
-                                  </p>
-                                )}
-                                {!deviceState.isLoading && !deviceState.error && deviceState.files && (
-                                  deviceState.files.length === 0 ? (
-                                    <p className="text-sm text-[var(--sea-ink-soft)]">
-                                      No se encontraron archivos.
-                                    </p>
-                                  ) : (
-                                    <div className="flex flex-col gap-2 pl-3 border-l-2 border-[var(--lagoon-deep)]">
-                                      {deviceState.files.map((file: any, idx: number) => (
-                                        <a
-                                          key={idx}
-                                          href={file.url}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="inline-flex items-center text-sm font-semibold text-[var(--lagoon-deep)] hover:underline"
-                                        >
-                                          {formatAdminDownloadLabel(file.fieldId, file.label)}
-                                        </a>
-                                      ))}
-                                    </div>
-                                  )
                                 )}
                               </div>
                             </td>

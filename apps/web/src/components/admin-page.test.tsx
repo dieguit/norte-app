@@ -352,5 +352,86 @@ describe('AdminPage', () => {
       await user.click(copyBtn)
       expect(await screen.findByText('No se pudo copiar el enlace.')).toBeInTheDocument()
     })
+
+    it('renders Informe Enviado green chip and Informe Listo chip based on report state', async () => {
+      const results = [
+        {
+          deviceId: 'device-sent',
+          name: 'User Sent',
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: true,
+          reportSentOn: new Date('2026-07-16T13:00:00Z'),
+        },
+        {
+          deviceId: 'device-ready',
+          name: 'User Ready',
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: true,
+          reportSentOn: null,
+        },
+        {
+          deviceId: 'device-completed',
+          name: 'User Completed',
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+        {
+          deviceId: 'device-draft',
+          name: 'User Draft',
+          status: 'draft',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+      ]
+      vi.mocked(listAdminResults).mockResolvedValue(results)
+
+      render(<AdminPage authenticated />)
+
+      expect(await screen.findByText('Informe Enviado')).toBeInTheDocument()
+      expect(screen.getByText('Informe Listo')).toBeInTheDocument()
+      expect(screen.getByText('Completado')).toBeInTheDocument()
+      expect(screen.getByText('Borrador')).toBeInTheDocument()
+    })
+
+    it('renders file attachments section directly below Ver resultados and before the report section divider', async () => {
+      const results = [
+        {
+          deviceId: 'device-ana',
+          name: 'Ana',
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+      ]
+      vi.mocked(listAdminResults).mockResolvedValue(results)
+      vi.mocked(getAdminResultFiles).mockResolvedValue([
+        {
+          fieldId: 't1_upload_url',
+          label: 'Subí el resumen (foto o PDF)',
+          url: 'https://download.example/file',
+        },
+      ])
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+
+      expect(await screen.findByText('Ana')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Ana' }))
+
+      const container = document.getElementById('files-container-device-ana')
+      expect(container).toBeInTheDocument()
+
+      const children = Array.from(container!.children)
+      expect(children[0]).toHaveTextContent('Ver resultados')
+      expect(children[1]).toHaveTextContent('Descargar Tarjeta 1 Resumen')
+      expect(children[2]).toHaveTextContent('Agregar informe')
+    })
   })
 })
+
