@@ -27,6 +27,8 @@ function makeDraft(answers: OnboardingAnswers): OnboardingDraft {
     deviceId,
     answers: { ...initialAnswers, ...answers },
     completedAt: null,
+    report: null,
+    reportSentOn: null,
     createdAt: timestamp,
     updatedAt: timestamp,
   }

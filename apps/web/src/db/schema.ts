@@ -1,12 +1,13 @@
 import { sql } from 'drizzle-orm'
 import { jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import type { Report } from '../admin/report'
 import type { OnboardingAnswers } from '../onboarding/definition'
 
 export const onboardingDrafts = pgTable('onboarding_drafts', {
   deviceId: text('device_id').primaryKey(),
   answers: jsonb('answers').$type<OnboardingAnswers>().notNull().default({}),
   completedAt: timestamp('completed_at', { withTimezone: true }),
-  report: jsonb('report'),
+  report: jsonb('report').$type<Report>(),
   reportSentOn: timestamp('report_sent_on', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
