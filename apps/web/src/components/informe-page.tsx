@@ -608,105 +608,102 @@ export function InformePage() {
         </div>
 
         <div className="grid items-start gap-8 md:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-5">
-            <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
-                Tus finanzas se actualizan solas
-              </h3>
-              <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-                Incorpora tus ingresos, gastos y cuotas para que no tengas que
-                registrar cada movimiento.
-              </p>
-            </article>
-            <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
-                Todos tus objetivos, en una sola hoja de ruta
-              </h3>
-              <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-                Ves qué estás construyendo, cuánto avanzaste y cómo se conectan
-                tus distintos objetivos.
-              </p>
-            </article>
-            <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
-                Tu camino cambia cuando cambia tu vida
-              </h3>
-              <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-                Si aparece un gasto, cambia un ingreso o modificás una
-                prioridad, Norte ajusta automáticamente tu hoja de ruta.
-              </p>
-            </article>
-            <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
-                Podés probar antes de decidir
-              </h3>
-              <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-                Simulá qué pasa con tu hoja de ruta si hacés una compra, tomás
-                cuotas, ahorrás más o aparece un gasto inesperado.
-              </p>
-            </article>
-            <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
-                Podés preguntarle antes de gastar
-              </h3>
-              <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-                Escribile a Norte por WhatsApp y entendé qué impacto tendría
-                sobre tus objetivos.
-              </p>
-            </article>
-            <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
-                Recibí alertas inteligentes en tu WhatsApp
-              </h3>
-              <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-                Norte te avisa cuando una decisión, un ingreso o un vencimiento
-                puede cambiar tu plan.
-              </p>
-            </article>
-          </div>
-
-          <div className="space-y-6">
+          <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
+            <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
+              Tus finanzas se actualizan solas
+            </h3>
+            <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
+              Incorpora tus ingresos, gastos y cuotas para que no tengas que
+              registrar cada movimiento.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
+            <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
+              Todos tus objetivos, en una sola hoja de ruta
+            </h3>
+            <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
+              Ves qué estás construyendo, cuánto avanzaste y cómo se conectan
+              tus distintos objetivos.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
+            <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
+              Tu camino cambia cuando cambia tu vida
+            </h3>
+            <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
+              Si aparece un gasto, cambia un ingreso o modificás una
+              prioridad, Norte ajusta automáticamente tu hoja de ruta.
+            </p>
+          </article>
+          <div className="flex justify-center rounded-2xl bg-[var(--sand)] p-4 md:col-start-2 md:row-start-1">
             <img
               src="/images/roadmap.webp"
               alt="Hoja de ruta financiera de Norte"
-              className="mx-auto w-full max-w-sm rounded-2xl"
+              className="mx-auto w-full max-w-sm rounded-2xl md:max-h-[450px] md:w-auto md:max-w-full"
             />
-            <div className="mx-auto max-w-md space-y-3 rounded-2xl border border-gray-700 bg-[#0b141a] p-4 text-white shadow-lg">
-              <div className="text-center">
-                <span className="rounded-full bg-gray-800 px-3 py-1 text-[10px] text-gray-400">
-                  Diciembre 2026
-                </span>
-              </div>
-              <div className="mr-auto max-w-[85%] rounded-xl bg-[#202c33] p-3 text-gray-100 shadow">
-                <p className="text-sm leading-relaxed">
-                  <strong>Norte:</strong> Hoy entra tu aguinaldo — $4.500.000.
-                  Antes de que se mezcle con el mes, te propongo separar
-                  $2.800.000 directo al colchón. ¿Lo hacemos antes de las
-                  fiestas?
-                </p>
-                <span className="mt-1 block text-right text-[10px] text-gray-400">
-                  09:15
-                </span>
-              </div>
-              <div className="ml-auto max-w-[85%] rounded-xl bg-[#005c4b] p-3 text-emerald-50 shadow">
-                <p className="text-sm leading-relaxed">
-                  Ay, pero quiero comprar algo para las fiestas. ¿Puedo?
-                </p>
-                <span className="mt-1 block text-right text-[10px] text-emerald-200">
-                  18:40
-                </span>
-              </div>
-              <div className="mr-auto max-w-[85%] rounded-xl bg-[#202c33] p-3 text-gray-100 shadow">
-                <p className="text-sm leading-relaxed">
-                  <strong>Norte:</strong> Con tu foto de hoy: si destinás
-                  $2.800.000 al colchón y guardás $700.000 para fiestas, llegás
-                  igual en septiembre. Si lo mezclás todo, se corre un mes. Vos
-                  decidís — ahora con los números adelante.
-                </p>
-                <span className="mt-1 block text-right text-[10px] text-gray-400">
-                  18:42
-                </span>
-              </div>
+          </div>
+          <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
+            <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
+              Podés probar antes de decidir
+            </h3>
+            <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
+              Simulá qué pasa con tu hoja de ruta si hacés una compra, tomás
+              cuotas, ahorrás más o aparece un gasto inesperado.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
+            <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
+              Podés preguntarle antes de gastar
+            </h3>
+            <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
+              Escribile a Norte por WhatsApp y entendé qué impacto tendría
+              sobre tus objetivos.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
+            <h3 className="text-lg font-semibold text-[var(--sea-ink)]">
+              Recibí alertas inteligentes en tu WhatsApp
+            </h3>
+            <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
+              Norte te avisa cuando una decisión, un ingreso o un vencimiento
+              puede cambiar tu plan.
+            </p>
+          </article>
+          <div className="mx-auto max-w-md space-y-3 rounded-2xl border border-gray-700 bg-[#0b141a] p-4 text-white shadow-lg md:col-start-2 md:row-start-2">
+            <div className="text-center">
+              <span className="rounded-full bg-gray-800 px-3 py-1 text-[10px] text-gray-400">
+                Diciembre 2026
+              </span>
+            </div>
+            <div className="mr-auto max-w-[85%] rounded-xl bg-[#202c33] p-3 text-gray-100 shadow">
+              <p className="text-sm leading-relaxed">
+                <strong>Norte:</strong> Hoy entra tu aguinaldo — $4.500.000.
+                Antes de que se mezcle con el mes, te propongo separar
+                $2.800.000 directo al colchón. ¿Lo hacemos antes de las
+                fiestas?
+              </p>
+              <span className="mt-1 block text-right text-[10px] text-gray-400">
+                09:15
+              </span>
+            </div>
+            <div className="ml-auto max-w-[85%] rounded-xl bg-[#005c4b] p-3 text-emerald-50 shadow">
+              <p className="text-sm leading-relaxed">
+                Ay, pero quiero comprar algo para las fiestas. ¿Puedo?
+              </p>
+              <span className="mt-1 block text-right text-[10px] text-emerald-200">
+                18:40
+              </span>
+            </div>
+            <div className="mr-auto max-w-[85%] rounded-xl bg-[#202c33] p-3 text-gray-100 shadow">
+              <p className="text-sm leading-relaxed">
+                <strong>Norte:</strong> Con tu foto de hoy: si destinás
+                $2.800.000 al colchón y guardás $700.000 para fiestas, llegás
+                igual en septiembre. Si lo mezclás todo, se corre un mes. Vos
+                decidís — ahora con los números adelante.
+              </p>
+              <span className="mt-1 block text-right text-[10px] text-gray-400">
+                18:42
+              </span>
             </div>
           </div>
         </div>
