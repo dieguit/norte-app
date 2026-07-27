@@ -631,15 +631,15 @@ export function InformePage() {
               Tu camino cambia cuando cambia tu vida
             </h3>
             <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-              Si aparece un gasto, cambia un ingreso o modificás una
-              prioridad, Norte ajusta automáticamente tu hoja de ruta.
+              Si aparece un gasto, cambia un ingreso o modificás una prioridad,
+              Norte ajusta automáticamente tu hoja de ruta.
             </p>
           </article>
-          <div className="flex justify-center rounded-2xl bg-[var(--sand)] p-4 md:col-start-2 md:row-start-1">
+          <div className="flex justify-center rounded-2xl bg-[var(--sand)] p-4 md:col-start-2 md:row-start-1 md:row-span-3">
             <img
               src="/images/roadmap.webp"
               alt="Hoja de ruta financiera de Norte"
-              className="mx-auto w-full max-w-sm rounded-2xl md:max-h-[450px] md:w-auto md:max-w-full"
+              className="mx-auto w-full max-w-sm rounded-2xl md:max-h-[550px] md:w-auto md:max-w-full"
             />
           </div>
           <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
@@ -656,8 +656,8 @@ export function InformePage() {
               Podés preguntarle antes de gastar
             </h3>
             <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-              Escribile a Norte por WhatsApp y entendé qué impacto tendría
-              sobre tus objetivos.
+              Escribile a Norte por WhatsApp y entendé qué impacto tendría sobre
+              tus objetivos.
             </p>
           </article>
           <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
@@ -669,7 +669,7 @@ export function InformePage() {
               puede cambiar tu plan.
             </p>
           </article>
-          <div className="mx-auto max-w-md space-y-3 rounded-2xl border border-gray-700 bg-[#0b141a] p-4 text-white shadow-lg md:col-start-2 md:row-start-2">
+          <div className="mx-auto max-w-md space-y-3 rounded-2xl border border-gray-700 bg-[#0b141a] p-4 text-white shadow-lg md:col-start-2 md:row-start-4 md:row-span-3">
             <div className="text-center">
               <span className="rounded-full bg-gray-800 px-3 py-1 text-[10px] text-gray-400">
                 Diciembre 2026
@@ -679,8 +679,7 @@ export function InformePage() {
               <p className="text-sm leading-relaxed">
                 <strong>Norte:</strong> Hoy entra tu aguinaldo — $4.500.000.
                 Antes de que se mezcle con el mes, te propongo separar
-                $2.800.000 directo al colchón. ¿Lo hacemos antes de las
-                fiestas?
+                $2.800.000 directo al colchón. ¿Lo hacemos antes de las fiestas?
               </p>
               <span className="mt-1 block text-right text-[10px] text-gray-400">
                 09:15
