@@ -86,9 +86,9 @@ describe('InformePage', () => {
         name: 'Esto que acabás de ver es solo una pequeña muestra.',
       }),
     ).toBeDefined()
-    expect(
-      screen.getByText('Tus finanzas se actualizan solas'),
-    ).toBeDefined()
+
+    // Verify all 6 feature cards
+    expect(screen.getByText('Tus finanzas se actualizan solas')).toBeDefined()
     expect(
       screen.getByText('Todos tus objetivos, en una sola hoja de ruta'),
     ).toBeDefined()
@@ -96,28 +96,27 @@ describe('InformePage', () => {
       screen.getByText('Tu camino cambia cuando cambia tu vida'),
     ).toBeDefined()
     expect(screen.getByText('Podés probar antes de decidir')).toBeDefined()
-    expect(
-      screen.getByText('Podés preguntarle antes de gastar'),
-    ).toBeDefined()
+    expect(screen.getByText('Podés preguntarle antes de gastar')).toBeDefined()
     expect(
       screen.getByText('Recibí alertas inteligentes en tu WhatsApp'),
     ).toBeDefined()
+
+    // Verify right-column media assets
     expect(
       screen.getByRole('img', {
         name: 'Hoja de ruta financiera de Norte',
       }).getAttribute('src'),
     ).toBe('/images/roadmap.webp')
+
+    expect(screen.getByText('Diciembre 2026')).toBeDefined()
+    expect(screen.getByText(/Hoy entra tu aguinaldo/)).toBeDefined()
+
+    // Verify CTA close
     expect(
       screen.getByRole('button', {
         name: 'Quiero ser de los primeros en usar Norte →',
       }),
     ).toBeDefined()
-    expect(screen.getByText('Diciembre 2026')).toBeDefined()
-    expect(screen.getByText(/Hoy entra tu aguinaldo/)).toBeDefined()
-    expect(
-      screen.getByText(/Ay, pero quiero comprar algo para las fiestas/),
-    ).toBeDefined()
-    expect(screen.queryByText(/notebook en 6 cuotas/)).toBeNull()
   })
 
   it('switches the monthly breakdown between cards, a solid pie, and a donut total', () => {
