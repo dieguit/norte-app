@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { loginAdmin } from '../admin/auth'
-import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow } from '../admin/server'
+import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow, saveAdminReport, setAdminReportSent } from '../admin/server'
 import { serializeCsv } from '../admin/csv'
 import { formatAdminDownloadLabel } from '../admin/download-label'
 
@@ -23,6 +23,75 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
     error: string | null
   }>>({})
   const [csvError, setCsvError] = useState<string | null>(null)
+
+  // Report controls state
+  const [editingReportDeviceId, setEditingReportDeviceId] = useState<string | null>(null)
+  const [reportJsonInput, setReportJsonInput] = useState('')
+  const [reportError, setReportError] = useState<string | null>(null)
+  const [isSavingReport, setIsSavingReport] = useState(false)
+  const [isSendingReportByDevice, setIsSendingReportByDevice] = useState<Record<string, boolean>>({})
+  const [copyErrorByDevice, setCopyErrorByDevice] = useState<Record<string, string | null>>({})
+
+  function updateResult(updated: Awaited<ReturnType<typeof saveAdminReport>>) {
+    setResults((current) => current?.map((result) =>
+      result.deviceId === updated.deviceId ? updated : result,
+    ) ?? null)
+  }
+
+  function openReportEditor(deviceId: string) {
+    setEditingReportDeviceId(deviceId)
+    setReportJsonInput('')
+    setReportError(null)
+  }
+
+  function closeReportEditor() {
+    setEditingReportDeviceId(null)
+    setReportJsonInput('')
+    setReportError(null)
+  }
+
+  async function handleSaveReport(deviceId: string) {
+    setReportError(null)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(reportJsonInput)
+    } catch (err) {
+      setReportError('El informe debe ser un JSON válido.')
+      return
+    }
+
+    setIsSavingReport(true)
+    try {
+      const updated = await saveAdminReport({ data: { deviceId, report: parsed as any } })
+      updateResult(updated)
+      closeReportEditor()
+    } catch (err) {
+      setReportError('El informe no tiene el formato esperado.')
+    } finally {
+      setIsSavingReport(false)
+    }
+  }
+
+  async function updateSentState(deviceId: string, sent: boolean) {
+    setIsSendingReportByDevice((prev) => ({ ...prev, [deviceId]: true }))
+    try {
+      const updated = await setAdminReportSent({ data: { deviceId, sent } })
+      updateResult(updated)
+    } catch (err) {
+      // ignore
+    } finally {
+      setIsSendingReportByDevice((prev) => ({ ...prev, [deviceId]: false }))
+    }
+  }
+
+  async function handleCopyLink(deviceId: string) {
+    setCopyErrorByDevice((prev) => ({ ...prev, [deviceId]: null }))
+    try {
+      await navigator.clipboard.writeText(`/informe/${deviceId}`)
+    } catch (err) {
+      setCopyErrorByDevice((prev) => ({ ...prev, [deviceId]: 'No se pudo copiar el enlace.' }))
+    }
+  }
 
   function downloadCsv(headers: readonly string[], rows: Record<string, any>[], filename: string) {
     const blob = new Blob([serializeCsv(headers, rows)], { type: 'text/csv;charset=utf-8' })
@@ -258,23 +327,83 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                         {isExpanded && (
                           <tr>
                             <td colSpan={3} className="bg-[color-mix(in_oklab,var(--chip-bg)_92%,black_8%)] dark:bg-[color-mix(in_oklab,var(--chip-bg)_92%,white_8%)]">
-                              <div id={`files-container-${device.deviceId}`} className="p-2 space-y-2">
-                                <a
-                                  href={`/admin/resultados/${device.deviceId}`}
-                                  className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] px-2.5 text-sm font-medium text-[var(--sea-ink)] hover:bg-[var(--chip-bg)]"
-                                >
-                                  Ver resultados
-                                </a>
-                                {device.status === 'completed' && (
-                                  <Button
-                                    type="button"
-                                    onClick={() => handleDownloadRowCsv(device.deviceId, device.name)}
-                                    variant="outline"
-                                    aria-label={`Descargar CSV para ${device.name || device.deviceId}`}
+                              <div id={`files-container-${device.deviceId}`} className="p-3 space-y-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <a
+                                    href={`/admin/resultados/${device.deviceId}`}
+                                    className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] px-2.5 text-sm font-medium text-[var(--sea-ink)] hover:bg-[var(--chip-bg)]"
                                   >
-                                    Descargar CSV
-                                  </Button>
+                                    Ver resultados
+                                  </a>
+                                  {device.status === 'completed' && (
+                                    <Button
+                                      type="button"
+                                      onClick={() => handleDownloadRowCsv(device.deviceId, device.name)}
+                                      variant="outline"
+                                      aria-label={`Descargar CSV para ${device.name || device.deviceId}`}
+                                    >
+                                      Descargar CSV
+                                    </Button>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[var(--line)]">
+                                  {device.hasReport ? (
+                                    <>
+                                      <p className="text-sm font-semibold text-[var(--lagoon-deep)]">Informe cargado</p>
+                                      <Button type="button" onClick={() => openReportEditor(device.deviceId)} variant="outline">Reemplazar informe</Button>
+                                      <a href={`/informe/${device.deviceId}`} className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] px-2.5 text-sm font-medium text-[var(--sea-ink)] hover:bg-[var(--chip-bg)]">Ver informe</a>
+                                      <Button type="button" onClick={() => handleCopyLink(device.deviceId)} variant="outline">Copiar enlace</Button>
+                                    </>
+                                  ) : (
+                                    <Button type="button" onClick={() => openReportEditor(device.deviceId)} variant="outline">Agregar informe</Button>
+                                  )}
+                                  <label className="inline-flex items-center gap-2 text-sm font-medium text-[var(--sea-ink)] cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(device.reportSentOn)}
+                                      disabled={!device.hasReport || Boolean(isSendingReportByDevice[device.deviceId])}
+                                      onChange={(event) => updateSentState(device.deviceId, event.target.checked)}
+                                    />
+                                    Informe enviado
+                                  </label>
+                                  {copyErrorByDevice[device.deviceId] && (
+                                    <span className="text-sm font-semibold text-[var(--error)]">
+                                      {copyErrorByDevice[device.deviceId]}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {editingReportDeviceId === device.deviceId && (
+                                  <div className="space-y-3 p-3 rounded-lg border border-[var(--line)] bg-[var(--surface-strong)]">
+                                    <div>
+                                      <label htmlFor={`report-${device.deviceId}`} className="block text-sm font-medium text-[var(--sea-ink)] mb-1">
+                                        JSON del informe
+                                      </label>
+                                      <textarea
+                                        id={`report-${device.deviceId}`}
+                                        value={reportJsonInput}
+                                        onChange={(e) => setReportJsonInput(e.target.value)}
+                                        rows={6}
+                                        className="w-full rounded-md border border-[var(--line)] bg-[var(--surface)] p-2 text-xs font-mono text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
+                                      />
+                                    </div>
+                                    {reportError && (
+                                      <p className="text-sm font-semibold text-[var(--error)]" role="alert">
+                                        {reportError}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                      <Button type="button" onClick={() => handleSaveReport(device.deviceId)} disabled={isSavingReport}>
+                                        Guardar informe
+                                      </Button>
+                                      <Button type="button" onClick={closeReportEditor} variant="outline" disabled={isSavingReport}>
+                                        Cancelar
+                                      </Button>
+                                    </div>
+                                  </div>
                                 )}
+
                                 {deviceState.isLoading && (
                                   <p className="text-sm text-[var(--sea-ink-soft)] animate-pulse">
                                     Cargando archivos...

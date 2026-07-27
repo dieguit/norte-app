@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AdminPage } from './admin-page'
 import { loginAdmin } from '../admin/auth'
-import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow } from '../admin/server'
+import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow, saveAdminReport, setAdminReportSent } from '../admin/server'
 import { csvHeaders } from '../admin/csv'
 
 vi.mock('../admin/auth', () => ({
@@ -18,6 +18,8 @@ vi.mock('../admin/server', () => ({
   getAdminResultFiles: vi.fn(),
   listAdminCsvRows: vi.fn(),
   getAdminCsvRow: vi.fn(),
+  saveAdminReport: vi.fn(),
+  setAdminReportSent: vi.fn(),
 }))
 
 describe('AdminPage', () => {
@@ -63,12 +65,16 @@ describe('AdminPage', () => {
           name: 'Ana',
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
         },
         {
           deviceId: 'device-sin-nombre',
           name: null,
           status: 'draft',
           updatedAt: new Date('2026-07-16T12:30:00Z'),
+          hasReport: false,
+          reportSentOn: null,
         },
       ]
       vi.mocked(listAdminResults).mockResolvedValue(results)
@@ -166,6 +172,8 @@ describe('AdminPage', () => {
           name: 'Ana',
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
         },
       ])
 
@@ -187,6 +195,8 @@ describe('AdminPage', () => {
           name: 'Ana',
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
         },
       ]
       vi.mocked(listAdminResults).mockResolvedValue(results)
@@ -208,6 +218,8 @@ describe('AdminPage', () => {
           name: 'Ana',
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
         },
       ]
       vi.mocked(listAdminResults).mockResolvedValue(results)
@@ -220,6 +232,125 @@ describe('AdminPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'Ana' }))
       expect(await screen.findByText('Error al cargar archivos.')).toBeInTheDocument()
+    })
+
+    it('manages report creation, replacement, sent status, and copying link', async () => {
+      const demoReport = {
+        overallScore: 85,
+        categories: [
+          { categoryId: 'cat1', title: 'Categoría 1', score: 80, feedback: 'Buen progreso' },
+        ],
+        strengths: ['Puntualidad'],
+        areasForGrowth: ['Organización'],
+        actionableSteps: ['Revisar diario'],
+        summary: 'Resumen general',
+      }
+
+      const results = [
+        {
+          deviceId: 'device-ana',
+          name: 'Ana',
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+      ]
+      vi.mocked(listAdminResults).mockResolvedValue(results)
+      vi.mocked(getAdminResultFiles).mockResolvedValue([])
+
+      const user = userEvent.setup()
+
+      const writeTextMock = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: writeTextMock },
+        configurable: true,
+        writable: true,
+      })
+      render(<AdminPage authenticated />)
+
+      expect(await screen.findByText('Ana')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Ana' }))
+
+      // Checkbox is disabled without report
+      const sentCheckbox = screen.getByLabelText('Informe enviado')
+      expect(sentCheckbox).toBeDisabled()
+      expect(sentCheckbox).not.toBeChecked()
+
+      // Open editor
+      await user.click(screen.getByRole('button', { name: 'Agregar informe' }))
+
+      // Invalid JSON validation
+      const textarea = screen.getByLabelText('JSON del informe')
+      fireEvent.change(textarea, { target: { value: '{invalid' } })
+      await user.click(screen.getByRole('button', { name: 'Guardar informe' }))
+      expect(await screen.findByText('El informe debe ser un JSON válido.')).toBeInTheDocument()
+      expect(saveAdminReport).not.toHaveBeenCalled()
+
+      // Server error handling when schema invalid
+      fireEvent.change(textarea, { target: { value: '{}' } })
+      vi.mocked(saveAdminReport).mockRejectedValueOnce(new Error('Schema validation error'))
+      await user.click(screen.getByRole('button', { name: 'Guardar informe' }))
+      expect(await screen.findByText('El informe no tiene el formato esperado.')).toBeInTheDocument()
+
+      // Valid report save
+      fireEvent.change(textarea, { target: { value: JSON.stringify(demoReport) } })
+      const updatedResultHasReport = {
+        deviceId: 'device-ana',
+        name: 'Ana',
+        status: 'completed',
+        updatedAt: new Date('2026-07-16T12:00:00Z'),
+        hasReport: true,
+        reportSentOn: null,
+      }
+      vi.mocked(saveAdminReport).mockResolvedValueOnce(updatedResultHasReport)
+      await user.click(screen.getByRole('button', { name: 'Guardar informe' }))
+
+      expect(saveAdminReport).toHaveBeenCalledWith({
+        data: { deviceId: 'device-ana', report: demoReport },
+      })
+      expect(await screen.findByText('Informe cargado')).toBeInTheDocument()
+
+      const reportLink = screen.getByRole('link', { name: 'Ver informe' })
+      expect(reportLink).toHaveAttribute('href', '/informe/device-ana')
+
+      // Check button switched to Reemplazar informe
+      expect(screen.getByRole('button', { name: 'Reemplazar informe' })).toBeInTheDocument()
+
+      // Checkbox is now enabled and unchecked
+      const enabledCheckbox = screen.getByLabelText('Informe enviado')
+      expect(enabledCheckbox).not.toBeDisabled()
+      expect(enabledCheckbox).not.toBeChecked()
+
+      // Mark report sent
+      const updatedResultSent = {
+        ...updatedResultHasReport,
+        reportSentOn: new Date('2026-07-16T15:00:00.000Z'),
+      }
+      vi.mocked(setAdminReportSent).mockResolvedValueOnce(updatedResultSent)
+      await user.click(enabledCheckbox)
+      expect(setAdminReportSent).toHaveBeenCalledWith({
+        data: { deviceId: 'device-ana', sent: true },
+      })
+      expect(enabledCheckbox).toBeChecked()
+
+      // Uncheck report sent
+      vi.mocked(setAdminReportSent).mockResolvedValueOnce(updatedResultHasReport)
+      await user.click(enabledCheckbox)
+      expect(setAdminReportSent).toHaveBeenCalledWith({
+        data: { deviceId: 'device-ana', sent: false },
+      })
+      expect(enabledCheckbox).not.toBeChecked()
+
+      // Test copy link success
+      const copyBtn = screen.getByRole('button', { name: 'Copiar enlace' })
+      await user.click(copyBtn)
+      expect(writeTextMock).toHaveBeenCalledWith('/informe/device-ana')
+
+      // Test copy link error
+      writeTextMock.mockRejectedValueOnce(new Error('Clipboard error'))
+      await user.click(copyBtn)
+      expect(await screen.findByText('No se pudo copiar el enlace.')).toBeInTheDocument()
     })
   })
 })

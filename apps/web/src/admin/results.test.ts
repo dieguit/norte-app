@@ -47,10 +47,10 @@ describe('results mapping', () => {
     const completedAt = new Date('2026-07-16T12:00:00Z')
     const updatedAt = new Date('2026-07-16T12:30:00Z')
 
-    expect(toAdminResult({ deviceId, answers: { nombre: 'Ana' }, completedAt, updatedAt }))
+    expect(toAdminResult({ deviceId, answers: { nombre: 'Ana' }, completedAt, updatedAt, report: null, reportSentOn: null }))
       .toMatchObject({ deviceId, name: 'Ana', status: 'completed' })
 
-    expect(toAdminResult({ deviceId, answers: {}, completedAt: null, updatedAt }))
+    expect(toAdminResult({ deviceId, answers: {}, completedAt: null, updatedAt, report: null, reportSentOn: null }))
       .toMatchObject({ name: null, status: 'draft' })
   })
 
