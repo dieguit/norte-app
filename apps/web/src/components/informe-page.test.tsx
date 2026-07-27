@@ -66,6 +66,15 @@ describe('InformePage', () => {
     expect(screen.getByText('Mes 11 · Jun')).toBeDefined()
   })
 
+  it('keeps the reduction value together and right-aligns an unmet arrival label', () => {
+    render(<InformePage />)
+
+    expect(screen.getByText('0%')).toHaveClass('whitespace-nowrap')
+    expect(screen.getByText('No llegás con este recorte')).toHaveClass(
+      'text-right',
+    )
+  })
+
   it('estimates the total arrival month when the selected curve misses the JSON horizon', () => {
     render(<InformePage />)
 

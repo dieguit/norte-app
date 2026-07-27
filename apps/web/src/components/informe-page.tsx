@@ -441,7 +441,7 @@ export function InformePage() {
             >
               ¿Cuánto recortás tus gustitos?
             </label>
-            <output className="font-mono text-lg font-bold text-[var(--palm)]">
+            <output className="shrink-0 whitespace-nowrap font-mono text-lg font-bold text-[var(--palm)]">
               {reduction}%
             </output>
           </div>
@@ -477,8 +477,8 @@ export function InformePage() {
               aria-live="polite"
               className={
                 arrival === -1
-                  ? "text-lg font-bold text-[#B03A2E]"
-                  : "text-lg font-bold text-[var(--palm)]"
+                  ? "text-right text-lg font-bold text-[#B03A2E]"
+                  : "text-right text-lg font-bold text-[var(--palm)]"
               }
             >
               {arrivalLabel}
