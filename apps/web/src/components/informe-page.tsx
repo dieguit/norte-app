@@ -637,7 +637,7 @@ export function InformePage() {
           </article>
           <div className="flex justify-center rounded-2xl bg-[var(--sand)] p-4 md:col-start-2 md:row-start-1 md:row-span-3">
             <img
-              src="/images/roadmap.webp"
+              src="/images/roadmap2.webp"
               alt="Hoja de ruta financiera de Norte"
               className="mx-auto w-full max-w-sm rounded-2xl md:max-h-[550px] md:w-auto md:max-w-full"
             />
