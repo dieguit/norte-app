@@ -6,6 +6,8 @@ export const onboardingDrafts = pgTable('onboarding_drafts', {
   deviceId: text('device_id').primaryKey(),
   answers: jsonb('answers').$type<OnboardingAnswers>().notNull().default({}),
   completedAt: timestamp('completed_at', { withTimezone: true }),
+  report: jsonb('report'),
+  reportSentOn: timestamp('report_sent_on', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
