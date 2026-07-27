@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "nombre": "Ana test final",
+    "fecha": "26-07-26",
+    "alertas": 5
+  },
+  "apertura": {
+    "dolor_literal": "Me siento al día, pero sin colchón si pasa algo",
+    "frase_apertura": "Dijiste que te sentís al día, pero sin colchón si pasa algo. Es exacto: el mes se cierra justo, y todo lo que entra tiene dueño antes de que llegue.",
+    "frase_sub": "Esto es la foto completa de por qué — y el mapa de cómo cambiar la película."
+  },
+  "bloque1": {
+    "ingreso_anual": 99700000,
+    "ingreso_anual_detalle": "12 sueldos + 2 aguinaldos + ingresos extra",
+    "pagar_anual": 74576703,
+    "pagar_anual_desc": "Alquiler, colegio, prepaga, servicios, préstamos y todo lo que no se negocia",
+    "ajustable_anual": 17100000,
+    "ajustable_desc": "Salidas, ropa, delivery, suscripciones, hobbies — lo que elegís gastar",
+    "gastoN_concepto": "cumpleaños — $2,000,000",
+    "gastoN_mes_idx": 4,
+    "libre_anual_pre_tc": 8023297,
+    "tarjeta_anual": 250000,
+    "ing_mensual": 7500000,
+    "texto_contexto": "Tu ingreso no es el problema. Son los $250.000 ya comprometidos en tarjeta + los compromisos fijos que ocupan el 63% de lo que ganás. La foto estaba rota — ahora la tenés completa."
+  },
+  "bloque2": {
+    "subtitulo": "Un mes normal tuyo — sin aguinaldo, sin extras — se divide así:",
+    "P_monto": 4750000,
+    "P_pct": 0.633,
+    "V_monto": 1300000,
+    "V_pct": 0.173,
+    "D_monto": 1425000,
+    "D_pct": 0.19,
+    "margen_monto": 25000,
+    "margen_pct": 0.003,
+    "comp_prox_mes": 250000,
+    "arrastre": null,
+    "interes_anual": null,
+    "texto_analisis": "Tu margen libre es $25.000 al mes. Un café tranquilo un sábado. Pero ya hay $250.000 esperándote en el mes que viene — compromisos que tomaste sin ver la foto completa. Eso significa que tus \"gustitos\" (esas salidas, esas cosas que elegís gastar) son literalmente el único lugar donde una decisión tuya mueve algo. Si los recortas a $425.000 mensuales en lugar de $1,425.000, ese diferencial es lo que te lleva al colchón. Sin eso, la matemática no cierra."
+  },
+  "bloque3": {
+    "colchon_objetivo": 18150000,
+    "escA_mes": "No llega en 18 meses",
+    "escA_fin18": 5707554,
+    "escB_mes": "Mes 14",
+    "escB_fin18": 27119866,
+    "escC_mes": "Mes 11",
+    "escC_fin18": 36220099,
+    "D_escB": 425000,
+    "meses": ["Ago", "Sep", "Oct", "Nov", "Dic", "Ene-27", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago-27"],
+    "acum_A": [25000, -99500, 323510, -2109020, 1799800, 1930060, 1912926, 1745449, 1424623, 947380, 4810592, 4011069, 3045555],
+    "acum_C": [1450000, 2779000, 4684580, 3764272, 9215557, 10919133, 12506780, 13976180, 15324969, 16550733, 22151012, 23123297, 23965027],
+    "texto_hitos": "En diciembre entra tu aguinaldo. En junio, otro. En agosto de 2027, termina tu préstamo. Pero acá está lo importante: el aguinaldo ya está metido en la proyección del Escenario A — y aun así le faltan $1,9M para llegar al colchón. Lo que cierra la brecha no es rezar por un ingreso extra. Es lo que vos mismo podés ajustar ahora: los discrecionales."
+  },
+  "bloque4": {
+    "titulo_gancho": "Esto que acabás de ver es solo una pequeña muestra. Un prototipo, una partecita. Norte es algo mucho más grande — pero que viene a traerte exactamente esto: claridad e información personalizada, en el momento en que más importa.",
+    "p1": "Tus objetivos son tuyos. Norte se asegura de que no los pierdas de vista cuando más importa. Querés comprarte un auto, irte de viaje, tener una casa, construir algo para tu jubilación — o simplemente que un mes malo no te lastime.",
+    "p2": "Son demasiadas variables moviéndose al mismo tiempo — la inflación, las cuotas, el dólar, el aguinaldo — para que tu cabeza las procese sola en el momento justo. Norte lo hace por vos. Y te dice algo simple: si esta decisión te acerca o te aleja, y si conviene hacerla ahora o esperar un poco.",
+    "p3": "Como un buen contador, analiza tus números. Como un buen asesor financiero, te explica qué significan. Como un buen PM, te ayuda a ver el camino hacia lo que querés construir. Y como un buen coach, responde cuando le preguntás — antes de que la decisión ya esté tomada.",
+    "p4": "Norte conecta lo que querés construir para tu futuro con lo que estás por hacer hoy. En tiempo real. En Argentina, con inflación, con cuotas, con dólar — las variables que ninguna app del mundo termina de entender como las entendemos acá.",
+    "quote": "La información es poder. Pero solo cuando llega en el momento justo.",
+    "p5": "Lo estamos construyendo ahora — y vos estás adentro. Las personas que participan en esta etapa son las que van a darle forma a lo que Norte termina siendo. Cuando lancemos, vas a ser de los primeros en acceder.",
+    "cta_label": "Quiero saber cuándo lanza Norte →",
+    "cta_confirm": "Registramos tu interés. Cuando Norte esté listo, te avisamos — antes que a nadie.",
+    "frase_cierre": "Dijiste que te sentís al día pero sin colchón. Ahora tenés la foto. El camino existe: Mes 14, con el recorte que vos misma sabés que podés hacer. La película empieza cuando vos digas."
+  }
+}

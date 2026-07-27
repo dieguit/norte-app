@@ -7,7 +7,10 @@ beforeAll(() => {
   vi.stubGlobal(
     'ResizeObserver',
     class {
-      observe() {}
+      constructor(private callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        this.callback([{ contentRect: { width: 480, height: 480 }, target } as ResizeObserverEntry], this as unknown as ResizeObserver)
+      }
       unobserve() {}
       disconnect() {}
     }
@@ -17,26 +20,48 @@ beforeAll(() => {
 afterEach(cleanup)
 
 describe('InformePage', () => {
-  it('renders JSON-backed annual data and derives its horizon from chart labels', () => {
+  it('renders JSON-backed annual data', () => {
     render(<InformePage />)
 
     expect(screen.getByRole('heading', { name: 'Tu posición real' })).toBeDefined()
     expect(screen.getByText('$99,7 M')).toBeDefined()
-    expect(screen.getByText(/13 meses/)).toBeDefined()
     expect(screen.queryByText('5 alertas')).toBeNull()
   })
 
-  it('updates the selected projection when the discretionary-spend slider changes', () => {
+  it('updates savings, arrival, and the chart projection when the discretionary-spend slider changes', () => {
     render(<InformePage />)
 
-    const slider = screen.getByRole('slider', { name: 'Recorte de gastos discrecionales' })
+    const slider = screen.getByRole('slider', {
+      name: 'Recorte de gastos discrecionales',
+    })
     expect(screen.getByText('0%')).toBeDefined()
-    expect(screen.getByText('No llega en 13 meses')).toBeDefined()
+    expect(
+      screen.getByText('Ahorrarías $0 por mes con este recorte'),
+    ).toBeDefined()
+    expect(screen.getByText('No llegás con este recorte')).toBeDefined()
+    expect(screen.getByTestId('projection-chart')).toBeDefined()
+    expect(screen.getByText('Ene-27')).toBeDefined()
 
     fireEvent.change(slider, { target: { value: '100' } })
 
     expect(screen.getByText('100%')).toBeDefined()
-    expect(screen.getByText('Jun')).toBeDefined()
+    expect(
+      screen.getByText('Ahorrarías $1.425.000 por mes con este recorte'),
+    ).toBeDefined()
+    expect(screen.getByText('Mes 11 · Jun')).toBeDefined()
+  })
+
+  it('estimates the total arrival month when the selected curve misses the JSON horizon', () => {
+    render(<InformePage />)
+
+    fireEvent.change(
+      screen.getByRole('slider', {
+        name: 'Recorte de gastos discrecionales',
+      }),
+      { target: { value: '30' } },
+    )
+
+    expect(screen.getByText('Mes 34 (estimado)')).toBeDefined()
   })
 
   it('uses the report copy and keeps the upcoming expense separate from card commitments', () => {
@@ -76,5 +101,18 @@ describe('InformePage', () => {
     expect(screen.getByTestId('monthly-donut')).toBeDefined()
     expect(screen.getByText('$7.500.000')).toBeDefined()
     expect(screen.getByText(/Margen libre/)).toBeDefined()
+  })
+
+  it('renders a dynamic monthly breakdown beside the selected chart', () => {
+    render(<InformePage />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Opción 2' }))
+
+    expect(screen.getByTestId('monthly-breakdown-legend')).toBeDefined()
+    expect(screen.getByText('Compromisos fijos que no se tocan')).toBeDefined()
+    expect(screen.getByText(/\$4\.750\.000/)).toBeDefined()
+    expect(screen.getByText(/\$1\.300\.000/)).toBeDefined()
+    expect(screen.getByText(/\$1\.425\.000/)).toBeDefined()
+    expect(screen.getByText(/63\.3%/)).toBeDefined()
   })
 })
