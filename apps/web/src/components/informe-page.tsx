@@ -41,6 +41,7 @@ export function InformePage() {
       amount: data.bloque2.P_monto,
       percentage: data.bloque2.P_pct,
       color: '#047857',
+      fill: '#047857',
     },
     {
       key: 'daily',
@@ -48,6 +49,7 @@ export function InformePage() {
       amount: data.bloque2.V_monto,
       percentage: data.bloque2.V_pct,
       color: '#0D9488',
+      fill: '#0D9488',
     },
     {
       key: 'discretionary',
@@ -55,6 +57,7 @@ export function InformePage() {
       amount: data.bloque2.D_monto,
       percentage: data.bloque2.D_pct,
       color: '#D97706',
+      fill: '#D97706',
     },
     {
       key: 'free',
@@ -62,6 +65,7 @@ export function InformePage() {
       amount: data.bloque2.margen_monto,
       percentage: data.bloque2.margen_pct,
       color: '#0284C7',
+      fill: '#0284C7',
     },
   ]
   const monthlyTotal = monthlyBreakdown.reduce((total, item) => total + item.amount, 0)
