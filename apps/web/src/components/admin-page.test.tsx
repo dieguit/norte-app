@@ -313,6 +313,9 @@ describe('AdminPage', () => {
 
       const reportLink = screen.getByRole('link', { name: 'Ver informe' })
       expect(reportLink).toHaveAttribute('href', '/informe/device-ana')
+      expect(reportLink).toHaveAttribute('target', '_blank')
+      expect(reportLink).toHaveAttribute('rel', 'noreferrer')
+      expect(screen.getByText(`${window.location.origin}/informe/device-ana`)).toBeInTheDocument()
 
       // Check button switched to Reemplazar informe
       expect(screen.getByRole('button', { name: 'Reemplazar informe' })).toBeInTheDocument()

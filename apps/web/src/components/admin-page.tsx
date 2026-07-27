@@ -394,7 +394,17 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                                     <>
                                       <p className="text-sm font-semibold text-[var(--lagoon-deep)]">Informe cargado</p>
                                       <Button type="button" onClick={() => openReportEditor(device.deviceId)} variant="outline">Reemplazar informe</Button>
-                                      <a href={`/informe/${device.deviceId}`} className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] px-2.5 text-sm font-medium text-[var(--sea-ink)] hover:bg-[var(--chip-bg)]">Ver informe</a>
+                                      <a
+                                        href={`/informe/${device.deviceId}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] px-2.5 text-sm font-medium text-[var(--sea-ink)] hover:bg-[var(--chip-bg)]"
+                                      >
+                                        Ver informe
+                                      </a>
+                                      <span className="font-mono text-xs text-[var(--sea-ink-soft)] break-all select-all">
+                                        {`${window.location.origin}/informe/${device.deviceId}`}
+                                      </span>
                                       <Button type="button" onClick={() => handleCopyLink(device.deviceId)} variant="outline">Copiar enlace</Button>
                                     </>
                                   ) : (
