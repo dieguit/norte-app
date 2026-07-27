@@ -491,7 +491,10 @@ export function InformePage() {
           config={projectionChartConfig}
           className="h-64 w-full"
         >
-          <LineChart data={projectionData} margin={{ top: 12, right: 12, left: 12 }}>
+          <LineChart
+            data={projectionData}
+            margin={{ top: 12, right: 12, left: 12 }}
+          >
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="month"
@@ -593,14 +596,14 @@ export function InformePage() {
         </h2>
         <div className="space-y-4 text-base leading-relaxed text-[var(--sea-ink-soft)]">
           <p>
-            Tus objetivos son tuyos: construir un colchón, viajar, comprar un
-            auto, tener una casa o planificar tu retiro. Norte se asegura de
-            que no los pierdas de vista cuando tomás decisiones hoy.
+            Querés construir un colchón financiero, viajar, cambiar el auto,
+            comprar una casa o empezar a planificar tu retiro. El problema es
+            que esas metas suelen quedar separadas de las decisiones que tomás
+            todos los días.
           </p>
           <p>
-            Hay demasiadas variables moviéndose al mismo tiempo —ingresos,
-            gastos, cuotas, inflación, dólar e imprevistos— para recalcular
-            todo cada vez que algo cambia. Norte lo hace por vos:
+            Entre ingresos, gastos, cuotas, inflación, dólar e imprevistos, el
+            plan cambia todo el tiempo. Norte lo mantiene actualizado por vos:
           </p>
         </div>
 
@@ -629,8 +632,8 @@ export function InformePage() {
                 Tu camino cambia cuando cambia tu vida
               </h3>
               <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-                Si aparece un gasto, cambia un ingreso o modificás una prioridad,
-                Norte ajusta automáticamente tu hoja de ruta.
+                Si aparece un gasto, cambia un ingreso o modificás una
+                prioridad, Norte ajusta automáticamente tu hoja de ruta.
               </p>
             </article>
             <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6">
@@ -638,8 +641,8 @@ export function InformePage() {
                 Podés probar antes de decidir
               </h3>
               <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-                Simulá qué pasa si hacés una compra, tomás cuotas, ahorrás más o
-                aparece un gasto inesperado.
+                Simulá qué pasa con tu hoja de ruta si hacés una compra, tomás
+                cuotas, ahorrás más o aparece un gasto inesperado.
               </p>
             </article>
             <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6">
@@ -678,7 +681,8 @@ export function InformePage() {
                 <p className="text-sm leading-relaxed">
                   <strong>Norte:</strong> Hoy entra tu aguinaldo — $4.500.000.
                   Antes de que se mezcle con el mes, te propongo separar
-                  $2.800.000 directo al colchón. ¿Lo hacemos antes de las fiestas?
+                  $2.800.000 directo al colchón. ¿Lo hacemos antes de las
+                  fiestas?
                 </p>
                 <span className="mt-1 block text-right text-[10px] text-gray-400">
                   09:15
@@ -712,12 +716,16 @@ export function InformePage() {
             Todo esto por lo que cuesta una pizza al mes.
           </p>
           <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)]">
-            Estamos preparando el primer lanzamiento de Norte con cupos limitados.
-            Sumate a la lista de espera para ser de los primeros en acceder.
+            Estamos preparando el primer lanzamiento de Norte con cupos
+            limitados. Sumate a la lista de espera para ser de los primeros en
+            acceder.
           </p>
         </div>
         <div className="pt-2 text-center">
-          <button type="button" className="demo-button w-full px-6 py-3 text-base sm:w-auto">
+          <button
+            type="button"
+            className="demo-button w-full px-6 py-3 text-base sm:w-auto"
+          >
             Quiero ser de los primeros en usar Norte →
           </button>
         </div>
