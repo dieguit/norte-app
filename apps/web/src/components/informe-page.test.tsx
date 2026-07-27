@@ -123,6 +123,21 @@ describe('InformePage', () => {
       }).getAttribute('src'),
     ).toBe('/images/roadmap.webp')
 
+    const roadmap = screen.getByRole('img', {
+      name: 'Hoja de ruta financiera de Norte',
+    })
+    const firstFeature = screen.getByText('Tus finanzas se actualizan solas')
+    const thirdFeature = screen.getByText('Tu camino cambia cuando cambia tu vida')
+    const fourthFeature = screen.getByText('Podés probar antes de decidir')
+    const whatsappPreview = screen.getByText('Diciembre 2026')
+
+    expect(roadmap.className).toContain('md:max-h-[450px]')
+    expect(roadmap.parentElement?.className).toContain('bg-[var(--sand)]')
+    expect(firstFeature.compareDocumentPosition(roadmap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(thirdFeature.compareDocumentPosition(roadmap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(roadmap.compareDocumentPosition(fourthFeature) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(fourthFeature.compareDocumentPosition(whatsappPreview) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
     expect(screen.getByText('Diciembre 2026')).toBeDefined()
     expect(screen.getByText(/Hoy entra tu aguinaldo/)).toBeDefined()
 
