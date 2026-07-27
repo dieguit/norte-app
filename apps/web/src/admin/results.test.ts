@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { toAdminResult, getUploadedFiles } from './results'
-import { listAdminCsvRows, getAdminCsvRow, getAdminResultDetails } from './server'
+import { listAdminCsvRows, getAdminCsvRow, getAdminResultDetails, saveAdminReport, setAdminReportSent } from './server'
 import { requireAdminSession } from './auth'
-import { listDrafts, getDraft } from '../onboarding/repository'
+import { listDrafts, getDraft, saveDraftReport, setDraftReportSentOn } from '../onboarding/repository'
 import { signDownload } from '../onboarding/r2'
 import { csvHeaders } from './csv'
+import demoReport from '../informe/demo.json'
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: vi.fn().mockImplementation(() => {
@@ -32,6 +33,8 @@ vi.mock('./auth', () => ({
 vi.mock('../onboarding/repository', () => ({
   listDrafts: vi.fn(),
   getDraft: vi.fn(),
+  saveDraftReport: vi.fn(),
+  setDraftReportSentOn: vi.fn(),
 }))
 
 vi.mock('../onboarding/r2', () => ({
@@ -49,6 +52,18 @@ describe('results mapping', () => {
 
     expect(toAdminResult({ deviceId, answers: {}, completedAt: null, updatedAt }))
       .toMatchObject({ name: null, status: 'draft' })
+  })
+
+  it('maps report metadata in toAdminResult', () => {
+    const deviceId = '123e4567-e89b-12d3-a456-426614174000'
+    const updatedAt = new Date('2026-07-16T12:30:00Z')
+    const sentOn = new Date('2026-07-16T13:00:00Z')
+
+    expect(toAdminResult({ deviceId, answers: {}, completedAt: null, updatedAt, report: demoReport as any, reportSentOn: sentOn }))
+      .toMatchObject({ hasReport: true, reportSentOn: sentOn })
+
+    expect(toAdminResult({ deviceId, answers: {}, completedAt: null, updatedAt, report: null, reportSentOn: null }))
+      .toMatchObject({ hasReport: false, reportSentOn: null })
   })
 
   it('extracts uploaded files correctly', () => {
@@ -195,5 +210,74 @@ describe('getAdminResultDetails', () => {
     await expect(getAdminResultDetails({ data: { deviceId: 'not-a-uuid' } }))
       .rejects.toThrow()
     expect(getDraft).not.toHaveBeenCalled()
+  })
+})
+
+describe('saveAdminReport and setAdminReportSent server functions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('saves report for draft and returns updated admin result', async () => {
+    const deviceId = '123e4567-e89b-12d3-a456-426614174000'
+    const updatedDraft = {
+      deviceId,
+      answers: { nombre: 'Ana' },
+      completedAt: new Date('2026-07-16T12:00:00Z'),
+      updatedAt: new Date('2026-07-16T12:30:00Z'),
+      report: demoReport,
+      reportSentOn: null,
+    }
+    vi.mocked(saveDraftReport).mockResolvedValue(updatedDraft as any)
+
+    const result = await saveAdminReport({ data: { deviceId, report: demoReport as any } })
+
+    expect(requireAdminSession).toHaveBeenCalled()
+    expect(saveDraftReport).toHaveBeenCalledWith(deviceId, demoReport)
+    expect(result).toMatchObject({ deviceId, name: 'Ana', hasReport: true, reportSentOn: null })
+  })
+
+  it('rejects saving report with invalid input before querying database', async () => {
+    await expect(saveAdminReport({ data: { deviceId: 'not-a-uuid', report: demoReport as any } })).rejects.toThrow()
+    expect(saveDraftReport).not.toHaveBeenCalled()
+  })
+
+  it('rejects saving report when draft is not found', async () => {
+    const deviceId = '123e4567-e89b-12d3-a456-426614174000'
+    vi.mocked(saveDraftReport).mockResolvedValue(null as any)
+
+    await expect(saveAdminReport({ data: { deviceId, report: demoReport as any } })).rejects.toThrow('Draft not found')
+  })
+
+  it('sets report sent status and returns updated admin result', async () => {
+    const deviceId = '123e4567-e89b-12d3-a456-426614174000'
+    const sentOn = new Date('2026-07-16T13:00:00Z')
+    const updatedDraft = {
+      deviceId,
+      answers: { nombre: 'Ana' },
+      completedAt: new Date('2026-07-16T12:00:00Z'),
+      updatedAt: new Date('2026-07-16T13:00:00Z'),
+      report: demoReport,
+      reportSentOn: sentOn,
+    }
+    vi.mocked(setDraftReportSentOn).mockResolvedValue(updatedDraft as any)
+
+    const result = await setAdminReportSent({ data: { deviceId, sent: true } })
+
+    expect(requireAdminSession).toHaveBeenCalled()
+    expect(setDraftReportSentOn).toHaveBeenCalledWith(deviceId, true)
+    expect(result).toMatchObject({ deviceId, name: 'Ana', hasReport: true, reportSentOn: sentOn })
+  })
+
+  it('rejects setting report sent status with invalid input before querying database', async () => {
+    await expect(setAdminReportSent({ data: { deviceId: 'invalid-uuid', sent: true } })).rejects.toThrow()
+    expect(setDraftReportSentOn).not.toHaveBeenCalled()
+  })
+
+  it('rejects setting report sent status when draft/report is not found', async () => {
+    const deviceId = '123e4567-e89b-12d3-a456-426614174000'
+    vi.mocked(setDraftReportSentOn).mockResolvedValue(undefined as any)
+
+    await expect(setAdminReportSent({ data: { deviceId, sent: true } })).rejects.toThrow('Report not found')
   })
 })

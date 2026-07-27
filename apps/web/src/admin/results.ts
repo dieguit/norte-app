@@ -7,7 +7,7 @@ const uploadFields = onboardingSteps.flatMap(step =>
   step.fields.filter(field => field.type === 'upload')
 )
 
-export function toAdminResult(draft: Pick<OnboardingDraft, 'deviceId' | 'answers' | 'completedAt' | 'updatedAt'>) {
+export function toAdminResult(draft: Pick<OnboardingDraft, 'deviceId' | 'answers' | 'completedAt' | 'updatedAt' | 'report' | 'reportSentOn'>) {
   const name = typeof draft.answers?.nombre === 'string' ? draft.answers.nombre : null
   const status = draft.completedAt ? 'completed' : 'draft'
   return {
@@ -15,6 +15,8 @@ export function toAdminResult(draft: Pick<OnboardingDraft, 'deviceId' | 'answers
     name,
     status,
     updatedAt: draft.updatedAt,
+    hasReport: Boolean(draft.report),
+    reportSentOn: draft.reportSentOn,
   }
 }
 

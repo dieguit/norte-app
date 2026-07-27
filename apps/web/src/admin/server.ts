@@ -1,10 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { requireAdminSession } from './auth'
-import { listDrafts, getDraft } from '../onboarding/repository'
+import { listDrafts, getDraft, saveDraftReport, setDraftReportSentOn } from '../onboarding/repository'
 import { toAdminResult, getUploadedFiles } from './results'
 import { signDownload } from '../onboarding/r2'
 import { csvHeaders, toAdminCsvRow } from './csv'
+import { reportSchema } from './report'
 
 export const listAdminResults = createServerFn({ method: 'GET' })
   .handler(async () => {
@@ -57,4 +58,22 @@ export const getAdminResultDetails = createServerFn({ method: 'GET' })
       ]),
     ))
     return { draft, files }
+  })
+
+export const saveAdminReport = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => z.object({ deviceId: z.uuid(), report: reportSchema }).parse(input))
+  .handler(async ({ data }) => {
+    await requireAdminSession()
+    const draft = await saveDraftReport(data.deviceId, data.report)
+    if (!draft) throw new Error('Draft not found')
+    return toAdminResult(draft)
+  })
+
+export const setAdminReportSent = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => z.object({ deviceId: z.uuid(), sent: z.boolean() }).parse(input))
+  .handler(async ({ data }) => {
+    await requireAdminSession()
+    const draft = await setDraftReportSentOn(data.deviceId, data.sent)
+    if (!draft) throw new Error('Report not found')
+    return toAdminResult(draft)
   })

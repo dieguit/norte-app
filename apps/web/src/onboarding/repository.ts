@@ -1,7 +1,8 @@
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and, isNotNull } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { onboardingDrafts } from '@/db/schema'
 import type { OnboardingAnswers } from './definition'
+import type { Report } from '../admin/report'
 
 export function getDraft(deviceId: string) {
   return db.query.onboardingDrafts.findFirst({
@@ -32,4 +33,20 @@ export async function saveDraft(data: {
 
 export function listDrafts() {
   return db.select().from(onboardingDrafts).orderBy(desc(onboardingDrafts.updatedAt))
+}
+
+export async function saveDraftReport(deviceId: string, report: Report) {
+  const [draft] = await db.update(onboardingDrafts)
+    .set({ report, updatedAt: new Date() })
+    .where(eq(onboardingDrafts.deviceId, deviceId))
+    .returning()
+  return draft
+}
+
+export async function setDraftReportSentOn(deviceId: string, sent: boolean) {
+  const [draft] = await db.update(onboardingDrafts)
+    .set({ reportSentOn: sent ? new Date() : null, updatedAt: new Date() })
+    .where(and(eq(onboardingDrafts.deviceId, deviceId), isNotNull(onboardingDrafts.report)))
+    .returning()
+  return draft
 }
