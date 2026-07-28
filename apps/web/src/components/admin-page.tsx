@@ -1,6 +1,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { usePostHog } from '@posthog/react'
 import { loginAdmin } from '../admin/auth'
 import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow, saveAdminReport, setAdminReportSent } from '../admin/server'
 import { serializeCsv } from '../admin/csv'
@@ -34,6 +35,8 @@ const resultFilters: { value: ResultFilter; label: string }[] = [
 ]
 
 export function AdminPage({ authenticated }: { authenticated: boolean }) {
+  const posthog = usePostHog()
+
   // Login form state
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -216,6 +219,7 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
     try {
       const res = await loginAdmin({ data: { username, password } })
       if (res.ok) {
+        ;(posthog as any)?.optOut()
         window.location.reload()
       } else {
         setError('Usuario o contraseña incorrectos.')

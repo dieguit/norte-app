@@ -8,6 +8,12 @@ import { loginAdmin } from '../admin/auth'
 import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow, saveAdminReport, setAdminReportSent } from '../admin/server'
 import { csvHeaders } from '../admin/csv'
 
+const posthogOptOut = vi.fn()
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({ optOut: posthogOptOut }),
+}))
+
 vi.mock('../admin/auth', () => ({
   loginAdmin: vi.fn(),
   getAdminSession: vi.fn(),
@@ -41,6 +47,23 @@ describe('AdminPage', () => {
     expect(loginAdmin).toHaveBeenCalledWith({
       data: { username: 'admin', password: 'wrong' },
     })
+  })
+
+  it('disables analytics after a successful admin login', async () => {
+    vi.mocked(loginAdmin).mockResolvedValue({ ok: true })
+    const reloadMock = vi.fn()
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...window.location, reload: reloadMock }
+    })
+
+    render(<AdminPage authenticated={false} />)
+    await userEvent.setup().type(screen.getByLabelText('Usuario'), 'admin')
+    await userEvent.setup().type(screen.getByLabelText('Contraseña'), 'N0rt3!')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Ingresar' }))
+
+    expect(posthogOptOut).toHaveBeenCalledOnce()
+    expect(reloadMock).toHaveBeenCalledOnce()
   })
 
   describe('Results view', () => {
