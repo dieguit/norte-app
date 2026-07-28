@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { Report } from "../admin/report";
 import { usePostHog } from "@posthog/react";
+import { CheckCircle2, LoaderCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { markPublicReportCtaClicked } from "../informe/server";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChartContainer,
@@ -73,6 +76,7 @@ type ReportArea = (typeof reportAreas)[number];
 export function InformePage({
   report: data,
   deviceId,
+  ctaClickedOn,
 }: {
   report: Report;
   deviceId: string;
@@ -81,6 +85,32 @@ export function InformePage({
   const posthog = usePostHog();
   const capturedAreas = useRef(new Set<ReportArea>());
   const [reduction, setReduction] = useState(0);
+  const [ctaConfirmed, setCtaConfirmed] = useState(Boolean(ctaClickedOn));
+  const [ctaPending, setCtaPending] = useState(false);
+  const [ctaError, setCtaError] = useState<string | null>(null);
+
+  const handleCtaClick = async () => {
+    setCtaError(null);
+    setCtaPending(true);
+    if (posthog) {
+      posthog.capture("informe_cta_clicked", {
+        device_id: deviceId,
+        area: "vision_norte",
+      });
+    }
+    try {
+      if (deviceId === "demo") {
+        setCtaConfirmed(true);
+      } else {
+        await markPublicReportCtaClicked({ data: { deviceId } });
+        setCtaConfirmed(true);
+      }
+    } catch {
+      setCtaError("No pudimos registrarte. Intentá de nuevo.");
+    } finally {
+      setCtaPending(false);
+    }
+  };
 
   useEffect(() => {
     if (!posthog) return;
@@ -772,25 +802,28 @@ export function InformePage({
           <p className="font-serif text-xl font-semibold text-[var(--sea-ink)]">
             Todo esto por lo que cuesta una pizza al mes.
           </p>
-          <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+          <p className="text-base leading-relaxed text-[var(--sea-ink-soft)]">
             Estamos preparando el primer lanzamiento de Norte con cupos
             limitados. Sumate a la lista de espera para ser de los primeros en
             acceder.
           </p>
-        </div>
-        <div className="pt-2 text-center">
-          <button
+          <Button
             type="button"
-            className="demo-button w-full px-6 py-3 text-base sm:w-auto"
-            onClick={() =>
-              posthog?.capture("informe_cta_clicked", {
-                device_id: deviceId,
-                area: "vision_norte",
-              })
-            }
+            size="lg"
+            className="mt-5 h-12 w-full text-base font-semibold shadow-md"
+            disabled={ctaConfirmed || ctaPending}
+            onClick={handleCtaClick}
           >
+            {ctaPending && <LoaderCircle className="animate-spin" data-icon="inline-start" />}
             Quiero ser de los primeros en usar Norte →
-          </button>
+          </Button>
+          {ctaConfirmed && (
+            <div role="status" className="mt-4 flex gap-3 rounded-xl border border-emerald-700/25 bg-emerald-50 p-4 text-left text-emerald-950">
+              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700" aria-hidden="true" />
+              <p className="text-sm leading-relaxed">Ya te registramos en la lista de espera. Te vamos a comunicar por el mismo medio que recibiste el informe cuando tengamos la versión Beta de la App. Vas a ser de los primeros en probarla.</p>
+            </div>
+          )}
+          {ctaError && <p role="alert" className="mt-3 text-sm text-destructive">{ctaError}</p>}
         </div>
       </section>
     </main>

@@ -34,8 +34,14 @@ vi.mock('recharts', async (importOriginal) => {
   }
 })
 
+import userEvent from '@testing-library/user-event'
 import { InformePage } from './informe-page'
 import demoReport from '../informe/demo.json'
+import { markPublicReportCtaClicked } from '../informe/server'
+
+vi.mock('../informe/server', () => ({
+  markPublicReportCtaClicked: vi.fn(),
+}))
 
 beforeAll(() => {
   vi.stubGlobal(
@@ -58,11 +64,12 @@ afterEach(() => {
   intersectionCallback = undefined
   posthogCapture.mockClear()
   posthogIdentify.mockClear()
+  vi.mocked(markPublicReportCtaClicked).mockReset()
 })
 
 describe('InformePage', () => {
   it('renders JSON-backed annual data', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
 
     expect(screen.getByRole('heading', { name: 'Tu posición real' })).toBeDefined()
     expect(screen.getByText('$99,7 M')).toBeDefined()
@@ -70,7 +77,7 @@ describe('InformePage', () => {
   })
 
   it('updates savings, arrival, and the chart projection when the discretionary-spend slider changes', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
 
     const slider = screen.getByRole('slider', {
       name: 'Recorte de gastos discrecionales',
@@ -95,7 +102,7 @@ describe('InformePage', () => {
   })
 
   it('keeps the reduction value together and right-aligns an unmet arrival label', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
 
     expect(screen.getByText('0%')).toHaveClass('whitespace-nowrap')
     expect(screen.getByText('No llegás con este recorte')).toHaveClass(
@@ -104,7 +111,7 @@ describe('InformePage', () => {
   })
 
   it('estimates the total arrival month when the selected curve misses the JSON horizon', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
 
     fireEvent.change(
       screen.getByRole('slider', {
@@ -117,7 +124,7 @@ describe('InformePage', () => {
   })
 
   it('uses the report copy and keeps the upcoming expense separate from card commitments', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
 
     expect(screen.getByText('Todo lo que vas a ganar este año')).toBeDefined()
     expect(screen.getByText('Lo que tenés que pagar sí o sí')).toBeDefined()
@@ -131,7 +138,7 @@ describe('InformePage', () => {
   })
 
   it('renders the product section with the supplied static WhatsApp preview', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
 
     expect(
       screen.getByRole('heading', {
@@ -187,7 +194,7 @@ describe('InformePage', () => {
   })
 
   it('shows the monthly donut by default without visualization tabs', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
 
     expect(screen.getByTestId('monthly-donut')).toBeDefined()
     expect(screen.getByText('$7.500.000')).toBeDefined()
@@ -196,7 +203,7 @@ describe('InformePage', () => {
   })
 
   it('renders a dynamic monthly breakdown beside the default chart', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
 
     expect(screen.getByTestId('monthly-breakdown-legend')).toBeDefined()
     expect(screen.getByText('Compromisos fijos que no se tocan')).toBeDefined()
@@ -207,7 +214,7 @@ describe('InformePage', () => {
   })
 
   it('identifies the report recipient and captures each visible area once', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
     const areas = document.querySelectorAll<HTMLElement>('[data-analytics-area]')
     intersectionCallback!(Array.from(areas, (target) => ({
       target,
@@ -223,8 +230,9 @@ describe('InformePage', () => {
     })
   })
 
-  it('captures the final CTA click', () => {
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+  it('captures the final CTA click', async () => {
+    vi.mocked(markPublicReportCtaClicked).mockResolvedValue({ ctaClickedOn: new Date() })
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
     fireEvent.click(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' }))
     expect(posthogCapture).toHaveBeenCalledWith('informe_cta_clicked', {
       device_id: 'device-ana', area: 'vision_norte',
@@ -233,9 +241,58 @@ describe('InformePage', () => {
 
   it('skips report analytics when PostHog is unavailable', () => {
     posthogAvailable = false
-    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
     fireEvent.click(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' }))
     expect(posthogIdentify).not.toHaveBeenCalled()
     expect(posthogCapture).not.toHaveBeenCalled()
   })
+
+  it('registers the CTA, captures analytics, and confirms the waitlist state', async () => {
+    const user = userEvent.setup()
+    vi.mocked(markPublicReportCtaClicked).mockResolvedValue({ ctaClickedOn: new Date() })
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
+
+    const button = screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' })
+    const waitlistText = screen.getByText(/Estamos preparando el primer lanzamiento de Norte con cupos limitados/)
+    expect(waitlistText).toHaveClass('text-base')
+    expect(button.closest('div')).toHaveTextContent('Todo esto por lo que cuesta una pizza al mes.')
+
+    await user.click(button)
+
+    expect(markPublicReportCtaClicked).toHaveBeenCalledWith({ data: { deviceId: 'device-ana' } })
+    expect(posthogCapture).toHaveBeenCalledWith('informe_cta_clicked', { device_id: 'device-ana', area: 'vision_norte' })
+    expect(screen.getByText(/Ya te registramos en la lista de espera/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' })).toBeDisabled()
+  })
+
+  it('renders the persisted confirmation when the report is reopened', () => {
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={new Date()} />)
+
+    expect(screen.getByText(/Ya te registramos en la lista de espera/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' })).toBeDisabled()
+  })
+
+  it('shows an error and lets the recipient retry when registration fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(markPublicReportCtaClicked).mockRejectedValue(new Error('network'))
+    render(<InformePage report={demoReport} deviceId="device-ana" ctaClickedOn={null} />)
+
+    await user.click(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('No pudimos registrarte. Intentá de nuevo.')
+    expect(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' })).toBeEnabled()
+  })
+
+  it('handles demo deviceId by confirming locally without calling markPublicReportCtaClicked', async () => {
+    const user = userEvent.setup()
+    render(<InformePage report={demoReport} deviceId="demo" ctaClickedOn={null} />)
+
+    await user.click(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' }))
+
+    expect(posthogCapture).toHaveBeenCalledWith('informe_cta_clicked', { device_id: 'demo', area: 'vision_norte' })
+    expect(markPublicReportCtaClicked).not.toHaveBeenCalled()
+    expect(screen.getByText(/Ya te registramos en la lista de espera/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' })).toBeDisabled()
+  })
 })
+
