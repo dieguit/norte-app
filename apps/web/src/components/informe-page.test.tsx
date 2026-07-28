@@ -15,6 +15,7 @@ vi.mock('recharts', async (importOriginal) => {
 })
 
 import { InformePage } from './informe-page'
+import demoReport from '../informe/demo.json'
 
 beforeAll(() => {
   vi.stubGlobal(
@@ -34,7 +35,7 @@ afterEach(cleanup)
 
 describe('InformePage', () => {
   it('renders JSON-backed annual data', () => {
-    render(<InformePage />)
+    render(<InformePage report={demoReport} />)
 
     expect(screen.getByRole('heading', { name: 'Tu posición real' })).toBeDefined()
     expect(screen.getByText('$99,7 M')).toBeDefined()
@@ -42,7 +43,7 @@ describe('InformePage', () => {
   })
 
   it('updates savings, arrival, and the chart projection when the discretionary-spend slider changes', () => {
-    render(<InformePage />)
+    render(<InformePage report={demoReport} />)
 
     const slider = screen.getByRole('slider', {
       name: 'Recorte de gastos discrecionales',
@@ -67,7 +68,7 @@ describe('InformePage', () => {
   })
 
   it('keeps the reduction value together and right-aligns an unmet arrival label', () => {
-    render(<InformePage />)
+    render(<InformePage report={demoReport} />)
 
     expect(screen.getByText('0%')).toHaveClass('whitespace-nowrap')
     expect(screen.getByText('No llegás con este recorte')).toHaveClass(
@@ -76,7 +77,7 @@ describe('InformePage', () => {
   })
 
   it('estimates the total arrival month when the selected curve misses the JSON horizon', () => {
-    render(<InformePage />)
+    render(<InformePage report={demoReport} />)
 
     fireEvent.change(
       screen.getByRole('slider', {
@@ -89,7 +90,7 @@ describe('InformePage', () => {
   })
 
   it('uses the report copy and keeps the upcoming expense separate from card commitments', () => {
-    render(<InformePage />)
+    render(<InformePage report={demoReport} />)
 
     expect(screen.getByText('Todo lo que vas a ganar este año')).toBeDefined()
     expect(screen.getByText('Lo que tenés que pagar sí o sí')).toBeDefined()
@@ -103,7 +104,7 @@ describe('InformePage', () => {
   })
 
   it('renders the product section with the supplied static WhatsApp preview', () => {
-    render(<InformePage />)
+    render(<InformePage report={demoReport} />)
 
     expect(
       screen.getByRole('heading', {
@@ -130,7 +131,7 @@ describe('InformePage', () => {
       screen.getByRole('img', {
         name: 'Hoja de ruta financiera de Norte',
       }).getAttribute('src'),
-    ).toBe('/images/roadmap.webp')
+    ).toBe('/images/roadmap2.webp')
 
     const roadmap = screen.getByRole('img', {
       name: 'Hoja de ruta financiera de Norte',
@@ -140,7 +141,7 @@ describe('InformePage', () => {
     const fourthFeature = screen.getByText('Podés probar antes de decidir')
     const whatsappPreview = screen.getByText('Diciembre 2026')
 
-    expect(roadmap.className).toContain('md:max-h-[450px]')
+    expect(roadmap.className).toContain('md:max-h-[550px]')
     expect(roadmap.parentElement?.className).toContain('bg-[var(--sand)]')
     expect(firstFeature.compareDocumentPosition(roadmap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(thirdFeature.compareDocumentPosition(roadmap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -159,7 +160,7 @@ describe('InformePage', () => {
   })
 
   it('switches the monthly breakdown between cards, a solid pie, and a donut total', () => {
-    render(<InformePage />)
+    render(<InformePage report={demoReport} />)
 
     expect(screen.getByRole('tab', { name: 'Opción 1' }).getAttribute('data-active')).not.toBeNull()
     expect(screen.getByText('Compromisos fijos que no se tocan')).toBeDefined()
@@ -175,7 +176,7 @@ describe('InformePage', () => {
   })
 
   it('renders a dynamic monthly breakdown beside the selected chart', () => {
-    render(<InformePage />)
+    render(<InformePage report={demoReport} />)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Opción 2' }))
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import data from "../informe/demo.json";
+import type { Report } from "../admin/report";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChartContainer,
@@ -60,7 +60,7 @@ function MonthlyBreakdownLegend({ items }: { items: MonthlyPieItem[] }) {
   );
 }
 
-export function InformePage() {
+export function InformePage({ report: data }: { report: Report }) {
   const [reduction, setReduction] = useState(0);
 
   const monthlyBreakdown = [
