@@ -10,6 +10,7 @@ dist/
 
 # IA
 docs/superpowers
+apps/web/docs/
 .superpowers/
 .serena/
 
