@@ -260,8 +260,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-ana',
           name: 'Ana',
-          contactMethod: null,
-          contactValue: null,
+          contactMethod: 'WhatsApp',
+          contactValue: '+54 11 5555-5555',
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
@@ -308,8 +308,8 @@ describe('AdminPage', () => {
       const updatedResultHasReport = {
         deviceId: 'device-ana',
         name: 'Ana',
-        contactMethod: null,
-        contactValue: null,
+        contactMethod: 'WhatsApp',
+        contactValue: '+54 11 5555-5555',
         status: 'completed',
         updatedAt: new Date('2026-07-16T12:00:00Z'),
         hasReport: true,
@@ -483,6 +483,197 @@ describe('AdminPage', () => {
       expect(children[1]).toHaveTextContent('Descargar Tarjeta 1 Resumen')
       expect(children[2]).toHaveTextContent('Agregar informe')
     })
+
+    it('supports mutually exclusive status filtering by effective status', async () => {
+      const results = [
+        {
+          deviceId: 'dev-draft',
+          name: 'Borrador',
+          contactMethod: null,
+          contactValue: null,
+          status: 'draft',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+        {
+          deviceId: 'dev-completed',
+          name: 'Completado',
+          contactMethod: null,
+          contactValue: null,
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+        {
+          deviceId: 'dev-ready',
+          name: 'Listo',
+          contactMethod: null,
+          contactValue: null,
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: true,
+          reportSentOn: null,
+        },
+        {
+          deviceId: 'dev-sent',
+          name: 'Enviado',
+          contactMethod: null,
+          contactValue: null,
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: true,
+          reportSentOn: new Date('2026-07-16T15:00:00Z'),
+        },
+      ]
+      vi.mocked(listAdminResults).mockResolvedValue(results)
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+
+      expect(await screen.findByText('Borrador')).toBeInTheDocument()
+      expect(screen.getByText('Completado')).toBeInTheDocument()
+      expect(screen.getByText('Listo')).toBeInTheDocument()
+      expect(screen.getByText('Enviado')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Informe Listo' }))
+      expect(screen.getByText('Listo')).toBeInTheDocument()
+      expect(screen.queryByText('Enviado')).not.toBeInTheDocument()
+      expect(screen.queryByText('Completado')).not.toBeInTheDocument()
+      expect(screen.queryByText('Borrador')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Informe Enviado' }))
+      expect(screen.getByText('Enviado')).toBeInTheDocument()
+      expect(screen.queryByText('Listo')).not.toBeInTheDocument()
+      expect(screen.queryByText('Completado')).not.toBeInTheDocument()
+      expect(screen.queryByText('Borrador')).not.toBeInTheDocument()
+    })
+
+    it('removes row from view on status update while filtered by Informe Listo', async () => {
+      const results = [
+        {
+          deviceId: 'device-ana',
+          name: 'Ana',
+          contactMethod: 'WhatsApp',
+          contactValue: '+54 11 5555-5555',
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: true,
+          reportSentOn: null,
+        },
+      ]
+      vi.mocked(listAdminResults).mockResolvedValue(results)
+      vi.mocked(getAdminResultFiles).mockResolvedValue([])
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+
+      expect(await screen.findByText('Ana')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Informe Listo' }))
+      expect(screen.getByText('Ana')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Ana' }))
+
+      const updatedResultSent = {
+        ...results[0],
+        reportSentOn: new Date('2026-07-16T15:00:00.000Z'),
+      }
+      vi.mocked(setAdminReportSent).mockResolvedValueOnce(updatedResultSent)
+
+      const sentCheckbox = screen.getByLabelText('Informe enviado')
+      await user.click(sentCheckbox)
+
+      expect(screen.queryByText('Ana')).not.toBeInTheDocument()
+    })
+
+    it('renders contact controls and copies contact info with error fallback', async () => {
+      const writeTextMock = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: writeTextMock },
+        configurable: true,
+        writable: true,
+      })
+
+      const results = [
+        {
+          deviceId: 'device-ana',
+          name: 'Ana',
+          contactMethod: 'WhatsApp',
+          contactValue: '+54 11 5555-5555',
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+        {
+          deviceId: 'device-sin-nombre',
+          name: null,
+          contactMethod: null,
+          contactValue: null,
+          status: 'draft',
+          updatedAt: new Date('2026-07-16T12:30:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+      ]
+      vi.mocked(listAdminResults).mockResolvedValue(results)
+      vi.mocked(getAdminResultFiles).mockResolvedValue([])
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+
+      expect(await screen.findByText('Ana')).toBeInTheDocument()
+
+      // Expand Ana row
+      await user.click(screen.getByRole('button', { name: 'Ana' }))
+
+      expect(screen.getByText('Nombre: Ana')).toBeInTheDocument()
+      expect(screen.getByText('Método de envío: WhatsApp +54 11 5555-5555')).toBeInTheDocument()
+
+      const copyBtn = screen.getByRole('button', { name: 'Copiar', exact: true })
+      await user.click(copyBtn)
+      expect(writeTextMock).toHaveBeenCalledWith('+54 11 5555-5555')
+
+      writeTextMock.mockRejectedValueOnce(new Error('Clipboard error'))
+      await user.click(copyBtn)
+      expect(await screen.findByText('No se pudo copiar el contacto.')).toBeInTheDocument()
+
+      // Expand Sin nombre row
+      await user.click(screen.getByRole('button', { name: 'Sin nombre' }))
+      expect(screen.getByText('Nombre: Sin nombre')).toBeInTheDocument()
+      expect(screen.getByText('Método de envío: Sin contacto')).toBeInTheDocument()
+    })
+
+    it('enforces order of blocks inside expanded row', async () => {
+      const results = [
+        {
+          deviceId: 'device-ana',
+          name: 'Ana',
+          contactMethod: 'Email',
+          contactValue: 'ana@example.com',
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: true,
+          reportSentOn: null,
+        },
+      ]
+      vi.mocked(listAdminResults).mockResolvedValue(results)
+      vi.mocked(getAdminResultFiles).mockResolvedValue([])
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+
+      expect(await screen.findByText('Ana')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Ana' }))
+
+      const text = document.getElementById('files-container-device-ana')!.textContent!
+      expect(text.indexOf('Informe cargado')).toBeLessThan(text.indexOf('Ver informe'))
+      expect(text.indexOf('Ver informe')).toBeLessThan(text.indexOf('Nombre: Ana'))
+      expect(text.indexOf('Nombre: Ana')).toBeLessThan(text.indexOf('Método de envío: Email ana@example.com'))
+    })
   })
 })
+
 
