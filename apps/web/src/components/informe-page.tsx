@@ -810,20 +810,37 @@ export function InformePage({
           <Button
             type="button"
             size="lg"
-            className="mt-5 h-12 w-full text-base font-semibold shadow-md"
+            className="mt-5 h-14 px-8 text-base font-semibold shadow-md"
             disabled={ctaConfirmed || ctaPending}
             onClick={handleCtaClick}
           >
-            {ctaPending && <LoaderCircle className="animate-spin" data-icon="inline-start" />}
+            {ctaPending && (
+              <LoaderCircle className="animate-spin" data-icon="inline-start" />
+            )}
             Quiero ser de los primeros en usar Norte →
           </Button>
           {ctaConfirmed && (
-            <div role="status" className="mt-4 flex gap-3 rounded-xl border border-emerald-700/25 bg-emerald-50 p-4 text-left text-emerald-950">
-              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700" aria-hidden="true" />
-              <p className="text-sm leading-relaxed">Ya te registramos en la lista de espera. Te vamos a comunicar por el mismo medio que recibiste el informe cuando tengamos la versión Beta de la App. Vas a ser de los primeros en probarla.</p>
+            <div
+              role="status"
+              className="mt-4 flex gap-3 rounded-xl border border-emerald-700/25 bg-emerald-50 p-4 text-left text-emerald-950"
+            >
+              <CheckCircle2
+                className="mt-0.5 size-5 shrink-0 text-emerald-700"
+                aria-hidden="true"
+              />
+              <p className="text-sm leading-relaxed">
+                Ya te registramos en la lista de espera. Te vamos a comunicar
+                por el mismo medio que recibiste el informe cuando tengamos la
+                versión Beta de la App. Vas a ser de los primeros en probarla!
+                Muchas gracias por tu tiempo.
+              </p>
             </div>
           )}
-          {ctaError && <p role="alert" className="mt-3 text-sm text-destructive">{ctaError}</p>}
+          {ctaError && (
+            <p role="alert" className="mt-3 text-sm text-destructive">
+              {ctaError}
+            </p>
+          )}
         </div>
       </section>
     </main>
