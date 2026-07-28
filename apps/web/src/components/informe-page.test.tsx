@@ -3,6 +3,26 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
+const posthogCapture = vi.fn()
+const posthogIdentify = vi.fn()
+let posthogAvailable = true
+let intersectionCallback: IntersectionObserverCallback | undefined
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => posthogAvailable
+    ? { capture: posthogCapture, identify: posthogIdentify }
+    : undefined,
+}))
+
+class TestIntersectionObserver {
+  constructor(callback: IntersectionObserverCallback) {
+    intersectionCallback = callback
+  }
+  observe() {}
+  disconnect() {}
+  unobserve() {}
+}
+
 vi.mock('recharts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('recharts')>()
 
@@ -29,13 +49,20 @@ beforeAll(() => {
       disconnect() {}
     }
   )
+  vi.stubGlobal('IntersectionObserver', TestIntersectionObserver)
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  posthogAvailable = true
+  intersectionCallback = undefined
+  posthogCapture.mockClear()
+  posthogIdentify.mockClear()
+})
 
 describe('InformePage', () => {
   it('renders JSON-backed annual data', () => {
-    render(<InformePage report={demoReport} />)
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
 
     expect(screen.getByRole('heading', { name: 'Tu posición real' })).toBeDefined()
     expect(screen.getByText('$99,7 M')).toBeDefined()
@@ -43,7 +70,7 @@ describe('InformePage', () => {
   })
 
   it('updates savings, arrival, and the chart projection when the discretionary-spend slider changes', () => {
-    render(<InformePage report={demoReport} />)
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
 
     const slider = screen.getByRole('slider', {
       name: 'Recorte de gastos discrecionales',
@@ -68,7 +95,7 @@ describe('InformePage', () => {
   })
 
   it('keeps the reduction value together and right-aligns an unmet arrival label', () => {
-    render(<InformePage report={demoReport} />)
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
 
     expect(screen.getByText('0%')).toHaveClass('whitespace-nowrap')
     expect(screen.getByText('No llegás con este recorte')).toHaveClass(
@@ -77,7 +104,7 @@ describe('InformePage', () => {
   })
 
   it('estimates the total arrival month when the selected curve misses the JSON horizon', () => {
-    render(<InformePage report={demoReport} />)
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
 
     fireEvent.change(
       screen.getByRole('slider', {
@@ -90,7 +117,7 @@ describe('InformePage', () => {
   })
 
   it('uses the report copy and keeps the upcoming expense separate from card commitments', () => {
-    render(<InformePage report={demoReport} />)
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
 
     expect(screen.getByText('Todo lo que vas a ganar este año')).toBeDefined()
     expect(screen.getByText('Lo que tenés que pagar sí o sí')).toBeDefined()
@@ -104,7 +131,7 @@ describe('InformePage', () => {
   })
 
   it('renders the product section with the supplied static WhatsApp preview', () => {
-    render(<InformePage report={demoReport} />)
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
 
     expect(
       screen.getByRole('heading', {
@@ -160,7 +187,7 @@ describe('InformePage', () => {
   })
 
   it('shows the monthly donut by default without visualization tabs', () => {
-    render(<InformePage report={demoReport} />)
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
 
     expect(screen.getByTestId('monthly-donut')).toBeDefined()
     expect(screen.getByText('$7.500.000')).toBeDefined()
@@ -169,7 +196,7 @@ describe('InformePage', () => {
   })
 
   it('renders a dynamic monthly breakdown beside the default chart', () => {
-    render(<InformePage report={demoReport} />)
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
 
     expect(screen.getByTestId('monthly-breakdown-legend')).toBeDefined()
     expect(screen.getByText('Compromisos fijos que no se tocan')).toBeDefined()
@@ -177,5 +204,38 @@ describe('InformePage', () => {
     expect(screen.getByText(/\$1\.300\.000/)).toBeDefined()
     expect(screen.getByText(/\$1\.425\.000/)).toBeDefined()
     expect(screen.getByText(/63\.3%/)).toBeDefined()
+  })
+
+  it('identifies the report recipient and captures each visible area once', () => {
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    const areas = document.querySelectorAll<HTMLElement>('[data-analytics-area]')
+    intersectionCallback!(Array.from(areas, (target) => ({
+      target,
+      isIntersecting: true,
+      intersectionRatio: 0.5,
+    } as IntersectionObserverEntry)), {} as IntersectionObserver)
+    intersectionCallback!([{ target: areas[0], isIntersecting: true, intersectionRatio: 0.5 } as IntersectionObserverEntry], {} as IntersectionObserver)
+
+    expect(posthogIdentify).toHaveBeenCalledWith('device-ana')
+    expect(posthogCapture).toHaveBeenCalledTimes(5)
+    expect(posthogCapture).toHaveBeenCalledWith('informe_area_viewed', {
+      device_id: 'device-ana', area: 'apertura',
+    })
+  })
+
+  it('captures the final CTA click', () => {
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' }))
+    expect(posthogCapture).toHaveBeenCalledWith('informe_cta_clicked', {
+      device_id: 'device-ana', area: 'vision_norte',
+    })
+  })
+
+  it('skips report analytics when PostHog is unavailable', () => {
+    posthogAvailable = false
+    render(<InformePage report={demoReport} deviceId="device-ana" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Quiero ser de los primeros en usar Norte →' }))
+    expect(posthogIdentify).not.toHaveBeenCalled()
+    expect(posthogCapture).not.toHaveBeenCalled()
   })
 })

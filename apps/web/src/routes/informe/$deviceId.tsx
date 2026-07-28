@@ -23,13 +23,14 @@ export async function loadInformeReport(deviceId: string) {
 }
 
 function InformeRoutePage() {
-  return <InformeRouteContent report={Route.useLoaderData()} />
+  const { deviceId } = Route.useParams()
+  return <InformeRouteContent report={Route.useLoaderData()} deviceId={deviceId} />
 }
 
-export function InformeRouteContent({ report }: { report: Report | null }) {
+export function InformeRouteContent({ report, deviceId }: { report: Report | null; deviceId: string }) {
   if (!report) {
     return <main id="main" className="page-wrap py-8 sm:py-12">No se encontro el informe, por favor verifica el link</main>
   }
 
-  return <InformePage report={report} />
+  return <InformePage report={report} deviceId={deviceId} />
 }

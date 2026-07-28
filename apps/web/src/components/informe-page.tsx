@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Report } from "../admin/report";
+import { usePostHog } from "@posthog/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChartContainer,
@@ -60,8 +61,34 @@ function MonthlyBreakdownLegend({ items }: { items: MonthlyPieItem[] }) {
   );
 }
 
-export function InformePage({ report: data }: { report: Report }) {
+const reportAreas = ['apertura', 'posicion_real', 'radiografia', 'camino', 'vision_norte'] as const
+type ReportArea = (typeof reportAreas)[number]
+
+export function InformePage({ report: data, deviceId }: { report: Report; deviceId: string }) {
+  const posthog = usePostHog()
+  const capturedAreas = useRef(new Set<ReportArea>())
   const [reduction, setReduction] = useState(0);
+
+  useEffect(() => {
+    if (!posthog) return
+    posthog.identify(deviceId)
+
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const area = entry.target.getAttribute('data-analytics-area') as ReportArea | null
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.5 || !area || capturedAreas.current.has(area)) continue
+        capturedAreas.current.add(area)
+        posthog.capture('informe_area_viewed', { device_id: deviceId, area })
+      }
+    }, { threshold: 0.5 })
+
+    for (const area of reportAreas) {
+      const section = document.querySelector(`[data-analytics-area="${area}"]`)
+      if (section) observer.observe(section)
+    }
+
+    return () => observer.disconnect()
+  }, [deviceId, posthog])
 
   const monthlyBreakdown = [
     {
@@ -159,7 +186,7 @@ export function InformePage({ report: data }: { report: Report }) {
   return (
     <main id="main" className="page-wrap py-8 sm:py-12 space-y-10">
       {/* Header / Apertura */}
-      <section className="demo-panel space-y-4">
+      <section data-analytics-area="apertura" className="demo-panel space-y-4">
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
           <span className="island-kicker">Informe inicial de claridad</span>
           <span className="text-xs font-semibold text-[var(--sea-ink-soft)]">
@@ -175,7 +202,7 @@ export function InformePage({ report: data }: { report: Report }) {
       </section>
 
       {/* Bloque 1: Tu posición real */}
-      <section aria-labelledby="posicion-real" className="demo-panel space-y-6">
+      <section data-analytics-area="posicion_real" aria-labelledby="posicion-real" className="demo-panel space-y-6">
         <h2
           id="posicion-real"
           className="text-2xl font-bold text-[var(--sea-ink)]"
@@ -274,6 +301,7 @@ export function InformePage({ report: data }: { report: Report }) {
 
       {/* Bloque 2: Radiografía */}
       <section
+        data-analytics-area="radiografia"
         aria-labelledby="radiografia-mes"
         className="demo-panel space-y-6"
       >
@@ -405,6 +433,7 @@ export function InformePage({ report: data }: { report: Report }) {
 
       {/* Bloque 3: Tu camino */}
       <section
+        data-analytics-area="camino"
         aria-labelledby="camino-colchon"
         className="demo-panel space-y-6"
       >
@@ -586,7 +615,7 @@ export function InformePage({ report: data }: { report: Report }) {
       </section>
 
       {/* Bloque 4: Qué es Norte */}
-      <section aria-labelledby="vision-norte" className="demo-panel space-y-6">
+      <section data-analytics-area="vision_norte" aria-labelledby="vision-norte" className="demo-panel space-y-6">
         <p className="island-kicker">4 · Qué es Norte</p>
         <h2
           id="vision-norte"
@@ -721,6 +750,10 @@ export function InformePage({ report: data }: { report: Report }) {
           <button
             type="button"
             className="demo-button w-full px-6 py-3 text-base sm:w-auto"
+            onClick={() => posthog?.capture('informe_cta_clicked', {
+              device_id: deviceId,
+              area: 'vision_norte',
+            })}
           >
             Quiero ser de los primeros en usar Norte →
           </button>
