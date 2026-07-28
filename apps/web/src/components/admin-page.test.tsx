@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AdminPage } from './admin-page'
@@ -102,10 +102,11 @@ describe('AdminPage', () => {
       render(<AdminPage authenticated />)
 
       // Check results are displayed
-      expect(await screen.findByText('Ana')).toBeInTheDocument()
-      expect(screen.getByText('Completado')).toBeInTheDocument()
-      expect(screen.getByText('Sin nombre')).toBeInTheDocument()
-      expect(screen.getByText('Borrador')).toBeInTheDocument()
+      const table = await screen.findByRole('table')
+      expect(within(table).getByText('Ana')).toBeInTheDocument()
+      expect(within(table).getByText('Completado')).toBeInTheDocument()
+      expect(within(table).getByText('Sin nombre')).toBeInTheDocument()
+      expect(within(table).getByText('Borrador')).toBeInTheDocument()
 
       // Assert that 'Device ID' column header and device-ana ID are present
       expect(screen.getByRole('columnheader', { name: 'Device ID' })).toBeInTheDocument()
@@ -274,11 +275,15 @@ describe('AdminPage', () => {
       const user = userEvent.setup()
 
       const writeTextMock = vi.fn().mockResolvedValue(undefined)
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: writeTextMock },
-        configurable: true,
-        writable: true,
-      })
+      if (!navigator.clipboard) {
+        Object.defineProperty(navigator, 'clipboard', {
+          value: { writeText: writeTextMock },
+          configurable: true,
+          writable: true,
+        })
+      } else {
+        vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(writeTextMock)
+      }
       render(<AdminPage authenticated />)
 
       expect(await screen.findByText('Ana')).toBeInTheDocument()
@@ -290,7 +295,7 @@ describe('AdminPage', () => {
       expect(sentCheckbox).not.toBeChecked()
 
       // Open editor
-      await user.click(screen.getByRole('button', { name: 'Agregar informe' }))
+      await user.click(screen.getByRole('button', { name: 'Cargar informe' }))
 
       // Invalid JSON validation
       const textarea = screen.getByLabelText('JSON del informe')
@@ -441,10 +446,11 @@ describe('AdminPage', () => {
 
       render(<AdminPage authenticated />)
 
-      expect(await screen.findByText('Informe Enviado')).toBeInTheDocument()
-      expect(screen.getByText('Informe Listo')).toBeInTheDocument()
-      expect(screen.getByText('Completado')).toBeInTheDocument()
-      expect(screen.getByText('Borrador')).toBeInTheDocument()
+      const table = await screen.findByRole('table')
+      expect(within(table).getByText('Informe Enviado')).toBeInTheDocument()
+      expect(within(table).getByText('Informe Listo')).toBeInTheDocument()
+      expect(within(table).getByText('Completado')).toBeInTheDocument()
+      expect(within(table).getByText('Borrador')).toBeInTheDocument()
     })
 
     it('renders file attachments section directly below Ver resultados and before the report section divider', async () => {
@@ -481,7 +487,7 @@ describe('AdminPage', () => {
       const children = Array.from(container!.children)
       expect(children[0]).toHaveTextContent('Ver resultados')
       expect(children[1]).toHaveTextContent('Descargar Tarjeta 1 Resumen')
-      expect(children[2]).toHaveTextContent('Agregar informe')
+      expect(children[2]).toHaveTextContent('Cargar informe')
     })
 
     it('supports mutually exclusive status filtering by effective status', async () => {
@@ -532,22 +538,23 @@ describe('AdminPage', () => {
       const user = userEvent.setup()
       render(<AdminPage authenticated />)
 
-      expect(await screen.findByText('Borrador')).toBeInTheDocument()
-      expect(screen.getByText('Completado')).toBeInTheDocument()
-      expect(screen.getByText('Listo')).toBeInTheDocument()
-      expect(screen.getByText('Enviado')).toBeInTheDocument()
+      const table = await screen.findByRole('table')
+      expect(await within(table).findByRole('button', { name: 'Borrador' })).toBeInTheDocument()
+      expect(within(table).getByRole('button', { name: 'Completado' })).toBeInTheDocument()
+      expect(within(table).getByRole('button', { name: 'Listo' })).toBeInTheDocument()
+      expect(within(table).getByRole('button', { name: 'Enviado' })).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Informe Listo' }))
-      expect(screen.getByText('Listo')).toBeInTheDocument()
-      expect(screen.queryByText('Enviado')).not.toBeInTheDocument()
-      expect(screen.queryByText('Completado')).not.toBeInTheDocument()
-      expect(screen.queryByText('Borrador')).not.toBeInTheDocument()
+      expect(within(table).getByRole('button', { name: 'Listo' })).toBeInTheDocument()
+      expect(within(table).queryByRole('button', { name: 'Enviado' })).not.toBeInTheDocument()
+      expect(within(table).queryByRole('button', { name: 'Completado' })).not.toBeInTheDocument()
+      expect(within(table).queryByRole('button', { name: 'Borrador' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Informe Enviado' }))
-      expect(screen.getByText('Enviado')).toBeInTheDocument()
-      expect(screen.queryByText('Listo')).not.toBeInTheDocument()
-      expect(screen.queryByText('Completado')).not.toBeInTheDocument()
-      expect(screen.queryByText('Borrador')).not.toBeInTheDocument()
+      expect(within(table).getByRole('button', { name: 'Enviado' })).toBeInTheDocument()
+      expect(within(table).queryByRole('button', { name: 'Listo' })).not.toBeInTheDocument()
+      expect(within(table).queryByRole('button', { name: 'Completado' })).not.toBeInTheDocument()
+      expect(within(table).queryByRole('button', { name: 'Borrador' })).not.toBeInTheDocument()
     })
 
     it('removes row from view on status update while filtered by Informe Listo', async () => {
@@ -590,11 +597,15 @@ describe('AdminPage', () => {
 
     it('renders contact controls and copies contact info with error fallback', async () => {
       const writeTextMock = vi.fn().mockResolvedValue(undefined)
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: writeTextMock },
-        configurable: true,
-        writable: true,
-      })
+      if (!navigator.clipboard) {
+        Object.defineProperty(navigator, 'clipboard', {
+          value: { writeText: writeTextMock },
+          configurable: true,
+          writable: true,
+        })
+      } else {
+        vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(writeTextMock)
+      }
 
       const results = [
         {
@@ -632,7 +643,7 @@ describe('AdminPage', () => {
       expect(screen.getByText('Nombre: Ana')).toBeInTheDocument()
       expect(screen.getByText('Método de envío: WhatsApp +54 11 5555-5555')).toBeInTheDocument()
 
-      const copyBtn = screen.getByRole('button', { name: 'Copiar', exact: true })
+      const copyBtn = screen.getByRole('button', { name: 'Copiar' })
       await user.click(copyBtn)
       expect(writeTextMock).toHaveBeenCalledWith('+54 11 5555-5555')
 

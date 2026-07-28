@@ -17,6 +17,22 @@ function normalizePastedReportJson(value: string) {
     .replaceAll('ÔÇö', '—')
 }
 
+type ResultFilter = 'all' | 'draft' | 'completed' | 'report-ready' | 'report-sent'
+
+function getResultStatus(device: { status: string; hasReport: boolean; reportSentOn: unknown }) {
+  if (device.reportSentOn) return 'report-sent'
+  if (device.hasReport) return 'report-ready'
+  return device.status === 'completed' ? 'completed' : 'draft'
+}
+
+const resultFilters: { value: ResultFilter; label: string }[] = [
+  { value: 'all', label: 'Todos' },
+  { value: 'draft', label: 'Borrador' },
+  { value: 'completed', label: 'Completado' },
+  { value: 'report-ready', label: 'Informe Listo' },
+  { value: 'report-sent', label: 'Informe Enviado' },
+]
+
 export function AdminPage({ authenticated }: { authenticated: boolean }) {
   // Login form state
   const [username, setUsername] = useState('')
@@ -42,6 +58,8 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
   const [isSavingReport, setIsSavingReport] = useState(false)
   const [isSendingReportByDevice, setIsSendingReportByDevice] = useState<Record<string, boolean>>({})
   const [copyErrorByDevice, setCopyErrorByDevice] = useState<Record<string, string | null>>({})
+  const [resultFilter, setResultFilter] = useState<ResultFilter>('all')
+  const [contactCopyErrorByDevice, setContactCopyErrorByDevice] = useState<Record<string, string | null>>({})
 
   function updateResult(updated: Awaited<ReturnType<typeof saveAdminReport>>) {
     setResults((current) => current?.map((result) =>
@@ -101,6 +119,15 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
       await navigator.clipboard.writeText(`${window.location.origin}/informe/${deviceId}`)
     } catch (err) {
       setCopyErrorByDevice((prev) => ({ ...prev, [deviceId]: 'No se pudo copiar el enlace.' }))
+    }
+  }
+
+  async function handleCopyContact(deviceId: string, contactValue: string) {
+    setContactCopyErrorByDevice((prev) => ({ ...prev, [deviceId]: null }))
+    try {
+      await navigator.clipboard.writeText(contactValue)
+    } catch (err) {
+      setContactCopyErrorByDevice((prev) => ({ ...prev, [deviceId]: 'No se pudo copiar el contacto.' }))
     }
   }
 
@@ -198,6 +225,10 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
     }
   }
 
+  const visibleResults = results?.filter((device) => (
+    resultFilter === 'all' || getResultStatus(device) === resultFilter
+  )) ?? []
+
   if (!authenticated) {
     return (
       <div className="demo-page demo-center">
@@ -271,6 +302,22 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
             )}
           </div>
 
+          {results && results.length > 0 && (
+            <div className="flex flex-wrap gap-2" aria-label="Filtrar por estado">
+              {resultFilters.map((filter) => (
+                <Button
+                  key={filter.value}
+                  type="button"
+                  variant={resultFilter === filter.value ? 'default' : 'outline'}
+                  onClick={() => setResultFilter(filter.value)}
+                  aria-pressed={resultFilter === filter.value}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
+          )}
+
           {loadError ? (
             <div className="rounded-xl border border-[var(--error-border)] bg-[var(--error-surface)] p-6 text-center space-y-3">
               <p className="text-base font-semibold text-[var(--error)]">
@@ -286,7 +333,7 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                 Cargando resultados...
               </p>
             </div>
-          ) : !results || results.length === 0 ? (
+          ) : !results || visibleResults.length === 0 ? (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] p-6 text-center">
               <p className="text-base font-medium text-[var(--sea-ink-soft)]">
                 No se encontraron resultados.
@@ -303,13 +350,14 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((device) => {
+                  {visibleResults.map((device) => {
                     const isExpanded = expandedDeviceId === device.deviceId
                     const deviceState = filesByDevice[device.deviceId] || {
                       files: null,
                       isLoading: false,
                       error: null,
                     }
+                    const resultStatus = getResultStatus(device)
                     return (
                       <Fragment key={device.deviceId}>
                         <tr>
@@ -330,17 +378,17 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                             </span>
                           </td>
                           <td>
-                            {device.reportSentOn ? (
+                            {resultStatus === 'report-sent' ? (
                               <span className="demo-pill bg-[color-mix(in_oklab,#2e7d32_15%,transparent)] text-[#1b5e20] border-[#2e7d32]/30 font-bold">
                                 Informe Enviado
                               </span>
-                            ) : device.hasReport ? (
+                            ) : resultStatus === 'report-ready' ? (
                               <span className="demo-pill font-bold">
                                 Informe Listo
                               </span>
                             ) : (
                               <span className="demo-pill font-bold">
-                                {device.status === 'completed' ? 'Completado' : 'Borrador'}
+                                {resultStatus === 'completed' ? 'Completado' : 'Borrador'}
                               </span>
                             )}
                           </td>
@@ -400,11 +448,28 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                                   )
                                 )}
 
-                                <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[var(--line)]">
-                                  {device.hasReport ? (
-                                    <>
-                                      <p className="text-sm font-semibold text-[var(--lagoon-deep)]">Informe cargado</p>
-                                      <Button type="button" onClick={() => openReportEditor(device.deviceId)} variant="outline">Reemplazar informe</Button>
+                                <div className="space-y-3 pt-2 border-t border-[var(--line)]">
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    {device.hasReport ? (
+                                      <>
+                                        <p className="text-sm font-semibold text-[var(--lagoon-deep)]">Informe cargado</p>
+                                        <Button type="button" onClick={() => openReportEditor(device.deviceId)} variant="outline">Reemplazar informe</Button>
+                                      </>
+                                    ) : (
+                                      <Button type="button" onClick={() => openReportEditor(device.deviceId)} variant="outline">Cargar informe</Button>
+                                    )}
+                                    <label className="inline-flex items-center gap-2 text-sm font-medium text-[var(--sea-ink)] cursor-pointer select-none">
+                                      <input
+                                        type="checkbox"
+                                        checked={Boolean(device.reportSentOn)}
+                                        disabled={!device.hasReport || Boolean(isSendingReportByDevice[device.deviceId])}
+                                        onChange={(event) => updateSentState(device.deviceId, event.target.checked)}
+                                      />
+                                      Informe enviado
+                                    </label>
+                                  </div>
+                                  {device.hasReport && (
+                                    <div className="flex flex-wrap items-center gap-3">
                                       <a
                                         href={`/informe/${device.deviceId}`}
                                         target="_blank"
@@ -413,28 +478,23 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                                       >
                                         Ver informe
                                       </a>
+                                      <Button type="button" onClick={() => handleCopyLink(device.deviceId)} variant="outline">Copiar enlace</Button>
                                       <span className="font-mono text-xs text-[var(--sea-ink-soft)] break-all select-all">
                                         {`${window.location.origin}/informe/${device.deviceId}`}
                                       </span>
-                                      <Button type="button" onClick={() => handleCopyLink(device.deviceId)} variant="outline">Copiar enlace</Button>
-                                    </>
-                                  ) : (
-                                    <Button type="button" onClick={() => openReportEditor(device.deviceId)} variant="outline">Agregar informe</Button>
+                                      {copyErrorByDevice[device.deviceId] && (
+                                        <span className="text-sm font-semibold text-[var(--error)]">{copyErrorByDevice[device.deviceId]}</span>
+                                      )}
+                                    </div>
                                   )}
-                                  <label className="inline-flex items-center gap-2 text-sm font-medium text-[var(--sea-ink)] cursor-pointer select-none">
-                                    <input
-                                      type="checkbox"
-                                      checked={Boolean(device.reportSentOn)}
-                                      disabled={!device.hasReport || Boolean(isSendingReportByDevice[device.deviceId])}
-                                      onChange={(event) => updateSentState(device.deviceId, event.target.checked)}
-                                    />
-                                    Informe enviado
-                                  </label>
-                                  {copyErrorByDevice[device.deviceId] && (
-                                    <span className="text-sm font-semibold text-[var(--error)]">
-                                      {copyErrorByDevice[device.deviceId]}
-                                    </span>
-                                  )}
+                                  <p className="text-sm text-[var(--sea-ink)]">Nombre: {device.name || 'Sin nombre'}</p>
+                                  <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--sea-ink)]">
+                                    <span>Método de envío: {device.contactMethod && device.contactValue ? `${device.contactMethod} ${device.contactValue}` : 'Sin contacto'}</span>
+                                    {device.contactValue && (
+                                      <Button type="button" onClick={() => handleCopyContact(device.deviceId, device.contactValue)} variant="outline">Copiar</Button>
+                                    )}
+                                    {contactCopyErrorByDevice[device.deviceId] && <span className="font-semibold text-[var(--error)]">{contactCopyErrorByDevice[device.deviceId]}</span>}
+                                  </div>
                                 </div>
 
                                 {editingReportDeviceId === device.deviceId && (
