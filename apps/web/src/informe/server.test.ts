@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getPublicReport } from './server'
-import { getDraft } from '../onboarding/repository'
+import { getPublicReport, markPublicReportCtaClicked } from './server'
+import { getDraft, markDraftCtaClicked } from '../onboarding/repository'
 import demoReport from './demo.json'
 
 vi.mock('@tanstack/react-start', () => ({
@@ -19,15 +19,22 @@ vi.mock('@tanstack/react-start', () => ({
   }),
 }))
 
-vi.mock('../onboarding/repository', () => ({ getDraft: vi.fn() }))
+vi.mock('../onboarding/repository', () => ({
+  getDraft: vi.fn(),
+  markDraftCtaClicked: vi.fn(),
+}))
 
 describe('getPublicReport', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns the stored report for a draft', async () => {
-    vi.mocked(getDraft).mockResolvedValue({ report: demoReport } as never)
+  it('returns only the report and CTA timestamp for a stored report', async () => {
+    const ctaClickedOn = new Date('2026-07-28T12:00:00Z')
+    vi.mocked(getDraft).mockResolvedValue({ report: demoReport, ctaClickedOn } as never)
 
-    await expect(getPublicReport({ data: { deviceId: 'real-device' } })).resolves.toEqual(demoReport)
+    await expect(getPublicReport({ data: { deviceId: 'real-device' } })).resolves.toEqual({
+      report: demoReport,
+      ctaClickedOn,
+    })
     expect(getDraft).toHaveBeenCalledWith('real-device')
   })
 
@@ -36,5 +43,19 @@ describe('getPublicReport', () => {
 
     await expect(getPublicReport({ data: { deviceId: 'missing' } })).resolves.toBeNull()
     await expect(getPublicReport({ data: { deviceId: 'empty' } })).resolves.toBeNull()
+  })
+
+  it('marks the CTA and returns the first stored timestamp', async () => {
+    const ctaClickedOn = new Date('2026-07-28T12:00:00Z')
+    vi.mocked(markDraftCtaClicked).mockResolvedValue({ report: demoReport, ctaClickedOn } as never)
+
+    await expect(markPublicReportCtaClicked({ data: { deviceId: 'real-device' } })).resolves.toEqual({ ctaClickedOn })
+    expect(markDraftCtaClicked).toHaveBeenCalledWith('real-device')
+  })
+
+  it('rejects a click for a missing report', async () => {
+    vi.mocked(markDraftCtaClicked).mockResolvedValue(undefined as never)
+
+    await expect(markPublicReportCtaClicked({ data: { deviceId: 'missing' } })).rejects.toThrow('Report not found')
   })
 })

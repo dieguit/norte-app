@@ -1,4 +1,4 @@
-import { eq, desc, and, isNotNull } from 'drizzle-orm'
+import { eq, desc, and, isNotNull, isNull } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { onboardingDrafts } from '@/db/schema'
 import type { OnboardingAnswers } from './definition'
@@ -49,4 +49,18 @@ export async function setDraftReportSentOn(deviceId: string, sent: boolean) {
     .where(and(eq(onboardingDrafts.deviceId, deviceId), isNotNull(onboardingDrafts.report)))
     .returning()
   return draft
+}
+
+export async function markDraftCtaClicked(deviceId: string) {
+  const now = new Date()
+  const [updated] = await db.update(onboardingDrafts)
+    .set({ ctaClickedOn: now, updatedAt: now })
+    .where(and(
+      eq(onboardingDrafts.deviceId, deviceId),
+      isNotNull(onboardingDrafts.report),
+      isNull(onboardingDrafts.ctaClickedOn),
+    ))
+    .returning()
+
+  return updated ?? getDraft(deviceId)
 }
