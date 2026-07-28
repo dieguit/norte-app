@@ -288,10 +288,10 @@ export function InformePage({ report: data }: { report: Report }) {
           {data.bloque2.subtitulo}
         </p>
 
-        <Tabs defaultValue="cards" className="space-y-4">
+        <Tabs defaultValue="donut" className="space-y-4">
           <TabsList
             aria-label="Visualización de la radiografía mensual"
-            className="w-full sm:w-fit"
+            className="hidden"
           >
             <TabsTrigger value="cards">Opción 1</TabsTrigger>
             <TabsTrigger value="pie">Opción 2</TabsTrigger>

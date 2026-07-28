@@ -159,26 +159,17 @@ describe('InformePage', () => {
     ).toBeDefined()
   })
 
-  it('switches the monthly breakdown between cards, a solid pie, and a donut total', () => {
+  it('shows the monthly donut by default without visualization tabs', () => {
     render(<InformePage report={demoReport} />)
 
-    expect(screen.getByRole('tab', { name: 'Opción 1' }).getAttribute('data-active')).not.toBeNull()
-    expect(screen.getByText('Compromisos fijos que no se tocan')).toBeDefined()
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Opción 2' }))
-    expect(screen.getByTestId('monthly-solid-pie')).toBeDefined()
-    expect(screen.getByText(/63.3%/)).toBeDefined()
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Opción 3' }))
     expect(screen.getByTestId('monthly-donut')).toBeDefined()
     expect(screen.getByText('$7.500.000')).toBeDefined()
     expect(screen.getByText(/Margen libre/)).toBeDefined()
+    expect(screen.getByRole('tablist')).toHaveClass('hidden')
   })
 
-  it('renders a dynamic monthly breakdown beside the selected chart', () => {
+  it('renders a dynamic monthly breakdown beside the default chart', () => {
     render(<InformePage report={demoReport} />)
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Opción 2' }))
 
     expect(screen.getByTestId('monthly-breakdown-legend')).toBeDefined()
     expect(screen.getByText('Compromisos fijos que no se tocan')).toBeDefined()
