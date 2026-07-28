@@ -9,10 +9,18 @@ const uploadFields = onboardingSteps.flatMap(step =>
 
 export function toAdminResult(draft: Pick<OnboardingDraft, 'deviceId' | 'answers' | 'completedAt' | 'updatedAt' | 'report' | 'reportSentOn'>) {
   const name = typeof draft.answers?.nombre === 'string' ? draft.answers.nombre : null
+  const contactMethod = draft.answers?.contacto_canal === 'WhatsApp' || draft.answers?.contacto_canal === 'Email'
+    ? draft.answers.contacto_canal
+    : null
+  const contactValue = contactMethod === 'WhatsApp'
+    ? typeof draft.answers?.whatsapp === 'string' ? draft.answers.whatsapp : null
+    : contactMethod === 'Email' && typeof draft.answers?.email === 'string' ? draft.answers.email : null
   const status = draft.completedAt ? 'completed' : 'draft'
   return {
     deviceId: draft.deviceId,
     name,
+    contactMethod,
+    contactValue,
     status,
     updatedAt: draft.updatedAt,
     hasReport: Boolean(draft.report),

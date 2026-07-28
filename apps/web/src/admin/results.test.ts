@@ -66,6 +66,29 @@ describe('results mapping', () => {
       .toMatchObject({ hasReport: false, reportSentOn: null })
   })
 
+  it('maps only the selected delivery contact in toAdminResult', () => {
+    const base = {
+      deviceId: '123e4567-e89b-12d3-a456-426614174000',
+      completedAt: null,
+      updatedAt: new Date('2026-07-28T12:00:00Z'),
+      report: null,
+      reportSentOn: null,
+    }
+
+    expect(toAdminResult({
+      ...base,
+      answers: { contacto_canal: 'WhatsApp', whatsapp: '+54 11 5555-5555', email: 'ana@example.com' },
+    })).toMatchObject({ contactMethod: 'WhatsApp', contactValue: '+54 11 5555-5555' })
+
+    expect(toAdminResult({
+      ...base,
+      answers: { contacto_canal: 'Email', whatsapp: '+54 11 5555-5555', email: 'ana@example.com' },
+    })).toMatchObject({ contactMethod: 'Email', contactValue: 'ana@example.com' })
+
+    expect(toAdminResult({ ...base, answers: { contacto_canal: 'SMS', whatsapp: '123' } }))
+      .toMatchObject({ contactMethod: null, contactValue: null })
+  })
+
   it('extracts uploaded files correctly', () => {
     const deviceId = '123e4567-e89b-12d3-a456-426614174000'
     const key = `onboarding/${deviceId}/t1_upload_url/987f6543-e21b-32d1-b654-026614174000`

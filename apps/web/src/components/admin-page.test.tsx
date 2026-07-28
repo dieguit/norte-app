@@ -63,6 +63,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-ana',
           name: 'Ana',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
@@ -71,6 +73,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-sin-nombre',
           name: null,
+          contactMethod: null,
+          contactValue: null,
           status: 'draft',
           updatedAt: new Date('2026-07-16T12:30:00Z'),
           hasReport: false,
@@ -170,6 +174,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-ana',
           name: 'Ana',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
@@ -193,6 +199,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-ana',
           name: 'Ana',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
@@ -216,6 +224,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-ana',
           name: 'Ana',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
@@ -250,6 +260,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-ana',
           name: 'Ana',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
@@ -296,6 +308,8 @@ describe('AdminPage', () => {
       const updatedResultHasReport = {
         deviceId: 'device-ana',
         name: 'Ana',
+        contactMethod: null,
+        contactValue: null,
         status: 'completed',
         updatedAt: new Date('2026-07-16T12:00:00Z'),
         hasReport: true,
@@ -385,6 +399,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-sent',
           name: 'User Sent',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: true,
@@ -393,6 +409,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-ready',
           name: 'User Ready',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: true,
@@ -401,6 +419,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-completed',
           name: 'User Completed',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
@@ -409,6 +429,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-draft',
           name: 'User Draft',
+          contactMethod: null,
+          contactValue: null,
           status: 'draft',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
@@ -430,6 +452,8 @@ describe('AdminPage', () => {
         {
           deviceId: 'device-ana',
           name: 'Ana',
+          contactMethod: null,
+          contactValue: null,
           status: 'completed',
           updatedAt: new Date('2026-07-16T12:00:00Z'),
           hasReport: false,
