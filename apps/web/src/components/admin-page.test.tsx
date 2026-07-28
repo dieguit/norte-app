@@ -322,6 +322,16 @@ describe('AdminPage', () => {
         }),
       })
 
+      // Valid report save
+      await user.click(screen.getByRole('button', { name: 'Reemplazar informe' }))
+      const reportTextarea = screen.getByLabelText('JSON del informe')
+      fireEvent.change(reportTextarea, { target: { value: JSON.stringify(demoReport) } })
+      vi.mocked(saveAdminReport).mockResolvedValueOnce(updatedResultHasReport)
+      await user.click(screen.getByRole('button', { name: 'Guardar informe' }))
+      expect(saveAdminReport).toHaveBeenLastCalledWith({
+        data: { deviceId: 'device-ana', report: demoReport },
+      })
+
 
       expect(await screen.findByText('Informe cargado')).toBeInTheDocument()
 
