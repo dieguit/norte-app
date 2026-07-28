@@ -6,6 +6,17 @@ import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow
 import { serializeCsv } from '../admin/csv'
 import { formatAdminDownloadLabel } from '../admin/download-label'
 
+function normalizePastedReportJson(value: string) {
+  return value
+    .replaceAll('├í', 'á')
+    .replaceAll('├®', 'é')
+    .replaceAll('├¡', 'í')
+    .replaceAll('├│', 'ó')
+    .replaceAll('├║', 'ú')
+    .replaceAll('├▒', 'ñ')
+    .replaceAll('ÔÇö', '—')
+}
+
 export function AdminPage({ authenticated }: { authenticated: boolean }) {
   // Login form state
   const [username, setUsername] = useState('')
@@ -435,7 +446,7 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                                       <textarea
                                         id={`report-${device.deviceId}`}
                                         value={reportJsonInput}
-                                        onChange={(e) => setReportJsonInput(e.target.value)}
+                                        onChange={(e) => setReportJsonInput(normalizePastedReportJson(e.target.value))}
                                         rows={6}
                                         className="w-full rounded-md border border-[var(--line)] bg-[var(--surface)] p-2 text-xs font-mono text-[var(--sea-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--lagoon-deep)]"
                                       />

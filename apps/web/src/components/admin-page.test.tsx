@@ -293,8 +293,6 @@ describe('AdminPage', () => {
       await user.click(screen.getByRole('button', { name: 'Guardar informe' }))
       expect(await screen.findByText('El informe no tiene el formato esperado.')).toBeInTheDocument()
 
-      // Valid report save
-      fireEvent.change(textarea, { target: { value: JSON.stringify(demoReport) } })
       const updatedResultHasReport = {
         deviceId: 'device-ana',
         name: 'Ana',
@@ -303,12 +301,28 @@ describe('AdminPage', () => {
         hasReport: true,
         reportSentOn: null,
       }
+      fireEvent.change(textarea, {
+        target: {
+          value: JSON.stringify({
+            ...demoReport,
+            apertura: {
+              ...(demoReport as any).apertura,
+              frase_apertura: 'Dijiste que te sent├¡s al d├¡a.',
+            },
+          }),
+        },
+      })
       vi.mocked(saveAdminReport).mockResolvedValueOnce(updatedResultHasReport)
       await user.click(screen.getByRole('button', { name: 'Guardar informe' }))
-
-      expect(saveAdminReport).toHaveBeenCalledWith({
-        data: { deviceId: 'device-ana', report: demoReport },
+      expect(saveAdminReport).toHaveBeenLastCalledWith({
+        data: expect.objectContaining({
+          report: expect.objectContaining({
+            apertura: expect.objectContaining({ frase_apertura: 'Dijiste que te sentís al día.' }),
+          }),
+        }),
       })
+
+
       expect(await screen.findByText('Informe cargado')).toBeInTheDocument()
 
       const reportLink = screen.getByRole('link', { name: 'Ver informe' })
