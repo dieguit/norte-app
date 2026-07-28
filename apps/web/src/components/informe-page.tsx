@@ -61,34 +61,57 @@ function MonthlyBreakdownLegend({ items }: { items: MonthlyPieItem[] }) {
   );
 }
 
-const reportAreas = ['apertura', 'posicion_real', 'radiografia', 'camino', 'vision_norte'] as const
-type ReportArea = (typeof reportAreas)[number]
+const reportAreas = [
+  "apertura",
+  "posicion_real",
+  "radiografia",
+  "camino",
+  "vision_norte",
+] as const;
+type ReportArea = (typeof reportAreas)[number];
 
-export function InformePage({ report: data, deviceId }: { report: Report; deviceId: string }) {
-  const posthog = usePostHog()
-  const capturedAreas = useRef(new Set<ReportArea>())
+export function InformePage({
+  report: data,
+  deviceId,
+}: {
+  report: Report;
+  deviceId: string;
+}) {
+  const posthog = usePostHog();
+  const capturedAreas = useRef(new Set<ReportArea>());
   const [reduction, setReduction] = useState(0);
 
   useEffect(() => {
-    if (!posthog) return
-    posthog.identify(deviceId)
+    if (!posthog) return;
+    posthog.identify(deviceId);
 
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        const area = entry.target.getAttribute('data-analytics-area') as ReportArea | null
-        if (!entry.isIntersecting || entry.intersectionRatio < 0.5 || !area || capturedAreas.current.has(area)) continue
-        capturedAreas.current.add(area)
-        posthog.capture('informe_area_viewed', { device_id: deviceId, area })
-      }
-    }, { threshold: 0.5 })
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const area = entry.target.getAttribute(
+            "data-analytics-area",
+          ) as ReportArea | null;
+          if (
+            !entry.isIntersecting ||
+            entry.intersectionRatio < 0.5 ||
+            !area ||
+            capturedAreas.current.has(area)
+          )
+            continue;
+          capturedAreas.current.add(area);
+          posthog.capture("informe_area_viewed", { device_id: deviceId, area });
+        }
+      },
+      { threshold: 0.5 },
+    );
 
     for (const area of reportAreas) {
-      const section = document.querySelector(`[data-analytics-area="${area}"]`)
-      if (section) observer.observe(section)
+      const section = document.querySelector(`[data-analytics-area="${area}"]`);
+      if (section) observer.observe(section);
     }
 
-    return () => observer.disconnect()
-  }, [deviceId, posthog])
+    return () => observer.disconnect();
+  }, [deviceId, posthog]);
 
   const monthlyBreakdown = [
     {
@@ -202,7 +225,11 @@ export function InformePage({ report: data, deviceId }: { report: Report; device
       </section>
 
       {/* Bloque 1: Tu posición real */}
-      <section data-analytics-area="posicion_real" aria-labelledby="posicion-real" className="demo-panel space-y-6">
+      <section
+        data-analytics-area="posicion_real"
+        aria-labelledby="posicion-real"
+        className="demo-panel space-y-6"
+      >
         <h2
           id="posicion-real"
           className="text-2xl font-bold text-[var(--sea-ink)]"
@@ -615,7 +642,11 @@ export function InformePage({ report: data, deviceId }: { report: Report; device
       </section>
 
       {/* Bloque 4: Qué es Norte */}
-      <section data-analytics-area="vision_norte" aria-labelledby="vision-norte" className="demo-panel space-y-6">
+      <section
+        data-analytics-area="vision_norte"
+        aria-labelledby="vision-norte"
+        className="demo-panel space-y-6"
+      >
         <p className="island-kicker">4 · Qué es Norte</p>
         <h2
           id="vision-norte"
@@ -642,8 +673,8 @@ export function InformePage({ report: data, deviceId }: { report: Report; device
               Tus finanzas se actualizan solas
             </h3>
             <p className="mt-1.5 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-              Incorpora tus ingresos, gastos y cuotas para que no tengas que
-              registrar cada movimiento.
+              Incorpora automáticamente tus ingresos, gastos y cuotas para que
+              no tengas que registrar cada movimiento a mano.
             </p>
           </article>
           <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 sm:p-6 md:col-start-1">
@@ -750,10 +781,12 @@ export function InformePage({ report: data, deviceId }: { report: Report; device
           <button
             type="button"
             className="demo-button w-full px-6 py-3 text-base sm:w-auto"
-            onClick={() => posthog?.capture('informe_cta_clicked', {
-              device_id: deviceId,
-              area: 'vision_norte',
-            })}
+            onClick={() =>
+              posthog?.capture("informe_cta_clicked", {
+                device_id: deviceId,
+                area: "vision_norte",
+              })
+            }
           >
             Quiero ser de los primeros en usar Norte →
           </button>
