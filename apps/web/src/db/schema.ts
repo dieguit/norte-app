@@ -9,6 +9,7 @@ export const onboardingDrafts = pgTable('onboarding_drafts', {
   completedAt: timestamp('completed_at', { withTimezone: true }),
   report: jsonb('report').$type<Report>(),
   reportSentOn: timestamp('report_sent_on', { withTimezone: true }),
+  ctaClickedOn: timestamp('cta_clicked_on', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()

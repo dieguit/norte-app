@@ -11,4 +11,8 @@ describe('onboarding database schema', () => {
     expect(onboardingDrafts.report.name).toBe('report')
     expect(onboardingDrafts.reportSentOn.name).toBe('report_sent_on')
   })
+
+  it('defines the report CTA timestamp on drafts', () => {
+    expect(onboardingDrafts.ctaClickedOn.name).toBe('cta_clicked_on')
+  })
 })

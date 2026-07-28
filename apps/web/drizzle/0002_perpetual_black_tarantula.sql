@@ -1,0 +1,1 @@
+ALTER TABLE "onboarding_drafts" ADD COLUMN "cta_clicked_on" timestamp with time zone;
