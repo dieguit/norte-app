@@ -76,6 +76,7 @@ export function InformePage({
 }: {
   report: Report;
   deviceId: string;
+  ctaClickedOn?: Date | string | null;
 }) {
   const posthog = usePostHog();
   const capturedAreas = useRef(new Set<ReportArea>());

@@ -18,19 +18,25 @@ export const Route = createFileRoute('/informe/$deviceId')({
 
 export async function loadInformeReport(deviceId: string) {
   return deviceId === 'demo'
-    ? (demoReport as unknown as Report)
+    ? { report: demoReport as unknown as Report, ctaClickedOn: null }
     : getPublicReport({ data: { deviceId } })
 }
 
 function InformeRoutePage() {
   const { deviceId } = Route.useParams()
-  return <InformeRouteContent report={Route.useLoaderData()} deviceId={deviceId} />
+  return <InformeRouteContent data={Route.useLoaderData()} deviceId={deviceId} />
 }
 
-export function InformeRouteContent({ report, deviceId }: { report: Report | null; deviceId: string }) {
-  if (!report) {
+export function InformeRouteContent({
+  data,
+  deviceId,
+}: {
+  data: { report: Report; ctaClickedOn: Date | string | null } | null
+  deviceId: string
+}) {
+  if (!data || !data.report) {
     return <main id="main" className="page-wrap py-8 sm:py-12">No se encontro el informe, por favor verifica el link</main>
   }
 
-  return <InformePage report={report} deviceId={deviceId} />
+  return <InformePage report={data.report} deviceId={deviceId} ctaClickedOn={data.ctaClickedOn} />
 }
