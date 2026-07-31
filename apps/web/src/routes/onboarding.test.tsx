@@ -29,6 +29,7 @@ function makeDraft(answers: OnboardingAnswers): OnboardingDraft {
     completedAt: null,
     report: null,
     reportSentOn: null,
+    ctaClickedOn: null,
     createdAt: timestamp,
     updatedAt: timestamp,
   }
@@ -72,12 +73,13 @@ vi.mock('../onboarding/server', () => ({
 
 const posthogCapture = vi.fn()
 const posthogCaptureException = vi.fn()
+const posthogIdentify = vi.fn()
 
 vi.mock('@posthog/react', () => ({
   usePostHog: () => ({
     capture: posthogCapture,
     captureException: posthogCaptureException,
-    identify: vi.fn(),
+    identify: posthogIdentify,
   }),
 }))
 
@@ -90,6 +92,7 @@ describe('OnboardingPage component tests', () => {
     vi.clearAllMocks()
     posthogCapture.mockClear()
     posthogCaptureException.mockClear()
+    posthogIdentify.mockClear()
     vi.mocked(getOnboardingDraft).mockResolvedValue(makeDraft({}))
     vi.mocked(saveOnboardingDraft).mockResolvedValue({} as any)
     vi.mocked(createOnboardingUpload).mockResolvedValue({ key: 'mock-key', url: 'https://mock-url.com' })
@@ -135,6 +138,20 @@ describe('OnboardingPage component tests', () => {
       step_number: 1,
       total_steps: totalSteps,
       step_label: `Paso 1 de ${totalSteps}: ¿Cómo te llamás?`,
+    })
+  })
+
+  it('sets person_name after saving the name step', async () => {
+    localStorage.setItem('onboarding-device-id', deviceId)
+    vi.mocked(getOnboardingDraft).mockResolvedValue(makeDraft({ nombre: '' }))
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Ada')
+    await continueStep(user)
+
+    expect(posthogIdentify).toHaveBeenLastCalledWith(deviceId, {
+      person_name: 'Ada',
     })
   })
 

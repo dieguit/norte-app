@@ -220,8 +220,8 @@ describe('InformePage', () => {
       target,
       isIntersecting: true,
       intersectionRatio: 0.5,
-    } as IntersectionObserverEntry)), {} as IntersectionObserver)
-    intersectionCallback!([{ target: areas[0], isIntersecting: true, intersectionRatio: 0.5 } as IntersectionObserverEntry], {} as IntersectionObserver)
+    } as unknown as IntersectionObserverEntry)), {} as IntersectionObserver)
+    intersectionCallback!([{ target: areas[0], isIntersecting: true, intersectionRatio: 0.5 } as unknown as IntersectionObserverEntry], {} as IntersectionObserver)
 
     expect(posthogIdentify).toHaveBeenCalledWith('device-ana')
     expect(posthogCapture).toHaveBeenCalledTimes(5)

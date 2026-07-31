@@ -13,6 +13,7 @@ import {
 } from "../admin/server";
 import { serializeCsv } from "../admin/csv";
 import { formatAdminDownloadLabel } from "../admin/download-label";
+import { reportSchema } from "../admin/report";
 
 function normalizePastedReportJson(value: string) {
   return value
@@ -120,10 +121,20 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
       return;
     }
 
+    const validation = reportSchema.safeParse(parsed);
+    if (!validation.success) {
+      setReportError(
+        validation.error.issues
+          .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+          .join("\n"),
+      );
+      return;
+    }
+
     setIsSavingReport(true);
     try {
       const updated = await saveAdminReport({
-        data: { deviceId, report: parsed as any },
+        data: { deviceId, report: validation.data },
       });
       updateResult(updated);
       closeReportEditor();
@@ -701,7 +712,7 @@ export function AdminPage({ authenticated }: { authenticated: boolean }) {
                                     </div>
                                     {reportError && (
                                       <p
-                                        className="text-sm font-semibold text-[var(--error)]"
+                                        className="text-sm font-semibold text-[var(--error)] whitespace-pre-line"
                                         role="alert"
                                       >
                                         {reportError}

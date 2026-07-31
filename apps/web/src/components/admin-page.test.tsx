@@ -7,6 +7,7 @@ import { AdminPage } from './admin-page'
 import { loginAdmin } from '../admin/auth'
 import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow, saveAdminReport, setAdminReportSent } from '../admin/server'
 import { csvHeaders } from '../admin/csv'
+import demoReport from '../informe/demo.json'
 
 const posthogOptOut = vi.fn()
 
@@ -269,17 +270,6 @@ describe('AdminPage', () => {
     })
 
     it('manages report creation, replacement, sent status, and copying link', async () => {
-      const demoReport = {
-        overallScore: 85,
-        categories: [
-          { categoryId: 'cat1', title: 'Categoría 1', score: 80, feedback: 'Buen progreso' },
-        ],
-        strengths: ['Puntualidad'],
-        areasForGrowth: ['Organización'],
-        actionableSteps: ['Revisar diario'],
-        summary: 'Resumen general',
-      }
-
       const results = [
         {
           deviceId: 'device-ana',
@@ -327,11 +317,20 @@ describe('AdminPage', () => {
       expect(await screen.findByText('El informe debe ser un JSON válido.')).toBeInTheDocument()
       expect(saveAdminReport).not.toHaveBeenCalled()
 
-      // Server error handling when schema invalid
-      fireEvent.change(textarea, { target: { value: '{}' } })
-      vi.mocked(saveAdminReport).mockRejectedValueOnce(new Error('Schema validation error'))
+      fireEvent.change(textarea, {
+        target: {
+          value: JSON.stringify({
+            ...demoReport,
+            meta: { ...demoReport.meta, alertas: 'cinco' },
+            bloque1: { ...demoReport.bloque1, ingreso_anual: '99700000' },
+          }),
+        },
+      })
       await user.click(screen.getByRole('button', { name: 'Guardar informe' }))
-      expect(await screen.findByText('El informe no tiene el formato esperado.')).toBeInTheDocument()
+
+      expect(await screen.findByText(/meta\.alertas: Invalid input/)).toBeInTheDocument()
+      expect(screen.getByText(/bloque1\.ingreso_anual: Invalid input/)).toBeInTheDocument()
+      expect(saveAdminReport).not.toHaveBeenCalled()
 
       const updatedResultHasReport = {
         deviceId: 'device-ana',

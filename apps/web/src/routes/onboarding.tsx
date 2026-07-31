@@ -454,6 +454,14 @@ export function OnboardingPage() {
         },
       });
 
+      const personName =
+        typeof currentAnswers.nombre === 'string'
+          ? currentAnswers.nombre.trim()
+          : ''
+      if (personName) {
+        posthog?.identify(deviceId, { person_name: personName })
+      }
+
       // 3. Proceed
       if (isCompleted) {
         setCompleted(true);
