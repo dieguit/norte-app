@@ -24,3 +24,15 @@ Create a GitHub issue.
 ## When a skill says "fetch the relevant ticket"
 
 Run `gh issue view <number> --comments`.
+
+## Wayfinding operations
+
+- **Create a map**: create an issue with the `wayfinder:map` label.
+- **Create a child ticket**: `gh issue create --parent <map-number> --label "wayfinder:<type>" ...`.
+- **Wire blocking**: create issues first, then use `gh issue edit <number> --add-blocked-by <number>`.
+- **Find the frontier**: list open child issues of the map that have no open
+  blocking issues and no assignee.
+- **Claim a ticket**: assign it with `gh issue edit <number> --add-assignee "@me"`
+  before working on it.
+- **Resolve a ticket**: add the resolution as an issue comment, close the issue,
+  then append a one-line link and gist to the map's `## Decisions so far`.

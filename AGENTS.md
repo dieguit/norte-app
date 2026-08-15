@@ -1,5 +1,13 @@
 ## Agent skills
 
+Ignore apps/api for now, only work in apps/web unless user specifies.
+When reviewing work, always run /ponytail-review and /code-review skills.
+Minimize the use of useless comments, only add comments explaining domain decisions.
+
+### Git behavior
+
+Do not create worktrees unless user specifies, check branch and if it is main ask confirmation (or switch branch)
+
 ### Issue tracker
 
 Issues are tracked in this repository's GitHub Issues. See `docs/agents/issue-tracker.md`.
