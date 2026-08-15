@@ -1,41 +1,42 @@
 // @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppShell } from './AppShell'
-import { FinancialOnboarding } from './FinancialOnboarding'
 import { Home } from './Home'
 
 vi.mock('@clerk/tanstack-react-start', () => ({
   UserButton: () => <button type="button">Cuenta</button>,
 }))
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, children, ...props }: { to: string; children: ReactNode } & ComponentProps<'a'>) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
+  useRouterState: ({ select }: { select?: (state: { location: { pathname: string } }) => any } = {}) => {
+    const state = { location: { pathname: '/app' } }
+    return select ? select(state) : state
+  },
+}))
+
 afterEach(cleanup)
 
 describe('AppShell', () => {
-  it('keeps financial navigation visible while onboarding is required', () => {
-    render(
-      <AppShell>
-        <FinancialOnboarding />
-      </AppShell>,
-    )
-
-    expect(screen.getByRole('navigation', { name: 'Navegación principal' })).toBeDefined()
-    expect(screen.getByRole('heading', { name: 'Empecemos por tu situación financiera' })).toBeDefined()
-  })
-
-  it('renders Home inside the financial shell', () => {
+  it('renders responsive navigation regions, active home link, unavailable controls, account controls, and child content', () => {
     render(
       <AppShell>
         <Home />
       </AppShell>,
     )
 
+    expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
+    expect(screen.getAllByRole('link', { name: 'Inicio' })[0]?.getAttribute('aria-current')).toBe('page')
+    expect(screen.getAllByRole('button', { name: 'Objetivos' })[0]).toBeDisabled()
+    expect(screen.getAllByRole('button', { name: 'Finanzas' })[0]).toBeDisabled()
+    expect(screen.getAllByRole('button', { name: 'Cuenta' })).toHaveLength(2)
     expect(screen.getByRole('heading', { name: 'Tu plan financiero' })).toBeDefined()
-  })
-
-  it('renders Clerk account controls, including logout', () => {
-    render(<AppShell><Home /></AppShell>)
-
-    expect(screen.getByRole('button', { name: 'Cuenta' })).toBeDefined()
   })
 })
