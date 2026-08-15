@@ -17,4 +17,9 @@ export const onboardingDrafts = pgTable('onboarding_drafts', {
     .notNull(),
 })
 
+export const financialProfiles = pgTable('financial_profiles', {
+  userId: text('user_id').primaryKey(),
+})
+
 export type OnboardingDraft = typeof onboardingDrafts.$inferSelect
+export type FinancialProfile = typeof financialProfiles.$inferSelect

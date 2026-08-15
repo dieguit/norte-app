@@ -1,6 +1,6 @@
 import { getTableName } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { onboardingDrafts } from './schema'
+import { financialProfiles, onboardingDrafts } from './schema'
 
 describe('onboarding database schema', () => {
   it('defines the drafts table', () => {
@@ -14,5 +14,11 @@ describe('onboarding database schema', () => {
 
   it('defines the report CTA timestamp on drafts', () => {
     expect(onboardingDrafts.ctaClickedOn.name).toBe('cta_clicked_on')
+  })
+
+  it('defines user-owned financial profiles', () => {
+    expect(getTableName(financialProfiles)).toBe('financial_profiles')
+    expect(financialProfiles.userId.name).toBe('user_id')
+    expect(financialProfiles.userId.primary).toBe(true)
   })
 })
