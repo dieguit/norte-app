@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-15T00:00:00Z",
+  "title": "Design System: Norte",
+  "extensions": {
+    "colorMeta": {
+      "sea-ink": { "role": "neutral", "displayName": "Sea Ink", "canonical": "#14202d", "tonalRamp": ["#14202d", "#243341", "#384855", "#4d5e69", "#647681", "#81949d", "#b7c2c6", "#edf0ef"] },
+      "sea-ink-soft": { "role": "neutral", "displayName": "Soft Sea Ink", "canonical": "#4d5862", "tonalRamp": ["#1d242a", "#303a42", "#4d5862", "#66717a", "#808b93", "#a1a9ae", "#c8ced0", "#f0f2f2"] },
+      "lagoon": { "role": "secondary", "displayName": "Soft Lagoon", "canonical": "#b8d0c3", "tonalRamp": ["#173e30", "#295b47", "#427764", "#5e947e", "#80ae98", "#a4c4b1", "#c9ddd0", "#edf4ef"] },
+      "lagoon-deep": { "role": "primary", "displayName": "Deep Lagoon", "canonical": "#3a6e54", "tonalRamp": ["#102c20", "#214634", "#3a6e54", "#52856a", "#70a087", "#96b9a5", "#c1d7c9", "#ecf4ee"] },
+      "sand": { "role": "neutral", "displayName": "Compass Sand", "canonical": "#f6f0e2", "tonalRamp": ["#4c483f", "#716b5e", "#999180", "#bcb3a0", "#d7cdb9", "#e8dfcf", "#f6f0e2", "#fdfbf6"] },
+      "foam": { "role": "neutral", "displayName": "Foam", "canonical": "#fbf8f1", "tonalRamp": ["#4e4d49", "#75726b", "#9c988e", "#bdb9af", "#d9d5cc", "#ebe8e0", "#fbf8f1", "#fffefd"] },
+      "error": { "role": "tertiary", "displayName": "Measured Red", "canonical": "#9f3030", "tonalRamp": ["#3d1111", "#611c1c", "#852828", "#9f3030", "#bd4b4b", "#d57676", "#e9abab", "#f9e5e5"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Reflective Display", "purpose": "Page-level financial questions and onboarding headings." },
+      "body": { "displayName": "Operational Body", "purpose": "Navigation, forms, data, and explanatory copy." },
+      "label": { "displayName": "Wayfinding Label", "purpose": "Compact status, categories, and metadata." }
+    },
+    "shadows": [
+      { "name": "ambient-card", "value": "0 1px 0 var(--inset-glint) inset, 0 18px 34px rgba(30, 90, 72, 0.1), 0 4px 14px rgba(23, 58, 64, 0.06)", "purpose": "Gentle separation for cards, shell accents, and image frames." }
+    ],
+    "motion": [
+      { "name": "standard", "value": "180ms ease", "purpose": "Color, border, and restrained transform transitions." },
+      { "name": "rise-in", "value": "700ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Occasional entrance for a resolved content panel." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action for a focused task.",
+      "html": "<button class=\"ds-btn-primary\">Guardar cambios</button>",
+      "css": ".ds-btn-primary { border: 1px solid transparent; border-radius: 16px; background: var(--lagoon-deep); color: var(--on-primary); padding: 10px 16px; font: 600 14px/1.2 'Geist Variable', sans-serif; cursor: pointer; transition: background-color 180ms ease, transform 180ms ease; } .ds-btn-primary:hover { background: color-mix(in oklab, var(--lagoon-deep) 80%, black); transform: translateY(-1px); } .ds-btn-primary:focus-visible { outline: 3px solid color-mix(in oklab, var(--lagoon) 50%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "A clear field for financial details and planning inputs.",
+      "html": "<label class=\"ds-field\">Ingreso mensual<input class=\"ds-input\" value=\"$ 1.200.000\" /></label>",
+      "css": ".ds-field { display: grid; gap: 7px; color: var(--sea-ink); font: 700 14px/1.2 'Geist Variable', sans-serif; } .ds-input { border: 1px solid var(--line); border-radius: 12px; background: color-mix(in oklab, var(--surface-strong) 88%, white 12%); color: var(--sea-ink); padding: 10px 14px; font: 400 16px/1.3 'Geist Variable', sans-serif; } .ds-input:focus { border-color: color-mix(in oklab, var(--lagoon-deep) 58%, var(--line)); box-shadow: 0 0 0 3px color-mix(in oklab, var(--lagoon) 24%, transparent); outline: none; }"
+    },
+    {
+      "name": "Ambient Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "A soft container for a focused result, task group, or report block.",
+      "html": "<article class=\"ds-card\"><p class=\"ds-card-label\">Este mes</p><h3 class=\"ds-card-title\">Vas en camino</h3><p class=\"ds-card-copy\">Tu aporte mantiene el plan activo.</p></article>",
+      "css": ".ds-card { border: 1px solid var(--line); border-radius: 24px; background: linear-gradient(165deg, var(--surface-strong), var(--surface)); box-shadow: 0 1px 0 var(--inset-glint) inset, 0 18px 34px rgba(30, 90, 72, 0.1), 0 4px 14px rgba(23, 58, 64, 0.06); padding: 24px; color: var(--sea-ink); } .ds-card-label { margin: 0; color: var(--lagoon-deep); font: 700 11px/1.2 'Geist Variable', sans-serif; letter-spacing: .16em; text-transform: uppercase; } .ds-card-title { margin: 14px 0 0; font: 700 24px/1.1 Fraunces, Georgia, serif; } .ds-card-copy { margin: 10px 0 0; color: var(--sea-ink-soft); font: 400 16px/1.5 'Geist Variable', sans-serif; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "description": "Compact metadata or availability state.",
+      "html": "<span class=\"ds-chip\">Próximamente</span>",
+      "css": ".ds-chip { display: inline-flex; border: 1px solid var(--chip-line); border-radius: 999px; background: var(--chip-bg); color: var(--lagoon-deep); padding: 8px 16px; font: 700 12px/1 'Geist Variable', sans-serif; letter-spacing: .18em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Navigation Link",
+      "kind": "nav",
+      "description": "Low-noise navigation with an intentional active state.",
+      "html": "<a class=\"ds-nav-link\" href=\"#\">Tu hoja de ruta</a>",
+      "css": ".ds-nav-link { position: relative; color: var(--sea-ink-soft); font: 600 14px/1.2 'Geist Variable', sans-serif; text-decoration: none; } .ds-nav-link::after { content: ''; position: absolute; right: 0; bottom: -6px; left: 0; height: 2px; background: linear-gradient(90deg, var(--lagoon), #7ed3bf); transform: scaleX(0); transform-origin: left; transition: transform 170ms ease; } .ds-nav-link:hover { color: var(--sea-ink); } .ds-nav-link:hover::after, .ds-nav-link:focus-visible::after { transform: scaleX(1); } .ds-nav-link:focus-visible { outline: 2px solid var(--lagoon-deep); outline-offset: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Calm Compass",
+    "overview": "Norte feels like steady navigation through a sensitive subject. Warm paper-like grounds, a deep blue-black ink, and restrained lagoon green turn financial planning from a dashboard into a clear, humane route forward. The system is spacious and quiet, prioritizing comprehension over urgency.\n\nDepth is ambient rather than structural: translucent layers, hairline borders, and diffuse shadows create a sense of light without turning the interface into stacked floating panels. Serif display moments add reflection; the Geist interface remains precise and legible during work.",
+    "keyCharacteristics": ["Warm, calm, and non-judgmental.", "Spacious mobile-first layouts with direct paths to action.", "Deep ink and lagoon green carry wayfinding; color never carries meaning alone.", "Softly rounded, lightly lifted surfaces rather than hard dashboard geometry."],
+    "rules": [
+      { "name": "The Quiet Accent Rule", "body": "Deep Lagoon is for direction and decisive action, not broad decoration; it stays rare enough to retain navigational weight.", "section": "colors" },
+      { "name": "The Honest State Rule", "body": "Error treatments use the dedicated error color and surface; status, temporal meaning, and input feedback also require copy, iconography, or structure.", "section": "colors" },
+      { "name": "The Reflection Boundary Rule", "body": "Do use Fraunces for a consequential prompt or page title; don't use it for dense controls, tables, or repeated labels.", "section": "typography" },
+      { "name": "The Grounded Surface Rule", "body": "Do keep shadows soft and green-tinted; don't use hard black drop shadows or stack multiple elevated card layers.", "section": "elevation" }
+    ],
+    "dos": ["Do lead financial actions with calm Argentine Spanish and clear next steps.", "Do reserve Deep Lagoon for primary direction, focus, and action.", "Do pair state colors with text, shape, or icons.", "Do use generous sand-grounded space around page-level decisions.", "Do keep focus rings visible and keyboard flows legible."],
+    "donts": ["Don't turn the interface into a dense transaction dashboard or a wall of cards.", "Don't use harsh shadows, sharp rectangular panels, or high-saturation decorative color fields.", "Don't rely on serif type for dense operational UI.", "Don't present errors, forecasts, or incomplete financial data with invented certainty."]
+  }
+}
