@@ -7,6 +7,10 @@ export const Route = createFileRoute('/app/')({
 })
 
 function AppIndex() {
-  const { profile } = Route.useRouteContext()
-  return profile === 'missing' ? <FinancialOnboarding /> : <Home />
+  const context = Route.useRouteContext()
+  return context.profile === 'missing' ? (
+    <FinancialOnboarding />
+  ) : (
+    <Home home={context.home} />
+  )
 }

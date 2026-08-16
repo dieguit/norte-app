@@ -26,9 +26,23 @@ afterEach(cleanup)
 
 describe('AppShell', () => {
   it('renders responsive navigation regions, active home link, unavailable controls, account controls, and child content', () => {
+    const mockHome = {
+      income: { amount: '500000.00', currency: 'ARS' as const },
+      expensesKnowledge: 'known' as const,
+      expenses: { amount: '250000.00', currency: 'ARS' as const },
+      plannedContribution: { amount: '50000.00', currency: 'ARS' as const },
+      goal: {
+        type: 'emergency_fund',
+        name: 'Colchón financiero',
+        targetAmount: { amount: '1500000.00', currency: 'ARS' as const },
+        emergencyFundMonths: 6,
+      },
+      projectionState: 'available' as const,
+    }
+
     render(
       <AppShell>
-        <Home />
+        <Home home={mockHome} />
       </AppShell>,
     )
 
@@ -37,6 +51,6 @@ describe('AppShell', () => {
     expect(screen.getAllByRole('button', { name: 'Objetivos' })[0]).toBeDisabled()
     expect(screen.getAllByRole('button', { name: 'Finanzas' })[0]).toBeDisabled()
     expect(screen.getAllByRole('button', { name: 'Cuenta' })).toHaveLength(2)
-    expect(screen.getByRole('heading', { name: 'Tu plan financiero' })).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Tu plan está empezando a tomar forma' })).toBeDefined()
   })
 })

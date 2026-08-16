@@ -43,8 +43,8 @@ function createTestRouter() {
     getParentRoute: () => appRoute,
     path: '/',
     component: () => {
-      const { profile } = AppRoute.useRouteContext()
-      return profile === 'missing' ? <FinancialOnboarding /> : <Home />
+      const context = AppRoute.useRouteContext()
+      return context.profile === 'missing' ? <FinancialOnboarding /> : <Home home={context.home} />
     },
   })
 
@@ -75,7 +75,7 @@ describe('App route layout', () => {
     const router = createTestRouter()
     render(<RouterProvider router={router} />)
 
-    expect(await screen.findByRole('heading', { name: 'Tu plan financiero' })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: 'Tu plan está empezando a tomar forma' })).toBeDefined()
     expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
   })
 })
