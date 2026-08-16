@@ -1,7 +1,8 @@
 import { auth } from '@clerk/tanstack-react-start/server'
 import { redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { getInitialHomeState, type InitialHomeState } from './financial.server'
+import { type InitialHomeState } from './financial'
+import { getInitialHomeState } from './repository'
 
 export async function requireFinancialUser() {
   const { isAuthenticated, userId } = await auth()

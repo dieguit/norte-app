@@ -1,5 +1,5 @@
 import { formatMoney } from '../lib/format'
-import type { InitialHomeState } from './financial.server'
+import type { InitialHomeState } from './financial'
 
 export interface HomeProps {
   home: InitialHomeState

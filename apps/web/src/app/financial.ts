@@ -38,6 +38,20 @@ export interface DerivedInitialGoal {
   emergencyFundMonths?: number
 }
 
+export interface InitialHomeState {
+  income: Money
+  expensesKnowledge: 'known' | 'unknown'
+  expenses?: Money
+  plannedContribution: Money
+  goal: {
+    type: string
+    name: string
+    targetAmount?: Money
+    emergencyFundMonths?: number
+  }
+  projectionState: 'available' | 'unknown_expenses'
+}
+
 export function parseInitialPlan(input: InitialPlanInput): InitialPlan {
   const goalKind = input.goalKind as InitialGoalKind
   if (goalKind !== 'emergency_fund' && goalKind !== 'fixed_savings' && goalKind !== 'car') {
