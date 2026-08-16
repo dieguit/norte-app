@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { auth } from '@clerk/tanstack-react-start/server'
 import { db } from '../db/client'
 import { financialProfiles } from '../db/schema'
-import { completeInitialPlan, getInitialHomeState } from './financial.server'
+import { completeInitialPlan } from './financial.server'
+import { getInitialHomeState } from './repository'
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: vi.fn().mockImplementation(() => {

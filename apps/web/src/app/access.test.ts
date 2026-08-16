@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { auth } from '@clerk/tanstack-react-start/server'
 import { getFinancialAppState, requireFinancialUser } from './access'
-import { getInitialHomeState } from './financial.server'
+import { getInitialHomeState } from './repository'
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: vi.fn().mockImplementation(() => ({
@@ -13,7 +13,7 @@ vi.mock('@clerk/tanstack-react-start/server', () => ({
   auth: vi.fn(),
 }))
 
-vi.mock('./financial.server', () => ({
+vi.mock('./repository', () => ({
   getInitialHomeState: vi.fn(),
 }))
 

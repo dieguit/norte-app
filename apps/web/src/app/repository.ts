@@ -1,3 +1,4 @@
+import '@tanstack/react-start/server-only'
 import { db } from '../db/client'
 import { financialGoals, financialProfiles } from '../db/schema'
 import { createMoney } from '../lib/money'

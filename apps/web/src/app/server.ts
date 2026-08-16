@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { requireFinancialUser } from './access'
 import { deriveInitialGoal, parseInitialPlan } from './financial'
-import { getInitialHomeState, persistInitialPlan } from './repository'
+import { persistInitialPlan } from './repository'
 
 export const initialPlanInputSchema = z.object({
   goalKind: z.string(),
@@ -24,5 +24,3 @@ export const completeInitialPlan = createServerFn({ method: 'POST' })
 
     return persistInitialPlan(userId, plan, goal)
   })
-
-export { getInitialHomeState }
