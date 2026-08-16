@@ -55,7 +55,22 @@ function createTestRouter() {
 
 describe('App route layout', () => {
   it('renders AppShell with main navigation around /app outlet', async () => {
-    vi.mocked(getFinancialAppState).mockResolvedValue({ profile: 'present' })
+    vi.mocked(getFinancialAppState).mockResolvedValue({
+      profile: 'present',
+      home: {
+        income: { amount: '500000.00', currency: 'ARS' },
+        expensesKnowledge: 'known',
+        expenses: { amount: '250000.00', currency: 'ARS' },
+        plannedContribution: { amount: '50000.00', currency: 'ARS' },
+        goal: {
+          type: 'emergency_fund',
+          name: 'Colchón financiero',
+          targetAmount: { amount: '1500000.00', currency: 'ARS' },
+          emergencyFundMonths: 6,
+        },
+        projectionState: 'available',
+      },
+    })
 
     const router = createTestRouter()
     render(<RouterProvider router={router} />)

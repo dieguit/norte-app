@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { auth } from '@clerk/tanstack-react-start/server'
-import { db } from '../db/client'
 import { getFinancialAppState, requireFinancialUser } from './access'
+import { getInitialHomeState } from './financial.server'
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: vi.fn().mockImplementation(() => ({
@@ -13,14 +13,8 @@ vi.mock('@clerk/tanstack-react-start/server', () => ({
   auth: vi.fn(),
 }))
 
-vi.mock('../db/client', () => ({
-  db: {
-    query: {
-      financialProfiles: {
-        findFirst: vi.fn(),
-      },
-    },
-  },
+vi.mock('./financial.server', () => ({
+  getInitialHomeState: vi.fn(),
 }))
 
 describe('financial access boundary', () => {
@@ -63,16 +57,35 @@ describe('financial access boundary', () => {
 
     it('returns missing when the authenticated user has no profile', async () => {
       vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
-      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(undefined as never)
+      vi.mocked(getInitialHomeState).mockResolvedValue(null)
 
       await expect(getFinancialAppState()).resolves.toEqual({ profile: 'missing' })
+      expect(getInitialHomeState).toHaveBeenCalledWith('user_1')
     })
 
-    it('returns present when the authenticated user owns a profile', async () => {
-      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
-      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({ userId: 'user_1' } as never)
+    it('returns present with home state when the authenticated user owns a profile', async () => {
+      const mockHome = {
+        income: { amount: '500000.00', currency: 'ARS' as const },
+        expensesKnowledge: 'known' as const,
+        expenses: { amount: '250000.00', currency: 'ARS' as const },
+        plannedContribution: { amount: '50000.00', currency: 'ARS' as const },
+        goal: {
+          type: 'emergency_fund' as const,
+          name: 'Colchón financiero',
+          targetAmount: { amount: '1500000.00', currency: 'ARS' as const },
+          emergencyFundMonths: 6,
+        },
+        projectionState: 'available' as const,
+      }
 
-      await expect(getFinancialAppState()).resolves.toEqual({ profile: 'present' })
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+      vi.mocked(getInitialHomeState).mockResolvedValue(mockHome as never)
+
+      await expect(getFinancialAppState()).resolves.toEqual({
+        profile: 'present',
+        home: mockHome,
+      })
+      expect(getInitialHomeState).toHaveBeenCalledWith('user_1')
     })
   })
 })
