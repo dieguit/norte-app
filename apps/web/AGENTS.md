@@ -1,3 +1,7 @@
+# Behavior
+
+If user asks a question, answer it, do not start work or fix or plan. There are no rhetorical questions, just answer
+
 # Git usage
 
 Do not work with worktrees unless requested, do not commit or push unless user requests it.

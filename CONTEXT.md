@@ -5,7 +5,7 @@ NORTE is a personal financial-planning product. It helps a person understand whe
 ## Planning
 
 **Goal**:
-A future financial outcome the person is working toward, with a current value, an optional target, and a share of their planned contributions.
+A future financial outcome the person is working toward, with a current value, an optional target, and a share of their planned contributions. An initial Goal is either an emergency fund, whose target derives from known monthly expenses, or a fixed-target savings Goal, including changing a car.
 _Avoid_: Category, bucket
 
 **Plan**:
