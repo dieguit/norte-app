@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { isPositiveMoney, parseMoneyInput } from '../lib/money'
-import { completeInitialPlan } from './financial.server'
+import { completeInitialPlan } from './server'
 
 type GoalKind = 'emergency_fund' | 'fixed_savings' | 'car'
 

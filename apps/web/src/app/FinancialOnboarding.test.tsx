@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
 import { FinancialOnboarding } from './FinancialOnboarding'
-import { completeInitialPlan } from './financial.server'
+import { completeInitialPlan } from './server'
 
 vi.mock('@tanstack/react-router', () => ({
   useRouter: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock('sonner', () => ({
   },
 }))
 
-vi.mock('./financial.server', () => ({
+vi.mock('./server', () => ({
   completeInitialPlan: vi.fn(),
 }))
 
