@@ -32,12 +32,18 @@ export function parseMoneyInput(input: string, currency: CurrencyCode): Money | 
     .trim();
   if (!clean) return null;
 
-  // Handle Argentine separators: e.g. 1.250,50 -> 1250.50
+  // Handle Argentine separators: e.g. 1.250,50 -> 1250.50, 125.000 -> 125000, 1.250.000 -> 1250000
   let normalized = clean;
   if (clean.includes(",") && clean.includes(".")) {
     normalized = clean.replace(/\./g, "").replace(",", ".");
   } else if (clean.includes(",")) {
     normalized = clean.replace(",", ".");
+  } else if (clean.includes(".")) {
+    const parts = clean.split(".");
+    // If multiple dots (1.000.000) or single dot followed by 3 digits (125.000), treat as thousands separator
+    if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+      normalized = clean.replace(/\./g, "");
+    }
   }
 
   try {
