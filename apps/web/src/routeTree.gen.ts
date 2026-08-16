@@ -10,23 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as InformeDeviceIdRouteImport } from './routes/informe/$deviceId'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
-import { Route as AdminResultadosDeviceIdRouteImport } from './routes/admin/resultados.$deviceId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRouteRoute = AppRouteRouteImport.update({
@@ -38,11 +30,6 @@ const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRoute,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
@@ -59,82 +46,50 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
   path: '/sign-in/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminResultadosDeviceIdRoute = AdminResultadosDeviceIdRouteImport.update({
-  id: '/resultados/$deviceId',
-  path: '/resultados/$deviceId',
-  getParentRoute: () => AdminRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
-  '/admin': typeof AdminRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/informe/$deviceId': typeof InformeDeviceIdRoute
   '/sign-in/$': typeof SignInSplatRoute
-  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
-  '/admin/resultados/$deviceId': typeof AdminResultadosDeviceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
   '/informe/$deviceId': typeof InformeDeviceIdRoute
   '/sign-in/$': typeof SignInSplatRoute
-  '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
-  '/admin/resultados/$deviceId': typeof AdminResultadosDeviceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
-  '/admin': typeof AdminRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/informe/$deviceId': typeof InformeDeviceIdRoute
   '/sign-in/$': typeof SignInSplatRoute
-  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
-  '/admin/resultados/$deviceId': typeof AdminResultadosDeviceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/app'
-    | '/admin'
-    | '/onboarding'
-    | '/informe/$deviceId'
-    | '/sign-in/$'
-    | '/admin/'
-    | '/app/'
-    | '/admin/resultados/$deviceId'
+    '/' | '/app' | '/onboarding' | '/informe/$deviceId' | '/sign-in/$' | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/onboarding'
-    | '/informe/$deviceId'
-    | '/sign-in/$'
-    | '/admin'
-    | '/app'
-    | '/admin/resultados/$deviceId'
+  to: '/' | '/onboarding' | '/informe/$deviceId' | '/sign-in/$' | '/app'
   id:
     | '__root__'
     | '/'
     | '/app'
-    | '/admin'
     | '/onboarding'
     | '/informe/$deviceId'
     | '/sign-in/$'
-    | '/admin/'
     | '/app/'
-    | '/admin/resultados/$deviceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
-  AdminRoute: typeof AdminRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   InformeDeviceIdRoute: typeof InformeDeviceIdRoute
   SignInSplatRoute: typeof SignInSplatRoute
@@ -147,13 +102,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -169,13 +117,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
     }
     '/app/': {
       id: '/app/'
@@ -198,13 +139,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/resultados/$deviceId': {
-      id: '/admin/resultados/$deviceId'
-      path: '/resultados/$deviceId'
-      fullPath: '/admin/resultados/$deviceId'
-      preLoaderRoute: typeof AdminResultadosDeviceIdRouteImport
-      parentRoute: typeof AdminRoute
-    }
   }
 }
 
@@ -220,22 +154,9 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
   AppRouteRouteChildren,
 )
 
-interface AdminRouteChildren {
-  AdminIndexRoute: typeof AdminIndexRoute
-  AdminResultadosDeviceIdRoute: typeof AdminResultadosDeviceIdRoute
-}
-
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminIndexRoute: AdminIndexRoute,
-  AdminResultadosDeviceIdRoute: AdminResultadosDeviceIdRoute,
-}
-
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
-  AdminRoute: AdminRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   InformeDeviceIdRoute: InformeDeviceIdRoute,
   SignInSplatRoute: SignInSplatRoute,
