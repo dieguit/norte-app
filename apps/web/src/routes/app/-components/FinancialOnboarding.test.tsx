@@ -44,23 +44,51 @@ describe('FinancialOnboarding component', () => {
     ).toBeVisible()
     expect(screen.getByText('Podés cambiar o agregar objetivos más adelante.')).toBeVisible()
     expect(screen.getByText('Recomendado')).toBeVisible()
+    expect(screen.getByText('Por qué lo recomendamos')).toBeVisible()
     expect(
-      screen.getByText(
+      screen.getAllByText(
         'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
       ),
-    ).toBeVisible()
+    ).toHaveLength(2)
 
     const emergencyRadio = screen.getByRole('radio', { name: 'Colchón financiero' })
     expect(emergencyRadio).toBeChecked()
     expect(emergencyRadio).toHaveAttribute(
       'aria-describedby',
-      'emergency-fund-recommendation emergency-fund-description',
+      'emergency-fund-recommendation emergency-fund-summary',
     )
     expect(screen.getByText('Recomendado')).toHaveAttribute('id', 'emergency-fund-recommendation')
-    expect(screen.getByText(
-      'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
-    )).toHaveAttribute('id', 'emergency-fund-description')
+    expect(screen.getByText('Fondo para cubrir 6 meses de gastos ante imprevistos.')).toHaveAttribute(
+      'id',
+      'emergency-fund-summary',
+    )
+    expect(screen.getByText('Por qué lo recomendamos').closest('details')).toHaveAttribute(
+      'id',
+      'emergency-fund-description',
+    )
     expect(screen.queryByLabelText('Monto objetivo')).not.toBeInTheDocument()
+  })
+
+  it('starts the emergency fund explanation closed and opens it from its summary', async () => {
+    const user = userEvent.setup()
+    render(<FinancialOnboarding />)
+
+    const description = screen.getAllByText(
+      'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
+    )[0]?.closest('details')
+    const summary = screen.getByText('Por qué lo recomendamos')
+
+    expect(description).not.toBeNull()
+    expect(description).not.toHaveAttribute('open')
+
+    await user.click(summary)
+
+    expect(description).toHaveAttribute('open', '')
+    expect(
+      screen.getAllByText(
+        'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
+      )[0],
+    ).toBeVisible()
   })
 
   it('keeps four steps and reveals a required fixed target on a non-emergency choice', async () => {
@@ -72,6 +100,17 @@ describe('FinancialOnboarding component', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Ingresá un monto objetivo mayor a cero.')
+  })
+
+  it('restores the original mobile spacing on steps after the compact first step', async () => {
+    const user = userEvent.setup()
+    render(<FinancialOnboarding />)
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(screen.getByRole('heading', { name: 'Ingresos mensuales aproximados' }).closest('div.mx-auto')).toHaveClass('py-8')
+    expect(screen.getByRole('navigation', { name: 'Progreso del perfil financiero' })).toHaveClass('mb-8')
+    expect(screen.getByLabelText('Ingresos mensuales aproximados').closest('div.rounded-2xl')).toHaveClass('p-6')
   })
 
   it('formats money inputs and ignores non-numeric characters', async () => {

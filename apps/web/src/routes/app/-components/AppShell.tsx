@@ -10,8 +10,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col text-[var(--sea-ink)] md:flex-row">
-      <header className="flex h-16 items-center justify-between border-b border-[var(--line)] bg-[var(--header-bg)] px-5 backdrop-blur-md md:hidden">
-        <a href="/app" aria-label="Norte" className="flex items-center gap-3 no-underline">
+      <header className="flex h-14 items-center justify-between border-b border-[var(--line)] bg-[var(--header-bg)] px-5 backdrop-blur-md md:hidden">
+        <a href="/app" aria-label="Norte" className="flex min-h-11 min-w-11 items-center gap-3 no-underline">
           <img
             src="/images/logo.png"
             alt=""
@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           />
           <span className="text-sm font-semibold tracking-[0.22em] text-[var(--sea-ink)]">NORTE</span>
         </a>
-        <UserButton />
+        <UserButton appearance={{ elements: { userButtonTrigger: '!size-11 !min-h-11 !min-w-11' } }} />
       </header>
 
       <aside className="hidden w-[250px] shrink-0 flex-col border-r border-[var(--line)] bg-[var(--header-bg)] p-6 md:flex">

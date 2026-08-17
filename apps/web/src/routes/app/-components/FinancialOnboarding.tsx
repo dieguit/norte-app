@@ -92,9 +92,11 @@ export function FinancialOnboarding() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col px-4 py-8 pb-24 sm:px-6 sm:py-12">
+    <div
+      className={`mx-auto flex w-full max-w-2xl flex-col px-4 pb-24 sm:px-6 sm:py-12 ${step === 1 ? 'py-4' : 'py-8'}`}
+    >
       {/* Progress */}
-      <nav aria-label="Progreso del perfil financiero" className="mb-8">
+      <nav aria-label="Progreso del perfil financiero" className={`${step === 1 ? 'mb-4' : 'mb-8'} sm:mb-8`}>
         <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
           <span>Paso {step} de 4</span>
           <span className="sr-only">
@@ -118,9 +120,11 @@ export function FinancialOnboarding() {
       </nav>
 
       {/* Form Container */}
-      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-6 shadow-[var(--shadow-card)] sm:p-8">
+      <div
+        className={`rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] shadow-[var(--shadow-card)] sm:p-8 ${step === 1 ? 'p-4' : 'p-6'}`}
+      >
         {step === 1 && (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:gap-6">
             <div>
               <h1 className="font-serif text-2xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-3xl">
                 Vamos a construir tu perfil financiero
@@ -130,33 +134,39 @@ export function FinancialOnboarding() {
               </p>
             </div>
 
-            <fieldset className="flex flex-col gap-3">
+            <fieldset className="flex flex-col gap-2 sm:gap-3">
               <legend className="text-sm font-semibold text-[var(--sea-ink)]">
                 Elegí tu primer objetivo:
               </legend>
 
-              <label
-                className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors ${
+              <div
+                onClick={() => {
+                  setGoalKind('emergency_fund')
+                  setError(null)
+                }}
+                className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 sm:p-4 transition-colors ${
                   goalKind === 'emergency_fund'
                     ? 'border-[var(--palm)] bg-[var(--foam)]'
                     : 'border-[var(--line)] bg-white/50 hover:bg-white/80'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <input
                     type="radio"
                     name="goalKind"
                     value="emergency_fund"
                     checked={goalKind === 'emergency_fund'}
                     aria-label="Colchón financiero"
-                    aria-describedby="emergency-fund-recommendation emergency-fund-description"
+                    id="emergency-fund-goal"
+                    aria-describedby="emergency-fund-recommendation emergency-fund-summary"
                     onChange={() => {
                       setGoalKind('emergency_fund')
                       setError(null)
                     }}
                     className="h-4 w-4 text-[var(--palm)] focus:ring-[var(--palm)]"
                   />
-                  <div>
+                  <div className="min-w-0">
+                    <label htmlFor="emergency-fund-goal" className="cursor-pointer">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="font-medium text-[var(--sea-ink)]">Colchón financiero</div>
                       <Badge
@@ -167,21 +177,37 @@ export function FinancialOnboarding() {
                         Recomendado
                       </Badge>
                     </div>
-                    <div id="emergency-fund-description" className="text-xs text-[var(--sea-ink-soft)]">
+                    </label>
+                    <p id="emergency-fund-summary" className="text-xs text-[var(--sea-ink-soft)]">
+                      Fondo para cubrir 6 meses de gastos ante imprevistos.
+                    </p>
+                    <details
+                      id="emergency-fund-description"
+                      onClick={(event) => event.stopPropagation()}
+                      className="text-xs text-[var(--sea-ink-soft)] [&:not([open])>p]:hidden sm:[&:not([open])>p]:block"
+                    >
+                      <summary className="cursor-pointer list-none font-medium underline decoration-[var(--line)] underline-offset-2 sm:hidden">
+                        Por qué lo recomendamos
+                      </summary>
+                      <p className="sm:hidden">
+                        Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.
+                      </p>
+                    </details>
+                    <p aria-hidden="true" className="hidden text-xs text-[var(--sea-ink-soft)] sm:block">
                       Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.
-                    </div>
+                    </p>
                   </div>
                 </div>
-              </label>
+              </div>
 
               <label
-                className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors ${
+                className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 sm:p-4 transition-colors ${
                   goalKind === 'fixed_savings'
                     ? 'border-[var(--palm)] bg-[var(--foam)]'
                     : 'border-[var(--line)] bg-white/50 hover:bg-white/80'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <input
                     type="radio"
                     name="goalKind"
@@ -197,7 +223,7 @@ export function FinancialOnboarding() {
                     <div className="font-medium text-[var(--sea-ink)]">
                       Quiero ahorrar cierta suma de dinero
                     </div>
-                    <div className="text-xs text-[var(--sea-ink-soft)]">
+                    <div className="hidden text-xs text-[var(--sea-ink-soft)] sm:block">
                       Meta de ahorro fija con monto específico
                     </div>
                   </div>
@@ -205,13 +231,13 @@ export function FinancialOnboarding() {
               </label>
 
               <label
-                className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors ${
+                className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 sm:p-4 transition-colors ${
                   goalKind === 'car'
                     ? 'border-[var(--palm)] bg-[var(--foam)]'
                     : 'border-[var(--line)] bg-white/50 hover:bg-white/80'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <input
                     type="radio"
                     name="goalKind"
@@ -225,7 +251,7 @@ export function FinancialOnboarding() {
                   />
                   <div>
                     <div className="font-medium text-[var(--sea-ink)]">Quiero cambiar el auto</div>
-                    <div className="text-xs text-[var(--sea-ink-soft)]">
+                    <div className="hidden text-xs text-[var(--sea-ink-soft)] sm:block">
                       Planificar el ahorro para tu próximo vehículo
                     </div>
                   </div>
@@ -258,7 +284,7 @@ export function FinancialOnboarding() {
               </div>
             )}
 
-            <p className="text-xs text-[var(--sea-ink-soft)]">
+            <p className="hidden text-xs text-[var(--sea-ink-soft)] sm:block">
               Podés cambiar o agregar objetivos más adelante.
             </p>
 
