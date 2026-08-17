@@ -7,9 +7,6 @@ import { completeInitialPlan } from '../../../features/financial/financial.funct
 
 type GoalKind = 'emergency_fund' | 'fixed_savings' | 'car'
 
-const emergencyFundExplanation =
-  'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.'
-
 export function FinancialOnboarding() {
   const router = useRouter()
 
@@ -157,7 +154,7 @@ export function FinancialOnboarding() {
                     checked={goalKind === 'emergency_fund'}
                     aria-label="Colchón financiero"
                     id="emergency-fund-goal"
-                    aria-describedby="emergency-fund-recommendation emergency-fund-summary"
+                    aria-describedby="emergency-fund-recommendation emergency-fund-description"
                     onChange={() => {
                       setGoalKind('emergency_fund')
                       setError(null)
@@ -175,25 +172,11 @@ export function FinancialOnboarding() {
                         Recomendado
                       </Badge>
                     </div>
-                    <p id="emergency-fund-summary" className="text-xs text-[var(--sea-ink-soft)]">
-                      Fondo para cubrir 6 meses de gastos ante imprevistos.
+                    <p id="emergency-fund-description" className="text-xs text-[var(--sea-ink-soft)]">
+                      Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.
                     </p>
                   </div>
                 </label>
-                <details
-                  id="emergency-fund-description"
-                  className="ml-6 text-xs text-[var(--sea-ink-soft)] sm:hidden"
-                >
-                  <summary className="flex min-h-11 w-full cursor-pointer list-none items-center font-medium underline decoration-[var(--line)] underline-offset-2">
-                    Por qué lo recomendamos
-                  </summary>
-                  <p>
-                    {emergencyFundExplanation}
-                  </p>
-                </details>
-                <p className="hidden ml-7 text-xs text-[var(--sea-ink-soft)] sm:block">
-                  {emergencyFundExplanation}
-                </p>
               </div>
 
               <label

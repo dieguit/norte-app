@@ -44,47 +44,26 @@ describe('FinancialOnboarding component', () => {
     ).toBeVisible()
     expect(screen.getByText('Podés cambiar o agregar objetivos más adelante.')).toBeVisible()
     expect(screen.getByText('Recomendado')).toBeVisible()
-    expect(screen.getByText('Por qué lo recomendamos')).toBeVisible()
     expect(
-      screen.getAllByText(
+      screen.getByText(
         'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
       ),
-    ).toHaveLength(2)
+    ).toBeVisible()
 
     const emergencyRadio = screen.getByRole('radio', { name: 'Colchón financiero' })
     expect(emergencyRadio).toBeChecked()
     expect(emergencyRadio).toHaveAttribute(
       'aria-describedby',
-      'emergency-fund-recommendation emergency-fund-summary',
+      'emergency-fund-recommendation emergency-fund-description',
     )
     expect(screen.getByText('Recomendado')).toHaveAttribute('id', 'emergency-fund-recommendation')
-    expect(screen.getByText('Fondo para cubrir 6 meses de gastos ante imprevistos.')).toHaveAttribute(
-      'id',
-      'emergency-fund-summary',
-    )
-    expect(screen.getByText('Por qué lo recomendamos').closest('details')).toHaveAttribute(
+    expect(screen.getByText(
+      'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
+    )).toHaveAttribute(
       'id',
       'emergency-fund-description',
     )
     expect(screen.queryByLabelText('Monto objetivo')).not.toBeInTheDocument()
-  })
-
-  it('starts the emergency fund explanation closed and opens it from its summary', async () => {
-    const user = userEvent.setup()
-    render(<FinancialOnboarding />)
-
-    const summary = screen.getByText('Por qué lo recomendamos')
-    const description = summary.closest('details')
-
-    expect(description).not.toBeNull()
-    expect(description).not.toHaveAttribute('open')
-
-    await user.click(summary)
-
-    expect(description).toHaveAttribute('open', '')
-    expect(description).toHaveTextContent(
-      'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
-    )
   })
 
   it('keeps four steps and reveals a required fixed target on a non-emergency choice', async () => {
