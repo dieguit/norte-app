@@ -184,14 +184,14 @@ export function FinancialOnboarding() {
                   id="emergency-fund-description"
                   className="ml-6 text-xs text-[var(--sea-ink-soft)] sm:hidden"
                 >
-                  <summary className="flex min-h-11 w-full cursor-pointer list-none items-center font-medium underline decoration-[var(--line)] underline-offset-2 sm:hidden">
+                  <summary className="flex min-h-11 w-full cursor-pointer list-none items-center font-medium underline decoration-[var(--line)] underline-offset-2">
                     Por qué lo recomendamos
                   </summary>
                   <p>
                     {emergencyFundExplanation}
                   </p>
                 </details>
-                <p aria-hidden="true" className="hidden ml-7 text-xs text-[var(--sea-ink-soft)] sm:block">
+                <p className="hidden ml-7 text-xs text-[var(--sea-ink-soft)] sm:block">
                   {emergencyFundExplanation}
                 </p>
               </div>
@@ -280,7 +280,7 @@ export function FinancialOnboarding() {
               </div>
             )}
 
-            <p className="text-[11px] leading-tight text-[var(--sea-ink-soft)] sm:text-xs sm:leading-normal">
+            <p className="text-xs text-[var(--sea-ink-soft)]">
               Podés cambiar o agregar objetivos más adelante.
             </p>
 

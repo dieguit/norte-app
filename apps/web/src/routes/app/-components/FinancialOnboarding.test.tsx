@@ -73,10 +73,8 @@ describe('FinancialOnboarding component', () => {
     const user = userEvent.setup()
     render(<FinancialOnboarding />)
 
-    const description = screen.getAllByText(
-      'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
-    )[0]?.closest('details')
     const summary = screen.getByText('Por qué lo recomendamos')
+    const description = summary.closest('details')
 
     expect(description).not.toBeNull()
     expect(description).not.toHaveAttribute('open')
@@ -84,11 +82,9 @@ describe('FinancialOnboarding component', () => {
     await user.click(summary)
 
     expect(description).toHaveAttribute('open', '')
-    expect(
-      screen.getAllByText(
-        'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
-      )[0],
-    ).toBeVisible()
+    expect(description).toHaveTextContent(
+      'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
+    )
   })
 
   it('keeps four steps and reveals a required fixed target on a non-emergency choice', async () => {
