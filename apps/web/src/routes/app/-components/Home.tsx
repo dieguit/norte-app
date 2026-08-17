@@ -28,7 +28,7 @@ export function Home({ home }: HomeProps) {
       {/* Planning Summary Cards */}
       <section aria-label="Resumen de planificación">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-sm">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
               Ingresos mensuales
             </div>
@@ -37,7 +37,7 @@ export function Home({ home }: HomeProps) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-sm">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
               Gastos mensuales
             </div>
@@ -46,7 +46,7 @@ export function Home({ home }: HomeProps) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-sm">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
               Aporte planificado
             </div>
@@ -59,7 +59,7 @@ export function Home({ home }: HomeProps) {
 
       {/* Selected Goal Section */}
       <section aria-label="Objetivo principal">
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-6 shadow-[var(--shadow-card)] sm:p-8">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow-card)] sm:p-8">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-[var(--palm)]">
@@ -118,7 +118,7 @@ export function Home({ home }: HomeProps) {
 
       {/* Visible Roadmap Row */}
       <section aria-label="Hoja de ruta inicial">
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-6 shadow-sm sm:p-8">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
             Hoja de ruta inicial
           </h3>

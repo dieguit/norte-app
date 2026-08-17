@@ -9,7 +9,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isHome = pathname === '/app'
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[var(--bg-base)] text-[var(--sea-ink)] md:flex-row">
+    <div className="flex min-h-dvh flex-col text-[var(--sea-ink)] md:flex-row">
       <header className="flex h-16 items-center justify-between border-b border-[var(--line)] bg-[var(--header-bg)] px-5 backdrop-blur-md md:hidden">
         <a href="/app" aria-label="Norte" className="flex items-center gap-3 no-underline">
           <img
