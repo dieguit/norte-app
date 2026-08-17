@@ -93,7 +93,7 @@ export function FinancialOnboarding() {
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-2xl flex-col px-4 pb-24 sm:px-6 sm:py-12 ${step === 1 ? 'py-4' : 'py-8'}`}
+      className={`mx-auto flex w-full max-w-2xl flex-col px-4 sm:px-6 sm:py-12 sm:pb-24 ${step === 1 ? 'py-4 pb-0' : 'py-8 pb-24'}`}
     >
       {/* Progress */}
       <nav aria-label="Progreso del perfil financiero" className={`${step === 1 ? 'mb-4' : 'mb-8'} sm:mb-8`}>
@@ -140,17 +140,13 @@ export function FinancialOnboarding() {
               </legend>
 
               <div
-                onClick={() => {
-                  setGoalKind('emergency_fund')
-                  setError(null)
-                }}
-                className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 sm:p-4 transition-colors ${
+                className={`rounded-xl border p-3 sm:p-4 transition-colors ${
                   goalKind === 'emergency_fund'
                     ? 'border-[var(--palm)] bg-[var(--foam)]'
                     : 'border-[var(--line)] bg-white/50 hover:bg-white/80'
                 }`}
               >
-                <div className="flex items-center gap-2 sm:gap-3">
+                <label htmlFor="emergency-fund-goal" className="flex w-full cursor-pointer items-start gap-2 sm:gap-3">
                   <input
                     type="radio"
                     name="goalKind"
@@ -166,7 +162,6 @@ export function FinancialOnboarding() {
                     className="h-4 w-4 text-[var(--palm)] focus:ring-[var(--palm)]"
                   />
                   <div className="min-w-0">
-                    <label htmlFor="emergency-fund-goal" className="cursor-pointer">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="font-medium text-[var(--sea-ink)]">Colchón financiero</div>
                       <Badge
@@ -177,27 +172,22 @@ export function FinancialOnboarding() {
                         Recomendado
                       </Badge>
                     </div>
-                    </label>
                     <p id="emergency-fund-summary" className="text-xs text-[var(--sea-ink-soft)]">
                       Fondo para cubrir 6 meses de gastos ante imprevistos.
                     </p>
-                    <details
-                      id="emergency-fund-description"
-                      onClick={(event) => event.stopPropagation()}
-                      className="text-xs text-[var(--sea-ink-soft)] [&:not([open])>p]:hidden sm:[&:not([open])>p]:block"
-                    >
-                      <summary className="cursor-pointer list-none font-medium underline decoration-[var(--line)] underline-offset-2 sm:hidden">
-                        Por qué lo recomendamos
-                      </summary>
-                      <p className="sm:hidden">
-                        Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.
-                      </p>
-                    </details>
-                    <p aria-hidden="true" className="hidden text-xs text-[var(--sea-ink-soft)] sm:block">
-                      Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.
-                    </p>
                   </div>
-                </div>
+                </label>
+                <details
+                  id="emergency-fund-description"
+                  className="ml-6 text-xs text-[var(--sea-ink-soft)] [&:not([open])>p]:hidden sm:ml-7 sm:[&:not([open])>p]:block"
+                >
+                  <summary className="flex min-h-11 w-full cursor-pointer list-none items-center font-medium underline decoration-[var(--line)] underline-offset-2 sm:hidden">
+                    Por qué lo recomendamos
+                  </summary>
+                  <p>
+                    Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.
+                  </p>
+                </details>
               </div>
 
               <label
@@ -223,7 +213,7 @@ export function FinancialOnboarding() {
                     <div className="font-medium text-[var(--sea-ink)]">
                       Quiero ahorrar cierta suma de dinero
                     </div>
-                    <div className="hidden text-xs text-[var(--sea-ink-soft)] sm:block">
+                    <div className="text-[11px] leading-tight text-[var(--sea-ink-soft)] sm:text-xs sm:leading-normal">
                       Meta de ahorro fija con monto específico
                     </div>
                   </div>
@@ -251,7 +241,7 @@ export function FinancialOnboarding() {
                   />
                   <div>
                     <div className="font-medium text-[var(--sea-ink)]">Quiero cambiar el auto</div>
-                    <div className="hidden text-xs text-[var(--sea-ink-soft)] sm:block">
+                    <div className="text-[11px] leading-tight text-[var(--sea-ink-soft)] sm:text-xs sm:leading-normal">
                       Planificar el ahorro para tu próximo vehículo
                     </div>
                   </div>
@@ -284,7 +274,7 @@ export function FinancialOnboarding() {
               </div>
             )}
 
-            <p className="hidden text-xs text-[var(--sea-ink-soft)] sm:block">
+            <p className="text-[11px] leading-tight text-[var(--sea-ink-soft)] sm:text-xs sm:leading-normal">
               Podés cambiar o agregar objetivos más adelante.
             </p>
 

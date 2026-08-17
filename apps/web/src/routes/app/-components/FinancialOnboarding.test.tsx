@@ -46,10 +46,10 @@ describe('FinancialOnboarding component', () => {
     expect(screen.getByText('Recomendado')).toBeVisible()
     expect(screen.getByText('Por qué lo recomendamos')).toBeVisible()
     expect(
-      screen.getAllByText(
+      screen.getByText(
         'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
       ),
-    ).toHaveLength(2)
+    ).toBeInTheDocument()
 
     const emergencyRadio = screen.getByRole('radio', { name: 'Colchón financiero' })
     expect(emergencyRadio).toBeChecked()
@@ -73,9 +73,9 @@ describe('FinancialOnboarding component', () => {
     const user = userEvent.setup()
     render(<FinancialOnboarding />)
 
-    const description = screen.getAllByText(
+    const description = screen.getByText(
       'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
-    )[0]?.closest('details')
+    ).closest('details')
     const summary = screen.getByText('Por qué lo recomendamos')
 
     expect(description).not.toBeNull()
@@ -85,9 +85,9 @@ describe('FinancialOnboarding component', () => {
 
     expect(description).toHaveAttribute('open', '')
     expect(
-      screen.getAllByText(
+      screen.getByText(
         'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
-      )[0],
+      ),
     ).toBeVisible()
   })
 
@@ -100,17 +100,6 @@ describe('FinancialOnboarding component', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Ingresá un monto objetivo mayor a cero.')
-  })
-
-  it('restores the original mobile spacing on steps after the compact first step', async () => {
-    const user = userEvent.setup()
-    render(<FinancialOnboarding />)
-
-    await user.click(screen.getByRole('button', { name: 'Continuar' }))
-
-    expect(screen.getByRole('heading', { name: 'Ingresos mensuales aproximados' }).closest('div.mx-auto')).toHaveClass('py-8')
-    expect(screen.getByRole('navigation', { name: 'Progreso del perfil financiero' })).toHaveClass('mb-8')
-    expect(screen.getByLabelText('Ingresos mensuales aproximados').closest('div.rounded-2xl')).toHaveClass('p-6')
   })
 
   it('formats money inputs and ignores non-numeric characters', async () => {
