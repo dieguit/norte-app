@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { isPositiveMoney, parseMoneyInput } from '../../../lib/money'
+import { Badge } from '@/components/ui/badge'
+import { formatMoneyInput, isPositiveMoney, parseMoneyInput } from '../../../lib/money'
 import { completeInitialPlan } from '../../../features/financial/financial.functions'
 
 type GoalKind = 'emergency_fund' | 'fixed_savings' | 'car'
@@ -91,7 +92,7 @@ export function FinancialOnboarding() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col px-4 py-8 sm:px-6 sm:py-12">
+    <div className="mx-auto flex w-full max-w-2xl flex-col px-4 py-8 pb-24 sm:px-6 sm:py-12">
       {/* Progress */}
       <nav aria-label="Progreso del perfil financiero" className="mb-8">
         <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
@@ -147,6 +148,8 @@ export function FinancialOnboarding() {
                     name="goalKind"
                     value="emergency_fund"
                     checked={goalKind === 'emergency_fund'}
+                    aria-label="Colchón financiero"
+                    aria-describedby="emergency-fund-recommendation emergency-fund-description"
                     onChange={() => {
                       setGoalKind('emergency_fund')
                       setError(null)
@@ -154,9 +157,18 @@ export function FinancialOnboarding() {
                     className="h-4 w-4 text-[var(--palm)] focus:ring-[var(--palm)]"
                   />
                   <div>
-                    <div className="font-medium text-[var(--sea-ink)]">Colchón financiero</div>
-                    <div className="text-xs text-[var(--sea-ink-soft)]">
-                      Fondo de emergencia equivalente a 6 meses de gastos
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="font-medium text-[var(--sea-ink)]">Colchón financiero</div>
+                      <Badge
+                        id="emergency-fund-recommendation"
+                        variant="outline"
+                        className="border-[var(--line)] bg-[var(--foam)] text-[var(--sea-ink-soft)]"
+                      >
+                        Recomendado
+                      </Badge>
+                    </div>
+                    <div id="emergency-fund-description" className="text-xs text-[var(--sea-ink-soft)]">
+                      Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.
                     </div>
                   </div>
                 </div>
@@ -236,7 +248,7 @@ export function FinancialOnboarding() {
                     inputMode="decimal"
                     value={fixedTarget}
                     onChange={(e) => {
-                      setFixedTarget(e.target.value)
+                      setFixedTarget(formatMoneyInput(e.target.value))
                       setError(null)
                     }}
                     placeholder="Ej: 5.000.000"
@@ -293,7 +305,7 @@ export function FinancialOnboarding() {
                   inputMode="decimal"
                   value={income}
                   onChange={(e) => {
-                    setIncome(e.target.value)
+                    setIncome(formatMoneyInput(e.target.value))
                     setError(null)
                   }}
                   placeholder="Ej: 500.000"
@@ -356,7 +368,7 @@ export function FinancialOnboarding() {
                     inputMode="decimal"
                     value={expenses}
                     onChange={(e) => {
-                      setExpenses(e.target.value)
+                      setExpenses(formatMoneyInput(e.target.value))
                       setError(null)
                     }}
                     placeholder="Ej: 250.000"
@@ -441,7 +453,7 @@ export function FinancialOnboarding() {
                   inputMode="decimal"
                   value={plannedContribution}
                   onChange={(e) => {
-                    setPlannedContribution(e.target.value)
+                    setPlannedContribution(formatMoneyInput(e.target.value))
                     setError(null)
                     setServerError(null)
                   }}

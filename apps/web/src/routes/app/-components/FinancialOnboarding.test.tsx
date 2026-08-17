@@ -43,9 +43,23 @@ describe('FinancialOnboarding component', () => {
       screen.getByText('Empecemos con algunos datos básicos. No tienen que ser exactos y podés cambiarlos después.'),
     ).toBeVisible()
     expect(screen.getByText('Podés cambiar o agregar objetivos más adelante.')).toBeVisible()
+    expect(screen.getByText('Recomendado')).toBeVisible()
+    expect(
+      screen.getByText(
+        'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
+      ),
+    ).toBeVisible()
 
-    const emergencyRadio = screen.getByRole('radio', { name: /colchón financiero/i })
+    const emergencyRadio = screen.getByRole('radio', { name: 'Colchón financiero' })
     expect(emergencyRadio).toBeChecked()
+    expect(emergencyRadio).toHaveAttribute(
+      'aria-describedby',
+      'emergency-fund-recommendation emergency-fund-description',
+    )
+    expect(screen.getByText('Recomendado')).toHaveAttribute('id', 'emergency-fund-recommendation')
+    expect(screen.getByText(
+      'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
+    )).toHaveAttribute('id', 'emergency-fund-description')
     expect(screen.queryByLabelText('Monto objetivo')).not.toBeInTheDocument()
   })
 
@@ -58,6 +72,17 @@ describe('FinancialOnboarding component', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Ingresá un monto objetivo mayor a cero.')
+  })
+
+  it('formats money inputs and ignores non-numeric characters', async () => {
+    const user = userEvent.setup()
+    render(<FinancialOnboarding />)
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    const income = screen.getByLabelText('Ingresos mensuales aproximados')
+    await user.type(income, '1000000abc')
+
+    expect(income).toHaveValue('1.000.000')
   })
 
   it('navigates through four steps, retains values on back navigation, and handles zero income', async () => {

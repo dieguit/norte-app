@@ -1,5 +1,7 @@
 import BigNumber from "bignumber.js";
 
+const integerFormatter = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+
 export type CurrencyCode = "ARS" | "USD";
 
 export interface Money {
@@ -55,6 +57,12 @@ export function parseMoneyInput(input: string, currency: CurrencyCode): Money | 
   } catch {
     return null;
   }
+}
+
+export function formatMoneyInput(input: string): string {
+  const [integer, decimal] = input.replace(/[^\d,]/g, "").split(",", 2);
+  const formattedInteger = integer ? integerFormatter.format(BigInt(integer)) : "";
+  return decimal === undefined ? formattedInteger : `${formattedInteger || "0"},${decimal.slice(0, 2)}`;
 }
 
 export function assertSameCurrency(a: Money, b: Money): void {
@@ -191,4 +199,3 @@ export function calculateAllocationAmounts(
     };
   });
 }
-
