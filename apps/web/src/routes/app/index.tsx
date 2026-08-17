@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { FinancialOnboarding } from '../../app/FinancialOnboarding'
-import { Home } from '../../app/Home'
+import { FinancialOnboarding } from './-components/FinancialOnboarding'
+import { Home } from './-components/Home'
 
 export const Route = createFileRoute('/app/')({
   component: AppIndex,

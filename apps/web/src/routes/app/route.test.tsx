@@ -7,9 +7,9 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getFinancialAppState } from '../../app/access'
-import { FinancialOnboarding } from '../../app/FinancialOnboarding'
-import { Home } from '../../app/Home'
+import { getFinancialAppState } from '../../features/financial/financial.functions'
+import { FinancialOnboarding } from './-components/FinancialOnboarding'
+import { Home } from './-components/Home'
 import { Route as rootRoute } from '../__root'
 import { Route as AppRoute } from './route'
 
@@ -26,7 +26,7 @@ vi.mock('@tanstack/react-router-devtools', () => ({
   TanStackRouterDevtoolsPanel: () => null,
 }))
 
-vi.mock('../../app/access', () => ({
+vi.mock('../../features/financial/financial.functions', () => ({
   getFinancialAppState: vi.fn(),
 }))
 

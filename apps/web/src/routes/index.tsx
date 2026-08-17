@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { NorteLandingPage } from '../components/NorteLandingPage'
+import { NorteLandingPage } from './-components/NorteLandingPage'
 
 export const Route = createFileRoute('/')({
   head: () => ({

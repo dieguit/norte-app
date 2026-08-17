@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { boolean, index, integer, jsonb, numeric, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core'
-import type { Report } from '../admin/report'
-import type { OnboardingAnswers } from '../onboarding/definition'
+import type { Report } from '@/features/admin/report'
+import type { OnboardingAnswers } from '@/features/onboarding/definition'
 
 export const onboardingDrafts = pgTable('onboarding_drafts', {
   deviceId: text('device_id').primaryKey(),
@@ -54,4 +54,3 @@ export const financialGoals = pgTable(
 export type OnboardingDraft = typeof onboardingDrafts.$inferSelect
 export type FinancialProfile = typeof financialProfiles.$inferSelect
 export type FinancialGoal = typeof financialGoals.$inferSelect
-

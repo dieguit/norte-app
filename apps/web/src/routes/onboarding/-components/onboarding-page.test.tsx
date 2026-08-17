@@ -1,0 +1,1256 @@
+// @vitest-environment jsdom
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { render, screen, cleanup, waitForElementToBeRemoved, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { OnboardingPage } from './onboarding-page'
+import { OnboardingRepeatedItems } from './onboarding-repeated-items'
+import OnboardingUpload from './onboarding-upload'
+import { getOnboardingDraft, saveOnboardingDraft, createOnboardingUpload, deleteOnboardingUpload } from '@/features/onboarding/onboarding.functions'
+import { getActiveSteps, validateStep, type OnboardingAnswers } from '@/features/onboarding/definition'
+import type { OnboardingDraft } from '../../../db/schema'
+
+const deviceId = '6f0a7482-29a0-4c03-a3e1-256add2f91a8'
+const initialAnswers: OnboardingAnswers = {
+  nombre: 'Ada',
+  contacto_canal: 'Email',
+  email: 'ada@example.com',
+  p2_ultimo: 'Colegio privado de mis hijos (pasarlo a uno público)',
+  p3_primero: 'Colegio privado de mis hijos (pasarlo a uno público)',
+  p5_fuentes: ['Sueldo fijo (relación de dependencia)'],
+  p8a_tiene_vencimiento: 'No',
+  extra_tiene: 'No',
+}
+
+function makeDraft(answers: OnboardingAnswers): OnboardingDraft {
+  const timestamp = new Date('2026-06-15T00:00:00.000Z')
+  return {
+    deviceId,
+    answers: { ...initialAnswers, ...answers },
+    completedAt: null,
+    report: null,
+    reportSentOn: null,
+    ctaClickedOn: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }
+}
+
+function setDraft(answers: OnboardingAnswers) {
+  vi.mocked(getOnboardingDraft).mockResolvedValue(makeDraft(answers))
+}
+
+async function advanceToCard(cardIndex: number) {
+  cleanup()
+  localStorage.clear()
+  localStorage.setItem('onboarding-welcome-seen', 'true')
+  setDraft({
+    p1_pesa: 'Otra',
+    ing_total: 500000,
+    p9_modo: 'Tengo el total en la cabeza',
+    fijo_total_directo: 1,
+    p11_modo: 'Tengo el total en la cabeza',
+    var_total_directo: 1,
+    p12_modo: 'Quiero desglosar',
+    d_salidas: 1,
+    p15_tarjetas: cardIndex,
+  })
+  render(<OnboardingPage />)
+  await screen.findByRole('heading', { name: /Tarjeta 1/i })
+}
+
+async function continueStep(user: ReturnType<typeof userEvent.setup>) {
+  const continueButton = screen.getByRole('button', { name: /continuar|completar/i })
+  await user.click(continueButton)
+  await waitForElementToBeRemoved(continueButton)
+}
+
+vi.mock('@/features/onboarding/onboarding.functions', () => ({
+  getOnboardingDraft: vi.fn(),
+  saveOnboardingDraft: vi.fn(),
+  createOnboardingUpload: vi.fn(),
+  deleteOnboardingUpload: vi.fn(),
+}))
+
+const posthogCapture = vi.fn()
+const posthogCaptureException = vi.fn()
+const posthogIdentify = vi.fn()
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({
+    capture: posthogCapture,
+    captureException: posthogCaptureException,
+    identify: posthogIdentify,
+  }),
+}))
+
+describe('OnboardingPage component tests', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 6, 1))
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    vi.clearAllMocks()
+    posthogCapture.mockClear()
+    posthogCaptureException.mockClear()
+    posthogIdentify.mockClear()
+    vi.mocked(getOnboardingDraft).mockResolvedValue(makeDraft({}))
+    vi.mocked(saveOnboardingDraft).mockResolvedValue({} as any)
+    vi.mocked(createOnboardingUpload).mockResolvedValue({ key: 'mock-key', url: 'https://mock-url.com' })
+    vi.mocked(deleteOnboardingUpload).mockResolvedValue({} as any)
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+    window.history.replaceState({}, '', '/onboarding')
+  })
+
+  it('captures a readable view event for the displayed onboarding step', async () => {
+    render(<OnboardingPage />)
+
+    await screen.findByRole('heading', { name: '¿Cómo te llamás?' })
+
+    expect(posthogCapture).toHaveBeenCalledWith('onboarding_step_viewed', {
+      step_id: 'p0',
+      step_number: 1,
+      total_steps: getActiveSteps({}).length,
+      step_label: `Paso 1 de ${getActiveSteps({}).length}: ¿Cómo te llamás?`,
+    })
+  })
+
+  it('captures the next displayed step with its full title and ordinal', async () => {
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Ada')
+    await continueStep(user)
+
+    const totalSteps = getActiveSteps({ nombre: 'Ada' }).length
+    expect(posthogCapture).toHaveBeenCalledWith('onboarding_step_viewed', {
+      step_id: 'p23',
+      step_number: 2,
+      total_steps: totalSteps,
+      step_label: `Paso 2 de ${totalSteps}: ¿A dónde te mandamos tu informe?`,
+    })
+    expect(posthogCapture).toHaveBeenCalledWith('onboarding_step_completed', {
+      step_id: 'p0',
+      step_number: 1,
+      total_steps: totalSteps,
+      step_label: `Paso 1 de ${totalSteps}: ¿Cómo te llamás?`,
+    })
+  })
+
+  it('sets person_name after saving the name step', async () => {
+    localStorage.setItem('onboarding-device-id', deviceId)
+    vi.mocked(getOnboardingDraft).mockResolvedValue(makeDraft({ nombre: '' }))
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Ada')
+    await continueStep(user)
+
+    expect(posthogIdentify).toHaveBeenLastCalledWith(deviceId, {
+      person_name: 'Ada',
+    })
+  })
+
+
+  it('renders all fields in the current step and blocks Next for a missing required field', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+        answers: { ...initialAnswers, p1_pesa: 'Otra' },
+      stepIndex: 3,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    } as any)
+    render(<OnboardingPage />)
+
+    const input = await screen.findByLabelText(/Monto mensual/i)
+    expect(input).toBeDefined()
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+    expect(screen.getByText('Este campo es requerido.')).toBeDefined()
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(input.getAttribute('aria-describedby')).toBe('ing_total-error')
+
+    const activeSteps = getActiveSteps({ ...initialAnswers, p1_pesa: 'Otra' })
+    const stepNumber = activeSteps.findIndex((step) => step.id === 'p4') + 1
+
+    expect(posthogCapture).toHaveBeenCalledWith('onboarding_validation_failed', expect.objectContaining({
+      step_id: 'p4',
+      step_number: stepNumber,
+      total_steps: activeSteps.length,
+      step_label: `Paso ${stepNumber} de ${activeSteps.length}: ¿Cuánta plata entra en tu casa en un mes normal, sumando todo?`,
+    }))
+  })
+
+  it('does not let pending server hydration overwrite a local edit', async () => {
+    const user = userEvent.setup()
+    let resolveDraft!: (draft: OnboardingDraft) => void
+    vi.mocked(getOnboardingDraft).mockReturnValue(new Promise((resolve) => {
+      resolveDraft = resolve
+    }) as any)
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Ada')
+    await continueStep(user)
+    await user.click(await screen.findByRole('radio', { name: 'Email' }))
+    await user.type(screen.getByRole('textbox', { name: /^Email/ }), 'ada@example.com')
+    await continueStep(user)
+    const localChoice = await screen.findByRole('radio', { name: /otra/i })
+    await user.click(localChoice)
+
+    resolveDraft(makeDraft({ p1_pesa: 'Gano bien pero no sé a dónde se va la plata' }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect((localChoice as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('formats numeric amounts with Argentine separators but saves a number', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+      answers: { ...initialAnswers, p1_pesa: 'Otra' },
+      stepIndex: 3,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    } as any)
+    render(<OnboardingPage />)
+
+    const input = await screen.findByLabelText(/Monto mensual/i)
+    await user.type(input, '1000000')
+
+    expect(input.getAttribute('value')).toBe('1.000.000')
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+    expect(saveOnboardingDraft).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        answers: expect.objectContaining({ ing_total: 1000000 }),
+      }),
+    }))
+  })
+
+  it('ignores letters in numeric fields and accepts a number afterward', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+      answers: { ...initialAnswers, p1_pesa: 'Otra' },
+      stepIndex: 3,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    } as any)
+    render(<OnboardingPage />)
+
+    const input = await screen.findByLabelText(/Monto mensual/i)
+    await user.type(input, '123')
+    expect((input as HTMLInputElement).value).toBe('123')
+
+    await user.type(input, 'a')
+    expect((input as HTMLInputElement).value).toBe('123')
+
+    await user.type(input, '4')
+    expect((input as HTMLInputElement).value).toBe('1.234')
+  })
+
+  it('ignores letters in repeated numeric fields', async () => {
+    const user = userEvent.setup()
+    const field = {
+      id: 'ingresos_extra',
+      type: 'repeated' as const,
+      label: 'Ingresos extra',
+      itemFields: [{ key: 'monto' as const, type: 'number' as const, label: 'Monto mensual ($)' }],
+    }
+    const onChange = vi.fn()
+    const items = [{ concepto: '', monto: '', desde: '', hasta: '' }]
+    const { rerender } = render(
+      <OnboardingRepeatedItems field={field} value={items} errors={{}} onChange={onChange} />,
+    )
+
+    const input = screen.getByLabelText('Monto mensual ($) 1')
+    await user.type(input, 'a')
+    const lastCall = onChange.mock.lastCall
+    expect(lastCall).toBeDefined()
+    expect(Number.isNaN(lastCall![0][0].monto)).toBe(false)
+
+    rerender(
+      <OnboardingRepeatedItems
+        field={field}
+        value={[{ ...items[0], monto: '' }]}
+        errors={{}}
+        onChange={onChange}
+      />,
+    )
+    await user.click(screen.getByLabelText('Monto mensual ($) 1'))
+    await user.paste('123')
+    expect(onChange).toHaveBeenLastCalledWith([{ ...items[0], monto: 123 }])
+  })
+
+  it('normalizes pasted separators and keeps an empty numeric field empty', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+      answers: { ...initialAnswers, p1_pesa: 'Otra' },
+      stepIndex: 3,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    } as any)
+    render(<OnboardingPage />)
+
+    const input = await screen.findByLabelText(/Monto mensual/i)
+    await user.click(input)
+    await user.paste('1.000.000')
+    expect(input.getAttribute('value')).toBe('1.000.000')
+    await user.clear(input)
+    expect(input.getAttribute('value')).toBe('')
+  })
+
+  it('clears conditional answers when their condition is turned off', async () => {
+    const user = userEvent.setup()
+    setDraft({ p1_pesa: 'Otra', ing_total: 500000, p9_modo: 'Tengo el total en la cabeza' })
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/Total aproximado/i), '1')
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+    await user.click(await screen.findByRole('radio', { name: /^sí$/i }))
+    const amount = (await screen.findAllByLabelText(/cuota mensual/i))[0]!
+    await user.type(amount, '100000')
+    await user.click(screen.getByRole('radio', { name: /^no,/i }))
+    await user.click(screen.getByRole('radio', { name: /^sí$/i }))
+
+    expect((screen.getAllByLabelText(/cuota mensual/i)[0] as HTMLInputElement).value).toBe('')
+  })
+
+  it('saves the completed step before moving forward', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+        answers: { ...initialAnswers, p1_pesa: 'Otra' },
+      stepIndex: 3,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    } as any)
+    render(<OnboardingPage />)
+
+    const input = await screen.findByLabelText(/Monto mensual/i)
+    await user.type(input, '1000000')
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(saveOnboardingDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          answers: expect.objectContaining({
+            ing_total: 1000000,
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('asserts a rejected save displays a retry message and does not render the next step', async () => {
+    const user = userEvent.setup()
+    vi.mocked(saveOnboardingDraft).mockRejectedValueOnce(new Error('Network Error'))
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+        answers: { ...initialAnswers, p1_pesa: 'Otra' },
+      stepIndex: 3,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    } as any)
+    render(<OnboardingPage />)
+
+    const input = await screen.findByLabelText(/Monto mensual/i)
+    await user.type(input, '1000000')
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    // Displays retry/error message
+    expect(await screen.findByText(/error al guardar/i)).toBeDefined()
+    // Does not render the next step
+    expect(screen.queryByLabelText(/Alquiler \/ vivienda/i)).toBeNull()
+  })
+
+  it('renders P1 in Spanish and blocks the required answer', async () => {
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    expect(await screen.findByRole('heading', { name: /qué te está pesando más hoy/i })).toBeDefined()
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+    expect(screen.getByRole('alert').textContent).toContain('Elegí una opción')
+  })
+
+  it('uses fieldset legends and associates group errors with the fieldset', async () => {
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    const group = await screen.findByRole('group', { name: /selecciona una opción/i })
+    expect(group.querySelector('label[for="p1_pesa"]')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    const error = screen.getByText(/elegí una opción/i)
+    expect(group.getAttribute('aria-describedby')).toBe('p1_pesa-error')
+    expect(error.getAttribute('id')).toBe('p1_pesa-error')
+  })
+
+  it('restores from answers instead of reusing a stale filtered-step index', async () => {
+    localStorage.setItem('onboarding-device-id', '6f0a7482-29a0-4c03-a3e1-256add2f91a8')
+    localStorage.setItem('onboarding-draft', JSON.stringify({
+      deviceId: '6f0a7482-29a0-4c03-a3e1-256add2f91a8',
+      answers: { ...initialAnswers, p1_pesa: 'Otra' },
+      stepIndex: 15,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    }))
+
+    render(<OnboardingPage />)
+
+    expect(await screen.findByLabelText(/Monto mensual/i)).toBeDefined()
+  })
+
+  it('shows the statement upload option as enabled', async () => {
+    render(<OnboardingPage />)
+    await advanceToCard(1)
+    expect((screen.getByRole('radio', { name: 'Subir foto o archivo' }) as HTMLInputElement).disabled).toBe(false)
+  })
+
+  it('passes helper text accessibility to the hidden upload input', () => {
+    render(
+      <OnboardingUpload
+        fieldId="t1_upload_url"
+        value={undefined}
+        ariaDescribedBy="t1_upload_url-help"
+        onUpload={async () => undefined}
+      />,
+    )
+
+    expect(screen.getByTestId('onboarding-file-input').getAttribute('aria-describedby'))
+      .toBe('t1_upload_url-help')
+  })
+
+  it('shows P6 after selecting third-party income in P5', async () => {
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    await user.click(await screen.findByRole('radio', { name: /otra/i }))
+    await continueStep(user)
+    await continueStep(user)
+    await continueStep(user)
+    await user.type(screen.getByLabelText(/monto mensual/i), '500000')
+    await continueStep(user)
+
+    await user.click(screen.getByRole('checkbox', { name: /aportes de un tercero/i }))
+    await continueStep(user)
+
+    expect(await screen.findByRole('heading', {
+      name: 'Dijiste que recibís ingresos de un tercero. ¿Puede fallar o atrasarse?',
+    })).toBeDefined()
+  })
+
+  it('renders P9, P11, and P12 rows as independent inputs without a table', async () => {
+    const baseAnswers: OnboardingAnswers = {
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+    }
+    const cases: Array<{ answers: OnboardingAnswers; labels: RegExp[] }> = [
+      {
+        answers: { ...baseAnswers, p9_modo: 'Quiero desglosar' },
+        labels: [/alquiler \/ vivienda/i],
+      },
+      {
+        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000, p11_modo: 'Quiero desglosar' },
+        labels: [/comida \/ súper/i],
+      },
+      {
+        answers: { ...baseAnswers, p9_modo: 'Tengo el total en la cabeza', fijo_total_directo: 100000, p11_modo: 'Tengo el total en la cabeza', var_total_directo: 80000, p12_modo: 'Quiero desglosar' },
+        labels: [/salidas/i, /hobbies \/ actividades propias/i],
+      },
+    ]
+
+    for (const { answers, labels } of cases) {
+      cleanup()
+      localStorage.clear()
+      localStorage.setItem('onboarding-welcome-seen', 'true')
+      setDraft(answers)
+      render(<OnboardingPage />)
+      expect(screen.queryByRole('table')).toBeNull()
+      for (const label of labels) expect(await screen.findByLabelText(label)).toBeDefined()
+    }
+  })
+
+  it('shows P13 decisions only for P12 amounts entered', async () => {
+    const user = userEvent.setup()
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 100000,
+      p11_modo: 'Tengo el total en la cabeza',
+      var_total_directo: 80000,
+      p12_modo: 'Quiero desglosar',
+    })
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/salidas/i), '20000')
+    await continueStep(user)
+    expect(await screen.findByRole('heading', { name: /qué harías con cada gustito/i })).toBeDefined()
+    expect(screen.getByRole('radio', { name: /llevo a cero/i })).toBeDefined()
+    expect(screen.queryByRole('radio', { name: /ropa/i })).toBeNull()
+  })
+
+  it('uses the declared discretionary-other concept in reduction decisions', async () => {
+    const user = userEvent.setup()
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 100000,
+      p11_modo: 'Tengo el total en la cabeza',
+      var_total_directo: 80000,
+      p12_modo: 'Quiero desglosar',
+    })
+    render(<OnboardingPage />)
+
+    await user.click(await screen.findByRole('button', { name: /agregar otro/i }))
+    await user.type(screen.getByLabelText(/concepto 1/i), 'Regalos')
+    await user.type(screen.getByLabelText(/monto \(\$\) 1/i), '5000')
+    await continueStep(user)
+
+    expect(await screen.findByRole('heading', { name: /qué harías con cada gustito/i })).toBeDefined()
+    expect(screen.getByText('Regalos')).toBeDefined()
+    expect(screen.queryByText('Gustito adicional 1')).toBeNull()
+  })
+
+  it('shows P14 purchase inputs only after selecting Sí', async () => {
+    const user = userEvent.setup()
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 100000,
+      p11_modo: 'Tengo el total en la cabeza',
+      var_total_directo: 80000,
+      p12_modo: 'Quiero desglosar',
+    })
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/salidas/i), '20000')
+    await continueStep(user)
+    await continueStep(user)
+    expect(await screen.findByRole('heading', { name: /compras necesarias/i })).toBeDefined()
+    expect(screen.queryByRole('button', { name: /agregar compra/i })).toBeNull()
+    await user.click(screen.getByRole('radio', { name: /^sí$/i }))
+    expect(screen.getByRole('button', { name: /agregar compra/i })).toBeDefined()
+  })
+
+  it('shows optional post-close inputs immediately in the statement upload route', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
+
+    expect(screen.getByLabelText(/cuánto gastaste desde el cierre/i)).toBeDefined()
+    expect(screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toBeDefined()
+    expect(screen.getByLabelText(/subí una captura de los últimos movimientos/i)).toBeDefined()
+    expect(screen.queryByLabelText('¿En cuántas cuotas?')).toBeNull()
+
+    await user.click(within(screen.getByRole('group', {
+      name: '¿Algo de eso fue en cuotas?',
+    })).getByRole('radio', { name: 'Sí' }))
+    expect(screen.getByLabelText('¿En cuántas cuotas?')).toBeDefined()
+  })
+
+  it('keeps all manual card inputs on one screen', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Copiar el renglón mes a mes' }))
+
+    for (const label of [
+      /en pesos/i,
+      /en dólares/i,
+      /^día de cierre$/i,
+      /^día de vencimiento$/i,
+      /después de eso quedan más cuotas/i,
+      /hasta cuando tendrías que pagar/i,
+      /monto impago/i,
+      /a ojo/i,
+      /subí una captura de los últimos movimientos/i,
+    ]) {
+      expect(screen.getByLabelText(label)).toBeDefined()
+    }
+    for (const month of [1, 2, 3, 4, 5, 6]) {
+      expect(screen.getByLabelText(`Mes ${month} ($)`)).toBeDefined()
+    }
+  })
+
+  it('renders postcierre cuotas controls inline after selecting Sí', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Copiar el renglón mes a mes' }))
+
+    expect(screen.getByText('¿Quedó saldo del resumen pasado que no pagaste completo (y la tarjeta te lo está financiando)?')).toBeDefined()
+
+    const cuotasGroup = screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })
+    expect(screen.getByText('Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.')).toBeDefined()
+    expect(screen.queryByText('Elegí en cuántas cuotas se hizo esa compra.')).toBeNull()
+    expect(screen.queryByLabelText('¿En cuántas cuotas?')).toBeNull()
+    await user.click(within(cuotasGroup).getByRole('radio', { name: 'Sí' }))
+
+    const cuotasSelect = screen.getByLabelText('¿En cuántas cuotas?')
+    expect(screen.getByText('Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.')).toBeDefined()
+    expect(screen.getByText('Elegí en cuántas cuotas se hizo esa compra.')).toBeDefined()
+    expect(screen.getAllByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toHaveLength(1)
+    expect(screen.getAllByLabelText('¿En cuántas cuotas?')).toHaveLength(1)
+    expect(Array.from((cuotasSelect as HTMLSelectElement).options).filter((option) => !option.disabled).map((option) => option.value)).toEqual(
+      Array.from({ length: 18 }, (_, index) => String(index + 1)),
+    )
+    const inlineRow = screen.getByTestId('postcierre-cuotas-row')
+    expect(inlineRow.classList.contains('sm:flex-row')).toBe(true)
+    expect(within(inlineRow).getByRole('group', { name: '¿Algo de eso fue en cuotas?' })).toBeDefined()
+    expect(within(inlineRow).getByLabelText('¿En cuántas cuotas?')).toBeDefined()
+  })
+
+  it('renders each card field helper after its associated control', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Copiar el renglón mes a mes' }))
+
+    const cuotasGroup = screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })
+    await user.click(within(cuotasGroup).getByRole('radio', { name: 'Sí' }))
+    const refreshedNumberInput = screen.getByLabelText('En pesos ($)')
+    const refreshedCuotasGroup = screen.getByRole('group', { name: '¿Algo de eso fue en cuotas?' })
+    const cuotasSelect = screen.getByLabelText('¿En cuántas cuotas?')
+
+    for (const [control, helpId] of [
+      [refreshedNumberInput, 't1_resumen_ars-help'],
+      [refreshedCuotasGroup, 't1_postcierre_cuotas-help'],
+      [cuotasSelect, 't1_postcierre_cuotas_cantidad-help'],
+    ] as const) {
+      const help = document.getElementById(helpId)
+      expect(help).not.toBeNull()
+      expect(control.compareDocumentPosition(help!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    }
+  })
+
+  it('continues after the WhatsApp path without card details', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', {
+      name: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+    }))
+    await user.click(screen.getByRole('button', { name: /completar/i }))
+    await screen.findByText(/Cuestionario completado/i)
+
+    expect(saveOnboardingDraft).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        answers: expect.objectContaining({
+          t1_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+        }),
+      }),
+    }))
+  })
+
+  it('starts with the name and report delivery steps, without P21 or P22', () => {
+    const [nameStep, contactStep] = getActiveSteps({})
+
+    expect([nameStep?.id, contactStep?.id]).toEqual(['p0', 'p23'])
+    expect(getActiveSteps({}).map((step) => step.id)).not.toContain('p21')
+    expect(getActiveSteps({}).map((step) => step.id)).not.toContain('p22')
+    expect(validateStep(nameStep, {})).toMatchObject({ nombre: 'Este campo es requerido.' })
+    expect(validateStep(contactStep, {})).toMatchObject({ contacto_canal: 'Este campo es requerido.' })
+    expect(validateStep(contactStep, { contacto_canal: 'WhatsApp' })).toMatchObject({
+      whatsapp: 'Este campo es requerido.',
+    })
+    expect(validateStep(contactStep, { contacto_canal: 'Email' })).toMatchObject({
+      email: 'Este campo es requerido.',
+    })
+  })
+
+  it('collects the name before the report delivery channel', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue(undefined)
+    render(<OnboardingPage />)
+
+    expect(await screen.findByRole('heading', { name: '¿Cómo te llamás?' })).toBeDefined()
+    await user.type(screen.getByLabelText(/^Nombre/), 'Ada')
+    await continueStep(user)
+
+    expect(await screen.findByRole('heading', { name: '¡Un gusto, Ada! ¿A dónde te mandamos tu informe?' })).toBeDefined()
+    expect(screen.queryByRole('heading', { name: /cuánta plata tenés hoy/i })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /debés algo fuera de las tarjetas/i })).toBeNull()
+
+    await user.click(screen.getByRole('radio', { name: 'WhatsApp' }))
+    expect(screen.getByRole('textbox', { name: /^WhatsApp/ })).toBeDefined()
+    expect(screen.queryByRole('textbox', { name: /^Email/ })).toBeNull()
+
+    await user.click(screen.getByRole('radio', { name: 'Email' }))
+    expect(screen.getByRole('textbox', { name: /^Email/ })).toBeDefined()
+    expect(screen.queryByRole('textbox', { name: /^WhatsApp/ })).toBeNull()
+  })
+
+  it('renders the welcome screen when forced', async () => {
+    localStorage.removeItem('onboarding-welcome-seen')
+    localStorage.setItem('onboarding-welcome-force', 'true')
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    expect(await screen.findByRole('heading', { name: /te damos la bienvenida a norte/i })).toBeDefined()
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+    expect(await screen.findByRole('heading', { name: /qué te está pesando más hoy/i })).toBeDefined()
+  })
+
+  it('personalizes only the selected delivery, income, and fixed-expense copy', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue(undefined)
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Ana')
+    await continueStep(user)
+    expect(await screen.findByRole('heading', {
+      name: '¡Un gusto, Ana! ¿A dónde te mandamos tu informe?',
+    })).toBeDefined()
+
+    cleanup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({ nombre: 'Ana', p1_pesa: 'Otra' })
+    render(<OnboardingPage />)
+    expect(await screen.findByText('Ana, un número redondo está perfecto, no hace falta precisión.')).toBeDefined()
+
+    cleanup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({ nombre: 'Ana', p1_pesa: 'Otra', ing_total: 500000 })
+    render(<OnboardingPage />)
+    expect(await screen.findByText(/Ana, vamos a lo que pagás sí o sí todos los meses/)).toBeDefined()
+  })
+
+  it('does not prepend the name to an ordinary step intro', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getOnboardingDraft).mockResolvedValue(undefined)
+    render(<OnboardingPage />)
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Ana')
+    await continueStep(user)
+    await user.click(await screen.findByRole('radio', { name: 'Email' }))
+    await user.type(screen.getByRole('textbox', { name: /^Email/ }), 'ana@example.com')
+    await continueStep(user)
+    await user.click(await screen.findByRole('radio', { name: /otra/i }))
+    await continueStep(user)
+
+    expect(await screen.findByText('Elegí una opción')).toBeDefined()
+    expect(screen.queryByText('Ana, Elegí una opción')).toBeNull()
+  })
+
+  it('personalizes completion copy from the saved name', async () => {
+    localStorage.setItem('onboarding-device-id', deviceId)
+    localStorage.setItem('onboarding-draft', JSON.stringify({
+      deviceId,
+      answers: { nombre: 'Ana' },
+      stepIndex: 0,
+      completed: true,
+      updatedAt: new Date().toISOString(),
+    }))
+
+    render(<OnboardingPage />)
+
+    expect(await screen.findByText(/Gracias, Ana/)).toBeDefined()
+  })
+
+  it('keeps the welcome and step title copy unchanged', async () => {
+    localStorage.removeItem('onboarding-welcome-seen')
+    localStorage.setItem('onboarding-welcome-force', 'true')
+    const user = userEvent.setup()
+    render(<OnboardingPage />)
+
+    expect(await screen.findByRole('heading', { name: /te damos la bienvenida a norte/i })).toBeDefined()
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(await screen.findByRole('heading', { name: /qué te está pesando más hoy/i })).toBeDefined()
+  })
+
+  it('requires the uploaded statement key when the upload mode is selected', () => {
+    expect(validateStep({
+      id: 't1_p16', title: '', fields: [],
+    }, {
+      t1_cuotas_modo: 'Subir foto o archivo',
+    })).toMatchObject({ t1_upload_url: 'Subí el resumen para continuar.' })
+  })
+
+  it('accepts the upload mode when an opaque statement key exists', () => {
+    expect(validateStep({
+      id: 't1_p16', title: '', fields: [],
+    }, {
+      t1_cuotas_modo: 'Subir foto o archivo',
+      t1_upload_url: 'onboarding/device/t1_upload_url/object',
+    })).toEqual({})
+  })
+
+  it('displays validation error for a rejected oversized file and does not call createOnboardingUpload', async () => {
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
+
+    const file = new File(['a'.repeat(5 * 1024 * 1024 + 1)], 'resumen.pdf', { type: 'application/pdf' })
+    const fileInput = screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' })
+    await user.upload(fileInput, file)
+
+    expect(screen.getByText('El archivo no puede superar 5 MB.')).toBeDefined()
+    expect(vi.mocked(createOnboardingUpload)).not.toHaveBeenCalled()
+  })
+
+  it('successfully uploads statement PDF, persists key, and handles replacement safely', async () => {
+    const mockXHR = {
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+      upload: {} as any,
+      status: 200,
+      onload: null as any,
+    }
+
+    mockXHR.send.mockImplementation(() => {
+      if (mockXHR.upload.onprogress) {
+        mockXHR.upload.onprogress({ lengthComputable: true, loaded: 100, total: 100 })
+      }
+      if (mockXHR.onload) {
+        mockXHR.onload()
+      }
+    })
+
+    function MockXMLHttpRequest() {
+      return mockXHR
+    }
+
+    vi.stubGlobal('XMLHttpRequest', MockXMLHttpRequest)
+
+    let uploadCount = 0
+    vi.mocked(createOnboardingUpload).mockImplementation(async () => {
+      uploadCount++
+      return {
+        key: `mock-key-${uploadCount}`,
+        url: `https://mock-url-${uploadCount}.com`,
+      }
+    })
+
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
+
+    // First upload
+    const file1 = new File(['a'], 'resumen1.pdf', { type: 'application/pdf' })
+    const fileInput = screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' })
+    await user.upload(fileInput, file1)
+
+    // Verify first upload requested signed URL and saved draft
+    expect(createOnboardingUpload).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        fieldId: 't1_upload_url',
+        contentType: 'application/pdf',
+      })
+    }))
+    expect(screen.getByText('resumen1.pdf')).toBeDefined()
+    expect(saveOnboardingDraft).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        answers: expect.objectContaining({
+          t1_upload_url: 'mock-key-1',
+        })
+      })
+    }))
+
+    // Second upload (Replacement)
+    const replaceButton = screen.getByRole('button', { name: /reemplazar/i })
+    expect(replaceButton).toBeDefined()
+
+    const file2 = new File(['b'], 'resumen2.pdf', { type: 'application/pdf' })
+    await user.upload(fileInput, file2)
+
+    // Verify second upload requested signed URL and saved draft with mock-key-2
+    expect(createOnboardingUpload).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        fieldId: 't1_upload_url',
+        contentType: 'application/pdf',
+      })
+    }))
+    expect(screen.getByText('resumen2.pdf')).toBeDefined()
+    expect(saveOnboardingDraft).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        answers: expect.objectContaining({
+          t1_upload_url: 'mock-key-2',
+        })
+      })
+    }))
+
+    // Verify delete was called on mock-key-1
+    expect(deleteOnboardingUpload).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        key: 'mock-key-1',
+      })
+    }))
+
+    // Verify delete occurred AFTER the new key (mock-key-2) was persisted
+    const saveOrder = vi.mocked(saveOnboardingDraft).mock.invocationCallOrder
+    const deleteOrder = vi.mocked(deleteOnboardingUpload).mock.invocationCallOrder
+    const lastSaveInvocation = saveOrder[saveOrder.length - 1]
+    const firstDeleteInvocation = deleteOrder[0]
+    expect(lastSaveInvocation).toBeLessThan(firstDeleteInvocation)
+
+    // Verify the user can continue
+    const continueBtn = screen.getByRole('button', { name: /continuar|completar/i }) as HTMLButtonElement
+    expect(continueBtn.disabled).toBe(false)
+    await user.click(continueBtn)
+    await screen.findByText(/Cuestionario completado/i)
+  })
+
+  it('renders "Archivo subido" when a key is already persisted and allows replacement', async () => {
+    cleanup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 1,
+      p11_modo: 'Tengo el total en la cabeza',
+      var_total_directo: 1,
+      p12_modo: 'Quiero desglosar',
+      d_salidas: 1,
+      p15_tarjetas: 1,
+      t1_cuotas_modo: 'Subir foto o archivo',
+      t1_upload_url: 'existing-key-from-backend',
+    })
+    render(<OnboardingPage />)
+
+    await screen.findByRole('heading', { name: /Tarjeta 1/i })
+
+    expect(screen.getByText('Archivo subido')).toBeDefined()
+    expect(screen.getByRole('button', { name: /reemplazar/i })).toBeDefined()
+  })
+
+  it('does not update local state or storage if saveOnboardingDraft fails during file upload', async () => {
+    const mockXHR = {
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+      upload: {} as any,
+      status: 200,
+      onload: null as any,
+    }
+
+    mockXHR.send.mockImplementation(() => {
+      if (mockXHR.upload.onprogress) {
+        mockXHR.upload.onprogress({ lengthComputable: true, loaded: 100, total: 100 })
+      }
+      if (mockXHR.onload) {
+        mockXHR.onload()
+      }
+    })
+
+    function MockXMLHttpRequest() {
+      return mockXHR
+    }
+
+    vi.stubGlobal('XMLHttpRequest', MockXMLHttpRequest)
+
+    vi.mocked(createOnboardingUpload).mockResolvedValue({
+      key: 'should-not-persist-key',
+      url: 'https://mock-url.com',
+    })
+
+    // Mock saveOnboardingDraft to reject/fail
+    vi.mocked(saveOnboardingDraft).mockRejectedValue(new Error('Draft Save Failed'))
+
+    const user = userEvent.setup()
+    await advanceToCard(1)
+    await user.click(screen.getByRole('radio', { name: 'Subir foto o archivo' }))
+
+    const file = new File(['a'], 'resumen.pdf', { type: 'application/pdf' })
+    const fileInput = screen.getByLabelText('Subir foto o archivo', { selector: 'input[type="file"]' })
+    
+    // Upload the file
+    await user.upload(fileInput, file)
+
+    // Confirm that error message is displayed
+    await screen.findByText('Error al subir el archivo. Intentá de nuevo.')
+
+    // Confirm that the UI does NOT show "Archivo subido"
+    expect(screen.queryByText('Archivo subido')).toBeNull()
+
+    // Confirm that the local draft does NOT have 'should-not-persist-key'
+    const local = localStorage.getItem('onboarding-draft')
+    if (local) {
+      const parsed = JSON.parse(local)
+      expect(parsed.answers.t1_upload_url).toBeUndefined()
+    }
+  })
+
+  it('adopts a valid invitado query parameter before loading its draft', async () => {
+    window.history.replaceState({}, '', '/onboarding?invitado=c2446e70-8555-44dc-a428-cb1185c8d4b3')
+    vi.mocked(getOnboardingDraft).mockResolvedValue({
+      ...makeDraft({ nombre: 'Invitada' }),
+      deviceId: 'c2446e70-8555-44dc-a428-cb1185c8d4b3',
+    })
+
+    render(<OnboardingPage />)
+
+    await screen.findByDisplayValue('Invitada')
+    expect(localStorage.getItem('onboarding-device-id')).toBe('c2446e70-8555-44dc-a428-cb1185c8d4b3')
+    expect(getOnboardingDraft).toHaveBeenCalledWith({ data: { deviceId: 'c2446e70-8555-44dc-a428-cb1185c8d4b3' } })
+  })
+
+  it('shows the expense classifier before fixed payments and returns to it', async () => {
+    const user = userEvent.setup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+    })
+    render(<OnboardingPage />)
+
+    await screen.findByRole('heading', { name: /lo que pagás sí o sí/i })
+    await user.click(screen.getByRole('button', { name: /volver/i }))
+
+    expect(await screen.findByRole('heading', { name: 'Ahora vamos a los gastos' })).toBeDefined()
+    expect(screen.getByText(/Los vamos a mirar en tres grupos/)).toBeDefined()
+    expect(screen.getByText('Pagos fijos')).toBeDefined()
+    expect(screen.getByText('Gastos necesarios')).toBeDefined()
+    expect(screen.getByText('Gustitos')).toBeDefined()
+    expect(screen.queryByLabelText(/total aproximado/i)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+    expect(await screen.findByRole('heading', { name: /lo que pagás sí o sí/i })).toBeDefined()
+  })
+
+  it('allows managing dynamic planned purchases in p14', async () => {
+    const user = userEvent.setup()
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p9_modo: 'Tengo el total en la cabeza',
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Tengo el total en la cabeza',
+      var_total_directo: 100000,
+      p12_modo: 'Quiero desglosar',
+    })
+    render(<OnboardingPage />)
+    await user.type(await screen.findByLabelText(/salidas/i), '100000')
+    await continueStep(user)
+    await screen.findByRole('heading', { name: /qué harías con cada gustito/i })
+    await continueStep(user)
+
+    await user.click(screen.getByRole('radio', { name: /^sí$/i }))
+    await user.click(screen.getByRole('button', { name: /agregar compra/i }))
+    expect(screen.getByLabelText(/^Concepto 1/i)).toBeDefined()
+    expect(screen.getByLabelText(/^Monto \(\$\) 1/i)).toBeDefined()
+    expect(screen.getByLabelText(/^Fecha 1/i)).toBeDefined()
+    await user.selectOptions(screen.getByLabelText(/^Fecha 1/i), 'oct-27')
+    await user.type(screen.getByLabelText(/^Concepto 1/i), 'Auto')
+    await user.click(screen.getByRole('button', { name: /Eliminar Auto/i }))
+    expect(screen.queryByLabelText(/^Concepto 1/i)).toBeNull()
+
+    for (let index = 1; index <= 5; index++) {
+      await user.click(screen.getByRole('button', { name: /agregar compra/i }))
+      expect(screen.getByLabelText(new RegExp(`^Concepto ${index}`))).toBeDefined()
+    }
+    expect(screen.queryByRole('button', { name: /agregar compra/i })).toBeNull()
+  })
+
+  async function renderFixedExpenses(answers: OnboardingAnswers = {}) {
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+      ...answers,
+    })
+    render(<OnboardingPage />)
+    await screen.findByRole('heading', { name: /Lo que pagás sí o sí/i })
+  }
+
+  it('adds up to five named fixed others without income labels', async () => {
+    const user = userEvent.setup()
+    await renderFixedExpenses()
+    await user.click(screen.getByRole('radio', { name: 'Quiero desglosar' }))
+    await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+    await user.type(screen.getByLabelText(/^Concepto 1/), 'Niñera')
+
+    expect(screen.queryByText(/Ingreso #1/i)).toBeNull()
+    expect(screen.getByText('Niñera')).toBeDefined()
+
+    for (let index = 2; index <= 5; index++) {
+      await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+    }
+    expect(screen.getAllByLabelText(/Concepto/)).toHaveLength(5)
+    expect(screen.queryByRole('button', { name: /agregar otro/i })).toBeNull()
+  })
+
+  async function renderDailyExpenses(answers: OnboardingAnswers = {}) {
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Quiero desglosar',
+      ...answers,
+    })
+    render(<OnboardingPage />)
+    await screen.findByRole('heading', { name: /La vida de todos los días/i })
+  }
+
+  it('adds up to five daily expense others with Concepto 1 to 5 labels', async () => {
+    const user = userEvent.setup()
+    await renderDailyExpenses()
+    for (let index = 1; index <= 5; index++) {
+      await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+      expect(screen.getByLabelText(new RegExp(`^Concepto ${index}`))).toBeDefined()
+    }
+    expect(screen.getAllByLabelText(/^Concepto /)).toHaveLength(5)
+    expect(screen.queryByRole('button', { name: /agregar otro/i })).toBeNull()
+  })
+
+  async function renderGustitos(answers: OnboardingAnswers = {}) {
+    localStorage.clear()
+    localStorage.setItem('onboarding-welcome-seen', 'true')
+    setDraft({
+      p1_pesa: 'Otra',
+      ing_total: 500000,
+      p8a_tiene_vencimiento: 'No',
+      extra_tiene: 'No',
+      p9_modo: 'Tengo el total en la cabeza',
+      fijo_total_directo: 100000,
+      p10_tiene_vencimiento: 'No, si pienso en el próximo año, todos son permanentes: van a estar ahí mes a mes.',
+      p11_modo: 'Tengo el total en la cabeza',
+      var_total_directo: 100000,
+      p12_modo: 'Quiero desglosar',
+      ...answers,
+    })
+    render(<OnboardingPage />)
+    await screen.findByRole('heading', { name: /Los gustitos/i })
+  }
+
+  it('adds up to five gustito others with Concepto 1 to 5 labels', async () => {
+    const user = userEvent.setup()
+    await renderGustitos()
+    for (let index = 1; index <= 5; index++) {
+      await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+      expect(screen.getByLabelText(new RegExp(`^Concepto ${index}`))).toBeDefined()
+    }
+    expect(screen.getAllByLabelText(/^Concepto /)).toHaveLength(5)
+    expect(screen.queryByRole('button', { name: /agregar otro/i })).toBeNull()
+  })
+
+  it('updates the detailed fixed-expense total as amounts are entered', async () => {
+    const user = userEvent.setup()
+    await renderFixedExpenses()
+    await user.click(screen.getByRole('radio', { name: 'Quiero desglosar' }))
+    await user.type(screen.getByLabelText(/Alquiler/i), '100000')
+    await user.click(screen.getByRole('button', { name: /agregar otro/i }))
+    await user.type(screen.getByLabelText(/Monto \(\$\) 1/), '200000')
+
+    expect(screen.getByText('Total acumulado: $300.000')).toBeDefined()
+  })
+
+  it('includes finite numeric strings from a persisted fixed-expense draft', async () => {
+    await renderFixedExpenses({
+      p9_modo: 'Quiero desglosar',
+      fijo_alquiler: '100000',
+      fijo_prepaga: Infinity,
+      fijo_otros: [
+        { concepto: 'Expensas', monto: '200000', desde: '', hasta: '' },
+        { concepto: 'Inválido', monto: 'no es un número', desde: '', hasta: '' },
+      ],
+    })
+
+    expect(screen.getByText('Total acumulado: $300.000')).toBeDefined()
+  })
+
+  it('renders every onboarding help text at the larger size', () => {
+    render(
+      <OnboardingRepeatedItems
+        field={{
+          id: 'extra_ingresos',
+          type: 'repeated',
+          label: 'Ingresos extra',
+          itemFields: [{
+            key: 'desde',
+            type: 'month',
+            label: 'Desde',
+            helpText: 'Elegí el mes de inicio.',
+          }],
+        }}
+        value={[{ concepto: '', monto: '', desde: '', hasta: '' }]}
+        errors={{}}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Elegí el mes de inicio.').className).toContain('text-base')
+  })
+
+  it('shows only positive fixed others with their original expiry row', async () => {
+    render(
+      <OnboardingRepeatedItems
+        field={{
+          id: 'fijo_otros',
+          type: 'repeated',
+          label: 'Vencimientos de otros gastos',
+          itemTitleKey: 'concepto',
+          itemTitlePrefix: '¿Cuándo termina',
+          itemVisibleWhen: ({ monto }) => typeof monto === 'number' && monto > 0,
+          allowAdd: false,
+          allowRemove: false,
+          itemFields: [{ key: 'hasta', type: 'month', label: '¿Cuándo termina?' }],
+        }}
+        value={[
+          { concepto: 'Niñera', monto: 0, desde: '', hasta: '' },
+          { concepto: 'Expensas', monto: 25000, desde: '', hasta: '' },
+        ]}
+        errors={{}}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText(/¿Cuándo termina\? 2/)).toBeDefined()
+    expect(screen.getByText('¿Cuándo termina Expensas?')).toBeDefined()
+    expect(screen.queryByText('¿Cuándo termina Niñera?')).toBeNull()
+  })
+
+  it('renders repeated item helpers after their controls', () => {
+    render(
+      <OnboardingRepeatedItems
+        field={{
+          id: 'extra_ingresos',
+          type: 'repeated',
+          label: 'Ingresos extra',
+          itemFields: [{
+            key: 'desde',
+            type: 'month',
+            label: 'Desde',
+            helpText: 'Elegí el mes de inicio.',
+          }],
+        }}
+        value={[{ concepto: '', monto: '', desde: '', hasta: '' }]}
+        errors={{}}
+        onChange={vi.fn()}
+      />,
+    )
+
+    const control = screen.getByLabelText('Desde 1')
+    const help = screen.getByText('Elegí el mes de inicio.')
+    expect(control.getAttribute('aria-describedby')).toBe('extra_ingresos-0-desde-help')
+    expect(control.compareDocumentPosition(help)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+})

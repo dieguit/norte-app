@@ -11,8 +11,8 @@ The wizard has completed a full PostHog integration for **Norte** — a financia
 | `src/routes/__root.tsx` | Wrapped app in `PostHogProvider` with token, host, and exception capture enabled |
 | `src/utils/posthog-server.ts` | **Created** — singleton `posthog-node` client for server-side event capture |
 | `src/routes/onboarding.tsx` | Added `usePostHog()`, `posthog.identify(deviceId)`, and 5 capture calls |
-| `src/components/onboarding-upload.tsx` | Added `usePostHog()` and 2 capture calls for file upload success/failure |
-| `src/onboarding/server.ts` | Added server-side capture for draft saves and upload URL creation |
+| `src/routes/onboarding/-components/onboarding-upload.tsx` | Added `usePostHog()` and 2 capture calls for file upload success/failure |
+| `src/features/onboarding/onboarding.server.ts` | Added server-side capture for draft saves and upload URL creation |
 
 ## Events instrumented
 
@@ -24,10 +24,10 @@ The wizard has completed a full PostHog integration for **Norte** — a financia
 | `onboarding_completed` | User completes the full financial onboarding questionnaire (primary conversion event) | `src/routes/onboarding.tsx` |
 | `onboarding_validation_failed` | Validation errors prevented the user from advancing past a step | `src/routes/onboarding.tsx` |
 | `onboarding_save_failed` | Saving the onboarding draft to the server failed | `src/routes/onboarding.tsx` |
-| `file_upload_completed` | User successfully uploaded a credit card statement photo or PDF | `src/components/onboarding-upload.tsx` |
-| `file_upload_failed` | File upload to R2 failed after the presigned URL was obtained | `src/components/onboarding-upload.tsx` |
-| `onboarding_draft_saved` | Server persisted the onboarding draft (with completed flag) | `src/onboarding/server.ts` |
-| `onboarding_upload_created` | Server generated a presigned R2 URL for a credit card statement upload | `src/onboarding/server.ts` |
+| `file_upload_completed` | User successfully uploaded a credit card statement photo or PDF | `src/routes/onboarding/-components/onboarding-upload.tsx` |
+| `file_upload_failed` | File upload to R2 failed after the presigned URL was obtained | `src/routes/onboarding/-components/onboarding-upload.tsx` |
+| `onboarding_draft_saved` | Server persisted the onboarding draft (with completed flag) | `src/features/onboarding/onboarding.server.ts` |
+| `onboarding_upload_created` | Server generated a presigned R2 URL for a credit card statement upload | `src/features/onboarding/onboarding.server.ts` |
 
 ## Next steps
 

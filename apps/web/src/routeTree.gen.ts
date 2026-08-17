@@ -13,7 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as InformeDeviceIdRouteImport } from './routes/informe/$deviceId'
+import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$deviceId/route'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -36,7 +36,7 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const InformeDeviceIdRoute = InformeDeviceIdRouteImport.update({
+const InformeDeviceIdRouteRoute = InformeDeviceIdRouteRouteImport.update({
   id: '/informe/$deviceId',
   path: '/informe/$deviceId',
   getParentRoute: () => rootRouteImport,
@@ -51,14 +51,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
   '/onboarding': typeof OnboardingRoute
-  '/informe/$deviceId': typeof InformeDeviceIdRoute
+  '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
-  '/informe/$deviceId': typeof InformeDeviceIdRoute
+  '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app': typeof AppIndexRoute
 }
@@ -67,7 +67,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
   '/onboarding': typeof OnboardingRoute
-  '/informe/$deviceId': typeof InformeDeviceIdRoute
+  '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
 }
@@ -91,7 +91,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
-  InformeDeviceIdRoute: typeof InformeDeviceIdRoute
+  InformeDeviceIdRouteRoute: typeof InformeDeviceIdRouteRoute
   SignInSplatRoute: typeof SignInSplatRoute
 }
 
@@ -129,7 +129,7 @@ declare module '@tanstack/react-router' {
       id: '/informe/$deviceId'
       path: '/informe/$deviceId'
       fullPath: '/informe/$deviceId'
-      preLoaderRoute: typeof InformeDeviceIdRouteImport
+      preLoaderRoute: typeof InformeDeviceIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in/$': {
@@ -158,7 +158,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
-  InformeDeviceIdRoute: InformeDeviceIdRoute,
+  InformeDeviceIdRouteRoute: InformeDeviceIdRouteRoute,
   SignInSplatRoute: SignInSplatRoute,
 }
 export const routeTree = rootRouteImport
