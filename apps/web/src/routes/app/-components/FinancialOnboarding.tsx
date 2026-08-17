@@ -106,13 +106,13 @@ export function FinancialOnboarding() {
             {step === 4 && 'Paso 4: Aporte planificado'}
           </span>
         </div>
-        <div className="mt-2 flex h-1.5 w-full gap-2 overflow-hidden rounded-full bg-[var(--surface-strong)]">
+        <div className="mx-auto mt-2 flex h-1.5 w-36 gap-2 overflow-hidden rounded-full">
           {[1, 2, 3, 4].map((s) => (
             <div
               key={s}
               aria-current={s === step ? 'step' : undefined}
               className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                s <= step ? 'bg-[var(--palm)]' : 'bg-transparent'
+                s <= step ? 'bg-[var(--palm)]' : 'bg-[var(--line)]'
               }`}
             />
           ))}
