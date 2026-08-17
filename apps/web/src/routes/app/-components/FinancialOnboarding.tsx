@@ -97,7 +97,7 @@ export function FinancialOnboarding() {
     >
       {/* Progress */}
       <nav aria-label="Progreso del perfil financiero" className={`${step === 1 ? 'mb-4' : 'mb-8'} sm:mb-8`}>
-        <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
+        <div className="flex items-center justify-center text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
           <span>Paso {step} de 4</span>
           <span className="sr-only">
             {step === 1 && 'Paso 1: Objetivo inicial'}
