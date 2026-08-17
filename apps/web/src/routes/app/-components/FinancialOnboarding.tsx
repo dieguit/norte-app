@@ -167,7 +167,7 @@ export function FinancialOnboarding() {
                       <Badge
                         id="emergency-fund-recommendation"
                         variant="outline"
-                        className="border-[var(--line)] bg-[var(--foam)] text-[var(--sea-ink-soft)]"
+                        className="h-4 border-[var(--line)] bg-[var(--foam)] px-1.5 text-[10px] text-[var(--sea-ink-soft)]"
                       >
                         Recomendado
                       </Badge>
