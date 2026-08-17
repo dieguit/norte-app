@@ -46,10 +46,10 @@ describe('FinancialOnboarding component', () => {
     expect(screen.getByText('Recomendado')).toBeVisible()
     expect(screen.getByText('Por qué lo recomendamos')).toBeVisible()
     expect(
-      screen.getByText(
+      screen.getAllByText(
         'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
       ),
-    ).toBeInTheDocument()
+    ).toHaveLength(2)
 
     const emergencyRadio = screen.getByRole('radio', { name: 'Colchón financiero' })
     expect(emergencyRadio).toBeChecked()
@@ -73,9 +73,9 @@ describe('FinancialOnboarding component', () => {
     const user = userEvent.setup()
     render(<FinancialOnboarding />)
 
-    const description = screen.getByText(
+    const description = screen.getAllByText(
       'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
-    ).closest('details')
+    )[0]?.closest('details')
     const summary = screen.getByText('Por qué lo recomendamos')
 
     expect(description).not.toBeNull()
@@ -85,9 +85,9 @@ describe('FinancialOnboarding component', () => {
 
     expect(description).toHaveAttribute('open', '')
     expect(
-      screen.getByText(
+      screen.getAllByText(
         'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.',
-      ),
+      )[0],
     ).toBeVisible()
   })
 

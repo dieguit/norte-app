@@ -7,6 +7,9 @@ import { completeInitialPlan } from '../../../features/financial/financial.funct
 
 type GoalKind = 'emergency_fund' | 'fixed_savings' | 'car'
 
+const emergencyFundExplanation =
+  'Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.'
+
 export function FinancialOnboarding() {
   const router = useRouter()
 
@@ -179,15 +182,18 @@ export function FinancialOnboarding() {
                 </label>
                 <details
                   id="emergency-fund-description"
-                  className="ml-6 text-xs text-[var(--sea-ink-soft)] [&:not([open])>p]:hidden sm:ml-7 sm:[&:not([open])>p]:block"
+                  className="ml-6 text-xs text-[var(--sea-ink-soft)] sm:hidden"
                 >
                   <summary className="flex min-h-11 w-full cursor-pointer list-none items-center font-medium underline decoration-[var(--line)] underline-offset-2 sm:hidden">
                     Por qué lo recomendamos
                   </summary>
                   <p>
-                    Si no tenés un fondo emergencia todavía, recomendamos empezar por acá. Un fondo de emergencia equivale a 6 meses de gastos, útil para estar seguro ante cualquier eventualidad.
+                    {emergencyFundExplanation}
                   </p>
                 </details>
+                <p aria-hidden="true" className="hidden ml-7 text-xs text-[var(--sea-ink-soft)] sm:block">
+                  {emergencyFundExplanation}
+                </p>
               </div>
 
               <label
