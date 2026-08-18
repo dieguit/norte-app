@@ -29,7 +29,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </head>
         <body className="font-sans antialiased [overflow-wrap:anywhere]">
           {children}
-          <Toaster richColors position="top-right" />
+          <Toaster richColors position="top-right" duration={2000} />
           <TanStackDevtools
             config={{ position: "bottom-right" }}
             plugins={[
