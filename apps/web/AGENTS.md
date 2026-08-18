@@ -50,7 +50,7 @@ rtk pip list            rtk pnpm install        rtk npm run <script>
 - For debugging, use raw command without rtk prefix
 - `rtk proxy <cmd>` runs command without filtering but tracks usage
 - When doing frontend (react ui) work, use /impeccable skill, and /impeccable review when reviewing
-- When doing frontend (react ui) work, use review results with playwright mcp
+- When doing frontend (react ui) work, use review results with playwright mcp. Always cleanup logs and artifact images after.
 - When reviewing work, always run /ponytail-review and /code-review skills
 - Minimize the use of useless comments, only add comments explaining domain decisions.
 
