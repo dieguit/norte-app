@@ -1,8 +1,17 @@
 import { useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import BigNumber from 'bignumber.js'
 import { Badge } from '@/components/ui/badge'
-import { formatMoneyInput, isPositiveMoney, parseMoneyInput } from '../../../lib/money'
+import {
+  compareMoney,
+  createMoney,
+  formatMoneyInput,
+  isPositiveMoney,
+  multiplyMoneyByFactor,
+  parseMoneyInput,
+} from '../../../lib/money'
+import { formatMoney } from '../../../lib/format'
 import { completeInitialPlan } from '../../../features/financial/financial.functions'
 
 type GoalKind = 'emergency_fund' | 'fixed_savings' | 'car'
@@ -16,11 +25,26 @@ export function FinancialOnboarding() {
   const [income, setIncome] = useState('')
   const [expensesKnowledge, setExpensesKnowledge] = useState<'known' | 'unknown'>('known')
   const [expenses, setExpenses] = useState('')
-  const [plannedContribution, setPlannedContribution] = useState('')
+  const [savingsPercentageInput, setSavingsPercentageInput] = useState('50')
 
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+
+  const parsedIncome = parseMoneyInput(income, 'ARS')
+  const parsedExpenses = expensesKnowledge === 'known' ? parseMoneyInput(expenses, 'ARS') : null
+  const savingsPercentage = Number(savingsPercentageInput)
+  const hasValidSavingsPercentage =
+    Number.isInteger(savingsPercentage) && savingsPercentage >= 1 && savingsPercentage <= 100
+  const hasPositiveSavingsCapacity =
+    parsedIncome && parsedExpenses && compareMoney(parsedIncome, parsedExpenses) > 0
+  const savingsCapacity = parsedIncome && parsedExpenses
+    ? createMoney(new BigNumber(parsedIncome.amount).minus(parsedExpenses.amount), 'ARS')
+    : null
+  const contributionBase = hasPositiveSavingsCapacity ? savingsCapacity : parsedIncome
+  const plannedContribution = contributionBase && hasValidSavingsPercentage
+    ? multiplyMoneyByFactor(contributionBase, savingsPercentage / 100)
+    : null
 
   const handleNextStep1 = () => {
     setError(null)
@@ -53,6 +77,13 @@ export function FinancialOnboarding() {
         return
       }
     }
+
+    const currentIncome = parseMoneyInput(income, 'ARS')
+    const currentExpenses = expensesKnowledge === 'known' ? parseMoneyInput(expenses, 'ARS') : null
+    const hasPositiveCapacity =
+      currentIncome && currentExpenses ? compareMoney(currentIncome, currentExpenses) > 0 : false
+
+    setSavingsPercentageInput(hasPositiveCapacity ? '50' : '5')
     setStep(4)
   }
 
@@ -60,9 +91,12 @@ export function FinancialOnboarding() {
     setError(null)
     setServerError(null)
 
-    const parsedContribution = parseMoneyInput(plannedContribution, 'ARS')
-    if (!parsedContribution || !isPositiveMoney(parsedContribution)) {
-      setError('Ingresá un aporte mensual mayor a cero.')
+    if (!hasValidSavingsPercentage) {
+      setError('Ingresá un porcentaje entre 1% y 100%.')
+      return
+    }
+    if (!plannedContribution) {
+      setError('No pudimos calcular tu aporte mensual. Volvé a revisar tus ingresos.')
       return
     }
 
@@ -74,7 +108,7 @@ export function FinancialOnboarding() {
           income,
           expensesKnowledge,
           expenses: expensesKnowledge === 'known' ? expenses : '',
-          plannedContribution,
+          plannedContribution: plannedContribution.amount,
           fixedTarget: goalKind === 'emergency_fund' ? '' : fixedTarget,
         },
       })
@@ -402,7 +436,7 @@ export function FinancialOnboarding() {
                 }}
                 className="h-4 w-4 rounded border-[var(--line)] text-[var(--palm)] focus:ring-[var(--palm)]"
               />
-              <span className="text-sm font-medium text-[var(--sea-ink)]">No sé todavía</span>
+              <span className="text-sm font-medium text-[var(--sea-ink)]">No sé / Gasto todo lo que ingresa</span>
             </label>
 
             {error && (
@@ -444,28 +478,79 @@ export function FinancialOnboarding() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="plannedContribution" className="text-sm font-semibold text-[var(--sea-ink)]">
-                Aporte mensual planificado
+            <div className="flex flex-col gap-2 rounded-xl border border-[var(--line)] bg-[var(--foam)]/40 p-4">
+              {parsedIncome && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--sea-ink-soft)]">Ingresos</span>
+                  <span className="font-medium text-[var(--sea-ink)]">{formatMoney(parsedIncome)}</span>
+                </div>
+              )}
+              {parsedExpenses && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--sea-ink-soft)]">Gastos</span>
+                  <span className="font-medium text-[var(--sea-ink)]">{formatMoney(parsedExpenses)}</span>
+                </div>
+              )}
+              {savingsCapacity && (
+                <div className="flex items-center justify-between border-t border-[var(--line)] pt-2 text-sm">
+                  <span className="font-semibold text-[var(--sea-ink)]">Capacidad de ahorro</span>
+                  <span className="font-semibold text-[var(--sea-ink)]">{formatMoney(savingsCapacity)}</span>
+                </div>
+              )}
+            </div>
+
+            {!hasPositiveSavingsCapacity && (
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--foam)] p-3.5 text-xs leading-relaxed text-[var(--sea-ink-soft)] sm:text-sm">
+                Tus gastos están muy cerca (o superan) tus ingresos. Vamos a empezar con un 5% de ahorro, y no te preocupes, con nuestra ayuda seguro podes ahorrar!
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <label htmlFor="savingsPercentage" className="text-sm font-semibold text-[var(--sea-ink)]">
+                Porcentaje de tu capacidad de ahorro
               </label>
               <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-[var(--sea-ink-soft)]">
-                  $
-                </span>
                 <input
-                  id="plannedContribution"
-                  type="text"
-                  inputMode="decimal"
-                  value={plannedContribution}
-                  onChange={(e) => {
-                    setPlannedContribution(formatMoneyInput(e.target.value))
+                  id="savingsPercentage"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  max="100"
+                  step="1"
+                  value={savingsPercentageInput}
+                  onChange={(event) => {
+                    setSavingsPercentageInput(event.target.value)
                     setError(null)
                     setServerError(null)
                   }}
-                  placeholder="Ej: 50.000"
-                  className="w-full rounded-xl border border-[var(--line)] bg-white/80 py-2.5 pl-8 pr-4 text-sm text-[var(--sea-ink)] placeholder:text-[var(--sea-ink-soft)]/50 focus:border-[var(--palm)] focus:outline-none focus:ring-1 focus:ring-[var(--palm)]"
+                  className="w-full rounded-xl border border-[var(--line)] bg-white/80 py-2.5 pl-4 pr-8 text-sm text-[var(--sea-ink)] placeholder:text-[var(--sea-ink-soft)]/50 focus:border-[var(--palm)] focus:outline-none focus:ring-1 focus:ring-[var(--palm)]"
                 />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-sm text-[var(--sea-ink-soft)]"
+                >
+                  %
+                </span>
               </div>
+              <input
+                aria-label="Ajustar porcentaje de ahorro"
+                type="range"
+                min="1"
+                max="100"
+                step="1"
+                value={hasValidSavingsPercentage ? savingsPercentage : 1}
+                onChange={(event) => {
+                  setSavingsPercentageInput(event.target.value)
+                  setError(null)
+                  setServerError(null)
+                }}
+                className="w-full accent-[var(--palm)]"
+              />
+              {plannedContribution && (
+                <p className="text-sm font-medium text-[var(--sea-ink)]">
+                  Equivale a {formatMoney(plannedContribution)} por mes
+                </p>
+              )}
             </div>
 
             {error && (

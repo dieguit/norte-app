@@ -75,7 +75,7 @@ export function parseInitialPlan(input: InitialPlanInput): InitialPlan {
   }
 
   const plannedContribution = parseMoneyInput(input.plannedContribution, 'ARS')
-  if (!plannedContribution || !isPositiveMoney(plannedContribution)) {
+  if (!plannedContribution) {
     throw new Error('Ingresá un aporte mensual mayor a cero.')
   }
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
@@ -119,7 +119,7 @@ describe('FinancialOnboarding component', () => {
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     // Step 4: Contribution
-    expect(screen.getByLabelText('Aporte mensual planificado')).toBeVisible()
+    expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Ver mi plan' })).toBeVisible()
   })
 
@@ -135,12 +135,13 @@ describe('FinancialOnboarding component', () => {
     // Step 3: Type expense then click unknown
     const expenseInput = screen.getByLabelText('Gastos mensuales aproximados')
     await user.type(expenseInput, '120.000')
-    await user.click(screen.getByLabelText('No sé todavía'))
+    expect(screen.getByLabelText('No sé / Gasto todo lo que ingresa')).toBeVisible()
+    await user.click(screen.getByLabelText('No sé / Gasto todo lo que ingresa'))
     expect(screen.queryByLabelText('Gastos mensuales aproximados')).not.toBeInTheDocument()
 
     // Advance to Step 4
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
-    expect(screen.getByLabelText('Aporte mensual planificado')).toBeVisible()
+    expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toBeVisible()
   })
 
   it('validates required fields with inline alerts and prevents advance', async () => {
@@ -172,10 +173,11 @@ describe('FinancialOnboarding component', () => {
     await user.type(screen.getByLabelText('Gastos mensuales aproximados'), '200.000')
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
-    // Step 4: Zero or empty contribution
-    await user.type(screen.getByLabelText('Aporte mensual planificado'), '0')
+    // Step 4: Invalid percentage
+    await user.clear(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'))
+    await user.type(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'), '0')
     await user.click(screen.getByRole('button', { name: 'Ver mi plan' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Ingresá un aporte mensual mayor a cero.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Ingresá un porcentaje entre 1% y 100%.')
   })
 
   it('submits successfully, calls router.invalidate() before toast.success', async () => {
@@ -190,10 +192,9 @@ describe('FinancialOnboarding component', () => {
     await user.type(screen.getByLabelText('Ingresos mensuales aproximados'), '600.000')
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     // Step 3
-    await user.click(screen.getByLabelText('No sé todavía'))
+    await user.click(screen.getByLabelText('No sé / Gasto todo lo que ingresa'))
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     // Step 4
-    await user.type(screen.getByLabelText('Aporte mensual planificado'), '80.000')
     await user.click(screen.getByRole('button', { name: 'Ver mi plan' }))
 
     await waitFor(() => {
@@ -203,13 +204,100 @@ describe('FinancialOnboarding component', () => {
           income: '600.000',
           expensesKnowledge: 'unknown',
           expenses: '',
-          plannedContribution: '80.000',
+          plannedContribution: '30000.00',
           fixedTarget: '',
         },
       })
       expect(mockInvalidate).toHaveBeenCalledOnce()
       expect(toast.success).toHaveBeenCalledWith('Tu plan ya está listo.')
     })
+  })
+
+  it('defaults to 50% of positive savings capacity and submits the calculated contribution', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeInitialPlan).mockResolvedValue({ goal: { id: 'g1' } } as never)
+    render(<FinancialOnboarding />)
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText('Ingresos mensuales aproximados'), '600.000')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText('Gastos mensuales aproximados'), '200.000')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(screen.getByText('Capacidad de ahorro')).toBeVisible()
+    expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toHaveValue(50)
+    expect(screen.getByLabelText('Ajustar porcentaje de ahorro')).toHaveValue('50')
+    expect(screen.getByText('Equivale a $ 200.000,00 por mes')).toBeVisible()
+
+    await user.clear(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'))
+    await user.type(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'), '25')
+    expect(screen.getByLabelText('Ajustar porcentaje de ahorro')).toHaveValue('25')
+    expect(screen.getByText('Equivale a $ 100.000,00 por mes')).toBeVisible()
+
+    fireEvent.change(screen.getByLabelText('Ajustar porcentaje de ahorro'), { target: { value: '75' } })
+    expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toHaveValue(75)
+    expect(screen.getByText('Equivale a $ 300.000,00 por mes')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Ver mi plan' }))
+    await waitFor(() =>
+      expect(completeInitialPlan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ plannedContribution: '300000.00' }),
+        }),
+      ),
+    )
+  })
+
+  it.each([
+    ['unknown expenses', true, undefined],
+    ['expenses equal to income', false, '500.000'],
+    ['expenses greater than income', false, '600.000'],
+  ])('defaults to 5% of income for %s', async (_case, chooseUnknown, expense) => {
+    const user = userEvent.setup()
+    render(<FinancialOnboarding />)
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText('Ingresos mensuales aproximados'), '500.000')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    if (chooseUnknown) {
+      await user.click(screen.getByLabelText('No sé / Gasto todo lo que ingresa'))
+    } else {
+      await user.type(screen.getByLabelText('Gastos mensuales aproximados'), expense!)
+    }
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toHaveValue(5)
+    expect(screen.getByText('Equivale a $ 25.000,00 por mes')).toBeVisible()
+    expect(
+      screen.getByText(
+        'Tus gastos están muy cerca (o superan) tus ingresos. Vamos a empezar con un 5% de ahorro, y no te preocupes, con nuestra ayuda seguro podes ahorrar!',
+      ),
+    ).toBeVisible()
+    if (chooseUnknown) {
+      expect(screen.queryByText('Capacidad de ahorro')).toBeNull()
+    }
+  })
+
+  it('submits the derived zero contribution for zero income', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeInitialPlan).mockResolvedValue({ goal: { id: 'g1' } } as never)
+    render(<FinancialOnboarding />)
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText('Ingresos mensuales aproximados'), '0')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.click(screen.getByLabelText('No sé / Gasto todo lo que ingresa'))
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.click(screen.getByRole('button', { name: 'Ver mi plan' }))
+
+    await waitFor(() =>
+      expect(completeInitialPlan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ plannedContribution: '0.00' }),
+        }),
+      ),
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('retains all fields and offers retry when completion fails', async () => {
@@ -224,11 +312,12 @@ describe('FinancialOnboarding component', () => {
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     await user.type(screen.getByLabelText('Gastos mensuales aproximados'), '300.000')
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
-    await user.type(screen.getByLabelText('Aporte mensual planificado'), '100.000')
+    await user.clear(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'))
+    await user.type(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'), '25')
     await user.click(screen.getByRole('button', { name: 'Ver mi plan' }))
 
     expect(await screen.findByRole('button', { name: 'Reintentar' })).toBeVisible()
-    expect(screen.getByLabelText('Aporte mensual planificado')).toHaveValue('100.000')
+    expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toHaveValue(25)
 
     // Retry successfully
     vi.mocked(completeInitialPlan).mockResolvedValueOnce({ goal: { id: 'g1' } } as never)

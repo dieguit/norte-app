@@ -109,17 +109,17 @@ describe('initial financial plan domain rules', () => {
       ).toThrow('Ingresá un monto objetivo mayor a cero.')
     })
 
-    it('requires a positive planned monthly contribution', () => {
-      expect(() =>
+    it('accepts a zero planned monthly contribution but rejects an empty one', () => {
+      expect(
         parseInitialPlan({
           goalKind: 'emergency_fund',
-          income: '100.000',
+          income: '0',
           expensesKnowledge: 'unknown',
           expenses: '',
           plannedContribution: '0',
           fixedTarget: '',
-        }),
-      ).toThrow('Ingresá un aporte mensual mayor a cero.')
+        }).plannedContribution.amount,
+      ).toBe('0.00')
 
       expect(() =>
         parseInitialPlan({
