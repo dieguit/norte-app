@@ -227,16 +227,16 @@ describe('FinancialOnboarding component', () => {
     expect(screen.getByText('Capacidad de ahorro')).toBeVisible()
     expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toHaveValue(50)
     expect(screen.getByLabelText('Ajustar porcentaje de ahorro')).toHaveValue('50')
-    expect(screen.getByText('Equivale a $ 200.000,00 por mes')).toBeVisible()
+    expect(screen.getByText('Aportás $ 200.000,00 por mes')).toBeVisible()
 
     await user.clear(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'))
     await user.type(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'), '25')
     expect(screen.getByLabelText('Ajustar porcentaje de ahorro')).toHaveValue('25')
-    expect(screen.getByText('Equivale a $ 100.000,00 por mes')).toBeVisible()
+    expect(screen.getByText('Aportás $ 100.000,00 por mes')).toBeVisible()
 
     fireEvent.change(screen.getByLabelText('Ajustar porcentaje de ahorro'), { target: { value: '75' } })
     expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toHaveValue(75)
-    expect(screen.getByText('Equivale a $ 300.000,00 por mes')).toBeVisible()
+    expect(screen.getByText('Aportás $ 300.000,00 por mes')).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Ver mi plan' }))
     await waitFor(() =>
@@ -267,7 +267,7 @@ describe('FinancialOnboarding component', () => {
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toHaveValue(5)
-    expect(screen.getByText('Equivale a $ 25.000,00 por mes')).toBeVisible()
+    expect(screen.getByText('Aportás $ 25.000,00 por mes')).toBeVisible()
     expect(
       screen.getByText(
         'Tus gastos están muy cerca (o superan) tus ingresos. Vamos a empezar con un 5% de ahorro, y no te preocupes, con nuestra ayuda seguro podes ahorrar!',
@@ -300,6 +300,55 @@ describe('FinancialOnboarding component', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  it('previews the emergency-fund USD channel and planning assumptions', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<FinancialOnboarding />)
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText('Ingresos mensuales aproximados'), '600.000')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText('Gastos mensuales aproximados'), '300.000')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(screen.getByText('Ahorrar USD')).toBeVisible()
+    expect(screen.getByText('Aportás $ 150.000,00 por mes')).toBeVisible()
+    expect(screen.getByText('Estimado: US$ 100,00 por mes')).toBeVisible()
+    expect(screen.getByText('Desde septiembre de 2026')).toBeVisible()
+    expect(screen.getByText('Usamos un tipo de cambio de planificación de 1 USD = 1.500 ARS.')).toBeVisible()
+
+    vi.useRealTimers()
+  })
+
+  it('previews the fixed-savings ARS channel without rate disclosure', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<FinancialOnboarding />)
+
+    await user.click(screen.getByRole('radio', { name: /quiero ahorrar cierta suma de dinero/i }))
+    await user.type(screen.getByLabelText('Monto objetivo'), '2.000.000')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText('Ingresos mensuales aproximados'), '600.000')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText('Gastos mensuales aproximados'), '300.000')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(screen.getByText('Ahorrar ARS')).toBeVisible()
+    expect(screen.getByText('Aportás $ 150.000,00 por mes')).toBeVisible()
+    expect(screen.queryByText(/Estimado:/i)).not.toBeInTheDocument()
+    expect(screen.getByText('Desde septiembre de 2026')).toBeVisible()
+    expect(screen.queryByText(/tipo de cambio/i)).not.toBeInTheDocument()
+
+    vi.useRealTimers()
+  })
+
+  it('keeps one responsive onboarding surface with mobile bottom clearance', () => {
+    const { container } = render(<FinancialOnboarding />)
+    expect(container.firstElementChild).toHaveClass('max-w-2xl', 'sm:px-6', 'pb-28', 'sm:pb-24')
+  })
+
   it('retains all fields and offers retry when completion fails', async () => {
     const user = userEvent.setup()
     vi.mocked(completeInitialPlan).mockRejectedValueOnce(new Error('database unavailable'))
@@ -316,11 +365,13 @@ describe('FinancialOnboarding component', () => {
     await user.type(screen.getByLabelText('Porcentaje de tu capacidad de ahorro'), '25')
     await user.click(screen.getByRole('button', { name: 'Ver mi plan' }))
 
-    expect(await screen.findByRole('button', { name: 'Reintentar' })).toBeVisible()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeVisible()
     expect(screen.getByLabelText('Porcentaje de tu capacidad de ahorro')).toHaveValue(25)
 
     // Retry successfully
-    vi.mocked(completeInitialPlan).mockResolvedValueOnce({ goal: { id: 'g1' } } as never)
+    vi.mocked(completeInitialPlan).mockResolvedValueOnce({ created: true })
     await user.click(screen.getByRole('button', { name: 'Reintentar' }))
 
     await waitFor(() => {

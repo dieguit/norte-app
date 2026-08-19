@@ -1,6 +1,13 @@
 import { getTableName } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { financialGoals, financialProfiles, onboardingDrafts } from './schema'
+import {
+  channelPlanAllocations,
+  channelPlanSnapshots,
+  contributionChannels,
+  financialGoals,
+  financialProfiles,
+  onboardingDrafts,
+} from './schema'
 
 describe('onboarding database schema', () => {
   it('defines the drafts table', () => {
@@ -24,7 +31,7 @@ describe('onboarding database schema', () => {
     expect(financialProfiles.approximateMonthlyIncome.name).toBe('approximate_monthly_income')
     expect(financialProfiles.approximateMonthlyExpenses.name).toBe('approximate_monthly_expenses')
     expect(financialProfiles.expensesKnowledge.name).toBe('expenses_knowledge')
-    expect(financialProfiles.plannedMonthlyContribution.name).toBe('planned_monthly_contribution')
+    expect('plannedMonthlyContribution' in financialProfiles).toBe(false)
     expect(financialProfiles.onboardingCompleted.name).toBe('onboarding_completed')
   })
 
@@ -37,6 +44,28 @@ describe('onboarding database schema', () => {
     expect(financialGoals.targetAmount.name).toBe('target_amount')
     expect(financialGoals.currency.name).toBe('currency')
     expect(financialGoals.emergencyFundMonths.name).toBe('emergency_fund_months')
+    expect(financialGoals.saveEnabled.name).toBe('save_enabled')
+    expect(financialGoals.investEnabled.name).toBe('invest_enabled')
+  })
+
+  it('stores monthly intent in contribution channel snapshots', () => {
+    expect('plannedMonthlyContribution' in financialProfiles).toBe(false)
+
+    expect(getTableName(contributionChannels)).toBe('contribution_channels')
+    expect(contributionChannels.userId.name).toBe('user_id')
+    expect(contributionChannels.fundingMethod.name).toBe('funding_method')
+    expect(contributionChannels.destinationCurrency.name).toBe('destination_currency')
+
+    expect(getTableName(channelPlanSnapshots)).toBe('channel_plan_snapshots')
+    expect(channelPlanSnapshots.channelId.name).toBe('channel_id')
+    expect(channelPlanSnapshots.monthlyCommitmentAmount.name).toBe('monthly_commitment_amount')
+    expect(channelPlanSnapshots.baseCurrency.name).toBe('base_currency')
+    expect(channelPlanSnapshots.effectiveMonth.name).toBe('effective_month')
+
+    expect(getTableName(channelPlanAllocations)).toBe('channel_plan_allocations')
+    expect(channelPlanAllocations.snapshotId.name).toBe('snapshot_id')
+    expect(channelPlanAllocations.goalId.name).toBe('goal_id')
+    expect(channelPlanAllocations.percentage.name).toBe('percentage')
   })
 })
 

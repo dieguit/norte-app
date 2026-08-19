@@ -6,6 +6,7 @@ import {
   formatPercentage,
   formatDate,
   formatMonthDelta,
+  formatCalendarMonth,
 } from "./format";
 
 describe("es-AR Presentation Boundary", () => {
@@ -104,6 +105,12 @@ describe("es-AR Presentation Boundary", () => {
       expect(formatMonthDelta(-1)).toBe("-1 mes");
       expect(formatMonthDelta(-4)).toBe("-4 meses");
       expect(formatMonthDelta(0)).toBe("mismo mes");
+    });
+  });
+
+  describe("formatCalendarMonth", () => {
+    it("formats a calendar month in Argentine Spanish", () => {
+      expect(formatCalendarMonth("2026-09")).toBe("septiembre de 2026");
     });
   });
 });

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import BigNumber from 'bignumber.js'
@@ -11,7 +11,12 @@ import {
   multiplyMoneyByFactor,
   parseMoneyInput,
 } from '../../../lib/money'
-import { formatMoney } from '../../../lib/format'
+import { formatCalendarMonth, formatMoney } from '../../../lib/format'
+import {
+  convertCommitmentToDestination,
+  getNextCalendarMonth,
+  PLANNING_ARS_PER_USD,
+} from '../../../features/financial/financial'
 import { completeInitialPlan } from '../../../features/financial/financial.functions'
 
 type GoalKind = 'emergency_fund' | 'fixed_savings' | 'car'
@@ -30,6 +35,9 @@ export function FinancialOnboarding() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const serverErrorRef = useRef<HTMLDivElement>(null)
+
+  const destinationCurrency = goalKind === 'emergency_fund' ? 'USD' : 'ARS'
 
   const parsedIncome = parseMoneyInput(income, 'ARS')
   const parsedExpenses = expensesKnowledge === 'known' ? parseMoneyInput(expenses, 'ARS') : null
@@ -45,6 +53,14 @@ export function FinancialOnboarding() {
   const plannedContribution = contributionBase && hasValidSavingsPercentage
     ? multiplyMoneyByFactor(contributionBase, savingsPercentage / 100)
     : null
+  const destinationAmount = plannedContribution
+    ? convertCommitmentToDestination(plannedContribution, destinationCurrency)
+    : null
+  const effectiveMonth = getNextCalendarMonth(new Date())
+
+  useEffect(() => {
+    if (serverError) serverErrorRef.current?.focus()
+  }, [serverError])
 
   const handleNextStep1 = () => {
     setError(null)
@@ -127,7 +143,7 @@ export function FinancialOnboarding() {
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-2xl flex-col px-4 sm:px-6 sm:py-12 sm:pb-24 ${step === 1 ? 'py-4 pb-0' : 'py-8 pb-24'}`}
+      className="mx-auto flex w-full max-w-2xl flex-col px-4 py-8 pb-28 sm:px-6 sm:py-12 sm:pb-24"
     >
       {/* Progress */}
       <nav aria-label="Progreso del perfil financiero" className={`${step === 1 ? 'mb-4' : 'mb-8'} sm:mb-8`}>
@@ -546,12 +562,31 @@ export function FinancialOnboarding() {
                 }}
                 className="w-full accent-[var(--palm)]"
               />
-              {plannedContribution && (
-                <p className="text-sm font-medium text-[var(--sea-ink)]">
-                  Equivale a {formatMoney(plannedContribution)} por mes
-                </p>
-              )}
             </div>
+
+            {plannedContribution && destinationAmount && (
+              <section aria-label="Resumen del Plan" className="rounded-xl border border-[var(--line)] bg-[var(--foam)] p-4">
+                <div className="text-sm font-semibold text-[var(--sea-ink)]">
+                  Ahorrar {destinationCurrency}
+                </div>
+                <p className="mt-2 text-sm text-[var(--sea-ink)]">
+                  Aportás {formatMoney(plannedContribution)} por mes
+                </p>
+                {destinationCurrency === 'USD' && (
+                  <>
+                    <p className="text-sm text-[var(--sea-ink)]">
+                      Estimado: {formatMoney(destinationAmount)} por mes
+                    </p>
+                    <p className="mt-2 text-xs text-[var(--sea-ink-soft)]">
+                      Usamos un tipo de cambio de planificación de 1 USD = {Number(PLANNING_ARS_PER_USD).toLocaleString('es-AR')} ARS.
+                    </p>
+                  </>
+                )}
+                <p className="mt-2 text-xs text-[var(--sea-ink-soft)]">
+                  Desde {formatCalendarMonth(effectiveMonth)}
+                </p>
+              </section>
+            )}
 
             {error && (
               <div role="alert" className="rounded-lg bg-[var(--error-surface)] p-3 text-sm text-[var(--error)] border border-[var(--error-border)]">
@@ -560,7 +595,7 @@ export function FinancialOnboarding() {
             )}
 
             {serverError && (
-              <div role="alert" className="rounded-lg bg-[var(--error-surface)] p-3 text-sm text-[var(--error)] border border-[var(--error-border)]">
+              <div ref={serverErrorRef} role="alert" tabIndex={-1} className="rounded-lg bg-[var(--error-surface)] p-3 text-sm text-[var(--error)] border border-[var(--error-border)]">
                 {serverError}
               </div>
             )}

@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { auth } from '@clerk/tanstack-react-start/server'
 import { db } from '../../db/client'
-import { financialProfiles } from '../../db/schema'
+import {
+  channelPlanAllocations,
+  channelPlanSnapshots,
+  contributionChannels,
+  financialGoals,
+  financialProfiles,
+} from '../../db/schema'
 import { completeInitialPlan } from './financial.functions'
 import { getInitialHomeState } from './repository.server'
 
@@ -28,29 +34,108 @@ vi.mock('@clerk/tanstack-react-start/server', () => ({
   auth: vi.fn(),
 }))
 
-const mockProfileOnConflict = vi.fn().mockResolvedValue(undefined)
-const mockProfileValues = vi.fn().mockReturnValue({ onConflictDoUpdate: mockProfileOnConflict })
+const mockCommittedState = {
+  profiles: [] as unknown[],
+  goals: [] as unknown[],
+  channels: [] as unknown[],
+  snapshots: [] as unknown[],
+  allocations: [] as unknown[],
+}
 
-const mockGoalReturning = vi.fn().mockResolvedValue([{ id: 'goal_1', name: 'Colchón financiero' }])
-const mockGoalValues = vi.fn().mockReturnValue({ returning: mockGoalReturning })
+let stagedState = {
+  profiles: [] as unknown[],
+  goals: [] as unknown[],
+  channels: [] as unknown[],
+  snapshots: [] as unknown[],
+  allocations: [] as unknown[],
+}
+
+const mockProfileReturning = vi.fn().mockImplementation(async () => [{ userId: 'user_1' }])
+const mockProfileValues = vi.fn().mockImplementation((val) => {
+  return {
+    onConflictDoNothing: vi.fn().mockReturnValue({
+      returning: vi.fn().mockImplementation(async () => {
+        const ret = await mockProfileReturning()
+        if (ret.length > 0) stagedState.profiles.push(val)
+        return ret
+      }),
+    }),
+  }
+})
+const mockGoalReturning = vi.fn().mockImplementation(async () => [{ id: 'goal_1' }])
+const mockGoalValues = vi.fn().mockImplementation((val) => {
+  return {
+    returning: vi.fn().mockImplementation(async () => {
+      stagedState.goals.push(val)
+      return mockGoalReturning()
+    }),
+  }
+})
+const mockChannelReturning = vi.fn().mockImplementation(async () => [{ id: 'channel_1' }])
+const mockChannelValues = vi.fn().mockImplementation((val) => {
+  return {
+    returning: vi.fn().mockImplementation(async () => {
+      stagedState.channels.push(val)
+      return mockChannelReturning()
+    }),
+  }
+})
+const mockSnapshotReturning = vi.fn().mockImplementation(async () => [{ id: 'snapshot_1' }])
+const mockSnapshotValues = vi.fn().mockImplementation((val) => {
+  return {
+    returning: vi.fn().mockImplementation(async () => {
+      stagedState.snapshots.push(val)
+      return mockSnapshotReturning()
+    }),
+  }
+})
+const mockAllocationValues = vi.fn().mockImplementation(async (val) => {
+  stagedState.allocations.push(val)
+  return undefined
+})
 
 const mockTx = {
-  insert: vi.fn().mockImplementation((table) => {
-    if (table === financialProfiles) {
-      return { values: mockProfileValues }
-    }
-    return { values: mockGoalValues }
+  insert: vi.fn((table) => {
+    if (table === financialProfiles) return { values: mockProfileValues }
+    if (table === financialGoals) return { values: mockGoalValues }
+    if (table === contributionChannels) return { values: mockChannelValues }
+    if (table === channelPlanSnapshots) return { values: mockSnapshotValues }
+    if (table === channelPlanAllocations) return { values: mockAllocationValues }
+    throw new Error('Unexpected table')
   }),
 }
 
 vi.mock('../../db/client', () => ({
   db: {
-    transaction: vi.fn().mockImplementation(async (callback) => callback(mockTx)),
+    transaction: vi.fn().mockImplementation(async (callback) => {
+      stagedState = { profiles: [], goals: [], channels: [], snapshots: [], allocations: [] }
+      try {
+        const result = await callback(mockTx)
+        mockCommittedState.profiles.push(...stagedState.profiles)
+        mockCommittedState.goals.push(...stagedState.goals)
+        mockCommittedState.channels.push(...stagedState.channels)
+        mockCommittedState.snapshots.push(...stagedState.snapshots)
+        mockCommittedState.allocations.push(...stagedState.allocations)
+        return result
+      } catch (err) {
+        stagedState = { profiles: [], goals: [], channels: [], snapshots: [], allocations: [] }
+        throw err
+      }
+    }),
     query: {
       financialProfiles: {
         findFirst: vi.fn(),
       },
       financialGoals: {
+        findFirst: vi.fn(),
+      },
+      contributionChannels: {
+        findFirst: vi.fn(),
+      },
+      channelPlanSnapshots: {
+        findFirst: vi.fn(),
+      },
+      channelPlanAllocations: {
         findFirst: vi.fn(),
       },
     },
@@ -60,9 +145,20 @@ vi.mock('../../db/client', () => ({
 describe('financial.server boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockProfileValues.mockReturnValue({ onConflictDoUpdate: mockProfileOnConflict })
-    mockGoalReturning.mockResolvedValue([{ id: 'goal_1', name: 'Colchón financiero' }])
-    mockGoalValues.mockReturnValue({ returning: mockGoalReturning })
+    mockCommittedState.profiles = []
+    mockCommittedState.goals = []
+    mockCommittedState.channels = []
+    mockCommittedState.snapshots = []
+    mockCommittedState.allocations = []
+    stagedState = { profiles: [], goals: [], channels: [], snapshots: [], allocations: [] }
+    mockProfileReturning.mockResolvedValue([{ userId: 'user_1' }])
+    mockGoalReturning.mockResolvedValue([{ id: 'goal_1' }])
+    mockChannelReturning.mockResolvedValue([{ id: 'channel_1' }])
+    mockSnapshotReturning.mockResolvedValue([{ id: 'snapshot_1' }])
+    mockAllocationValues.mockImplementation(async (val) => {
+      stagedState.allocations.push(val)
+      return undefined
+    })
   })
 
   const validInitialPlan = {
@@ -83,40 +179,83 @@ describe('financial.server boundary', () => {
       })
     })
 
-    it('derives the Clerk user and inserts the profile and goal in one transaction', async () => {
+    it('creates the complete emergency-fund Plan in one transaction', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
       vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
 
-      const result = await completeInitialPlan({ data: validInitialPlan })
+      await expect(completeInitialPlan({ data: validInitialPlan })).resolves.toEqual({ created: true })
 
       expect(db.transaction).toHaveBeenCalledOnce()
-      expect(mockTx.insert).toHaveBeenCalledTimes(2)
-      expect(mockProfileValues).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user_1',
-          approximateMonthlyIncome: '500000.00',
-          approximateMonthlyExpenses: '250000.00',
-          expensesKnowledge: 'known',
-          plannedMonthlyContribution: '50000.00',
-          onboardingCompleted: true,
-        }),
-      )
+      expect(mockTx.insert).toHaveBeenCalledTimes(5)
+      expect(mockProfileValues).toHaveBeenCalledWith({
+        userId: 'user_1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '500000.00',
+        approximateMonthlyExpenses: '250000.00',
+        expensesKnowledge: 'known',
+        onboardingCompleted: true,
+      })
       expect(mockGoalValues).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 'user_1',
-          name: 'Colchón financiero',
           type: 'emergency_fund',
-          targetAmount: '1500000.00',
+          targetAmount: null,
+          currency: 'USD',
           emergencyFundMonths: 6,
+          saveEnabled: true,
+          investEnabled: false,
         }),
       )
-      expect(result).toEqual({ goal: { id: 'goal_1', name: 'Colchón financiero' } })
+      expect(mockChannelValues).toHaveBeenCalledWith({
+        userId: 'user_1',
+        fundingMethod: 'save',
+        destinationCurrency: 'USD',
+      })
+      expect(mockSnapshotValues).toHaveBeenCalledWith({
+        channelId: 'channel_1',
+        monthlyCommitmentAmount: '50000.00',
+        baseCurrency: 'ARS',
+        effectiveMonth: '2026-09-01',
+      })
+      expect(mockAllocationValues).toHaveBeenCalledWith({
+        snapshotId: 'snapshot_1',
+        goalId: 'goal_1',
+        percentage: '100.00',
+      })
+
+      expect(mockCommittedState.profiles).toHaveLength(1)
+      expect(mockCommittedState.goals).toHaveLength(1)
+      expect(mockCommittedState.channels).toHaveLength(1)
+      expect(mockCommittedState.snapshots).toHaveLength(1)
+      expect(mockCommittedState.allocations).toHaveLength(1)
+
+      vi.useRealTimers()
     })
 
-    it('does not return a partial success when the goal write fails', async () => {
+    it('returns the existing completion without creating duplicate Plan records', async () => {
       vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
-      mockGoalReturning.mockRejectedValueOnce(new Error('database unavailable'))
+      mockProfileReturning.mockResolvedValueOnce([])
+
+      await expect(completeInitialPlan({ data: validInitialPlan })).resolves.toEqual({ created: false })
+
+      expect(mockTx.insert).toHaveBeenCalledTimes(1)
+      expect(mockGoalValues).not.toHaveBeenCalled()
+      expect(mockChannelValues).not.toHaveBeenCalled()
+      expect(mockCommittedState.profiles).toHaveLength(0)
+    })
+
+    it('rolls back all records and leaves no partial state persisted when any Plan write fails', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+      mockAllocationValues.mockRejectedValueOnce(new Error('database unavailable'))
 
       await expect(completeInitialPlan({ data: validInitialPlan })).rejects.toThrow('database unavailable')
+      expect(db.transaction).toHaveBeenCalledOnce()
+      expect(mockCommittedState.profiles).toHaveLength(0)
+      expect(mockCommittedState.goals).toHaveLength(0)
+      expect(mockCommittedState.channels).toHaveLength(0)
+      expect(mockCommittedState.snapshots).toHaveLength(0)
+      expect(mockCommittedState.allocations).toHaveLength(0)
     })
   })
 
@@ -128,84 +267,134 @@ describe('financial.server boundary', () => {
       expect(state).toBeNull()
     })
 
-    it('returns available projection state for known expenses emergency fund', async () => {
+    it('derives the USD emergency target and completion from the canonical Plan', async () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
+        baseCurrency: 'ARS',
         approximateMonthlyIncome: '500000.00',
         approximateMonthlyExpenses: '250000.00',
         expensesKnowledge: 'known',
-        plannedMonthlyContribution: '50000.00',
       } as never)
       vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue({
-        id: 'g1',
+        id: 'goal_1',
         userId: 'user_1',
         name: 'Colchón financiero',
         type: 'emergency_fund',
-        targetAmount: '1500000.00',
-        currency: 'ARS',
+        targetAmount: null,
+        currency: 'USD',
         emergencyFundMonths: 6,
       } as never)
+      vi.mocked(db.query.contributionChannels.findFirst).mockResolvedValue({
+        id: 'channel_1',
+        userId: 'user_1',
+        fundingMethod: 'save',
+        destinationCurrency: 'USD',
+      } as never)
+      vi.mocked(db.query.channelPlanSnapshots.findFirst).mockResolvedValue({
+        id: 'snapshot_1',
+        channelId: 'channel_1',
+        monthlyCommitmentAmount: '50000.00',
+        baseCurrency: 'ARS',
+        effectiveMonth: '2026-09-01',
+      } as never)
+      vi.mocked(db.query.channelPlanAllocations.findFirst).mockResolvedValue({
+        snapshotId: 'snapshot_1',
+        goalId: 'goal_1',
+        percentage: '100.00',
+      } as never)
 
-      const state = await getInitialHomeState('user_1')
-      expect(state).toEqual({
+      await expect(getInitialHomeState('user_1')).resolves.toEqual({
         income: { amount: '500000.00', currency: 'ARS' },
         expensesKnowledge: 'known',
         expenses: { amount: '250000.00', currency: 'ARS' },
-        plannedContribution: { amount: '50000.00', currency: 'ARS' },
+        plan: {
+          fundingMethod: 'save',
+          destinationCurrency: 'USD',
+          monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
+          destinationAmount: { amount: '33.33', currency: 'USD' },
+          effectiveMonth: '2026-09',
+          allocationPercentage: '100.00',
+        },
         goal: {
           type: 'emergency_fund',
           name: 'Colchón financiero',
-          targetAmount: { amount: '1500000.00', currency: 'ARS' },
+          targetAmount: { amount: '1000.00', currency: 'USD' },
+          currentAmount: { amount: '0.00', currency: 'USD' },
           emergencyFundMonths: 6,
         },
-        projectionState: 'available',
+        projection: { status: 'available', completionMonth: '2029-03' },
       })
     })
 
     it('returns unknown_expenses projection state when expenses are unknown for emergency fund', async () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
+        baseCurrency: 'ARS',
         approximateMonthlyIncome: '500000.00',
         approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
-        plannedMonthlyContribution: '50000.00',
       } as never)
       vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue({
-        id: 'g1',
+        id: 'goal_1',
         userId: 'user_1',
         name: 'Colchón financiero',
         type: 'emergency_fund',
         targetAmount: null,
-        currency: 'ARS',
+        currency: 'USD',
         emergencyFundMonths: 6,
       } as never)
+      vi.mocked(db.query.contributionChannels.findFirst).mockResolvedValue({
+        id: 'channel_1',
+        userId: 'user_1',
+        fundingMethod: 'save',
+        destinationCurrency: 'USD',
+      } as never)
+      vi.mocked(db.query.channelPlanSnapshots.findFirst).mockResolvedValue({
+        id: 'snapshot_1',
+        channelId: 'channel_1',
+        monthlyCommitmentAmount: '50000.00',
+        baseCurrency: 'ARS',
+        effectiveMonth: '2026-09-01',
+      } as never)
+      vi.mocked(db.query.channelPlanAllocations.findFirst).mockResolvedValue({
+        snapshotId: 'snapshot_1',
+        goalId: 'goal_1',
+        percentage: '100.00',
+      } as never)
 
-      const state = await getInitialHomeState('user_1')
-      expect(state).toEqual({
+      await expect(getInitialHomeState('user_1')).resolves.toEqual({
         income: { amount: '500000.00', currency: 'ARS' },
         expensesKnowledge: 'unknown',
         expenses: undefined,
-        plannedContribution: { amount: '50000.00', currency: 'ARS' },
+        plan: {
+          fundingMethod: 'save',
+          destinationCurrency: 'USD',
+          monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
+          destinationAmount: { amount: '33.33', currency: 'USD' },
+          effectiveMonth: '2026-09',
+          allocationPercentage: '100.00',
+        },
         goal: {
           type: 'emergency_fund',
           name: 'Colchón financiero',
           targetAmount: undefined,
+          currentAmount: { amount: '0.00', currency: 'USD' },
           emergencyFundMonths: 6,
         },
-        projectionState: 'unknown_expenses',
+        projection: { status: 'unknown_expenses' },
       })
     })
 
     it('returns available projection state for non-emergency goal even when expenses are unknown', async () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
+        baseCurrency: 'ARS',
         approximateMonthlyIncome: '500000.00',
         approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
-        plannedMonthlyContribution: '50000.00',
       } as never)
       vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue({
-        id: 'g2',
+        id: 'goal_1',
         userId: 'user_1',
         name: 'Ahorro fijo',
         type: 'fixed_savings',
@@ -213,20 +402,104 @@ describe('financial.server boundary', () => {
         currency: 'ARS',
         emergencyFundMonths: null,
       } as never)
+      vi.mocked(db.query.contributionChannels.findFirst).mockResolvedValue({
+        id: 'channel_1',
+        userId: 'user_1',
+        fundingMethod: 'save',
+        destinationCurrency: 'ARS',
+      } as never)
+      vi.mocked(db.query.channelPlanSnapshots.findFirst).mockResolvedValue({
+        id: 'snapshot_1',
+        channelId: 'channel_1',
+        monthlyCommitmentAmount: '50000.00',
+        baseCurrency: 'ARS',
+        effectiveMonth: '2026-09-01',
+      } as never)
+      vi.mocked(db.query.channelPlanAllocations.findFirst).mockResolvedValue({
+        snapshotId: 'snapshot_1',
+        goalId: 'goal_1',
+        percentage: '100.00',
+      } as never)
 
-      const state = await getInitialHomeState('user_1')
-      expect(state).toEqual({
+      await expect(getInitialHomeState('user_1')).resolves.toEqual({
         income: { amount: '500000.00', currency: 'ARS' },
         expensesKnowledge: 'unknown',
         expenses: undefined,
-        plannedContribution: { amount: '50000.00', currency: 'ARS' },
+        plan: {
+          fundingMethod: 'save',
+          destinationCurrency: 'ARS',
+          monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
+          destinationAmount: { amount: '50000.00', currency: 'ARS' },
+          effectiveMonth: '2026-09',
+          allocationPercentage: '100.00',
+        },
         goal: {
           type: 'fixed_savings',
           name: 'Ahorro fijo',
           targetAmount: { amount: '1000000.00', currency: 'ARS' },
+          currentAmount: { amount: '0.00', currency: 'ARS' },
           emergencyFundMonths: undefined,
         },
-        projectionState: 'available',
+        projection: { status: 'available', completionMonth: '2028-04' },
+      })
+    })
+
+    it('returns outside_horizon projection when monthly commitment is zero', async () => {
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
+        userId: 'user_1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '500000.00',
+        approximateMonthlyExpenses: null,
+        expensesKnowledge: 'unknown',
+      } as never)
+      vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue({
+        id: 'goal_1',
+        userId: 'user_1',
+        name: 'Ahorro fijo',
+        type: 'fixed_savings',
+        targetAmount: '1000000.00',
+        currency: 'ARS',
+        emergencyFundMonths: null,
+      } as never)
+      vi.mocked(db.query.contributionChannels.findFirst).mockResolvedValue({
+        id: 'channel_1',
+        userId: 'user_1',
+        fundingMethod: 'save',
+        destinationCurrency: 'ARS',
+      } as never)
+      vi.mocked(db.query.channelPlanSnapshots.findFirst).mockResolvedValue({
+        id: 'snapshot_1',
+        channelId: 'channel_1',
+        monthlyCommitmentAmount: '0.00',
+        baseCurrency: 'ARS',
+        effectiveMonth: '2026-09-01',
+      } as never)
+      vi.mocked(db.query.channelPlanAllocations.findFirst).mockResolvedValue({
+        snapshotId: 'snapshot_1',
+        goalId: 'goal_1',
+        percentage: '100.00',
+      } as never)
+
+      await expect(getInitialHomeState('user_1')).resolves.toEqual({
+        income: { amount: '500000.00', currency: 'ARS' },
+        expensesKnowledge: 'unknown',
+        expenses: undefined,
+        plan: {
+          fundingMethod: 'save',
+          destinationCurrency: 'ARS',
+          monthlyCommitment: { amount: '0.00', currency: 'ARS' },
+          destinationAmount: { amount: '0.00', currency: 'ARS' },
+          effectiveMonth: '2026-09',
+          allocationPercentage: '100.00',
+        },
+        goal: {
+          type: 'fixed_savings',
+          name: 'Ahorro fijo',
+          targetAmount: { amount: '1000000.00', currency: 'ARS' },
+          currentAmount: { amount: '0.00', currency: 'ARS' },
+          emergencyFundMonths: undefined,
+        },
+        projection: { status: 'outside_horizon' },
       })
     })
   })

@@ -1,5 +1,10 @@
 import '@tanstack/react-start/server-only'
-import { deriveInitialGoal, parseInitialPlan, type InitialHomeState } from './financial'
+import {
+  deriveInitialChannel,
+  deriveInitialGoal,
+  parseInitialPlan,
+  type InitialHomeState,
+} from './financial'
 import { requireFinancialUser } from './auth.server'
 import { getInitialHomeState, persistInitialPlan } from './repository.server'
 
@@ -19,7 +24,11 @@ export async function getFinancialAppStateServer(): Promise<FinancialAppState> {
 export async function completeInitialPlanServer(input: Parameters<typeof parseInitialPlan>[0]) {
   const userId = await requireFinancialUser()
   const plan = parseInitialPlan(input)
-  const goal = deriveInitialGoal(plan)
 
-  return persistInitialPlan(userId, plan, goal)
+  return persistInitialPlan(
+    userId,
+    plan,
+    deriveInitialGoal(plan),
+    deriveInitialChannel(plan, new Date()),
+  )
 }

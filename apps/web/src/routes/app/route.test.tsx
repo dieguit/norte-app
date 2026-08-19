@@ -61,14 +61,22 @@ describe('App route layout', () => {
         income: { amount: '500000.00', currency: 'ARS' },
         expensesKnowledge: 'known',
         expenses: { amount: '250000.00', currency: 'ARS' },
-        plannedContribution: { amount: '50000.00', currency: 'ARS' },
+        plan: {
+          fundingMethod: 'save',
+          destinationCurrency: 'USD',
+          monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
+          destinationAmount: { amount: '33.33', currency: 'USD' },
+          effectiveMonth: '2026-09',
+          allocationPercentage: '100.00',
+        },
         goal: {
           type: 'emergency_fund',
           name: 'Colchón financiero',
-          targetAmount: { amount: '1500000.00', currency: 'ARS' },
+          targetAmount: { amount: '1000.00', currency: 'USD' },
+          currentAmount: { amount: '0.00', currency: 'USD' },
           emergencyFundMonths: 6,
         },
-        projectionState: 'available',
+        projection: { status: 'available', completionMonth: '2029-03' },
       },
     })
 

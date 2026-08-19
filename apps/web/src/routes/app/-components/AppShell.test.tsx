@@ -30,14 +30,22 @@ describe('AppShell', () => {
       income: { amount: '500000.00', currency: 'ARS' as const },
       expensesKnowledge: 'known' as const,
       expenses: { amount: '250000.00', currency: 'ARS' as const },
-      plannedContribution: { amount: '50000.00', currency: 'ARS' as const },
+      plan: {
+        fundingMethod: 'save' as const,
+        destinationCurrency: 'USD' as const,
+        monthlyCommitment: { amount: '50000.00', currency: 'ARS' as const },
+        destinationAmount: { amount: '33.33', currency: 'USD' as const },
+        effectiveMonth: '2026-09',
+        allocationPercentage: '100.00',
+      },
       goal: {
         type: 'emergency_fund',
         name: 'Colchón financiero',
-        targetAmount: { amount: '1500000.00', currency: 'ARS' as const },
+        targetAmount: { amount: '1000.00', currency: 'USD' as const },
+        currentAmount: { amount: '0.00', currency: 'USD' as const },
         emergencyFundMonths: 6,
       },
-      projectionState: 'available' as const,
+      projection: { status: 'available' as const, completionMonth: '2029-03' },
     }
 
     render(

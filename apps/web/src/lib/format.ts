@@ -59,3 +59,12 @@ export function formatMonthDelta(months: number): string {
   if (months === -1) return "-1 mes";
   return months > 0 ? `+${months} meses` : `${months} meses`;
 }
+
+export function formatCalendarMonth(month: string): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  return new Intl.DateTimeFormat(ES_AR_LOCALE, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+}
