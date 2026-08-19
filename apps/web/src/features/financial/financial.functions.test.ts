@@ -216,6 +216,7 @@ describe('financial.server boundary', () => {
         channelId: 'channel_1',
         monthlyCommitmentAmount: '50000.00',
         baseCurrency: 'ARS',
+        commitmentStatus: 'active',
         effectiveMonth: '2026-09-01',
       })
       expect(mockAllocationValues).toHaveBeenCalledWith({
@@ -295,6 +296,7 @@ describe('financial.server boundary', () => {
         channelId: 'channel_1',
         monthlyCommitmentAmount: '50000.00',
         baseCurrency: 'ARS',
+        commitmentStatus: 'active',
         effectiveMonth: '2026-09-01',
       } as never)
       vi.mocked(db.query.channelPlanAllocations.findFirst).mockResolvedValue({
@@ -354,6 +356,7 @@ describe('financial.server boundary', () => {
         channelId: 'channel_1',
         monthlyCommitmentAmount: '50000.00',
         baseCurrency: 'ARS',
+        commitmentStatus: 'active',
         effectiveMonth: '2026-09-01',
       } as never)
       vi.mocked(db.query.channelPlanAllocations.findFirst).mockResolvedValue({
@@ -413,6 +416,7 @@ describe('financial.server boundary', () => {
         channelId: 'channel_1',
         monthlyCommitmentAmount: '50000.00',
         baseCurrency: 'ARS',
+        commitmentStatus: 'active',
         effectiveMonth: '2026-09-01',
       } as never)
       vi.mocked(db.query.channelPlanAllocations.findFirst).mockResolvedValue({
@@ -472,6 +476,7 @@ describe('financial.server boundary', () => {
         channelId: 'channel_1',
         monthlyCommitmentAmount: '0.00',
         baseCurrency: 'ARS',
+        commitmentStatus: 'active',
         effectiveMonth: '2026-09-01',
       } as never)
       vi.mocked(db.query.channelPlanAllocations.findFirst).mockResolvedValue({
@@ -501,6 +506,76 @@ describe('financial.server boundary', () => {
         },
         projection: { status: 'outside_horizon' },
       })
+    })
+
+    it('returns null when snapshot monthlyCommitmentAmount is null', async () => {
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
+        userId: 'user_1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '500000.00',
+        approximateMonthlyExpenses: null,
+        expensesKnowledge: 'unknown',
+      } as never)
+      vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue({
+        id: 'goal_1',
+        userId: 'user_1',
+        name: 'Ahorro fijo',
+        type: 'fixed_savings',
+        targetAmount: '1000000.00',
+        currency: 'ARS',
+      } as never)
+      vi.mocked(db.query.contributionChannels.findFirst).mockResolvedValue({
+        id: 'channel_1',
+        userId: 'user_1',
+        fundingMethod: 'save',
+        destinationCurrency: 'ARS',
+      } as never)
+      vi.mocked(db.query.channelPlanSnapshots.findFirst).mockResolvedValue({
+        id: 'snapshot_1',
+        channelId: 'channel_1',
+        monthlyCommitmentAmount: null,
+        baseCurrency: 'ARS',
+        commitmentStatus: 'active',
+        effectiveMonth: '2026-09-01',
+      } as never)
+
+      const state = await getInitialHomeState('user_1')
+      expect(state).toBeNull()
+    })
+
+    it('returns null when snapshot commitmentStatus is paused', async () => {
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
+        userId: 'user_1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '500000.00',
+        approximateMonthlyExpenses: null,
+        expensesKnowledge: 'unknown',
+      } as never)
+      vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue({
+        id: 'goal_1',
+        userId: 'user_1',
+        name: 'Ahorro fijo',
+        type: 'fixed_savings',
+        targetAmount: '1000000.00',
+        currency: 'ARS',
+      } as never)
+      vi.mocked(db.query.contributionChannels.findFirst).mockResolvedValue({
+        id: 'channel_1',
+        userId: 'user_1',
+        fundingMethod: 'save',
+        destinationCurrency: 'ARS',
+      } as never)
+      vi.mocked(db.query.channelPlanSnapshots.findFirst).mockResolvedValue({
+        id: 'snapshot_1',
+        channelId: 'channel_1',
+        monthlyCommitmentAmount: '50000.00',
+        baseCurrency: 'ARS',
+        commitmentStatus: 'paused',
+        effectiveMonth: '2026-09-01',
+      } as never)
+
+      const state = await getInitialHomeState('user_1')
+      expect(state).toBeNull()
     })
   })
 })

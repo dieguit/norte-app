@@ -6,6 +6,8 @@ import {
   contributionChannels,
   financialGoals,
   financialProfiles,
+  goalInvestmentPositions,
+  goalSavingsPositions,
   onboardingDrafts,
 } from './schema'
 
@@ -66,6 +68,22 @@ describe('onboarding database schema', () => {
     expect(channelPlanAllocations.snapshotId.name).toBe('snapshot_id')
     expect(channelPlanAllocations.goalId.name).toBe('goal_id')
     expect(channelPlanAllocations.percentage.name).toBe('percentage')
+  })
+
+  it('stores Goal workspace lifecycle and actual positions', () => {
+    expect(financialGoals.priority.name).toBe('priority')
+    expect(financialGoals.status.name).toBe('status')
+    expect(financialGoals.desiredDate.name).toBe('desired_date')
+    expect(financialGoals.completedAt.name).toBe('completed_at')
+    expect(channelPlanSnapshots.commitmentStatus.name).toBe('commitment_status')
+    expect(channelPlanSnapshots.monthlyCommitmentAmount.notNull).toBe(false)
+    expect(getTableName(goalSavingsPositions)).toBe('goal_savings_positions')
+    expect(goalSavingsPositions.goalId.name).toBe('goal_id')
+    expect(goalSavingsPositions.location.name).toBe('location')
+    expect(getTableName(goalInvestmentPositions)).toBe('goal_investment_positions')
+    expect(goalInvestmentPositions.annualReturnRate.name).toBe('annual_return_rate')
+    expect(goalInvestmentPositions.availability.name).toBe('availability')
+    expect(goalInvestmentPositions.availableFrom.name).toBe('available_from')
   })
 })
 

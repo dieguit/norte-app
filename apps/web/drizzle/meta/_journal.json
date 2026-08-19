@@ -43,6 +43,13 @@
       "when": 1787147176256,
       "tag": "0005_first_contribution_channel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787154381632,
+      "tag": "0006_green_mystique",
+      "breakpoints": true
     }
   ]
 }

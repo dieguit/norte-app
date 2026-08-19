@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/button'
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const isHome = pathname === '/app'
+  const isGoals = pathname === '/app/goals' || pathname.startsWith('/app/goals/')
 
   return (
     <div className="flex min-h-dvh flex-col text-[var(--sea-ink)] md:flex-row">
@@ -42,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             to="/app"
             aria-current={isHome ? 'page' : undefined}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors motion-reduce:transition-none ${
               isHome
                 ? 'bg-[var(--chip-bg)] font-semibold text-[var(--sea-ink)] shadow-sm'
                 : 'text-[var(--sea-ink-soft)] hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)]'
@@ -51,15 +52,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             <House className="size-4" aria-hidden="true" />
             <span>Inicio</span>
           </Link>
-          <Button
-            variant="ghost"
-            disabled
-            aria-label="Objetivos"
-            className="flex w-full items-center justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--sea-ink-soft)] opacity-60"
+          <Link
+            to="/app/goals"
+            aria-current={isGoals ? 'page' : undefined}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors motion-reduce:transition-none ${
+              isGoals
+                ? 'bg-[var(--chip-bg)] font-semibold text-[var(--sea-ink)] shadow-sm'
+                : 'text-[var(--sea-ink-soft)] hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)]'
+            }`}
           >
             <Target className="size-4" aria-hidden="true" />
             <span>Objetivos</span>
-          </Button>
+          </Link>
           <Button
             variant="ghost"
             disabled
@@ -89,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link
           to="/app"
           aria-current={isHome ? 'page' : undefined}
-          className={`flex flex-1 flex-col items-center justify-center gap-1 py-1 text-xs font-medium no-underline transition-colors ${
+          className={`flex flex-1 flex-col items-center justify-center gap-1 py-1 text-xs font-medium no-underline transition-colors motion-reduce:transition-none ${
             isHome
               ? 'font-semibold text-[var(--sea-ink)]'
               : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
@@ -98,15 +102,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           <House className="size-5" aria-hidden="true" />
           <span>Inicio</span>
         </Link>
-        <Button
-          variant="ghost"
-          disabled
-          aria-label="Objetivos"
-          className="flex h-auto flex-1 flex-col items-center justify-center gap-1 py-1 text-xs font-medium text-[var(--sea-ink-soft)] opacity-60 hover:bg-transparent"
+        <Link
+          to="/app/goals"
+          aria-current={isGoals ? 'page' : undefined}
+          className={`flex flex-1 flex-col items-center justify-center gap-1 py-1 text-xs font-medium no-underline transition-colors motion-reduce:transition-none ${
+            isGoals
+              ? 'font-semibold text-[var(--sea-ink)]'
+              : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
+          }`}
         >
           <Target className="size-5" aria-hidden="true" />
           <span>Objetivos</span>
-        </Button>
+        </Link>
         <Button
           variant="ghost"
           disabled

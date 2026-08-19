@@ -72,6 +72,7 @@ export async function persistInitialPlan(
         channelId: insertedChannel.id,
         monthlyCommitmentAmount: channel.monthlyCommitment.amount,
         baseCurrency: channel.monthlyCommitment.currency,
+        commitmentStatus: 'active',
         effectiveMonth: `${channel.effectiveMonth}-01`,
       })
       .returning({ id: channelPlanSnapshots.id })
@@ -107,6 +108,7 @@ export async function getInitialHomeState(userId: string): Promise<InitialHomeSt
     orderBy: (snapshots, { desc }) => [desc(snapshots.effectiveMonth)],
   })
   if (!snapshot) return null
+  if (snapshot.monthlyCommitmentAmount === null || snapshot.commitmentStatus === 'paused') return null
 
   const allocation = await db.query.channelPlanAllocations.findFirst({
     where: (allocations, { and, eq }) => and(
