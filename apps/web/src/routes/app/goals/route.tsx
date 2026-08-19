@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { getGoalsWorkspace } from '../../../features/goals/goals.functions'
 import { FinancialOnboarding } from '../-components/FinancialOnboarding'
 import { GoalsEmpty, GoalsError, GoalsLoading } from './-components/GoalsRouteStates'
@@ -26,22 +26,9 @@ function GoalsRouteError() {
 
 function GoalsLayout() {
   const data = Route.useLoaderData()
-  const routerState = useRouterState()
-  const pathname = routerState.location.pathname
-  const isDetailSelected = pathname.startsWith('/app/goals/') && pathname !== '/app/goals/'
 
-  if (data.profile === 'missing') {
-    return <FinancialOnboarding />
-  }
+  if (data.profile === 'missing') return <FinancialOnboarding />
 
   const hasGoals = data.workspace.groups.some((group) => group.goals.length > 0)
-
-  return (
-    <>
-      <div className={isDetailSelected ? 'hidden md:block' : undefined}>
-        {hasGoals ? <GoalsWorkspace workspace={data.workspace} /> : <GoalsEmpty />}
-      </div>
-      <Outlet />
-    </>
-  )
+  return hasGoals ? <GoalsWorkspace workspace={data.workspace} /> : <GoalsEmpty />
 }

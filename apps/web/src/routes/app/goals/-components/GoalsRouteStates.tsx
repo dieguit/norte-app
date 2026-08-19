@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import { Button } from '../../../../components/ui/button'
 
 export function GoalsLoading() {
@@ -11,12 +10,12 @@ export function GoalsLoading() {
       <p role="status" className="text-sm text-[var(--sea-ink-soft)]">
         Cargando objetivos…
       </p>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
             aria-hidden="true"
-            className="h-44 w-full animate-pulse motion-reduce:animate-none rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6"
+            className="h-32 w-full animate-pulse motion-reduce:animate-none rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4"
           />
         ))}
       </div>
@@ -67,27 +66,6 @@ export function GoalsEmpty() {
         <p className="mt-2 max-w-md text-sm text-[var(--sea-ink-soft)]">
           Acá vas a ver tus objetivos una vez que los crees y comiences a planificar tu patrimonio.
         </p>
-      </div>
-    </div>
-  )
-}
-
-export function GoalNotFound() {
-  return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-6 px-5 py-16 text-center">
-      <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 shadow-sm">
-        <h2 className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-          Objetivo no encontrado
-        </h2>
-        <p className="text-sm text-[var(--sea-ink-soft)]">
-          El objetivo que buscás no existe o no tenés acceso a él.
-        </p>
-        <Link
-          to="/app/goals"
-          className="mt-2 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/80"
-        >
-          Volver a objetivos
-        </Link>
       </div>
     </div>
   )

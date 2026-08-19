@@ -1,38 +1,14 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
-import type { ComponentProps, ReactNode } from 'react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GoalsWorkspace as GoalsWorkspaceType, GoalWorkspaceItem } from '../../../../features/goals/goals'
 import { GoalsWorkspace } from './GoalsWorkspace'
-import { GoalsEmpty, GoalsError, GoalsLoading, GoalNotFound } from './GoalsRouteStates'
-
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    to,
-    params,
-    children,
-    ...props
-  }: {
-    to: string
-    params?: Record<string, string>
-    children: ReactNode
-  } & ComponentProps<'a'>) => {
-    let href = to
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        href = href.replace(`$${key}`, value)
-      }
-    }
-    return (
-      <a href={href} {...props}>
-        {children}
-      </a>
-    )
-  },
-}))
+import { GoalsEmpty, GoalsError, GoalsLoading } from './GoalsRouteStates'
 
 afterEach(cleanup)
+
 
 function makeGoal(overrides: Partial<GoalWorkspaceItem>): GoalWorkspaceItem {
   return {
@@ -133,22 +109,91 @@ describe('GoalsWorkspace component', () => {
       'Pausados',
       'Completados',
     ])
-    expect(screen.getByRole('link', { name: /Ver Colchón financiero/i })).toHaveAttribute(
-      'href',
-      '/app/goals/goal-1',
-    )
-    expect(screen.getByRole('link', { name: /Ver Colchón financiero/i })).toHaveAttribute(
-      'id',
-      'goal-link-goal-1',
-    )
-    expect(screen.getByText('Plan mensual')).toBeInTheDocument()
-    expect(screen.getAllByText('Valor actual')[0]).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Ver Colchón financiero/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Colchón financiero')).toBeInTheDocument()
 
-    // Assert planned amount is not inside the element labelled 'Valor actual de Colchón financiero'
     const actualValueEl = screen.getByLabelText('Valor actual de Colchón financiero')
     expect(actualValueEl).toHaveTextContent('US$ 200,00')
     expect(actualValueEl).not.toHaveTextContent('Plan:')
     expect(actualValueEl).not.toHaveTextContent('US$ 33,33')
+  })
+
+  it('uses an explicit disclosure instead of linking the goal name', async () => {
+    const user = userEvent.setup()
+    render(
+      <GoalsWorkspace
+        workspace={{ groups: [{ status: 'active', goals: [makeGoal({})] }] }}
+      />,
+    )
+
+    expect(screen.queryByRole('link', { name: /Colchón financiero/i })).not.toBeInTheDocument()
+
+    const disclosure = screen.getByRole('button', {
+      name: 'Ver detalle de Colchón financiero',
+    })
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+
+    await user.click(disclosure)
+
+    expect(
+      screen.getByRole('button', { name: 'Ocultar detalle de Colchón financiero' }),
+    ).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Composición' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument()
+    expect(screen.getByText('Ahorrar USD')).toBeInTheDocument()
+    expect(screen.getByText('US$ 33,33 por mes')).toBeInTheDocument()
+  })
+
+  it('keeps only one goal expanded', async () => {
+    const user = userEvent.setup()
+    const first = makeGoal({ id: 'goal-1', name: 'Colchón financiero' })
+    const second = makeGoal({ id: 'goal-2', name: 'Viaje' })
+    render(
+      <GoalsWorkspace
+        workspace={{ groups: [{ status: 'active', goals: [first, second] }] }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
+    expect(screen.getByRole('button', { name: 'Ocultar detalle de Colchón financiero' }))
+      .toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Viaje' }))
+
+    expect(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
+      .toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: 'Ocultar detalle de Viaje' }))
+      .toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getAllByRole('region', { name: /Detalles de/ })).toHaveLength(1)
+  })
+
+  it('shows plan first and composition second in responsive columns', async () => {
+    const user = userEvent.setup()
+    render(
+      <GoalsWorkspace
+        workspace={{
+          groups: [{
+            status: 'active',
+            goals: [makeGoal({
+              savingsValue: { amount: '125.00', currency: 'USD' },
+              investmentValue: { amount: '75.00', currency: 'USD' },
+            })],
+          }],
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
+
+    const details = screen.getByRole('region', { name: 'Detalles de Colchón financiero' })
+    expect(details).toHaveClass('grid-cols-1', 'sm:grid-cols-2')
+    expect(within(details).getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent))
+      .toEqual(['Plan', 'Composición'])
+    expect(within(details).getByText('US$ 125,00')).toBeInTheDocument()
+    expect(within(details).getByText('US$ 75,00')).toBeInTheDocument()
+    expect(within(details).getByText('Ahorrar USD')).toBeInTheDocument()
   })
 
   it('omits empty groups from rendering', () => {
@@ -196,7 +241,8 @@ describe('GoalsWorkspace component', () => {
     expect(screen.getByText('Fecha no disponible')).toBeInTheDocument()
   })
 
-  it('renders paused goals with Proyección pausada and Último plan allocation label', () => {
+  it('renders paused goals with Proyección pausada and plan rows behind disclosure', async () => {
+    const user = userEvent.setup()
     const pausedGoal = makeGoal({
       id: 'goal-paused',
       name: 'Fondo de viaje',
@@ -223,10 +269,12 @@ describe('GoalsWorkspace component', () => {
 
     render(<GoalsWorkspace workspace={workspace} />)
 
-    const pausedArticle = screen.getByRole('article', { name: 'Ver Fondo de viaje' })
+    const pausedArticle = screen.getByRole('article', { name: 'Fondo de viaje' })
     expect(within(pausedArticle).getByText('Proyección pausada')).toBeInTheDocument()
-    expect(within(pausedArticle).getByText('Último plan')).toBeInTheDocument()
-    expect(within(pausedArticle).getByText(/Plan pausado: US\$ 0,67/)).toBeInTheDocument()
+
+    await user.click(within(pausedArticle).getByRole('button', { name: 'Ver detalle de Fondo de viaje' }))
+    expect(within(pausedArticle).getByText('Ahorrar USD')).toBeInTheDocument()
+    expect(within(pausedArticle).getByText('US$ 0,67 por mes')).toBeInTheDocument()
   })
 
   it('renders unknown target as Objetivo por calcular and omits progress percentage', () => {
@@ -307,7 +355,8 @@ describe('GoalsWorkspace component', () => {
     expect(screen.getByText('125%')).toBeInTheDocument()
   })
 
-  it('renders long names and multiple funding rows without duplicate interactive controls', () => {
+  it('renders long names and multiple funding rows behind disclosure', async () => {
+    const user = userEvent.setup()
     const complexGoal = makeGoal({
       id: 'goal-complex',
       name: 'Fondo para la compra del primer departamento en Buenos Aires con cochera',
@@ -344,19 +393,21 @@ describe('GoalsWorkspace component', () => {
     render(<GoalsWorkspace workspace={workspace} />)
 
     expect(screen.getByText('Fondo para la compra del primer departamento en Buenos Aires con cochera')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Fondo para la compra/ }))
+
     expect(screen.getByText('Ahorrar USD')).toBeInTheDocument()
     expect(screen.getByText('Invertir USD')).toBeInTheDocument()
     expect(screen.getByText('60%')).toBeInTheDocument()
     expect(screen.getByText('40%')).toBeInTheDocument()
-    expect(screen.getByText('Plan: US$ 40,00')).toBeInTheDocument()
-    expect(screen.getByText('Plan: US$ 26,67')).toBeInTheDocument()
+    expect(screen.getByText('US$ 40,00 por mes')).toBeInTheDocument()
+    expect(screen.getByText('US$ 26,67 por mes')).toBeInTheDocument()
 
-    // Assert only one interactive link exists for this Goal card
-    const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(1)
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('renders funding row with 0% allocation and absent monthly commitment', () => {
+  it('renders funding row with 0% allocation and absent monthly commitment behind disclosure', async () => {
+    const user = userEvent.setup()
     const zeroAllocGoal = makeGoal({
       id: 'goal-zero',
       funding: [
@@ -379,6 +430,8 @@ describe('GoalsWorkspace component', () => {
     }
 
     render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
 
     expect(screen.getByText('0%')).toBeInTheDocument()
     expect(screen.getByText('Sin aporte mensual')).toBeInTheDocument()
@@ -420,13 +473,5 @@ describe('GoalsRouteStates', () => {
     expect(screen.getByRole('heading', { name: 'No tenés objetivos registrados' })).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
-  })
-
-  it('renders GoalNotFound with explanation and link to /app/goals', () => {
-    render(<GoalNotFound />)
-
-    expect(screen.getByRole('heading', { name: 'Objetivo no encontrado' })).toBeInTheDocument()
-    const backLink = screen.getByRole('link', { name: /Volver a objetivos/i })
-    expect(backLink).toHaveAttribute('href', '/app/goals')
   })
 })

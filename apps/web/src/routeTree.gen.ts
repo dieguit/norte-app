@@ -17,7 +17,6 @@ import { Route as AppGoalsRouteRouteImport } from './routes/app/goals/route'
 import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$deviceId/route'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as AppGoalsIndexRouteImport } from './routes/app/goals/index'
-import { Route as AppGoalsGoalIdRouteImport } from './routes/app/goals/$goalId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -59,11 +58,6 @@ const AppGoalsIndexRoute = AppGoalsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppGoalsRouteRoute,
 } as any)
-const AppGoalsGoalIdRoute = AppGoalsGoalIdRouteImport.update({
-  id: '/$goalId',
-  path: '/$goalId',
-  getParentRoute: () => AppGoalsRouteRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,7 +67,6 @@ export interface FileRoutesByFullPath {
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
-  '/app/goals/$goalId': typeof AppGoalsGoalIdRoute
   '/app/goals/': typeof AppGoalsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -82,7 +75,6 @@ export interface FileRoutesByTo {
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app': typeof AppIndexRoute
-  '/app/goals/$goalId': typeof AppGoalsGoalIdRoute
   '/app/goals': typeof AppGoalsIndexRoute
 }
 export interface FileRoutesById {
@@ -94,7 +86,6 @@ export interface FileRoutesById {
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
-  '/app/goals/$goalId': typeof AppGoalsGoalIdRoute
   '/app/goals/': typeof AppGoalsIndexRoute
 }
 export interface FileRouteTypes {
@@ -107,7 +98,6 @@ export interface FileRouteTypes {
     | '/informe/$deviceId'
     | '/sign-in/$'
     | '/app/'
-    | '/app/goals/$goalId'
     | '/app/goals/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,7 +106,6 @@ export interface FileRouteTypes {
     | '/informe/$deviceId'
     | '/sign-in/$'
     | '/app'
-    | '/app/goals/$goalId'
     | '/app/goals'
   id:
     | '__root__'
@@ -127,7 +116,6 @@ export interface FileRouteTypes {
     | '/informe/$deviceId'
     | '/sign-in/$'
     | '/app/'
-    | '/app/goals/$goalId'
     | '/app/goals/'
   fileRoutesById: FileRoutesById
 }
@@ -197,23 +185,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGoalsIndexRouteImport
       parentRoute: typeof AppGoalsRouteRoute
     }
-    '/app/goals/$goalId': {
-      id: '/app/goals/$goalId'
-      path: '/$goalId'
-      fullPath: '/app/goals/$goalId'
-      preLoaderRoute: typeof AppGoalsGoalIdRouteImport
-      parentRoute: typeof AppGoalsRouteRoute
-    }
   }
 }
 
 interface AppGoalsRouteRouteChildren {
-  AppGoalsGoalIdRoute: typeof AppGoalsGoalIdRoute
   AppGoalsIndexRoute: typeof AppGoalsIndexRoute
 }
 
 const AppGoalsRouteRouteChildren: AppGoalsRouteRouteChildren = {
-  AppGoalsGoalIdRoute: AppGoalsGoalIdRoute,
   AppGoalsIndexRoute: AppGoalsIndexRoute,
 }
 
