@@ -62,5 +62,6 @@ rtk pip list            rtk pnpm install        rtk npm run <script>
 - When doing frontend (react ui) work, use review results with playwright mcp. Always cleanup logs and artifact images after.
 - When reviewing work, always run /ponytail-review and /code-review skills
 - Minimize the use of useless comments, only add comments explaining domain decisions.
+- Do not touch shadcn components, nor create unit tests for them. They should be treated as vendor code
 
 <!-- /headroom:rtk-instructions -->

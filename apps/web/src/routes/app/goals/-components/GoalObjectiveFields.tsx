@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/react-form'
+import { useStore } from "@tanstack/react-form";
 import {
   Field,
   FieldDescription,
@@ -6,87 +6,90 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSet,
-} from '../../../../components/ui/field'
-import { Input } from '../../../../components/ui/input'
+} from "../../../../components/ui/field";
+import { Input } from "../../../../components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../../../components/ui/select'
-import { formatMoneyInput } from '../../../../lib/money'
-import type { GoalCreationContext } from '../../../../features/goals/goal-creation'
-import type { GoalCreationFormApi } from './useGoalCreationForm'
+} from "../../../../components/ui/select";
+import { formatMoneyInput } from "../../../../lib/money";
+import type { GoalCreationContext } from "../../../../features/goals/goal-creation";
+import type { GoalCreationFormApi } from "./useGoalCreationForm";
 
 export interface GoalObjectiveFieldsProps {
-  form: GoalCreationFormApi
-  context: GoalCreationContext
-  validationErrors?: Record<string, string>
+  form: GoalCreationFormApi;
+  context: GoalCreationContext;
+  validationErrors?: Record<string, string>;
 }
 
 const GOAL_TYPE_OPTIONS = [
-  { value: 'purchase', label: 'Compra o gasto grande' },
-  { value: 'emergency_fund', label: 'Colchón financiero' },
-  { value: 'retirement', label: 'Jubilación' },
-  { value: 'other', label: 'Otro objetivo' },
-] as const
+  { value: "purchase", label: "Compra o gasto grande" },
+  { value: "emergency_fund", label: "Colchón financiero" },
+  { value: "retirement", label: "Jubilación" },
+  { value: "other", label: "Otro objetivo" },
+] as const;
 
 const CURRENCY_OPTIONS = [
-  { value: 'ARS', label: 'Pesos (ARS)' },
-  { value: 'USD', label: 'Dólares (USD)' },
-] as const
+  { value: "ARS", label: "Pesos (ARS)" },
+  { value: "USD", label: "Dólares (USD)" },
+] as const;
 
 const PRIORITY_OPTIONS = [
-  { value: 'high', label: 'Prioridad alta' },
-  { value: 'medium', label: 'Prioridad media' },
-  { value: 'low', label: 'Prioridad baja' },
-] as const
+  { value: "high", label: "Prioridad alta" },
+  { value: "medium", label: "Prioridad media" },
+  { value: "low", label: "Prioridad baja" },
+] as const;
 
 export function GoalObjectiveFields({
   form,
   context,
   validationErrors = {},
 }: GoalObjectiveFieldsProps) {
-  const values = useStore(form.store, (state) => state.values)
+  const values = useStore(form.store, (state) => state.values);
 
   const handleTypeChange = (newType: string | null) => {
-    if (!newType) return
-    const currentName = values.name
-    form.setFieldValue('type', newType as any)
+    if (!newType) return;
+    const currentName = values.name;
+    form.setFieldValue("type", newType as any);
 
-    if (newType === 'emergency_fund') {
-      if (!currentName || currentName.trim() === '' || currentName === 'Compra o gasto grande' || currentName === 'Otro objetivo') {
-        form.setFieldValue('name', 'Colchón financiero')
+    if (newType === "emergency_fund") {
+      if (
+        !currentName ||
+        currentName.trim() === "" ||
+        currentName === "Compra o gasto grande" ||
+        currentName === "Otro objetivo"
+      ) {
+        form.setFieldValue("name", "Colchón financiero");
       }
-      form.setFieldValue('currency', 'USD')
+      form.setFieldValue("currency", "USD");
     }
-  }
+  };
 
   const handleTargetAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatMoneyInput(e.target.value)
-    form.setFieldValue('targetAmount', formatted)
-  }
+    const formatted = formatMoneyInput(e.target.value);
+    form.setFieldValue("targetAmount", formatted);
+  };
 
-  const isEmergencyFund = values.type === 'emergency_fund'
+  const isEmergencyFund = values.type === "emergency_fund";
 
   return (
-    <FieldSet className="flex flex-col gap-5">
-      <FieldGroup className="flex flex-col gap-4">
+    <FieldGroup className="flex flex-col gap-4">
+      <FieldSet className="flex flex-col gap-5">
         {/* Goal Type */}
         <Field data-invalid={!!validationErrors.type}>
           <FieldLabel htmlFor="goal-type-trigger">Tipo de objetivo</FieldLabel>
-          <Select
-            value={values.type}
-            onValueChange={handleTypeChange}
-          >
+          <Select value={values.type} onValueChange={handleTypeChange}>
             <SelectTrigger
               id="goal-type-trigger"
               aria-label="Tipo de objetivo"
               className="w-full"
             >
               <SelectValue>
-                {GOAL_TYPE_OPTIONS.find((opt) => opt.value === values.type)?.label ?? 'Seleccionar tipo'}
+                {GOAL_TYPE_OPTIONS.find((opt) => opt.value === values.type)
+                  ?.label ?? "Seleccionar tipo"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -97,7 +100,9 @@ export function GoalObjectiveFields({
               ))}
             </SelectContent>
           </Select>
-          {validationErrors.type && <FieldError>{validationErrors.type}</FieldError>}
+          {validationErrors.type && (
+            <FieldError>{validationErrors.type}</FieldError>
+          )}
         </Field>
 
         {/* Goal Name */}
@@ -108,9 +113,11 @@ export function GoalObjectiveFields({
             aria-label="Nombre del objetivo"
             placeholder="Ej: Vacaciones 2027, Auto nuevo..."
             value={values.name}
-            onChange={(e) => form.setFieldValue('name', e.target.value)}
+            onChange={(e) => form.setFieldValue("name", e.target.value)}
           />
-          {validationErrors.name && <FieldError>{validationErrors.name}</FieldError>}
+          {validationErrors.name && (
+            <FieldError>{validationErrors.name}</FieldError>
+          )}
         </Field>
 
         {/* Currency and Target Amount */}
@@ -124,14 +131,18 @@ export function GoalObjectiveFields({
               >
                 Dólares (USD)
               </div>
-              <FieldDescription>El colchón financiero se planifica en USD.</FieldDescription>
-              {validationErrors.currency && <FieldError>{validationErrors.currency}</FieldError>}
+              <FieldDescription>
+                El colchón financiero se planifica en USD.
+              </FieldDescription>
+              {validationErrors.currency && (
+                <FieldError>{validationErrors.currency}</FieldError>
+              )}
             </Field>
 
             <FieldDescription className="text-sm text-[var(--sea-ink-soft)]">
-              {context.expensesKnowledge === 'unknown'
-                ? 'Vamos a calcular el monto sugerido una vez que definas tus gastos mensuales.'
-                : 'El colchón equivale a 6 meses de gastos y se calculará automáticamente.'}
+              {context.expensesKnowledge === "unknown"
+                ? "Vamos a calcular el monto sugerido una vez que definas tus gastos mensuales."
+                : "El colchón equivale a 6 meses de gastos y se calculará automáticamente."}
             </FieldDescription>
           </div>
         ) : (
@@ -140,7 +151,9 @@ export function GoalObjectiveFields({
               <FieldLabel htmlFor="goal-currency-trigger">Moneda</FieldLabel>
               <Select
                 value={values.currency}
-                onValueChange={(val) => val && form.setFieldValue('currency', val as any)}
+                onValueChange={(val) =>
+                  val && form.setFieldValue("currency", val as any)
+                }
               >
                 <SelectTrigger
                   id="goal-currency-trigger"
@@ -148,7 +161,9 @@ export function GoalObjectiveFields({
                   className="w-full"
                 >
                   <SelectValue>
-                    {CURRENCY_OPTIONS.find((opt) => opt.value === values.currency)?.label ?? 'Seleccionar moneda'}
+                    {CURRENCY_OPTIONS.find(
+                      (opt) => opt.value === values.currency,
+                    )?.label ?? "Seleccionar moneda"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -159,11 +174,15 @@ export function GoalObjectiveFields({
                   ))}
                 </SelectContent>
               </Select>
-              {validationErrors.currency && <FieldError>{validationErrors.currency}</FieldError>}
+              {validationErrors.currency && (
+                <FieldError>{validationErrors.currency}</FieldError>
+              )}
             </Field>
 
             <Field data-invalid={!!validationErrors.targetAmount}>
-              <FieldLabel htmlFor="goal-target-amount-input">Monto objetivo</FieldLabel>
+              <FieldLabel htmlFor="goal-target-amount-input">
+                Monto objetivo
+              </FieldLabel>
               <Input
                 id="goal-target-amount-input"
                 aria-label="Monto objetivo"
@@ -181,13 +200,15 @@ export function GoalObjectiveFields({
 
         {/* Desired Month */}
         <Field data-invalid={!!validationErrors.desiredMonth}>
-          <FieldLabel htmlFor="goal-desired-month-input">Mes objetivo (opcional)</FieldLabel>
+          <FieldLabel htmlFor="goal-desired-month-input">
+            Mes objetivo (opcional)
+          </FieldLabel>
           <Input
             id="goal-desired-month-input"
             aria-label="Mes objetivo"
             type="month"
             value={values.desiredMonth}
-            onChange={(e) => form.setFieldValue('desiredMonth', e.target.value)}
+            onChange={(e) => form.setFieldValue("desiredMonth", e.target.value)}
           />
           <FieldDescription>
             Dejalo vacío si no tenés una fecha límite definida.
@@ -202,7 +223,9 @@ export function GoalObjectiveFields({
           <FieldLabel htmlFor="goal-priority-trigger">Prioridad</FieldLabel>
           <Select
             value={values.priority}
-            onValueChange={(val) => val && form.setFieldValue('priority', val as any)}
+            onValueChange={(val) =>
+              val && form.setFieldValue("priority", val as any)
+            }
           >
             <SelectTrigger
               id="goal-priority-trigger"
@@ -210,7 +233,8 @@ export function GoalObjectiveFields({
               className="w-full"
             >
               <SelectValue>
-                {PRIORITY_OPTIONS.find((opt) => opt.value === values.priority)?.label ?? 'Seleccionar prioridad'}
+                {PRIORITY_OPTIONS.find((opt) => opt.value === values.priority)
+                  ?.label ?? "Seleccionar prioridad"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -221,9 +245,11 @@ export function GoalObjectiveFields({
               ))}
             </SelectContent>
           </Select>
-          {validationErrors.priority && <FieldError>{validationErrors.priority}</FieldError>}
+          {validationErrors.priority && (
+            <FieldError>{validationErrors.priority}</FieldError>
+          )}
         </Field>
-      </FieldGroup>
-    </FieldSet>
-  )
+      </FieldSet>
+    </FieldGroup>
+  );
 }
