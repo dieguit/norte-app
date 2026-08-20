@@ -7,10 +7,13 @@ import { Button } from '../../../../components/ui/button'
 import {
   createObjectiveSchema,
   goalPlanSchema,
+  type GoalCreationDraft,
 } from '../../../../features/goals/goal-creation.schema'
 import {
   previewGoalCreation,
   confirmGoalCreation,
+  previewGoalEdit,
+  confirmGoalEdit,
 } from '../../../../features/goals/goals.functions'
 import type {
   GoalCreationAllocationEntry,
@@ -28,15 +31,20 @@ export interface GoalCreationProps {
   context: GoalCreationContext
   onCancel: () => void
   onCreated: () => void
+  edit?: {
+    goalId: string
+    initialDraft: GoalCreationDraft
+  }
 }
 
 export function GoalCreation({
   context,
   onCancel,
   onCreated,
+  edit,
 }: GoalCreationProps) {
   const router = useRouter()
-  const form = useGoalCreationForm()
+  const form = useGoalCreationForm(edit?.initialDraft)
   const values = useStore(form.store, (state) => state.values)
 
   const [stage, setStage] = useState<GoalCreationStage>('objective')
@@ -126,7 +134,9 @@ export function GoalCreation({
 
     setIsPreviewPending(true)
     try {
-      const previewResult = await previewGoalCreation({ data: form.state.values })
+      const previewResult = edit
+        ? await previewGoalEdit({ data: { goalId: edit.goalId, draft: form.state.values } })
+        : await previewGoalCreation({ data: form.state.values })
       setPreview(previewResult)
 
       const existingAllocations = form.state.values.allocations
@@ -169,7 +179,9 @@ export function GoalCreation({
 
     setIsPreviewPending(true)
     try {
-      const previewResult = await previewGoalCreation({ data: form.state.values })
+      const previewResult = edit
+        ? await previewGoalEdit({ data: { goalId: edit.goalId, draft: form.state.values } })
+        : await previewGoalCreation({ data: form.state.values })
       setPreview(previewResult)
     } catch (err: any) {
       setPreview(null)
@@ -196,12 +208,20 @@ export function GoalCreation({
     setServerError(null)
 
     try {
-      const result = await confirmGoalCreation({
-        data: {
-          draft: form.state.values,
-          previewToken: preview.previewToken,
-        },
-      })
+      const result = edit
+        ? await confirmGoalEdit({
+            data: {
+              goalId: edit.goalId,
+              draft: form.state.values,
+              previewToken: preview.previewToken,
+            },
+          })
+        : await confirmGoalCreation({
+            data: {
+              draft: form.state.values,
+              previewToken: preview.previewToken,
+            },
+          })
 
       if (result.status === 'stale') {
         mergeStillEligiblePercentages(result.preview.proposal.allocation.entries)
@@ -212,7 +232,7 @@ export function GoalCreation({
       }
 
       await router.invalidate()
-      toast.success('Objetivo creado y Plan actualizado.')
+      toast.success(edit ? 'Objetivo y Plan actualizados.' : 'Objetivo creado y Plan actualizado.')
       onCreated()
     } catch (err: any) {
       setServerError(err?.message ?? 'Ocurrió un error al guardar.')
@@ -257,6 +277,7 @@ export function GoalCreation({
             form={form}
             context={context}
             validationErrors={validationErrors}
+            immutableIdentity={Boolean(edit)}
           />
         )}
 
@@ -311,7 +332,11 @@ export function GoalCreation({
             disabled={!isAllocationsValid || isPreviewPending || isSubmitting || !preview || !isPreviewSynced}
             onClick={handleConfirm}
           >
-            {isSubmitting ? 'Guardando...' : 'Crear objetivo y actualizar Plan'}
+            {isSubmitting
+              ? 'Guardando...'
+              : edit
+                ? 'Actualizar objetivo y Plan'
+                : 'Crear objetivo y actualizar Plan'}
           </Button>
         )}
       </div>

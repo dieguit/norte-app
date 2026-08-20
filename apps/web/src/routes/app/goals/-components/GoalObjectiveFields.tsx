@@ -24,6 +24,7 @@ export interface GoalObjectiveFieldsProps {
   form: GoalCreationFormApi
   context: GoalCreationContext
   validationErrors?: Record<string, string>
+  immutableIdentity?: boolean
 }
 
 const GOAL_TYPE_OPTIONS = [
@@ -48,6 +49,7 @@ export function GoalObjectiveFields({
   form,
   context,
   validationErrors = {},
+  immutableIdentity = false,
 }: GoalObjectiveFieldsProps) {
   const values = useStore(form.store, (state) => state.values)
 
@@ -91,11 +93,12 @@ export function GoalObjectiveFields({
         {/* Goal Type */}
         <Field data-invalid={!!validationErrors.type}>
           <FieldLabel htmlFor="goal-type-trigger">Tipo de objetivo</FieldLabel>
-          <Select value={values.type} onValueChange={handleTypeChange}>
+          <Select value={values.type} onValueChange={handleTypeChange} disabled={immutableIdentity}>
             <SelectTrigger
               id="goal-type-trigger"
               aria-label="Tipo de objetivo"
               className="w-full"
+              disabled={immutableIdentity}
             >
               <SelectValue>
                 {goalTypeOptions.find((opt) => opt.value === values.type)?.label ?? 'Seleccionar tipo'}
@@ -163,11 +166,13 @@ export function GoalObjectiveFields({
                 onValueChange={(val) =>
                   val && form.setFieldValue('currency', val as any)
                 }
+                disabled={immutableIdentity}
               >
                 <SelectTrigger
                   id="goal-currency-trigger"
                   aria-label="Moneda"
                   className="w-full"
+                  disabled={immutableIdentity}
                 >
                   <SelectValue>
                     {CURRENCY_OPTIONS.find(
@@ -240,6 +245,7 @@ export function GoalObjectiveFields({
                 aria-label="Ahorrar"
                 checked={values.strategy === 'save'}
                 onChange={() => form.setFieldValue('strategy', 'save')}
+                disabled={immutableIdentity}
                 className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
               />
               <span>Ahorrar</span>
@@ -252,6 +258,7 @@ export function GoalObjectiveFields({
                 aria-label="Invertir"
                 checked={values.strategy === 'invest'}
                 onChange={() => form.setFieldValue('strategy', 'invest')}
+                disabled={immutableIdentity}
                 className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
               />
               <span>Invertir</span>

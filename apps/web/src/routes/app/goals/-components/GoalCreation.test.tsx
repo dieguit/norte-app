@@ -5,11 +5,17 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
-import { previewGoalCreation, confirmGoalCreation } from '../../../../features/goals/goals.functions'
+import {
+  previewGoalCreation,
+  confirmGoalCreation,
+  previewGoalEdit,
+  confirmGoalEdit,
+} from '../../../../features/goals/goals.functions'
 import type {
   GoalCreationContext,
   GoalCreationPreviewResult,
 } from '../../../../features/goals/goal-creation'
+import type { GoalCreationDraft } from '../../../../features/goals/goal-creation.schema'
 import { GoalCreation } from './GoalCreation'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -26,6 +32,8 @@ vi.mock('sonner', () => ({
 vi.mock('../../../../features/goals/goals.functions', () => ({
   previewGoalCreation: vi.fn(),
   confirmGoalCreation: vi.fn(),
+  previewGoalEdit: vi.fn(),
+  confirmGoalEdit: vi.fn(),
 }))
 
 afterEach(cleanup)
@@ -375,6 +383,191 @@ describe('GoalCreation component (2-step flow)', () => {
         expect(toast.success).toHaveBeenCalledWith('Objetivo creado y Plan actualizado.')
         expect(onCreated).toHaveBeenCalledTimes(1)
       })
+    })
+  })
+
+  describe('Edit mode', () => {
+    const editInitialDraft: GoalCreationDraft = {
+      type: 'purchase',
+      name: 'Viaje a Japón',
+      targetAmount: '5.000.000',
+      currency: 'USD',
+      desiredMonth: '2027-10',
+      priority: 'medium',
+      strategy: 'invest',
+      annualReturnRate: '12',
+      availability: 'available_from',
+      availableFromMonth: '2027-01',
+      allocations: [{ goalId: 'goal-1', percentage: '100.00' }],
+    }
+
+    it('prefills fields and disables immutable identity fields in edit mode', () => {
+      render(
+        <GoalCreation
+          context={defaultContext}
+          edit={{ goalId: 'goal-1', initialDraft: editInitialDraft }}
+          onCancel={vi.fn()}
+          onCreated={vi.fn()}
+        />,
+      )
+
+      // Prefilled values
+      expect(screen.getByLabelText(/nombre del objetivo/i)).toHaveValue('Viaje a Japón')
+      expect(screen.getByLabelText(/monto objetivo/i)).toHaveValue('5.000.000')
+      expect(screen.getByRole('button', { name: /mes objetivo/i })).toHaveTextContent(/octubre de 2027/i)
+      expect(screen.getByLabelText(/rendimiento anual estimado/i)).toHaveValue('12')
+      expect(screen.getByRole('button', { name: /mes a partir del cual estará disponible/i })).toHaveTextContent(
+        /enero de 2027/i,
+      )
+
+      // Non-immutable fields are NOT disabled
+      expect(screen.getByLabelText(/nombre del objetivo/i)).not.toBeDisabled()
+      expect(screen.getByLabelText(/monto objetivo/i)).not.toBeDisabled()
+      expect(screen.getByLabelText(/rendimiento anual estimado/i)).not.toBeDisabled()
+
+      // Immutable identity controls are disabled
+      expect(screen.getByLabelText(/tipo de objetivo/i)).toBeDisabled()
+      expect(screen.getByLabelText(/moneda/i)).toBeDisabled()
+      expect(screen.getByRole('radio', { name: 'Ahorrar' })).toBeDisabled()
+      expect(screen.getByRole('radio', { name: 'Invertir' })).toBeDisabled()
+    })
+
+    it('previews and confirms edit, invalidating route and displaying update toast', async () => {
+      const user = userEvent.setup()
+      const onCreated = vi.fn()
+      const mockPreview = makeMockPreview({
+        proposal: {
+          ...makeMockPreview().proposal,
+          allocation: {
+            ...makeMockPreview().proposal.allocation,
+            entries: [{ goalId: 'goal-1', goalName: 'Viaje a Japón', percentage: '100.00', allocatedBaseAmount: { amount: '100000.00', currency: 'ARS' }, allocatedDestinationAmount: { amount: '100000.00', currency: 'ARS' }, pending: false }],
+          },
+        },
+      })
+
+      vi.mocked(previewGoalEdit).mockResolvedValue(mockPreview)
+      vi.mocked(confirmGoalEdit).mockResolvedValue({ status: 'updated' })
+
+      render(
+        <GoalCreation
+          context={defaultContext}
+          edit={{ goalId: 'goal-1', initialDraft: editInitialDraft }}
+          onCancel={vi.fn()}
+          onCreated={onCreated}
+        />,
+      )
+
+      // Modify target amount
+      const targetInput = screen.getByLabelText(/monto objetivo/i)
+      await user.clear(targetInput)
+      await user.type(targetInput, '6000000')
+
+      // Continue to distribution
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
+
+      await waitFor(() => {
+        expect(previewGoalEdit).toHaveBeenCalledTimes(1)
+        expect(previewGoalEdit).toHaveBeenCalledWith({
+          data: {
+            goalId: 'goal-1',
+            draft: expect.objectContaining({
+              name: 'Viaje a Japón',
+              targetAmount: '6.000.000',
+            }),
+          },
+        })
+      })
+
+      expect(await screen.findByRole('heading', { name: '2. Distribución e impacto' })).toBeVisible()
+
+      // Confirm button label in edit mode
+      const confirmBtn = screen.getByRole('button', { name: 'Actualizar objetivo y Plan' })
+      expect(confirmBtn).toBeVisible()
+
+      await user.click(confirmBtn)
+
+      await waitFor(() => {
+        expect(confirmGoalEdit).toHaveBeenCalledWith({
+          data: {
+            goalId: 'goal-1',
+            draft: expect.objectContaining({
+              name: 'Viaje a Japón',
+              targetAmount: '6.000.000',
+            }),
+            previewToken: mockPreview.previewToken,
+          },
+        })
+        expect(mockInvalidate).toHaveBeenCalledTimes(1)
+        expect(toast.success).toHaveBeenCalledWith('Objetivo y Plan actualizados.')
+        expect(onCreated).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('handles stale preview on edit confirmation', async () => {
+      const user = userEvent.setup()
+      const mockPreview = makeMockPreview({
+        proposal: {
+          ...makeMockPreview().proposal,
+          allocation: {
+            ...makeMockPreview().proposal.allocation,
+            entries: [
+              {
+                goalId: 'goal-1',
+                goalName: 'Viaje a Japón',
+                percentage: '100.00',
+                allocatedBaseAmount: { amount: '100000.00', currency: 'ARS' },
+                allocatedDestinationAmount: { amount: '100000.00', currency: 'ARS' },
+                pending: false,
+              },
+            ],
+          },
+        },
+      })
+      const refreshedPreview = makeMockPreview({
+        previewToken: 'c'.repeat(64),
+        proposal: {
+          ...makeMockPreview().proposal,
+          allocation: {
+            ...makeMockPreview().proposal.allocation,
+            entries: [
+              {
+                goalId: 'goal-1',
+                goalName: 'Viaje a Japón',
+                percentage: '100.00',
+                allocatedBaseAmount: { amount: '100000.00', currency: 'ARS' },
+                allocatedDestinationAmount: { amount: '100000.00', currency: 'ARS' },
+                pending: false,
+              },
+            ],
+          },
+        },
+      })
+
+      vi.mocked(previewGoalEdit).mockResolvedValue(mockPreview)
+      vi.mocked(confirmGoalEdit).mockResolvedValueOnce({
+        status: 'stale',
+        preview: refreshedPreview,
+      })
+
+      render(
+        <GoalCreation
+          context={defaultContext}
+          edit={{ goalId: 'goal-1', initialDraft: editInitialDraft }}
+          onCancel={vi.fn()}
+          onCreated={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
+
+      expect(await screen.findByRole('button', { name: 'Actualizar objetivo y Plan' })).toBeVisible()
+
+      await user.click(screen.getByRole('button', { name: 'Actualizar objetivo y Plan' }))
+
+      expect(
+        await screen.findByText('Tu Plan cambió. Revisá la distribución actualizada antes de confirmar.'),
+      ).toBeVisible()
+      expect(screen.getByRole('heading', { name: '2. Distribución e impacto' })).toBeVisible()
     })
   })
 })
