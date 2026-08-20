@@ -45,10 +45,7 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
               const strategyLabel =
                 goal.strategy === "save" ? "Ahorrar" : "Invertir";
               return (
-                <div
-                  key={`${row.effectiveMonth}-${index}`}
-                  className="py-3"
-                >
+                <div key={`${row.effectiveMonth}-${index}`} className="py-3">
                   {row.allocatedDestinationAmount ? (
                     <>
                       <p className="text-sm font-semibold text-[var(--sea-ink)]">
@@ -212,6 +209,14 @@ export function GoalsWorkspace({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+          <Button
+            type="button"
+            id="new-goal-trigger"
+            onClick={onNewGoal}
+            className="self-start sm:self-auto"
+          >
+            Nuevo objetivo
+          </Button>
           {activeGoals.length > 0 && (
             <Button
               type="button"
@@ -222,14 +227,6 @@ export function GoalsWorkspace({
               Cambiar planificación de objetivos
             </Button>
           )}
-          <Button
-            type="button"
-            id="new-goal-trigger"
-            onClick={onNewGoal}
-            className="self-start sm:self-auto"
-          >
-            Nuevo objetivo
-          </Button>
         </div>
       </div>
 
