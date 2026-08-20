@@ -37,6 +37,7 @@ vi.mock('sonner', () => ({
 
 vi.mock('../../../features/goals/goals.functions', () => ({
   getGoalsWorkspace: vi.fn(),
+  getAllocationChangeContext: vi.fn(),
 }))
 
 vi.mock('../../../features/financial/financial.functions', () => ({
@@ -170,7 +171,9 @@ describe('Goals routes and workspace', () => {
       render(<RouterProvider router={router} />)
 
       expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos' })).toBeDefined()
-      expect(screen.getByRole('heading', { level: 2, name: 'Activos' })).toBeDefined()
+      expect(screen.queryByRole('heading', { level: 2, name: 'Activos' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Activos')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Cambiar planificación de objetivos' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' })).toBeDefined()
       expect(screen.queryByRole('link', { name: /Colchón financiero/i })).toBeNull()
     })
@@ -185,6 +188,7 @@ describe('Goals routes and workspace', () => {
       render(<RouterProvider router={router} />)
 
       expect(await screen.findByText('No tenés objetivos registrados')).toBeDefined()
+      expect(screen.queryByRole('button', { name: 'Cambiar planificación de objetivos' })).not.toBeInTheDocument()
     })
 
     it('renders onboarding prompt when profile is missing', async () => {
@@ -221,7 +225,8 @@ describe('Goals routes and workspace', () => {
       fireEvent.click(retryButton)
 
       expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos' })).toBeDefined()
-      expect(screen.getByRole('heading', { level: 2, name: 'Activos' })).toBeDefined()
+      expect(screen.queryByRole('heading', { level: 2, name: 'Activos' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Cambiar planificación de objetivos' })).toBeInTheDocument()
     })
   })
 })

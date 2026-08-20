@@ -5,6 +5,7 @@ import { FinancialOnboarding } from '../-components/FinancialOnboarding'
 import { GoalsEmpty, GoalsError, GoalsLoading } from './-components/GoalsRouteStates'
 import { GoalsWorkspace } from './-components/GoalsWorkspace'
 import { GoalCreationSheet } from './-components/GoalCreationSheet'
+import { AllocationChangeSheet } from './-components/AllocationChangeSheet'
 
 export const Route = createFileRoute('/app/goals')({
   loader: () => getGoalsWorkspace(),
@@ -29,6 +30,7 @@ function GoalsRouteError() {
 function GoalsLayout() {
   const data = Route.useLoaderData()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isAllocationChangeOpen, setIsAllocationChangeOpen] = useState(false)
 
   if (data.profile === 'missing') return <FinancialOnboarding />
 
@@ -39,11 +41,16 @@ function GoalsLayout() {
         <GoalsWorkspace
           workspace={data.workspace}
           onNewGoal={() => setIsCreateOpen(true)}
+          onChangePlanning={() => setIsAllocationChangeOpen(true)}
         />
       ) : (
         <GoalsEmpty onNewGoal={() => setIsCreateOpen(true)} />
       )}
       <GoalCreationSheet open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      <AllocationChangeSheet
+        open={isAllocationChangeOpen}
+        onOpenChange={setIsAllocationChangeOpen}
+      />
     </>
   )
 }

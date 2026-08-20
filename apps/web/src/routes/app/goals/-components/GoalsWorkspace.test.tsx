@@ -49,7 +49,8 @@ function makeGoal(overrides: Partial<GoalWorkspaceItem>): GoalWorkspaceItem {
 }
 
 describe('GoalsWorkspace component', () => {
-  it('renders a populated workspace with active, paused, and completed groups', () => {
+  it('renders a populated workspace with active goals directly and paused/completed groups as disclosures', async () => {
+    const user = userEvent.setup()
     const activeGoal = makeGoal({
       id: 'goal-1',
       name: 'Colchón financiero',
@@ -103,11 +104,8 @@ describe('GoalsWorkspace component', () => {
 
     render(<GoalsWorkspace workspace={workspace} />)
 
-    expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
-      'Activos',
-      'Pausados',
-      'Completados',
-    ])
+    expect(screen.queryByRole('heading', { level: 2, name: 'Activos' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Activos')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Ver Colchón financiero/i })).not.toBeInTheDocument()
     expect(screen.getByText('Colchón financiero')).toBeInTheDocument()
 
@@ -115,6 +113,75 @@ describe('GoalsWorkspace component', () => {
     expect(actualValueEl).toHaveTextContent('US$ 200,00')
     expect(actualValueEl).not.toHaveTextContent('Plan:')
     expect(actualValueEl).not.toHaveTextContent('US$ 33,33')
+
+    const pausedDisclosure = screen.getByRole('button', { name: /Pausados/i })
+    expect(pausedDisclosure).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Vacaciones en Brasil')).not.toBeInTheDocument()
+
+    const completedDisclosure = screen.getByRole('button', { name: /Completados/i })
+    expect(completedDisclosure).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Comprar laptop')).not.toBeInTheDocument()
+
+    await user.click(pausedDisclosure)
+    expect(pausedDisclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Vacaciones en Brasil')).toBeInTheDocument()
+
+    await user.click(completedDisclosure)
+    expect(completedDisclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Comprar laptop')).toBeInTheDocument()
+  })
+
+  it('renders Cambiar planificación de objetivos button when active goals exist and calls onChangePlanning', async () => {
+    const user = userEvent.setup()
+    const onChangePlanning = vi.fn()
+    const activeGoal = makeGoal({ id: 'goal-1', status: 'active' })
+    const workspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} onChangePlanning={onChangePlanning} />)
+
+    const btn = screen.getByRole('button', { name: 'Cambiar planificación de objetivos' })
+    expect(btn).toBeInTheDocument()
+    await user.click(btn)
+    expect(onChangePlanning).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides Cambiar planificación de objetivos button when no active goals exist', () => {
+    const pausedGoal = makeGoal({ id: 'goal-2', status: 'paused' })
+    const workspace: GoalsWorkspaceType = {
+      groups: [
+        { status: 'active', goals: [] },
+        { status: 'paused', goals: [pausedGoal] },
+      ],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} onChangePlanning={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: 'Cambiar planificación de objetivos' })).not.toBeInTheDocument()
+  })
+
+  it('maintains a single expanded goal-detail state across active and collapsed groups', async () => {
+    const user = userEvent.setup()
+    const activeGoal = makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })
+    const pausedGoal = makeGoal({ id: 'goal-2', name: 'Viaje a Tokio', status: 'paused' })
+    const workspace: GoalsWorkspaceType = {
+      groups: [
+        { status: 'active', goals: [activeGoal] },
+        { status: 'paused', goals: [pausedGoal] },
+      ],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
+    expect(screen.getByRole('region', { name: 'Detalles de Colchón financiero' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Pausados/i }))
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Viaje a Tokio' }))
+
+    expect(screen.queryByRole('region', { name: 'Detalles de Colchón financiero' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Detalles de Viaje a Tokio' })).toBeInTheDocument()
   })
 
   it('uses an explicit disclosure instead of linking the goal name', async () => {
@@ -207,14 +274,14 @@ describe('GoalsWorkspace component', () => {
 
     render(<GoalsWorkspace workspace={workspace} />)
 
-    expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
-      'Activos',
-    ])
-    expect(screen.queryByText('Pausados')).not.toBeInTheDocument()
-    expect(screen.queryByText('Completados')).not.toBeInTheDocument()
+    expect(screen.queryByText('Activos')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Pausados/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Completados/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Colchón financiero')).toBeInTheDocument()
   })
 
-  it('renders completed date when present and Fecha no disponible when absent', () => {
+  it('renders completed date when present and Fecha no disponible when absent', async () => {
+    const user = userEvent.setup()
     const completedWithDate = makeGoal({
       id: 'goal-completed-1',
       name: 'Meta con fecha',
@@ -235,6 +302,8 @@ describe('GoalsWorkspace component', () => {
     }
 
     render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: /Completados/i }))
 
     expect(screen.getByText(/mayo de 2026/i)).toBeInTheDocument()
     expect(screen.getByText('Fecha no disponible')).toBeInTheDocument()
@@ -263,6 +332,8 @@ describe('GoalsWorkspace component', () => {
     }
 
     render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: /Pausados/i }))
 
     const pausedArticle = screen.getByRole('article', { name: 'Fondo de viaje' })
     expect(within(pausedArticle).getByText('Proyección pausada')).toBeInTheDocument()

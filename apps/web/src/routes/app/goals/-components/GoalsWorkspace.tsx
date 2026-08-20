@@ -18,6 +18,7 @@ import { Button } from "../../../../components/ui/button";
 export interface GoalsWorkspaceProps {
   workspace: GoalsWorkspaceType;
   onNewGoal?: () => void;
+  onChangePlanning?: () => void;
 }
 
 interface GoalCardProps {
@@ -189,10 +190,22 @@ function GoalCard({ goal, expanded, onToggle }: GoalCardProps) {
   );
 }
 
-export function GoalsWorkspace({ workspace, onNewGoal }: GoalsWorkspaceProps) {
+export function GoalsWorkspace({
+  workspace,
+  onNewGoal,
+  onChangePlanning,
+}: GoalsWorkspaceProps) {
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
-  const nonEmptyGroups = workspace.groups.filter(
-    (group) => group.goals.length > 0,
+  const [openGroups, setOpenGroups] = useState<
+    Partial<Record<"paused" | "completed", boolean>>
+  >({});
+
+  const activeGoals =
+    workspace.groups.find((group) => group.status === "active")?.goals ?? [];
+  const secondaryGroups = workspace.groups.filter(
+    (group): group is typeof group & { status: "paused" | "completed" } =>
+      (group.status === "paused" || group.status === "completed") &&
+      group.goals.length > 0,
   );
 
   return (
@@ -206,51 +219,102 @@ export function GoalsWorkspace({ workspace, onNewGoal }: GoalsWorkspaceProps) {
             Administrá tus metas financieras y su asignación mensual.
           </p>
         </div>
-        <Button
-          type="button"
-          id="new-goal-trigger"
-          onClick={onNewGoal}
-          className="self-start sm:self-auto"
-        >
-          Nuevo objetivo
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {activeGoals.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onChangePlanning}
+              className="self-start sm:self-auto"
+            >
+              Cambiar planificación de objetivos
+            </Button>
+          )}
+          <Button
+            type="button"
+            id="new-goal-trigger"
+            onClick={onNewGoal}
+            className="self-start sm:self-auto"
+          >
+            Nuevo objetivo
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-7">
-        {nonEmptyGroups.map((group) => {
+        {activeGoals.length > 0 && (
+          <div className="flex flex-col gap-4">
+            {activeGoals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                expanded={expandedGoalId === goal.id}
+                onToggle={() => {
+                  setExpandedGoalId((current) =>
+                    current === goal.id ? null : goal.id,
+                  );
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {secondaryGroups.map((group) => {
           const groupTitle =
-            group.status === "active"
-              ? "Activos"
-              : group.status === "paused"
-                ? "Pausados"
-                : "Completados";
+            group.status === "paused" ? "Pausados" : "Completados";
+          const isOpen = Boolean(openGroups[group.status]);
+          const contentId = `group-content-${group.status}`;
 
           return (
             <section
               key={group.status}
-              aria-labelledby={`group-heading-${group.status}`}
+              aria-label={groupTitle}
               className="flex flex-col gap-3"
             >
-              <h2
-                id={`group-heading-${group.status}`}
-                className="font-serif text-2xl font-bold text-[var(--sea-ink)]"
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-controls={contentId}
+                onClick={() => {
+                  setOpenGroups((current) => ({
+                    ...current,
+                    [group.status]: !current[group.status],
+                  }));
+                }}
+                className="flex w-full items-center justify-between py-2 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--lagoon)] cursor-pointer"
               >
-                {groupTitle}
-              </h2>
-              <div className="flex flex-col gap-4">
-                {group.goals.map((goal) => (
-                  <GoalCard
-                    key={goal.id}
-                    goal={goal}
-                    expanded={expandedGoalId === goal.id}
-                    onToggle={() => {
-                      setExpandedGoalId((current) =>
-                        current === goal.id ? null : goal.id,
-                      );
-                    }}
-                  />
-                ))}
-              </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
+                    {groupTitle}
+                  </span>
+                  <span className="text-sm font-medium text-[var(--sea-ink-soft)]">
+                    ({group.goals.length})
+                  </span>
+                </div>
+                <ChevronDown
+                  className={`size-5 text-[var(--sea-ink-soft)] transition-transform motion-reduce:transition-none ${
+                    isOpen ? "rotate-180" : ""
+                  }`}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {isOpen && (
+                <div id={contentId} className="flex flex-col gap-4">
+                  {group.goals.map((goal) => (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      expanded={expandedGoalId === goal.id}
+                      onToggle={() => {
+                        setExpandedGoalId((current) =>
+                          current === goal.id ? null : goal.id,
+                        );
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           );
         })}
