@@ -7,6 +7,14 @@ import type { GoalsWorkspace as GoalsWorkspaceType, GoalWorkspaceItem } from '..
 import { GoalsWorkspace } from './GoalsWorkspace'
 import { GoalsEmpty, GoalsError, GoalsLoading } from './GoalsRouteStates'
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode } & React.ComponentProps<'a'>) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
+}))
+
 afterEach(cleanup)
 
 
@@ -403,7 +411,7 @@ describe('GoalsWorkspace component', () => {
     expect(screen.getByText('US$ 40,00 por mes')).toBeInTheDocument()
     expect(screen.getByText('US$ 26,67 por mes')).toBeInTheDocument()
 
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Fondo para la compra/i })).not.toBeInTheDocument()
   })
 
   it('renders funding row with 0% allocation and absent monthly commitment behind disclosure', async () => {
@@ -467,11 +475,31 @@ describe('GoalsRouteStates', () => {
     expect(handleRetry).toHaveBeenCalledTimes(1)
   })
 
-  it('renders GoalsEmpty with explanation and no creation button or link', () => {
-    render(<GoalsEmpty />)
+  it('renders a button trigger in populated workspace header and calls onNewGoal', () => {
+    const handleNewGoal = vi.fn()
+    const goal = makeGoal({})
+    render(
+      <GoalsWorkspace
+        workspace={{ groups: [{ status: 'active', goals: [goal] }] }}
+        onNewGoal={handleNewGoal}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: 'Nuevo objetivo' })
+    expect(btn).toHaveAttribute('id', 'new-goal-trigger')
+    btn.click()
+    expect(handleNewGoal).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders GoalsEmpty with explanation and a creation button trigger', () => {
+    const handleNewGoal = vi.fn()
+    render(<GoalsEmpty onNewGoal={handleNewGoal} />)
 
     expect(screen.getByRole('heading', { name: 'No tenés objetivos registrados' })).toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    const btn = screen.getByRole('button', { name: 'Nuevo objetivo' })
+    expect(btn).toHaveAttribute('id', 'new-goal-trigger')
+    btn.click()
+    expect(handleNewGoal).toHaveBeenCalledTimes(1)
   })
 })
+

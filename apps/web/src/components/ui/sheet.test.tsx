@@ -63,4 +63,19 @@ describe('Sheet primitive', () => {
     render(<ControlledTest />)
     expect(screen.getByTestId('initial-input')).toBeDefined()
   })
+
+  it('slides a right sheet in from beyond its full width', () => {
+    render(
+      <Sheet open>
+        <SheetContent side="right">
+          <SheetTitle>Animated Sheet</SheetTitle>
+        </SheetContent>
+      </Sheet>,
+    )
+
+    expect(screen.getByRole('dialog')).toHaveClass(
+      'data-[side=right]:data-starting-style:translate-x-full',
+      'data-[side=right]:data-ending-style:translate-x-full',
+    )
+  })
 })

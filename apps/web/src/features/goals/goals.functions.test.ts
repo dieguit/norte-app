@@ -1,7 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { auth } from '@clerk/tanstack-react-start/server'
-import { getGoalsWorkspace } from './goals.functions'
-import { getGoalsWorkspaceRows } from './goals.repository.server'
+import {
+  confirmGoalCreation,
+  getGoalCreationContext,
+  getGoalsWorkspace,
+  previewGoalCreation,
+} from './goals.functions'
+import {
+  confirmGoalCreationInRepository,
+  createGoalCreationPreviewToken,
+  getGoalCreationState,
+  getGoalsWorkspaceRows,
+  StaleGoalCreationPreviewError,
+} from './goals.repository.server'
+import { buildGoalCreationProposal, type GoalCreationState } from './goal-creation'
+import type { GoalCreationDraft } from './goal-creation.schema'
+
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: vi.fn().mockImplementation(() => {
@@ -26,29 +40,37 @@ vi.mock('@clerk/tanstack-react-start/server', () => ({
   auth: vi.fn(),
 }))
 
-vi.mock('./goals.repository.server', () => ({
-  getGoalsWorkspaceRows: vi.fn(),
-  mapRowsToGoalsWorkspaceSource: vi.fn().mockImplementation((rows) => ({
-    profile: {
-      userId: rows.profile.userId,
-      baseCurrency: rows.profile.baseCurrency,
-      approximateMonthlyIncome: rows.profile.approximateMonthlyIncome,
-      approximateMonthlyExpenses: rows.profile.approximateMonthlyExpenses,
-      expensesKnowledge: rows.profile.expensesKnowledge,
-      onboardingCompleted: rows.profile.onboardingCompleted,
-    },
-    goals: rows.goals.map((g: any) => ({
-      ...g,
-      createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : String(g.createdAt),
-      completedAt: g.completedAt instanceof Date ? g.completedAt.toISOString() : g.completedAt ?? null,
+vi.mock('./goals.repository.server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./goals.repository.server')>()
+  return {
+    ...actual,
+    getGoalsWorkspaceRows: vi.fn(),
+    getGoalCreationState: vi.fn(),
+    confirmGoalCreationInRepository: vi.fn(),
+    mapRowsToGoalsWorkspaceSource: vi.fn().mockImplementation((rows) => ({
+      profile: {
+        userId: rows.profile.userId,
+        baseCurrency: rows.profile.baseCurrency,
+        approximateMonthlyIncome: rows.profile.approximateMonthlyIncome,
+        approximateMonthlyExpenses: rows.profile.approximateMonthlyExpenses,
+        expensesKnowledge: rows.profile.expensesKnowledge,
+        onboardingCompleted: rows.profile.onboardingCompleted,
+      },
+      goals: rows.goals.map((g: any) => ({
+        ...g,
+        createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : String(g.createdAt),
+        completedAt: g.completedAt instanceof Date ? g.completedAt.toISOString() : g.completedAt ?? null,
+      })),
+      savingsPositions: rows.savingsPositions,
+      investmentPositions: rows.investmentPositions,
+      channels: rows.channels,
+      snapshots: rows.snapshots,
+      allocations: rows.allocations,
     })),
-    savingsPositions: rows.savingsPositions,
-    investmentPositions: rows.investmentPositions,
-    channels: rows.channels,
-    snapshots: rows.snapshots,
-    allocations: rows.allocations,
-  })),
-}))
+  }
+})
+
+
 
 describe('getGoalsWorkspace', () => {
   beforeEach(() => {
@@ -177,6 +199,509 @@ describe('getGoalsWorkspace', () => {
           { status: 'paused', goals: [] },
           { status: 'completed', goals: [] },
         ],
+      },
+    })
+
+    vi.useRealTimers()
+  })
+})
+
+describe('getGoalCreationContext', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(getGoalCreationContext()).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('passes authenticated userId and UTC YYYY-MM to repository and returns missing profile state', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalCreationState).mockResolvedValue(null)
+
+    const result = await getGoalCreationContext()
+
+    expect(getGoalCreationState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result).toEqual({ profile: 'missing' })
+
+    vi.useRealTimers()
+  })
+
+  it('returns present profile state with route-safe goal creation context', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    const mockState: GoalCreationState = {
+      source: {
+        profile: {
+          userId: 'user_456',
+          baseCurrency: 'ARS',
+          approximateMonthlyIncome: '1000000.00',
+          approximateMonthlyExpenses: '500000.00',
+          expensesKnowledge: 'known',
+          onboardingCompleted: true,
+        },
+        goals: [
+          {
+            id: 'g1',
+            userId: 'user_456',
+            name: 'Reserva',
+            type: 'emergency_fund',
+            targetAmount: '2000.00',
+            currency: 'USD',
+            priority: 'high',
+            status: 'active',
+            desiredDate: null,
+            completedAt: null,
+            emergencyFundMonths: 6,
+            saveEnabled: true,
+            investEnabled: false,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        savingsPositions: [
+          { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
+        ],
+        investmentPositions: [],
+        channels: [
+          {
+            id: 'c1',
+            userId: 'user_456',
+            fundingMethod: 'save',
+            destinationCurrency: 'USD',
+          },
+          {
+            id: 'c2',
+            userId: 'user_456',
+            fundingMethod: 'invest',
+            destinationCurrency: 'USD',
+          },
+        ],
+        snapshots: [
+          {
+            id: 's1',
+            channelId: 'c1',
+            monthlyCommitmentAmount: '150000.00',
+            baseCurrency: 'ARS',
+            commitmentStatus: 'active',
+            effectiveMonth: '2026-08-01',
+          },
+        ],
+        allocations: [
+          {
+            id: 'a1',
+            snapshotId: 's1',
+            goalId: 'g1',
+            percentage: '100.00',
+          },
+        ],
+      },
+      pendingSnapshots: [
+        {
+          id: 's1_next',
+          channelId: 'c1',
+          monthlyCommitmentAmount: '180000.00',
+          baseCurrency: 'ARS',
+          commitmentStatus: 'active',
+          effectiveMonth: '2026-09-01',
+        },
+      ],
+      pendingAllocations: [
+        {
+          id: 'a1_next',
+          snapshotId: 's1_next',
+          goalId: 'g1',
+          percentage: '100.00',
+        },
+      ],
+    }
+
+    vi.mocked(getGoalCreationState).mockResolvedValue(mockState)
+
+    const result = await getGoalCreationContext()
+
+    expect(getGoalCreationState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result).toEqual({
+      profile: 'present',
+      context: {
+        currentMonth: '2026-08',
+        expensesKnowledge: 'known',
+        fundingOptions: [
+          {
+            fundingMethod: 'save',
+            destinationCurrency: 'USD',
+            baseCurrency: 'ARS',
+            monthlyCommitment: { amount: '180000.00', currency: 'ARS' },
+            commitmentStatus: 'active',
+          },
+          {
+            fundingMethod: 'invest',
+            destinationCurrency: 'USD',
+            baseCurrency: 'ARS',
+            monthlyCommitment: undefined,
+            commitmentStatus: 'active',
+          },
+        ],
+      },
+    })
+
+    // Assert that raw source positions and allocations are not exposed in context
+    expect((result as any).context.source).toBeUndefined()
+    expect((result as any).context.savingsPositions).toBeUndefined()
+    expect((result as any).context.snapshots).toBeUndefined()
+
+    vi.useRealTimers()
+  })
+})
+
+describe('previewGoalCreation', () => {
+  const validDraft: GoalCreationDraft = {
+    type: 'purchase',
+    name: 'Viaje al sur',
+    targetAmount: '2000.00',
+    currency: 'USD',
+    desiredMonth: '2027-01',
+    priority: 'medium',
+    saveEnabled: true,
+    investEnabled: false,
+    defineSaveCommitment: false,
+    saveMonthlyCommitment: '',
+    defineInvestCommitment: false,
+    investMonthlyCommitment: '',
+    annualReturnRate: '',
+    availability: 'available_now',
+    availableFromMonth: '',
+    allocations: [
+      {
+        key: 'save:USD',
+        fundingMethod: 'save',
+        destinationCurrency: 'USD',
+        entries: [
+          { goalId: 'g1', percentage: '40.00' },
+          { goalId: 'pending-goal', percentage: '60.00' },
+        ],
+      },
+    ],
+  }
+
+  const mockState: GoalCreationState = {
+    source: {
+      profile: {
+        userId: 'user_456',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: 'g1',
+          userId: 'user_456',
+          name: 'Reserva',
+          type: 'emergency_fund',
+          targetAmount: '2000.00',
+          currency: 'USD',
+          priority: 'high',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          emergencyFundMonths: 6,
+          saveEnabled: true,
+          investEnabled: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [
+        { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
+      ],
+      investmentPositions: [],
+      channels: [
+        {
+          id: 'c1',
+          userId: 'user_456',
+          fundingMethod: 'save',
+          destinationCurrency: 'USD',
+        },
+      ],
+      snapshots: [
+        {
+          id: 's1',
+          channelId: 'c1',
+          monthlyCommitmentAmount: '150000.00',
+          baseCurrency: 'ARS',
+          commitmentStatus: 'active',
+          effectiveMonth: '2026-08-01',
+        },
+      ],
+      allocations: [
+        {
+          id: 'a1',
+          snapshotId: 's1',
+          goalId: 'g1',
+          percentage: '100.00',
+        },
+      ],
+    },
+    pendingSnapshots: [],
+    pendingAllocations: [],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(previewGoalCreation({ data: validDraft })).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('throws when financial profile is missing', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalCreationState).mockResolvedValue(null)
+
+    await expect(previewGoalCreation({ data: validDraft })).rejects.toThrow(
+      'Completá tu perfil financiero antes de crear un objetivo.',
+    )
+
+    vi.useRealTimers()
+  })
+
+  it('rejects invalid draft input through validator / schema rejection', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalCreationState).mockResolvedValue(mockState)
+
+    const invalidDraft = {
+      ...validDraft,
+      allocations: [
+        {
+          key: 'save:USD',
+          fundingMethod: 'save' as const,
+          destinationCurrency: 'USD' as const,
+          entries: [
+            { goalId: 'g1', percentage: '30.00' },
+            { goalId: 'pending-goal', percentage: '50.00' }, // Sums to 80% != 100%
+          ],
+        },
+      ],
+    }
+
+    await expect(previewGoalCreation({ data: invalidDraft })).rejects.toThrow()
+
+    vi.useRealTimers()
+  })
+
+  it('returns read-only proposal and a 64-character preview token without persisting data', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalCreationState).mockResolvedValue(mockState)
+
+    const result = await previewGoalCreation({ data: validDraft })
+
+    expect(getGoalCreationState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result.previewToken).toMatch(/^[a-f0-9]{64}$/)
+    expect(result.proposal.normalizedGoal.name).toBe('Viaje al sur')
+    expect(result.proposal.normalizedGoal.type).toBe('purchase')
+    expect(result.proposal.normalizedGoal.targetAmount).toEqual({
+      amount: '2000.00',
+      currency: 'USD',
+    })
+    expect(result.proposal.allocationGroups).toHaveLength(1)
+    expect(result.proposal.impacts).toHaveLength(2)
+
+    vi.useRealTimers()
+  })
+})
+
+describe('confirmGoalCreation', () => {
+  const currentMonth = '2026-08'
+  const validToken = 'a'.repeat(64)
+  const staleToken = 'b'.repeat(64)
+
+  const validDraft: GoalCreationDraft = {
+    type: 'purchase',
+    name: 'Viaje al sur',
+    targetAmount: '2000.00',
+    currency: 'USD',
+    desiredMonth: '2027-01',
+    priority: 'medium',
+    saveEnabled: true,
+    investEnabled: false,
+    defineSaveCommitment: false,
+    saveMonthlyCommitment: '',
+    defineInvestCommitment: false,
+    investMonthlyCommitment: '',
+    annualReturnRate: '',
+    availability: 'available_now',
+    availableFromMonth: '',
+    allocations: [
+      {
+        key: 'save:USD',
+        fundingMethod: 'save',
+        destinationCurrency: 'USD',
+        entries: [
+          { goalId: 'g1', percentage: '40.00' },
+          { goalId: 'pending-goal', percentage: '60.00' },
+        ],
+      },
+    ],
+  }
+
+  const mockState: GoalCreationState = {
+    source: {
+      profile: {
+        userId: 'user_456',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: 'g1',
+          userId: 'user_456',
+          name: 'Reserva',
+          type: 'emergency_fund',
+          targetAmount: '2000.00',
+          currency: 'USD',
+          priority: 'high',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          emergencyFundMonths: 6,
+          saveEnabled: true,
+          investEnabled: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [
+        { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
+      ],
+      investmentPositions: [],
+      channels: [
+        {
+          id: 'c1',
+          userId: 'user_456',
+          fundingMethod: 'save',
+          destinationCurrency: 'USD',
+        },
+      ],
+      snapshots: [
+        {
+          id: 's1',
+          channelId: 'c1',
+          monthlyCommitmentAmount: '150000.00',
+          baseCurrency: 'ARS',
+          commitmentStatus: 'active',
+          effectiveMonth: '2026-08-01',
+        },
+      ],
+      allocations: [
+        {
+          id: 'a1',
+          snapshotId: 's1',
+          goalId: 'g1',
+          percentage: '100.00',
+        },
+      ],
+    },
+    pendingSnapshots: [],
+    pendingAllocations: [],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(
+      confirmGoalCreation({ data: { draft: validDraft, previewToken: validToken } }),
+    ).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('rejects invalid payload or malformed previewToken through validator schema', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    await expect(
+      confirmGoalCreation({ data: { draft: validDraft, previewToken: 'short_token' } }),
+    ).rejects.toThrow()
+
+    vi.useRealTimers()
+  })
+
+  it('returns created status with goalId on successful confirmation in repository', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(confirmGoalCreationInRepository).mockResolvedValue({ goalId: 'goal-new-123' })
+
+    const result = await confirmGoalCreation({
+      data: { draft: validDraft, previewToken: validToken },
+    })
+
+    expect(confirmGoalCreationInRepository).toHaveBeenCalledWith({
+      userId: 'user_456',
+      currentMonth: '2026-08',
+      draft: expect.objectContaining({ name: 'Viaje al sur' }),
+      previewToken: validToken,
+    })
+    expect(result).toEqual({
+      status: 'created',
+      goalId: 'goal-new-123',
+    })
+
+    vi.useRealTimers()
+  })
+
+  it('returns stale status with refreshed preview when repository throws StaleGoalCreationPreviewError', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    const refreshedProposal = buildGoalCreationProposal({
+      draft: validDraft,
+      state: mockState,
+      currentMonth,
+    })
+    const refreshedToken = createGoalCreationPreviewToken(mockState, currentMonth)
+    const staleError = new StaleGoalCreationPreviewError({
+      proposal: refreshedProposal,
+      previewToken: refreshedToken,
+    })
+
+    vi.mocked(confirmGoalCreationInRepository).mockRejectedValue(staleError)
+
+    const result = await confirmGoalCreation({
+      data: { draft: validDraft, previewToken: staleToken },
+    })
+
+    expect(result).toEqual({
+      status: 'stale',
+      preview: {
+        proposal: refreshedProposal,
+        previewToken: refreshedToken,
       },
     })
 

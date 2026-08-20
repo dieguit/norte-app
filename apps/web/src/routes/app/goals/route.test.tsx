@@ -4,6 +4,7 @@ import * as React from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import {
   createMemoryHistory,
+  createRootRoute,
   createRoute,
   createRouter,
   RouterProvider,
@@ -112,13 +113,19 @@ let currentRouter: any = null
 function createTestRouter() {
   if (currentRouter) currentRouter.destroy?.()
 
-  const appRoute = AppRoute.update({
-    id: '/app',
+  const testRootRoute = createRootRoute({
+    component: rootRoute.options.component,
+  })
+
+  const appRoute = createRoute({
+    getParentRoute: () => testRootRoute,
     path: '/app',
-    getParentRoute: () => rootRoute,
-  } as any)
+    beforeLoad: AppRoute.options.beforeLoad,
+    component: AppRoute.options.component,
+  })
+
   const goalsRoute = createRoute({
-    getParentRoute: () => appRoute,
+    getParentRoute: () => appRoute as any,
     path: '/goals',
     pendingMs: 0,
     pendingMinMs: 0,
@@ -127,20 +134,22 @@ function createTestRouter() {
     errorComponent: GoalsRoute.options.errorComponent,
     component: GoalsRoute.options.component,
   })
+
   const goalsIndexRoute = createRoute({
-    getParentRoute: () => goalsRoute,
+    getParentRoute: () => goalsRoute as any,
     path: '/',
     component: GoalsIndexRoute.options.component,
   })
+
   const history = createMemoryHistory({ initialEntries: ['/app/goals'] })
   currentRouter = createRouter({
-    routeTree: rootRoute.addChildren([
-      appRoute.addChildren([goalsRoute.addChildren([goalsIndexRoute])]),
-    ]),
+    routeTree: testRootRoute.addChildren([
+      appRoute.addChildren([goalsRoute.addChildren([goalsIndexRoute]) as any] as any),
+    ] as any),
     history,
     defaultPendingMs: 0,
     defaultPendingMinMs: 0,
-  })
+  } as any)
   return currentRouter
 }
 

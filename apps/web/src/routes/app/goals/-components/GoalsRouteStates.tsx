@@ -48,7 +48,11 @@ export function GoalsError({ onRetry }: GoalsErrorProps) {
   )
 }
 
-export function GoalsEmpty() {
+export interface GoalsEmptyProps {
+  onNewGoal?: () => void
+}
+
+export function GoalsEmpty({ onNewGoal }: GoalsEmptyProps) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
       <div>
@@ -66,6 +70,14 @@ export function GoalsEmpty() {
         <p className="mt-2 max-w-md text-sm text-[var(--sea-ink-soft)]">
           Acá vas a ver tus objetivos una vez que los crees y comiences a planificar tu patrimonio.
         </p>
+        <Button
+          type="button"
+          id="new-goal-trigger"
+          onClick={onNewGoal}
+          className="mt-6"
+        >
+          Nuevo objetivo
+        </Button>
       </div>
     </div>
   )

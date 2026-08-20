@@ -3,9 +3,32 @@ import { createMoney } from '../../lib/money'
 import {
   buildGoalsWorkspace,
   groupGoals,
+  projectGoalCompletion,
   type GoalsWorkspaceSource,
   type GoalWorkspaceItem,
+  type GoalFundingRow,
 } from './goals'
+
+function fundingRow(
+  overrides: Partial<GoalFundingRow> & { channelId: string; percentage: string; amount?: string; effectiveMonth: string },
+): GoalFundingRow {
+  const amount = overrides.amount
+  const base: GoalFundingRow = {
+    channelId: overrides.channelId,
+    fundingMethod: 'save',
+    destinationCurrency: 'ARS',
+    percentage: overrides.percentage,
+    commitmentStatus: overrides.commitmentStatus ?? 'active',
+    monthlyCommitment: amount !== undefined ? createMoney(amount, 'ARS') : undefined,
+    allocatedBaseAmount: amount !== undefined ? createMoney(amount, 'ARS') : undefined,
+    allocatedDestinationAmount: amount !== undefined ? createMoney(amount, 'ARS') : undefined,
+    effectiveMonth: overrides.effectiveMonth,
+  }
+  return {
+    ...base,
+    ...overrides,
+  }
+}
 
 function createMockGoalItem(overrides: Partial<GoalWorkspaceItem> = {}): GoalWorkspaceItem {
   return {
@@ -1256,5 +1279,51 @@ describe('buildGoalsWorkspace - emergency-fund target derivation and enabled fun
       status: 'available',
       completionMonth: '2026-12',
     })
+  })
+})
+
+describe('projectGoalCompletion', () => {
+  function projectWithFutureRow(futureOverrides: Partial<GoalFundingRow>) {
+    return projectGoalCompletion({
+      status: 'active',
+      targetAmount: createMoney('250.00', 'ARS'),
+      actualValue: createMoney('0', 'ARS'),
+      savingsValue: createMoney('0', 'ARS'),
+      investmentValue: createMoney('0', 'ARS'),
+      funding: [
+        fundingRow({ channelId: 'save-ars', percentage: '100.00', amount: '100.00', effectiveMonth: '2026-08-01' }),
+        fundingRow({
+          channelId: 'save-ars',
+          percentage: '50.00',
+          amount: '50.00',
+          effectiveMonth: '2026-09-01',
+          ...futureOverrides,
+        }),
+      ],
+      currentMonth: '2026-08',
+    })
+  }
+
+  it('keeps the current allocation through its month and applies the replacement next month', () => {
+    const projection = projectGoalCompletion({
+      status: 'active',
+      targetAmount: createMoney('250.00', 'ARS'),
+      actualValue: createMoney('0', 'ARS'),
+      savingsValue: createMoney('0', 'ARS'),
+      investmentValue: createMoney('0', 'ARS'),
+      funding: [
+        fundingRow({ channelId: 'save-ars', percentage: '100.00', amount: '100.00', effectiveMonth: '2026-08-01' }),
+        fundingRow({ channelId: 'save-ars', percentage: '50.00', amount: '50.00', effectiveMonth: '2026-09-01' }),
+      ],
+      currentMonth: '2026-08',
+    })
+
+    expect(projection).toEqual({ status: 'available', completionMonth: '2026-11' })
+  })
+
+  it('handles paused, absent, and zero future funding at horizon', () => {
+    expect(projectWithFutureRow({ percentage: '0.00' })).toEqual({ status: 'no_future_allocation' })
+    expect(projectWithFutureRow({ commitmentStatus: 'paused' })).toEqual({ status: 'plan_paused' })
+    expect(projectWithFutureRow({ monthlyCommitment: undefined })).toEqual({ status: 'commitment_absent' })
   })
 })

@@ -13,8 +13,11 @@ import {
 } from "../../../../features/goals/goals";
 import { GOAL_PRIORITY_LABELS, getGoalProjectionDisplay } from "./goal-display";
 
+import { Button } from "../../../../components/ui/button";
+
 export interface GoalsWorkspaceProps {
   workspace: GoalsWorkspaceType;
+  onNewGoal?: () => void;
 }
 
 interface GoalCardProps {
@@ -35,7 +38,7 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
         <h4 className="text-sm font-semibold text-[var(--sea-ink)]">Plan</h4>
         {goal.funding.length === 0 ? (
           <p className="py-2 text-sm text-[var(--sea-ink-soft)]">
-            Sin canales asignados
+            Sin aportes asignados
           </p>
         ) : (
           <div className="divide-y divide-[var(--line)]">
@@ -187,7 +190,7 @@ function GoalCard({ goal, expanded, onToggle }: GoalCardProps) {
   );
 }
 
-export function GoalsWorkspace({ workspace }: GoalsWorkspaceProps) {
+export function GoalsWorkspace({ workspace, onNewGoal }: GoalsWorkspaceProps) {
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const nonEmptyGroups = workspace.groups.filter(
     (group) => group.goals.length > 0,
@@ -195,13 +198,23 @@ export function GoalsWorkspace({ workspace }: GoalsWorkspaceProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-8 sm:px-8 sm:py-12">
-      <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-4xl">
-          Objetivos
-        </h1>
-        <p className="mt-2 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-          Administrá tus metas financieras y su asignación mensual.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-4xl">
+            Objetivos
+          </h1>
+          <p className="mt-2 text-base leading-relaxed text-[var(--sea-ink-soft)]">
+            Administrá tus metas financieras y su asignación mensual.
+          </p>
+        </div>
+        <Button
+          type="button"
+          id="new-goal-trigger"
+          onClick={onNewGoal}
+          className="self-start sm:self-auto"
+        >
+          Nuevo objetivo
+        </Button>
       </div>
 
       <div className="flex flex-col gap-7">

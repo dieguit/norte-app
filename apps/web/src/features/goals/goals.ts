@@ -167,7 +167,21 @@ function addMonthsToMonth(monthStr: string, monthsToAdd: number): string {
   return `${targetYear}-${String(targetMonth).padStart(2, '0')}`
 }
 
-function deriveGoalProjection(params: {
+export function selectFundingForMonth(funding: GoalFundingRow[], month: string): GoalFundingRow[] {
+  const selected = new Map<string, GoalFundingRow>()
+
+  for (const row of funding) {
+    if (row.effectiveMonth.slice(0, 7) > month.slice(0, 7)) continue
+    const current = selected.get(row.channelId)
+    if (!current || current.effectiveMonth.localeCompare(row.effectiveMonth) < 0) {
+      selected.set(row.channelId, row)
+    }
+  }
+
+  return [...selected.values()]
+}
+
+export function projectGoalCompletion(params: {
   status: GoalStatus
   targetAmount?: Money
   actualValue: Money
@@ -202,12 +216,17 @@ function deriveGoalProjection(params: {
     return { status: 'plan_paused' }
   }
 
+  const horizonFunding = selectFundingForMonth(
+    funding,
+    addMonthsToMonth(currentMonth, PROJECTION_HORIZON_MONTHS - 1),
+  )
+
   // Active funding rows with allocated amount
-  const activeFunding = funding.filter(
+  const activeFunding = horizonFunding.filter(
     (f) => f.commitmentStatus === 'active' && new BigNumber(f.percentage).isGreaterThan(0),
   )
 
-  const positiveFunding = funding.filter((f) => new BigNumber(f.percentage).isGreaterThan(0))
+  const positiveFunding = horizonFunding.filter((f) => new BigNumber(f.percentage).isGreaterThan(0))
   if (positiveFunding.length > 0 && positiveFunding.every((f) => f.commitmentStatus === 'paused')) {
     return { status: 'plan_paused' }
   }
@@ -256,9 +275,13 @@ function deriveGoalProjection(params: {
       currentInvestments = currentInvestments.times(new BigNumber(1).plus(monthlyRate))
     }
 
-    for (const row of activeFunding) {
-      const rowEffective = row.effectiveMonth.slice(0, 7)
-      if (rowEffective <= projectedMonth && row.allocatedDestinationAmount) {
+    const monthFunding = selectFundingForMonth(funding, projectedMonth)
+    for (const row of monthFunding) {
+      if (
+        row.commitmentStatus === 'active' &&
+        row.allocatedDestinationAmount &&
+        new BigNumber(row.percentage).isGreaterThan(0)
+      ) {
         if (row.fundingMethod === 'save') {
           currentSavings = currentSavings.plus(row.allocatedDestinationAmount.amount)
         } else if (row.fundingMethod === 'invest') {
@@ -418,7 +441,7 @@ export function buildGoalsWorkspace(
     }
 
     // 6. Projection
-    const projection = deriveGoalProjection({
+    const projection = projectGoalCompletion({
       status: goal.status,
       targetAmount,
       actualValue,

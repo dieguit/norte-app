@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { getGoalsWorkspace } from '../../../features/goals/goals.functions'
 import { FinancialOnboarding } from '../-components/FinancialOnboarding'
 import { GoalsEmpty, GoalsError, GoalsLoading } from './-components/GoalsRouteStates'
 import { GoalsWorkspace } from './-components/GoalsWorkspace'
+import { GoalCreationSheet } from './-components/GoalCreationSheet'
 
 export const Route = createFileRoute('/app/goals')({
   loader: () => getGoalsWorkspace(),
@@ -26,9 +28,22 @@ function GoalsRouteError() {
 
 function GoalsLayout() {
   const data = Route.useLoaderData()
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   if (data.profile === 'missing') return <FinancialOnboarding />
 
   const hasGoals = data.workspace.groups.some((group) => group.goals.length > 0)
-  return hasGoals ? <GoalsWorkspace workspace={data.workspace} /> : <GoalsEmpty />
+  return (
+    <>
+      {hasGoals ? (
+        <GoalsWorkspace
+          workspace={data.workspace}
+          onNewGoal={() => setIsCreateOpen(true)}
+        />
+      ) : (
+        <GoalsEmpty onNewGoal={() => setIsCreateOpen(true)} />
+      )}
+      <GoalCreationSheet open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+    </>
+  )
 }
