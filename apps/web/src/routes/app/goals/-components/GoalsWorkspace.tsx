@@ -211,7 +211,7 @@ export function GoalsWorkspace({
             Administrá tus metas financieras y su asignación mensual.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 sm:justify-end">
           {activeGoals.length > 0 && (
             <Button
               type="button"
