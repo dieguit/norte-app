@@ -511,6 +511,27 @@ describe('GoalsWorkspace component', () => {
 
     expect(screen.getByText('Sin aporte mensual')).toBeInTheDocument()
   })
+
+  it('renders an edit button in the card heading and calls onEditGoal with goal ID', async () => {
+    const user = userEvent.setup()
+    const onEditGoal = vi.fn()
+    const activeGoal = makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })
+    const workspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} onEditGoal={onEditGoal} />)
+
+    const editBtn = screen.getByRole('button', { name: 'Editar objetivo Colchón financiero' })
+    expect(editBtn).toBeInTheDocument()
+
+    const heading = screen.getByRole('heading', { level: 3, name: 'Colchón financiero' })
+    expect(heading.parentElement).toContainElement(editBtn)
+
+    await user.click(editBtn)
+    expect(onEditGoal).toHaveBeenCalledTimes(1)
+    expect(onEditGoal).toHaveBeenCalledWith('goal-1')
+  })
 })
 
 describe('GoalsRouteStates', () => {

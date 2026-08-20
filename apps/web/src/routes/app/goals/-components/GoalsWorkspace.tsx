@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import {
   formatCalendarMonth,
   formatMoney,
@@ -17,12 +17,14 @@ export interface GoalsWorkspaceProps {
   workspace: GoalsWorkspaceType;
   onNewGoal?: () => void;
   onChangePlanning?: () => void;
+  onEditGoal?: (goalId: string) => void;
 }
 
 interface GoalCardProps {
   goal: GoalWorkspaceItem;
   expanded: boolean;
   onToggle: () => void;
+  onEditGoal?: (goalId: string) => void;
 }
 
 function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
@@ -94,7 +96,7 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
   );
 }
 
-function GoalCard({ goal, expanded, onToggle }: GoalCardProps) {
+function GoalCard({ goal, expanded, onToggle, onEditGoal }: GoalCardProps) {
   const projectionText = getGoalProjectionDisplay(goal);
   const projectionLabel =
     goal.status === "completed"
@@ -110,13 +112,25 @@ function GoalCard({ goal, expanded, onToggle }: GoalCardProps) {
     >
       <div className="p-4 sm:p-5">
         <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-          <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h3
               id={`goal-heading-${goal.id}`}
               className="text-lg font-semibold leading-snug text-[var(--sea-ink)]"
             >
               {goal.name}
             </h3>
+            {onEditGoal && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Editar objetivo ${goal.name}`}
+                onClick={() => onEditGoal(goal.id)}
+              >
+                <Pencil data-icon="inline-start" aria-hidden="true" />
+                Editar objetivo
+              </Button>
+            )}
           </div>
           <p className="text-xs text-[var(--sea-ink-soft)] sm:text-right">
             {projectionLabel}
@@ -183,6 +197,7 @@ export function GoalsWorkspace({
   workspace,
   onNewGoal,
   onChangePlanning,
+  onEditGoal,
 }: GoalsWorkspaceProps) {
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<
@@ -243,6 +258,7 @@ export function GoalsWorkspace({
                     current === goal.id ? null : goal.id,
                   );
                 }}
+                onEditGoal={onEditGoal}
               />
             ))}
           </div>
@@ -300,6 +316,7 @@ export function GoalsWorkspace({
                           current === goal.id ? null : goal.id,
                         );
                       }}
+                      onEditGoal={onEditGoal}
                     />
                   ))}
                 </div>

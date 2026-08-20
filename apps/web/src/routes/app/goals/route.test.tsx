@@ -10,7 +10,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getGoalsWorkspace } from '../../../features/goals/goals.functions'
+import { getGoalsWorkspace, getGoalEditContext } from '../../../features/goals/goals.functions'
 import type { GoalsWorkspace, GoalWorkspaceItem } from '../../../features/goals/goals'
 import { Route as rootRoute } from '../../__root'
 import { Route as AppRoute } from '../route'
@@ -38,6 +38,9 @@ vi.mock('sonner', () => ({
 vi.mock('../../../features/goals/goals.functions', () => ({
   getGoalsWorkspace: vi.fn(),
   getAllocationChangeContext: vi.fn(),
+  getGoalEditContext: vi.fn(),
+  previewGoalEdit: vi.fn(),
+  confirmGoalEdit: vi.fn(),
 }))
 
 vi.mock('../../../features/financial/financial.functions', () => ({
@@ -227,6 +230,49 @@ describe('Goals routes and workspace', () => {
       expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos' })).toBeDefined()
       expect(screen.queryByRole('heading', { level: 2, name: 'Activos' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Cambiar planificación de objetivos' })).toBeInTheDocument()
+    })
+
+    it('opens GoalEditSheet when editing a goal from card button and displays prefilled data', async () => {
+      vi.mocked(getGoalsWorkspace).mockResolvedValue({
+        profile: 'present',
+        workspace: sampleWorkspace,
+      })
+      vi.mocked(getGoalEditContext).mockResolvedValue({
+        profile: 'present',
+        goalId: 'goal-1',
+        draft: {
+          type: 'emergency_fund',
+          name: 'Colchón financiero',
+          targetAmount: '1.000',
+          currency: 'USD',
+          desiredMonth: '2027-01',
+          priority: 'high',
+          strategy: 'save',
+          annualReturnRate: '8',
+          availability: 'available_now',
+          availableFromMonth: '',
+          allocations: [{ goalId: 'goal-1', percentage: '100.00' }],
+        },
+        context: {
+          currentMonth: '2026-08',
+          expensesKnowledge: 'known',
+          hasEmergencyFund: false,
+          plannedMonthlyContribution: { amount: '50000.00', currency: 'ARS' },
+          currentAllocation: {
+            effectiveMonth: '2026-08-01',
+            entries: [{ goalId: 'goal-1', percentage: '100.00' }],
+          },
+        },
+      })
+
+      const router = createTestRouter()
+      render(<RouterProvider router={router} />)
+
+      const editBtn = await screen.findByRole('button', { name: 'Editar objetivo Colchón financiero' })
+      fireEvent.click(editBtn)
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Editar objetivo' })).toBeInTheDocument()
+      expect(await screen.findByLabelText('Nombre del objetivo')).toHaveValue('Colchón financiero')
     })
   })
 })
