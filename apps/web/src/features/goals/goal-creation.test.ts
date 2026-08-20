@@ -18,12 +18,7 @@ function createBaseDraft(overrides: Partial<GoalCreationDraft> = {}): GoalCreati
     currency: 'ARS',
     desiredMonth: '2027-08',
     priority: 'medium',
-    saveEnabled: true,
-    investEnabled: false,
-    defineSaveCommitment: false,
-    saveMonthlyCommitment: '',
-    defineInvestCommitment: false,
-    investMonthlyCommitment: '',
+    strategy: 'save',
     annualReturnRate: '8',
     availability: 'available_now',
     availableFromMonth: '',
@@ -40,6 +35,7 @@ function createBaseWorkspaceSource(): GoalsWorkspaceSource {
       approximateMonthlyIncome: '2000000.00',
       approximateMonthlyExpenses: '1500000.00',
       expensesKnowledge: 'known',
+      plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
     },
     goals: [
@@ -49,11 +45,10 @@ function createBaseWorkspaceSource(): GoalsWorkspaceSource {
         name: 'Fondo de emergencia',
         type: 'emergency_fund',
         targetAmount: '6000.00',
-        currency: 'ARS',
+        currency: 'USD',
         priority: 'high',
+        strategy: 'save',
         status: 'active',
-        saveEnabled: true,
-        investEnabled: true,
         createdAt: '2026-01-01T00:00:00Z',
       },
       {
@@ -64,45 +59,36 @@ function createBaseWorkspaceSource(): GoalsWorkspaceSource {
         targetAmount: '1000000.00',
         currency: 'ARS',
         priority: 'medium',
+        strategy: 'save',
         status: 'active',
-        saveEnabled: true,
-        investEnabled: true,
         createdAt: '2026-02-01T00:00:00Z',
       },
     ],
     savingsPositions: [
-      { id: 'sav-1', goalId: 'goal-1', amount: '100000.00', currency: 'ARS' },
+      { id: 'sav-1', goalId: 'goal-1', amount: '100.00', currency: 'USD' },
       { id: 'sav-2', goalId: 'goal-2', amount: '50000.00', currency: 'ARS' },
     ],
     investmentPositions: [],
-    channels: [
-      { id: 'ch-save-ars', userId: 'user-1', fundingMethod: 'save', destinationCurrency: 'ARS' },
-    ],
     snapshots: [
       {
-        id: 'snap-save-ars-aug',
-        channelId: 'ch-save-ars',
-        monthlyCommitmentAmount: '100000.00',
-        baseCurrency: 'ARS',
-        commitmentStatus: 'active',
+        id: 'snap-global-aug',
+        userId: 'user-1',
         effectiveMonth: '2026-08-01',
       },
     ],
     allocations: [
-      { id: 'alloc-1', snapshotId: 'snap-save-ars-aug', goalId: 'goal-1', percentage: '60.00' },
-      { id: 'alloc-2', snapshotId: 'snap-save-ars-aug', goalId: 'goal-2', percentage: '40.00' },
+      { id: 'alloc-1', snapshotId: 'snap-global-aug', goalId: 'goal-1', percentage: '60.00' },
+      { id: 'alloc-2', snapshotId: 'snap-global-aug', goalId: 'goal-2', percentage: '40.00' },
     ],
   }
 }
 
 describe('buildGoalCreationProposal', () => {
   describe('Allocation defaults & Seeding', () => {
-    it('seeds pending goal at 0% for existing combinations and 100% for new combinations', () => {
+    it('seeds pending goal at 0% for existing allocations and preserves active goals', () => {
       const source = createBaseWorkspaceSource()
       const draft = createBaseDraft({
-        saveEnabled: true,
-        investEnabled: true,
-        annualReturnRate: '10',
+        strategy: 'save',
       })
       const state: GoalCreationState = {
         source,
@@ -116,25 +102,38 @@ describe('buildGoalCreationProposal', () => {
         currentMonth: '2026-08',
       })
 
-      // save:ARS exists in source (60/40) -> pending goal should get 0.00%
-      const saveGroup = proposal.allocationGroups.find((g) => g.key === 'save:ARS')
-      expect(saveGroup).toBeDefined()
-      expect(saveGroup?.entries).toEqual([
+      expect(proposal.allocation).toBeDefined()
+      expect(proposal.allocation.entries).toEqual([
         expect.objectContaining({ goalId: 'goal-1', percentage: '60.00', pending: false }),
         expect.objectContaining({ goalId: 'goal-2', percentage: '40.00', pending: false }),
         expect.objectContaining({ goalId: PENDING_GOAL_ID, percentage: '0.00', pending: true }),
       ])
-      expect(saveGroup?.totalPercentage).toBe('100.00')
+      expect(proposal.allocation.totalPercentage).toBe('100.00')
+    })
 
-      // invest:ARS is new -> existing goals get 0.00%, pending gets 100.00%
-      const investGroup = proposal.allocationGroups.find((g) => g.key === 'invest:ARS')
-      expect(investGroup).toBeDefined()
-      expect(investGroup?.entries).toEqual([
+    it('seeds pending goal at 100% when no allocations exist', () => {
+      const source = createBaseWorkspaceSource()
+      source.allocations = []
+      source.snapshots = []
+      const draft = createBaseDraft({ strategy: 'invest', annualReturnRate: '10' })
+      const state: GoalCreationState = {
+        source,
+        pendingSnapshots: [],
+        pendingAllocations: [],
+      }
+
+      const proposal = buildGoalCreationProposal({
+        draft,
+        state,
+        currentMonth: '2026-08',
+      })
+
+      expect(proposal.allocation.entries).toEqual([
         expect.objectContaining({ goalId: 'goal-1', percentage: '0.00', pending: false }),
         expect.objectContaining({ goalId: 'goal-2', percentage: '0.00', pending: false }),
         expect.objectContaining({ goalId: PENDING_GOAL_ID, percentage: '100.00', pending: true }),
       ])
-      expect(investGroup?.totalPercentage).toBe('100.00')
+      expect(proposal.allocation.totalPercentage).toBe('100.00')
     })
 
     it('prefers pending next-month snapshot over current snapshot when available', () => {
@@ -143,53 +142,40 @@ describe('buildGoalCreationProposal', () => {
         source,
         pendingSnapshots: [
           {
-            id: 'snap-save-ars-sep',
-            channelId: 'ch-save-ars',
-            monthlyCommitmentAmount: '120000.00',
-            baseCurrency: 'ARS',
-            commitmentStatus: 'active',
+            id: 'snap-global-sep',
+            userId: 'user-1',
             effectiveMonth: '2026-09-01',
           },
         ],
         pendingAllocations: [
-          { id: 'alloc-sep-1', snapshotId: 'snap-save-ars-sep', goalId: 'goal-1', percentage: '70.00' },
-          { id: 'alloc-sep-2', snapshotId: 'snap-save-ars-sep', goalId: 'goal-2', percentage: '30.00' },
+          { id: 'alloc-sep-1', snapshotId: 'snap-global-sep', goalId: 'goal-1', percentage: '70.00' },
+          { id: 'alloc-sep-2', snapshotId: 'snap-global-sep', goalId: 'goal-2', percentage: '30.00' },
         ],
       }
 
       const proposal = buildGoalCreationProposal({
-        draft: createBaseDraft({ saveEnabled: true, investEnabled: false }),
+        draft: createBaseDraft(),
         state,
         currentMonth: '2026-08',
       })
 
-      const saveGroup = proposal.allocationGroups.find((g) => g.key === 'save:ARS')
-      expect(saveGroup?.entries).toEqual([
+      expect(proposal.allocation.entries).toEqual([
         expect.objectContaining({ goalId: 'goal-1', percentage: '70.00' }),
         expect.objectContaining({ goalId: 'goal-2', percentage: '30.00' }),
         expect.objectContaining({ goalId: PENDING_GOAL_ID, percentage: '0.00' }),
       ])
-      expect(saveGroup?.monthlyCommitment).toEqual({ amount: '120000.00', currency: 'ARS' })
+      expect(proposal.allocation.effectiveMonth).toBe('2026-09-01')
     })
 
-    it('overlays user-submitted allocations when group key and goal IDs match', () => {
+    it('overlays user-submitted allocations when goal IDs match', () => {
       const source = createBaseWorkspaceSource()
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const draft = createBaseDraft({
-        saveEnabled: true,
-        investEnabled: false,
         allocations: [
-          {
-            key: 'save:ARS',
-            fundingMethod: 'save',
-            destinationCurrency: 'ARS',
-            entries: [
-              { goalId: 'goal-1', percentage: '50.00' },
-              { goalId: 'goal-2', percentage: '30.00' },
-              { goalId: PENDING_GOAL_ID, percentage: '20.00' },
-            ],
-          },
+          { goalId: 'goal-1', percentage: '50.00' },
+          { goalId: 'goal-2', percentage: '30.00' },
+          { goalId: PENDING_GOAL_ID, percentage: '20.00' },
         ],
       })
 
@@ -199,30 +185,20 @@ describe('buildGoalCreationProposal', () => {
         currentMonth: '2026-08',
       })
 
-      const saveGroup = proposal.allocationGroups.find((g) => g.key === 'save:ARS')
-      expect(saveGroup?.entries).toEqual([
+      expect(proposal.allocation.entries).toEqual([
         expect.objectContaining({ goalId: 'goal-1', percentage: '50.00' }),
         expect.objectContaining({ goalId: 'goal-2', percentage: '30.00' }),
         expect.objectContaining({ goalId: PENDING_GOAL_ID, percentage: '20.00' }),
       ])
     })
 
-    it('ignores submitted allocations if goal IDs do not match server-derived group', () => {
+    it('ignores submitted allocations if goal IDs do not match server-derived entries', () => {
       const source = createBaseWorkspaceSource()
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const draft = createBaseDraft({
-        saveEnabled: true,
-        investEnabled: false,
         allocations: [
-          {
-            key: 'save:ARS',
-            fundingMethod: 'save',
-            destinationCurrency: 'ARS',
-            entries: [
-              { goalId: 'different-goal', percentage: '100.00' },
-            ],
-          },
+          { goalId: 'different-goal', percentage: '100.00' },
         ],
       })
 
@@ -232,8 +208,7 @@ describe('buildGoalCreationProposal', () => {
         currentMonth: '2026-08',
       })
 
-      const saveGroup = proposal.allocationGroups.find((g) => g.key === 'save:ARS')
-      expect(saveGroup?.entries).toEqual([
+      expect(proposal.allocation.entries).toEqual([
         expect.objectContaining({ goalId: 'goal-1', percentage: '60.00' }),
         expect.objectContaining({ goalId: 'goal-2', percentage: '40.00' }),
         expect.objectContaining({ goalId: PENDING_GOAL_ID, percentage: '0.00' }),
@@ -245,19 +220,10 @@ describe('buildGoalCreationProposal', () => {
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const draft = createBaseDraft({
-        saveEnabled: true,
-        investEnabled: false,
         allocations: [
-          {
-            key: 'save:ARS',
-            fundingMethod: 'save',
-            destinationCurrency: 'ARS',
-            entries: [
-              { goalId: 'goal-1', percentage: '50.00' },
-              { goalId: 'goal-2', percentage: '30.00' },
-              { goalId: PENDING_GOAL_ID, percentage: '19.99' },
-            ],
-          },
+          { goalId: 'goal-1', percentage: '50.00' },
+          { goalId: 'goal-2', percentage: '30.00' },
+          { goalId: PENDING_GOAL_ID, percentage: '19.99' },
         ],
       })
 
@@ -272,25 +238,17 @@ describe('buildGoalCreationProposal', () => {
   })
 
   describe('Amounts & Commitments', () => {
-    it('uses calculateAllocationAmounts to provide deterministic cents allocation', () => {
+    it('calculates allocated amounts from profile plannedMonthlyContribution with deterministic cents rounding and USD conversion', () => {
       const source = createBaseWorkspaceSource()
-      source.snapshots[0].monthlyCommitmentAmount = '100.00' // $100 ARS
+      source.profile!.plannedMonthlyContribution = '60000.00'
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const draft = createBaseDraft({
-        saveEnabled: true,
-        investEnabled: false,
+        currency: 'USD',
         allocations: [
-          {
-            key: 'save:ARS',
-            fundingMethod: 'save',
-            destinationCurrency: 'ARS',
-            entries: [
-              { goalId: 'goal-1', percentage: '33.33' },
-              { goalId: 'goal-2', percentage: '33.33' },
-              { goalId: PENDING_GOAL_ID, percentage: '33.34' },
-            ],
-          },
+          { goalId: 'goal-1', percentage: '60.00' }, // goal-1 is USD: 60% of 60,000 ARS = 36,000 ARS -> 24 USD (at 1500)
+          { goalId: 'goal-2', percentage: '0.00' },
+          { goalId: PENDING_GOAL_ID, percentage: '40.00' }, // pending is USD: 40% of 60,000 ARS = 24,000 ARS -> 16 USD (at 1500)
         ],
       })
 
@@ -300,79 +258,27 @@ describe('buildGoalCreationProposal', () => {
         currentMonth: '2026-08',
       })
 
-      const saveGroup = proposal.allocationGroups.find((g) => g.key === 'save:ARS')
-      expect(saveGroup?.entries[0].allocatedBaseAmount).toEqual({ amount: '33.33', currency: 'ARS' })
-      expect(saveGroup?.entries[1].allocatedBaseAmount).toEqual({ amount: '33.33', currency: 'ARS' })
-      expect(saveGroup?.entries[2].allocatedBaseAmount).toEqual({ amount: '33.34', currency: 'ARS' })
+      const pendingEntry = proposal.allocation.entries.find((e) => e.goalId === PENDING_GOAL_ID)
+      expect(pendingEntry?.allocatedBaseAmount).toEqual({ amount: '24000.00', currency: 'ARS' })
+      expect(pendingEntry?.allocatedDestinationAmount).toEqual({ amount: '16.00', currency: 'USD' })
+
+      const goal1Entry = proposal.allocation.entries.find((e) => e.goalId === 'goal-1')
+      expect(goal1Entry?.allocatedBaseAmount).toEqual({ amount: '36000.00', currency: 'ARS' })
+      expect(goal1Entry?.allocatedDestinationAmount).toEqual({ amount: '24.00', currency: 'USD' })
     })
 
-    it('handles draft-defined monthly commitments', () => {
+    it('converts full planned monthly contribution to USD at fixed rate 1500', () => {
       const source = createBaseWorkspaceSource()
-      const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
-
-      const draft = createBaseDraft({
-        saveEnabled: true,
-        defineSaveCommitment: true,
-        saveMonthlyCommitment: '250.000',
-      })
-
-      const proposal = buildGoalCreationProposal({
-        draft,
-        state,
-        currentMonth: '2026-08',
-      })
-
-      const saveGroup = proposal.allocationGroups.find((g) => g.key === 'save:ARS')
-      expect(saveGroup?.monthlyCommitment).toEqual({ amount: '250000.00', currency: 'ARS' })
-    })
-
-    it('sets undefined amounts and commitment_absent projection when no commitment exists', () => {
-      const source = createBaseWorkspaceSource()
-      source.snapshots = [] // No existing snapshot
-      source.channels = []
-      const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
-
-      const draft = createBaseDraft({
-        saveEnabled: true,
-        defineSaveCommitment: false,
-        saveMonthlyCommitment: '',
-      })
-
-      const proposal = buildGoalCreationProposal({
-        draft,
-        state,
-        currentMonth: '2026-08',
-      })
-
-      const saveGroup = proposal.allocationGroups.find((g) => g.key === 'save:ARS')
-      expect(saveGroup?.monthlyCommitment).toBeUndefined()
-      expect(saveGroup?.destinationCommitment).toBeUndefined()
-      expect(saveGroup?.entries[0].allocatedBaseAmount).toBeUndefined()
-
-      const pendingImpact = proposal.impacts.find((i) => i.goalId === PENDING_GOAL_ID)
-      expect(pendingImpact?.after).toEqual({ status: 'commitment_absent' })
-    })
-
-    it('converts ARS commitment to USD destination using PLANNING_ARS_PER_USD', () => {
-      const source = createBaseWorkspaceSource()
-      source.channels = [{ id: 'ch-save-usd', userId: 'user-1', fundingMethod: 'save', destinationCurrency: 'USD' }]
-      source.snapshots = [{
-        id: 'snap-save-usd',
-        channelId: 'ch-save-usd',
-        monthlyCommitmentAmount: '150000.00', // 150.000 ARS -> 100 USD (at 1500)
-        baseCurrency: 'ARS',
-        commitmentStatus: 'active',
-        effectiveMonth: '2026-08-01',
-      }]
-      source.allocations = []
-      source.goals = []
-      source.savingsPositions = []
+      source.profile!.plannedMonthlyContribution = '60000.00'
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const draft = createBaseDraft({
         currency: 'USD',
-        targetAmount: '1000',
-        saveEnabled: true,
+        allocations: [
+          { goalId: 'goal-1', percentage: '0.00' },
+          { goalId: 'goal-2', percentage: '0.00' },
+          { goalId: PENDING_GOAL_ID, percentage: '100.00' },
+        ],
       })
 
       const proposal = buildGoalCreationProposal({
@@ -381,9 +287,35 @@ describe('buildGoalCreationProposal', () => {
         currentMonth: '2026-08',
       })
 
-      const saveGroup = proposal.allocationGroups.find((g) => g.key === 'save:USD')
-      expect(saveGroup?.destinationCommitment).toEqual({ amount: '100.00', currency: 'USD' })
-      expect(saveGroup?.entries[0].allocatedDestinationAmount).toEqual({ amount: '100.00', currency: 'USD' })
+      const pendingEntry = proposal.allocation.entries.find((e) => e.goalId === PENDING_GOAL_ID)
+      expect(pendingEntry?.allocatedDestinationAmount).toEqual({ amount: '40.00', currency: 'USD' })
+    })
+
+
+    it('sets undefined amounts and commitment_absent projection when no plannedMonthlyContribution exists', () => {
+      const source = createBaseWorkspaceSource()
+      source.profile!.plannedMonthlyContribution = null as any
+      const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
+
+      const draft = createBaseDraft({
+        allocations: [
+          { goalId: 'goal-1', percentage: '0.00' },
+          { goalId: 'goal-2', percentage: '0.00' },
+          { goalId: PENDING_GOAL_ID, percentage: '100.00' },
+        ],
+      })
+
+      const proposal = buildGoalCreationProposal({
+        draft,
+        state,
+        currentMonth: '2026-08',
+      })
+
+      expect(proposal.allocation.monthlyContribution).toBeUndefined()
+      expect(proposal.allocation.entries[0].allocatedBaseAmount).toBeUndefined()
+
+      const pendingImpact = proposal.impacts.find((i) => i.goalId === PENDING_GOAL_ID)
+      expect(pendingImpact?.after).toEqual({ status: 'commitment_absent' })
     })
   })
 
@@ -396,6 +328,7 @@ describe('buildGoalCreationProposal', () => {
         approximateMonthlyIncome: '2000000.00',
         approximateMonthlyExpenses: '1500000.00',
         expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
       }
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
@@ -404,7 +337,7 @@ describe('buildGoalCreationProposal', () => {
         type: 'emergency_fund',
         currency: 'USD',
         targetAmount: '',
-        saveEnabled: true,
+        strategy: 'save',
       })
 
       const proposal = buildGoalCreationProposal({
@@ -426,6 +359,7 @@ describe('buildGoalCreationProposal', () => {
         approximateMonthlyIncome: '2000000.00',
         approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
+        plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
       }
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
@@ -434,7 +368,7 @@ describe('buildGoalCreationProposal', () => {
         type: 'emergency_fund',
         currency: 'USD',
         targetAmount: '',
-        saveEnabled: true,
+        strategy: 'save',
       })
 
       const proposal = buildGoalCreationProposal({
@@ -453,7 +387,7 @@ describe('buildGoalCreationProposal', () => {
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const proposal = buildGoalCreationProposal({
-        draft: createBaseDraft({ saveEnabled: true }),
+        draft: createBaseDraft(),
         state,
         currentMonth: '2026-08',
       })
@@ -472,7 +406,7 @@ describe('buildGoalCreationProposal', () => {
       // When seeded with defaults, pending goal gets 0%, goal-1 gets 60%, goal-2 gets 40%.
       // Neither goal-1 nor goal-2 amounts or projections change!
       const defaultProposal = buildGoalCreationProposal({
-        draft: createBaseDraft({ saveEnabled: true }),
+        draft: createBaseDraft(),
         state,
         currentMonth: '2026-08',
       })
@@ -483,18 +417,10 @@ describe('buildGoalCreationProposal', () => {
       // When user reduces goal-1 from 60% to 20% to give 40% to pending goal:
       const changedProposal = buildGoalCreationProposal({
         draft: createBaseDraft({
-          saveEnabled: true,
           allocations: [
-            {
-              key: 'save:ARS',
-              fundingMethod: 'save',
-              destinationCurrency: 'ARS',
-              entries: [
-                { goalId: 'goal-1', percentage: '20.00' },
-                { goalId: 'goal-2', percentage: '40.00' },
-                { goalId: PENDING_GOAL_ID, percentage: '40.00' },
-              ],
-            },
+            { goalId: 'goal-1', percentage: '20.00' },
+            { goalId: 'goal-2', percentage: '40.00' },
+            { goalId: PENDING_GOAL_ID, percentage: '40.00' },
           ],
         }),
         state,
@@ -510,19 +436,19 @@ describe('buildGoalCreationProposal', () => {
       const goal1Impact = changedProposal.impacts.find((i) => i.goalId === 'goal-1')
       expect(goal1Impact?.before).toMatchObject({
         status: 'existing',
-        allocatedMonthlyAmounts: [{ amount: '60000.00', currency: 'ARS' }],
+        allocatedMonthlyAmounts: [{ amount: '24.00', currency: 'USD' }],
       })
     })
   })
 
   describe('Investment rate and availability normalization', () => {
-    it('normalizes desiredDate to YYYY-MM-01 and investment fields', () => {
+    it('normalizes desiredDate to YYYY-MM-01 and investment fields only for invest strategy', () => {
       const source = createBaseWorkspaceSource()
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const draft = createBaseDraft({
         desiredMonth: '2027-05',
-        investEnabled: true,
+        strategy: 'invest',
         annualReturnRate: '9,5',
         availability: 'available_from',
         availableFromMonth: '2027-01',
@@ -535,11 +461,32 @@ describe('buildGoalCreationProposal', () => {
       })
 
       expect(proposal.normalizedGoal.desiredDate).toBe('2027-05-01')
+      expect(proposal.normalizedGoal.strategy).toBe('invest')
       expect(proposal.investment).toEqual({
         annualReturnRate: '9.5',
         availability: 'available_from',
         availableFrom: '2027-01-01',
       })
+      expect(proposal.proposedSource.investmentPositions.some((p) => p.goalId === PENDING_GOAL_ID)).toBe(true)
+    })
+
+    it('does not create investment position when strategy is save', () => {
+      const source = createBaseWorkspaceSource()
+      const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
+
+      const draft = createBaseDraft({
+        strategy: 'save',
+      })
+
+      const proposal = buildGoalCreationProposal({
+        draft,
+        state,
+        currentMonth: '2026-08',
+      })
+
+      expect(proposal.normalizedGoal.strategy).toBe('save')
+      expect(proposal.investment).toBeUndefined()
+      expect(proposal.proposedSource.investmentPositions.some((p) => p.goalId === PENDING_GOAL_ID)).toBe(false)
     })
   })
 })
@@ -551,8 +498,8 @@ describe('serializeGoalCreationState', () => {
     const state2: GoalCreationState = {
       source: {
         ...source,
-        goals: [source.goals[1], source.goals[0]], // Reordered goals
-        allocations: [source.allocations[1], source.allocations[0]], // Reordered allocations
+        goals: [source.goals[1], source.goals[0]],
+        allocations: [source.allocations[1], source.allocations[0]],
       },
       pendingSnapshots: [],
       pendingAllocations: [],
@@ -572,7 +519,7 @@ describe('serializeGoalCreationState', () => {
     )
   })
 
-  it('changes fingerprint when profile expenses change', () => {
+  it('changes fingerprint when profile plannedMonthlyContribution changes', () => {
     const source = createBaseWorkspaceSource()
     const state1: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
     const state2: GoalCreationState = {
@@ -580,7 +527,7 @@ describe('serializeGoalCreationState', () => {
         ...source,
         profile: {
           ...source.profile!,
-          approximateMonthlyExpenses: '1600000.00',
+          plannedMonthlyContribution: '80000.00',
         },
       },
       pendingSnapshots: [],
@@ -592,27 +539,7 @@ describe('serializeGoalCreationState', () => {
     )
   })
 
-  it('changes fingerprint when goals or positions change', () => {
-    const source = createBaseWorkspaceSource()
-    const state1: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
-    const state2: GoalCreationState = {
-      source: {
-        ...source,
-        savingsPositions: [
-          { id: 'sav-1', goalId: 'goal-1', amount: '120000.00', currency: 'ARS' },
-          source.savingsPositions[1],
-        ],
-      },
-      pendingSnapshots: [],
-      pendingAllocations: [],
-    }
-
-    expect(serializeGoalCreationState(state1, '2026-08')).not.toBe(
-      serializeGoalCreationState(state2, '2026-08'),
-    )
-  })
-
-  it('changes fingerprint when snapshots or allocations change', () => {
+  it('changes fingerprint when allocations change', () => {
     const source = createBaseWorkspaceSource()
     const state1: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
     const state2: GoalCreationState = {
@@ -632,55 +559,18 @@ describe('serializeGoalCreationState', () => {
     )
   })
 
-  it('changes fingerprint when pending snapshots or pending allocations change', () => {
-    const source = createBaseWorkspaceSource()
-    const state1: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
-    const state2: GoalCreationState = {
-      source,
-      pendingSnapshots: [
-        {
-          id: 'snap-sep',
-          channelId: 'ch-save-ars',
-          monthlyCommitmentAmount: '120000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
-          effectiveMonth: '2026-09-01',
-        },
-      ],
-      pendingAllocations: [],
-    }
-
-    expect(serializeGoalCreationState(state1, '2026-08')).not.toBe(
-      serializeGoalCreationState(state2, '2026-08'),
-    )
-  })
-
   it('changes fingerprint when draft allocations change', () => {
     const source = createBaseWorkspaceSource()
     const draft1 = createBaseDraft({
       allocations: [
-        {
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [
-            { goalId: 'goal-1', percentage: '60.00' },
-            { goalId: 'goal-2', percentage: '40.00' },
-          ],
-        },
+        { goalId: 'goal-1', percentage: '60.00' },
+        { goalId: 'goal-2', percentage: '40.00' },
       ],
     })
     const draft2 = createBaseDraft({
       allocations: [
-        {
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [
-            { goalId: 'goal-1', percentage: '55.00' },
-            { goalId: 'goal-2', percentage: '45.00' },
-          ],
-        },
+        { goalId: 'goal-1', percentage: '55.00' },
+        { goalId: 'goal-2', percentage: '45.00' },
       ],
     })
 
@@ -688,114 +578,8 @@ describe('serializeGoalCreationState', () => {
       serializeGoalCreationState(source, '2026-08', draft2),
     )
   })
-
-  it('filters existing candidate goals by saveEnabled versus investEnabled capability', () => {
-    const source = createBaseWorkspaceSource()
-    source.goals = [
-      {
-        id: 'goal-save-only',
-        userId: 'user-1',
-        name: 'Solo Ahorro',
-        type: 'purchase',
-        currency: 'ARS',
-        priority: 'high',
-        status: 'active',
-        saveEnabled: true,
-        investEnabled: false,
-        createdAt: '2026-01-01T00:00:00Z',
-      },
-      {
-        id: 'goal-invest-only',
-        userId: 'user-1',
-        name: 'Solo Inversión',
-        type: 'purchase',
-        currency: 'ARS',
-        priority: 'high',
-        status: 'active',
-        saveEnabled: false,
-        investEnabled: true,
-        createdAt: '2026-01-01T00:00:00Z',
-      },
-    ]
-
-    const draft = createBaseDraft({
-      currency: 'ARS',
-      saveEnabled: true,
-      investEnabled: true,
-      allocations: [
-        {
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [
-            { goalId: 'goal-save-only', percentage: '50.00' },
-            { goalId: PENDING_GOAL_ID, percentage: '50.00' },
-          ],
-        },
-        {
-          key: 'invest:ARS',
-          fundingMethod: 'invest',
-          destinationCurrency: 'ARS',
-          entries: [
-            { goalId: 'goal-invest-only', percentage: '50.00' },
-            { goalId: PENDING_GOAL_ID, percentage: '50.00' },
-          ],
-        },
-      ],
-    })
-
-    const proposal = buildGoalCreationProposal({
-      draft,
-      state: { source, pendingSnapshots: [], pendingAllocations: [] },
-      currentMonth: '2026-08',
-    })
-
-    const saveGroup = proposal.allocationGroups.find((g) => g.fundingMethod === 'save')
-    const investGroup = proposal.allocationGroups.find((g) => g.fundingMethod === 'invest')
-
-    expect(saveGroup?.entries.some((e) => e.goalId === 'goal-save-only')).toBe(true)
-    expect(saveGroup?.entries.some((e) => e.goalId === 'goal-invest-only')).toBe(false)
-
-    expect(investGroup?.entries.some((e) => e.goalId === 'goal-invest-only')).toBe(true)
-    expect(investGroup?.entries.some((e) => e.goalId === 'goal-save-only')).toBe(false)
-  })
-
-  it('parses new commitments using profile baseCurrency when profile is USD', () => {
-    const source = createBaseWorkspaceSource()
-    source.profile = {
-      ...source.profile!,
-      baseCurrency: 'USD',
-    }
-
-    const draft = createBaseDraft({
-      currency: 'USD',
-      saveEnabled: true,
-      defineSaveCommitment: true,
-      saveMonthlyCommitment: '250.00',
-      allocations: [
-        {
-          key: 'save:USD',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
-          entries: [
-            { goalId: PENDING_GOAL_ID, percentage: '100.00' },
-          ],
-        },
-      ],
-    })
-
-    const proposal = buildGoalCreationProposal({
-      draft,
-      state: { source, pendingSnapshots: [], pendingAllocations: [] },
-      currentMonth: '2026-08',
-    })
-
-    const saveGroup = proposal.allocationGroups.find((g) => g.fundingMethod === 'save')
-    expect(saveGroup?.baseCurrency).toBe('USD')
-    expect(saveGroup?.monthlyCommitment).toEqual({ amount: '250.00', currency: 'USD' })
-    expect(saveGroup?.destinationCommitment).toEqual({ amount: '250.00', currency: 'USD' })
-  })
 })
+
 
 describe('rebalanceAllocationEntries', () => {
   it('rebalances pending entry from 0 to 20 proportionally across existing 70/30 entries', () => {

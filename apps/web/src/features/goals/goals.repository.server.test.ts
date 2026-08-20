@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '../../db/client'
 import {
-  channelPlanAllocations,
-  channelPlanSnapshots,
-  contributionChannels,
+  allocationPlanEntries,
+  allocationPlanSnapshots,
   financialGoals,
   goalInvestmentPositions,
 } from '../../db/schema'
@@ -28,21 +27,17 @@ const mockTx = {
     financialGoals: {
       findMany: vi.fn(),
     },
-    contributionChannels: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-    },
     goalSavingsPositions: {
       findMany: vi.fn(),
     },
     goalInvestmentPositions: {
       findMany: vi.fn(),
     },
-    channelPlanSnapshots: {
+    allocationPlanSnapshots: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
-    channelPlanAllocations: {
+    allocationPlanEntries: {
       findMany: vi.fn(),
     },
   },
@@ -58,27 +53,22 @@ vi.mock('../../db/client', () => ({
       financialGoals: {
         findMany: vi.fn(),
       },
-      contributionChannels: {
-        findMany: vi.fn(),
-        findFirst: vi.fn(),
-      },
       goalSavingsPositions: {
         findMany: vi.fn(),
       },
       goalInvestmentPositions: {
         findMany: vi.fn(),
       },
-      channelPlanSnapshots: {
+      allocationPlanSnapshots: {
         findMany: vi.fn(),
         findFirst: vi.fn(),
       },
-      channelPlanAllocations: {
+      allocationPlanEntries: {
         findMany: vi.fn(),
       },
     },
   },
 }))
-
 
 describe('goals.repository.server', () => {
   beforeEach(() => {
@@ -92,16 +82,17 @@ describe('goals.repository.server', () => {
 
     expect(result).toBeNull()
     expect(db.query.financialGoals.findMany).not.toHaveBeenCalled()
-    expect(db.query.contributionChannels.findMany).not.toHaveBeenCalled()
+    expect(db.query.allocationPlanSnapshots.findMany).not.toHaveBeenCalled()
   })
 
-  it('filters goals and channels by userId, and loads positions and allocations only for selected IDs', async () => {
+  it('filters goals and snapshots by userId, and loads positions and allocations only for selected IDs', async () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
       approximateMonthlyIncome: '1000000.00',
       approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
+      plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -114,12 +105,11 @@ describe('goals.repository.server', () => {
       targetAmount: '3000.00',
       currency: 'USD',
       priority: 'high',
+      strategy: 'save',
       status: 'active',
       desiredDate: '2027-01-01',
       completedAt: null,
       emergencyFundMonths: 6,
-      saveEnabled: true,
-      investEnabled: false,
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
     }
@@ -127,26 +117,17 @@ describe('goals.repository.server', () => {
       id: 'g2',
       userId: 'user_1',
       name: 'Viaje a Japón',
-      type: 'custom',
+      type: 'purchase',
       targetAmount: '5000.00',
       currency: 'USD',
       priority: 'medium',
+      strategy: 'invest',
       status: 'active',
       desiredDate: '2028-06-01',
       completedAt: null,
       emergencyFundMonths: null,
-      saveEnabled: false,
-      investEnabled: true,
       createdAt: new Date('2026-02-01T00:00:00Z'),
       updatedAt: new Date('2026-02-01T00:00:00Z'),
-    }
-    const mockChannel1 = {
-      id: 'c1',
-      userId: 'user_1',
-      fundingMethod: 'save',
-      destinationCurrency: 'USD',
-      createdAt: new Date('2026-01-01T00:00:00Z'),
-      updatedAt: new Date('2026-01-01T00:00:00Z'),
     }
     const mockSavingsPos = {
       id: 'sp1',
@@ -169,32 +150,21 @@ describe('goals.repository.server', () => {
       updatedAt: new Date('2026-02-01T00:00:00Z'),
     }
 
-    // Two snapshots around 2026-08-01:
-    // s1 is effective 2026-07-01, s2 is effective 2026-08-01, s3 is effective 2026-09-01
     const snapshotPast = {
       id: 's1',
-      channelId: 'c1',
-      monthlyCommitmentAmount: '100.00',
-      baseCurrency: 'ARS',
-      commitmentStatus: 'active',
+      userId: 'user_1',
       effectiveMonth: '2026-07-01',
       createdAt: new Date('2026-01-01T00:00:00Z'),
     }
     const snapshotCurrent = {
       id: 's2',
-      channelId: 'c1',
-      monthlyCommitmentAmount: '200.00',
-      baseCurrency: 'ARS',
-      commitmentStatus: 'active',
+      userId: 'user_1',
       effectiveMonth: '2026-08-01',
       createdAt: new Date('2026-01-01T00:00:00Z'),
     }
     const snapshotFuture = {
       id: 's3',
-      channelId: 'c1',
-      monthlyCommitmentAmount: '300.00',
-      baseCurrency: 'ARS',
-      commitmentStatus: 'active',
+      userId: 'user_1',
       effectiveMonth: '2026-09-01',
       createdAt: new Date('2026-01-01T00:00:00Z'),
     }
@@ -214,15 +184,14 @@ describe('goals.repository.server', () => {
 
     vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
     vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([mockGoal1, mockGoal2] as never)
-    vi.mocked(db.query.contributionChannels.findMany).mockResolvedValue([mockChannel1] as never)
     vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([mockSavingsPos] as never)
     vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([mockInvestPos] as never)
-    vi.mocked(db.query.channelPlanSnapshots.findMany).mockResolvedValue([
+    vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([
       snapshotPast,
       snapshotCurrent,
       snapshotFuture,
     ] as never)
-    vi.mocked(db.query.channelPlanAllocations.findMany).mockResolvedValue([mockAlloc1, mockAlloc2] as never)
+    vi.mocked(db.query.allocationPlanEntries.findMany).mockResolvedValue([mockAlloc1, mockAlloc2] as never)
 
     const result = await getGoalsWorkspaceRows('user_1', '2026-08')
 
@@ -231,12 +200,9 @@ describe('goals.repository.server', () => {
     expect(result?.goals).toEqual([mockGoal1, mockGoal2])
     expect(result?.savingsPositions).toEqual([mockSavingsPos])
     expect(result?.investmentPositions).toEqual([mockInvestPos])
-    expect(result?.channels).toEqual([mockChannel1])
-    // Selected snapshot must be s2 (latest on or before 2026-08)
     expect(result?.snapshots).toEqual([snapshotCurrent])
     expect(result?.allocations).toEqual([mockAlloc1, mockAlloc2])
 
-    // Verify where condition helpers
     const eqMock = vi.fn((col, val) => ({ col, val, op: 'eq' }))
     const inArrayMock = vi.fn((col, val) => ({ col, val, op: 'inArray' }))
 
@@ -260,27 +226,17 @@ describe('goals.repository.server', () => {
       op: 'eq',
     })
 
-    const channelsWhereArg = vi.mocked(db.query.contributionChannels.findMany).mock.calls[0][0]?.where
+    const snapshotsWhereArg = vi.mocked(db.query.allocationPlanSnapshots.findMany).mock.calls[0][0]?.where
     expect(
-      typeof channelsWhereArg === 'function' &&
-        (channelsWhereArg as any)({ userId: 'userId' }, { eq: eqMock }),
+      typeof snapshotsWhereArg === 'function' &&
+        (snapshotsWhereArg as any)({ userId: 'userId' }, { eq: eqMock }),
     ).toEqual({
       col: 'userId',
       val: 'user_1',
       op: 'eq',
     })
 
-    const savingsWhereArg = vi.mocked(db.query.goalSavingsPositions.findMany).mock.calls[0][0]?.where
-    expect(
-      typeof savingsWhereArg === 'function' &&
-        (savingsWhereArg as any)({ goalId: 'goalId' }, { inArray: inArrayMock }),
-    ).toEqual({
-      col: 'goalId',
-      val: ['g1', 'g2'],
-      op: 'inArray',
-    })
-
-    const allocsWhereArg = vi.mocked(db.query.channelPlanAllocations.findMany).mock.calls[0][0]?.where
+    const allocsWhereArg = vi.mocked(db.query.allocationPlanEntries.findMany).mock.calls[0][0]?.where
     expect(
       typeof allocsWhereArg === 'function' &&
         (allocsWhereArg as any)({ snapshotId: 'snapshotId' }, { inArray: inArrayMock }),
@@ -298,6 +254,7 @@ describe('goals.repository.server', () => {
       approximateMonthlyIncome: '1000000.00',
       approximateMonthlyExpenses: null,
       expensesKnowledge: 'unknown',
+      plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -310,65 +267,50 @@ describe('goals.repository.server', () => {
       targetAmount: '1000.00',
       currency: 'USD',
       priority: 'high',
+      strategy: 'save',
       status: 'active',
       desiredDate: null,
       completedAt: null,
       emergencyFundMonths: 6,
-      saveEnabled: true,
-      investEnabled: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    const mockChannel = {
-      id: 'c1',
-      userId: 'user_1',
-      fundingMethod: 'save',
-      destinationCurrency: 'USD',
       createdAt: new Date(),
       updatedAt: new Date(),
     }
     const snapshotUpcoming1 = {
       id: 's_sep',
-      channelId: 'c1',
-      monthlyCommitmentAmount: '150.00',
-      baseCurrency: 'ARS',
-      commitmentStatus: 'active',
+      userId: 'user_1',
       effectiveMonth: '2026-09-01',
       createdAt: new Date(),
     }
     const snapshotUpcoming2 = {
       id: 's_oct',
-      channelId: 'c1',
-      monthlyCommitmentAmount: '200.00',
-      baseCurrency: 'ARS',
-      commitmentStatus: 'active',
+      userId: 'user_1',
       effectiveMonth: '2026-10-01',
       createdAt: new Date(),
     }
 
     vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
     vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([mockGoal] as never)
-    vi.mocked(db.query.contributionChannels.findMany).mockResolvedValue([mockChannel] as never)
     vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([] as never)
     vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([] as never)
-    vi.mocked(db.query.channelPlanSnapshots.findMany).mockResolvedValue([
+    vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([
       snapshotUpcoming2,
       snapshotUpcoming1,
     ] as never)
-    vi.mocked(db.query.channelPlanAllocations.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.allocationPlanEntries.findMany).mockResolvedValue([] as never)
 
     const result = await getGoalsWorkspaceRows('user_1', '2026-08')
 
     expect(result?.snapshots).toEqual([snapshotUpcoming1])
   })
 
-  it('handles empty goals and empty channels without issuing inArray queries with empty arrays', async () => {
+  it('handles empty goals and empty snapshots without issuing inArray queries with empty arrays', async () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
       approximateMonthlyIncome: '1000000.00',
       approximateMonthlyExpenses: null,
       expensesKnowledge: 'unknown',
+      plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -376,7 +318,7 @@ describe('goals.repository.server', () => {
 
     vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
     vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([] as never)
-    vi.mocked(db.query.contributionChannels.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([] as never)
 
     const result = await getGoalsWorkspaceRows('user_1', '2026-08')
 
@@ -385,61 +327,13 @@ describe('goals.repository.server', () => {
       goals: [],
       savingsPositions: [],
       investmentPositions: [],
-      channels: [],
       snapshots: [],
       allocations: [],
     })
 
     expect(db.query.goalSavingsPositions.findMany).not.toHaveBeenCalled()
     expect(db.query.goalInvestmentPositions.findMany).not.toHaveBeenCalled()
-    expect(db.query.channelPlanSnapshots.findMany).not.toHaveBeenCalled()
-    expect(db.query.channelPlanAllocations.findMany).not.toHaveBeenCalled()
-  })
-
-  it('keeps a goal with no optional position or allocation in the returned result', async () => {
-    const mockProfile = {
-      userId: 'user_1',
-      baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: null,
-      expensesKnowledge: 'unknown',
-      onboardingCompleted: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    const mockGoal = {
-      id: 'g_lone',
-      userId: 'user_1',
-      name: 'Objetivo sin fondos',
-      type: 'custom',
-      targetAmount: '1000.00',
-      currency: 'USD',
-      priority: 'low',
-      status: 'active',
-      desiredDate: null,
-      completedAt: null,
-      emergencyFundMonths: null,
-      saveEnabled: false,
-      investEnabled: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
-    vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([mockGoal] as never)
-    vi.mocked(db.query.contributionChannels.findMany).mockResolvedValue([] as never)
-    vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([] as never)
-    vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([] as never)
-
-    const result = await getGoalsWorkspaceRows('user_1', '2026-08')
-
-    expect(result?.goals).toHaveLength(1)
-    expect(result?.goals[0].id).toBe('g_lone')
-    expect(result?.savingsPositions).toEqual([])
-    expect(result?.investmentPositions).toEqual([])
-    expect(result?.channels).toEqual([])
-    expect(result?.snapshots).toEqual([])
-    expect(result?.allocations).toEqual([])
+    expect(db.query.allocationPlanEntries.findMany).not.toHaveBeenCalled()
   })
 
   describe('getGoalCreationState', () => {
@@ -450,16 +344,17 @@ describe('goals.repository.server', () => {
 
       expect(result).toBeNull()
       expect(db.query.financialGoals.findMany).not.toHaveBeenCalled()
-      expect(db.query.contributionChannels.findMany).not.toHaveBeenCalled()
+      expect(db.query.allocationPlanSnapshots.findMany).not.toHaveBeenCalled()
     })
 
-    it('filters profile, goals, and channels by userId, returns only active goals in source, loads positions for owned goals, returns current winning and next-month pending snapshots, and loads allocations for both', async () => {
+    it('filters profile, goals, and snapshots by userId, returns only active goals in source, loads positions, returns current winning and next-month pending snapshots, and loads entries for both', async () => {
       const mockProfile = {
         userId: 'user_1',
         baseCurrency: 'ARS',
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -473,12 +368,11 @@ describe('goals.repository.server', () => {
         targetAmount: '3000.00',
         currency: 'USD',
         priority: 'high',
+        strategy: 'save',
         status: 'active',
         desiredDate: '2027-01-01',
         completedAt: null,
         emergencyFundMonths: 6,
-        saveEnabled: true,
-        investEnabled: false,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }
@@ -490,12 +384,11 @@ describe('goals.repository.server', () => {
         targetAmount: '50000.00',
         currency: 'USD',
         priority: 'medium',
+        strategy: 'invest',
         status: 'active',
         desiredDate: '2036-01-01',
         completedAt: null,
         emergencyFundMonths: null,
-        saveEnabled: false,
-        investEnabled: true,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }
@@ -507,12 +400,11 @@ describe('goals.repository.server', () => {
         targetAmount: '10000.00',
         currency: 'USD',
         priority: 'low',
+        strategy: 'save',
         status: 'paused',
         desiredDate: '2028-01-01',
         completedAt: null,
         emergencyFundMonths: null,
-        saveEnabled: true,
-        investEnabled: false,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }
@@ -538,50 +430,27 @@ describe('goals.repository.server', () => {
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }
 
-      const mockChannel1 = {
-        id: 'c1',
-        userId: 'user_1',
-        fundingMethod: 'save',
-        destinationCurrency: 'USD',
-        createdAt: new Date('2026-01-01T00:00:00Z'),
-        updatedAt: new Date('2026-01-01T00:00:00Z'),
-      }
-
-      // Snapshots for c1:
-      // s1 is past, s2 is current (2026-08-01), s3 is next-month pending (2026-09-01), s4 is distant future (2026-11-01)
       const currentSnapshot = {
         id: 's2',
-        channelId: 'c1',
-        monthlyCommitmentAmount: '200000.00',
-        baseCurrency: 'ARS',
-        commitmentStatus: 'active',
+        userId: 'user_1',
         effectiveMonth: '2026-08-01',
         createdAt: new Date('2026-01-01T00:00:00Z'),
       }
       const septemberSnapshot = {
         id: 's3',
-        channelId: 'c1',
-        monthlyCommitmentAmount: '250000.00',
-        baseCurrency: 'ARS',
-        commitmentStatus: 'active',
+        userId: 'user_1',
         effectiveMonth: '2026-09-01',
         createdAt: new Date('2026-01-01T00:00:00Z'),
       }
       const pastSnapshot = {
         id: 's1',
-        channelId: 'c1',
-        monthlyCommitmentAmount: '150000.00',
-        baseCurrency: 'ARS',
-        commitmentStatus: 'active',
+        userId: 'user_1',
         effectiveMonth: '2026-07-01',
         createdAt: new Date('2026-01-01T00:00:00Z'),
       }
       const farFutureSnapshot = {
         id: 's4',
-        channelId: 'c1',
-        monthlyCommitmentAmount: '300000.00',
-        baseCurrency: 'ARS',
-        commitmentStatus: 'active',
+        userId: 'user_1',
         effectiveMonth: '2026-11-01',
         createdAt: new Date('2026-01-01T00:00:00Z'),
       }
@@ -600,16 +469,15 @@ describe('goals.repository.server', () => {
         mockGoalActive2,
         mockGoalPaused,
       ] as never)
-      vi.mocked(db.query.contributionChannels.findMany).mockResolvedValue([mockChannel1] as never)
       vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([mockSavingsPos1] as never)
       vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([mockInvestPos2] as never)
-      vi.mocked(db.query.channelPlanSnapshots.findMany).mockResolvedValue([
+      vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([
         pastSnapshot,
         currentSnapshot,
         septemberSnapshot,
         farFutureSnapshot,
       ] as never)
-      vi.mocked(db.query.channelPlanAllocations.findMany).mockResolvedValue([
+      vi.mocked(db.query.allocationPlanEntries.findMany).mockResolvedValue([
         ...currentAllocations,
         ...septemberAllocations,
       ] as never)
@@ -617,15 +485,11 @@ describe('goals.repository.server', () => {
       const state = await getGoalCreationState('user_1', '2026-08')
 
       expect(state).not.toBeNull()
-      // Only active goals are kept in source.goals as allocation candidates
       expect(state?.source.goals.map((g) => g.id)).toEqual(['g1', 'g2'])
       expect(state?.source.snapshots).toEqual([
         {
           id: 's2',
-          channelId: 'c1',
-          monthlyCommitmentAmount: '200000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user_1',
           effectiveMonth: '2026-08-01',
         },
       ])
@@ -635,10 +499,7 @@ describe('goals.repository.server', () => {
       expect(state?.pendingSnapshots).toEqual([
         {
           id: 's3',
-          channelId: 'c1',
-          monthlyCommitmentAmount: '250000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user_1',
           effectiveMonth: '2026-09-01',
         },
       ])
@@ -647,7 +508,6 @@ describe('goals.repository.server', () => {
         { id: 'a3', snapshotId: 's3', goalId: 'g2', percentage: '40.00' },
       ])
 
-      // Verify positions loaded for all owned goals
       const inArrayMock = vi.fn((col, val) => ({ col, val, op: 'inArray' }))
       const savingsWhereArg = vi.mocked(db.query.goalSavingsPositions.findMany).mock.calls[0][0]?.where
       expect(
@@ -659,8 +519,7 @@ describe('goals.repository.server', () => {
         op: 'inArray',
       })
 
-      // Verify allocations loaded for winning snapshot ('s2') and pending next-month snapshot ('s3')
-      const allocsWhereArg = vi.mocked(db.query.channelPlanAllocations.findMany).mock.calls[0][0]?.where
+      const allocsWhereArg = vi.mocked(db.query.allocationPlanEntries.findMany).mock.calls[0][0]?.where
       expect(
         typeof allocsWhereArg === 'function' &&
           (allocsWhereArg as any)({ snapshotId: 'snapshotId' }, { inArray: inArrayMock }),
@@ -669,51 +528,6 @@ describe('goals.repository.server', () => {
         val: ['s2', 's3'],
         op: 'inArray',
       })
-    })
-
-    it('handles empty goals and empty channels without issuing inArray queries with empty arrays', async () => {
-      const mockProfile = {
-        userId: 'user_1',
-        baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: null,
-        expensesKnowledge: 'unknown',
-        onboardingCompleted: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
-      vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([] as never)
-      vi.mocked(db.query.contributionChannels.findMany).mockResolvedValue([] as never)
-
-      const result = await getGoalCreationState('user_1', '2026-08')
-
-      expect(result).toEqual({
-        source: {
-          profile: {
-            userId: 'user_1',
-            baseCurrency: 'ARS',
-            approximateMonthlyIncome: '1000000.00',
-            approximateMonthlyExpenses: null,
-            expensesKnowledge: 'unknown',
-            onboardingCompleted: true,
-          },
-          goals: [],
-          savingsPositions: [],
-          investmentPositions: [],
-          channels: [],
-          snapshots: [],
-          allocations: [],
-        },
-        pendingSnapshots: [],
-        pendingAllocations: [],
-      })
-
-      expect(db.query.goalSavingsPositions.findMany).not.toHaveBeenCalled()
-      expect(db.query.goalInvestmentPositions.findMany).not.toHaveBeenCalled()
-      expect(db.query.channelPlanSnapshots.findMany).not.toHaveBeenCalled()
-      expect(db.query.channelPlanAllocations.findMany).not.toHaveBeenCalled()
     })
   })
 
@@ -727,12 +541,12 @@ describe('goals.repository.server', () => {
             approximateMonthlyIncome: '1000000.00',
             approximateMonthlyExpenses: '500000.00',
             expensesKnowledge: 'known',
+            plannedMonthlyContribution: '60000.00',
             onboardingCompleted: true,
           },
           goals: [],
           savingsPositions: [],
           investmentPositions: [],
-          channels: [],
           snapshots: [],
           allocations: [],
         },
@@ -759,6 +573,7 @@ describe('goals.repository.server', () => {
       approximateMonthlyIncome: '1000000.00',
       approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
+      plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -772,12 +587,11 @@ describe('goals.repository.server', () => {
       targetAmount: '3000.00',
       currency: 'USD',
       priority: 'high',
+      strategy: 'save',
       status: 'active',
       desiredDate: '2027-01-01',
       completedAt: null,
       emergencyFundMonths: 6,
-      saveEnabled: true,
-      investEnabled: false,
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
     }
@@ -790,31 +604,18 @@ describe('goals.repository.server', () => {
       targetAmount: '5000.00',
       currency: 'USD',
       priority: 'medium',
+      strategy: 'invest',
       status: 'active',
       desiredDate: '2028-06-01',
       completedAt: null,
       emergencyFundMonths: null,
-      saveEnabled: true,
-      investEnabled: true,
       createdAt: new Date('2026-02-01T00:00:00Z'),
       updatedAt: new Date('2026-02-01T00:00:00Z'),
     }
 
-    const mockChannelSaveUsd = {
-      id: 'c_save_usd',
-      userId: 'user_1',
-      fundingMethod: 'save',
-      destinationCurrency: 'USD',
-      createdAt: new Date('2026-01-01T00:00:00Z'),
-      updatedAt: new Date('2026-01-01T00:00:00Z'),
-    }
-
     const mockSnapshotCurrent = {
       id: 's_current',
-      channelId: 'c_save_usd',
-      monthlyCommitmentAmount: '200000.00',
-      baseCurrency: 'ARS',
-      commitmentStatus: 'active',
+      userId: 'user_1',
       effectiveMonth: '2026-08-01',
       createdAt: new Date('2026-01-01T00:00:00Z'),
     }
@@ -835,47 +636,24 @@ describe('goals.repository.server', () => {
     const validDraft: GoalCreationDraft = {
       type: 'purchase',
       name: 'Nuevo auto',
-      targetAmount: '5.000.000',
+      targetAmount: '5000.00',
       currency: 'USD',
       desiredMonth: '2027-04',
       priority: 'high',
-      saveEnabled: true,
-      investEnabled: true,
-      defineSaveCommitment: true,
-      saveMonthlyCommitment: '250.000',
-      defineInvestCommitment: false,
-      investMonthlyCommitment: '',
+      strategy: 'invest',
       annualReturnRate: '8.5',
       availability: 'available_now',
       availableFromMonth: '',
       allocations: [
-        {
-          key: 'save:USD',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
-          entries: [
-            { goalId: 'g1', percentage: '30.00' },
-            { goalId: 'g2', percentage: '20.00' },
-            { goalId: 'pending-goal', percentage: '50.00' },
-          ],
-        },
-        {
-          key: 'invest:USD',
-          fundingMethod: 'invest',
-          destinationCurrency: 'USD',
-          entries: [
-            { goalId: 'g1', percentage: '0.00' },
-            { goalId: 'g2', percentage: '0.00' },
-            { goalId: 'pending-goal', percentage: '100.00' },
-          ],
-        },
+        { goalId: 'g1', percentage: '30.00' },
+        { goalId: 'g2', percentage: '20.00' },
+        { goalId: 'pending-goal', percentage: '50.00' },
       ],
     }
 
     function setupMocks(overrides?: {
       profile?: any
       goals?: any[]
-      channels?: any[]
       savingsPositions?: any[]
       investmentPositions?: any[]
       snapshots?: any[]
@@ -883,7 +661,6 @@ describe('goals.repository.server', () => {
     }) {
       const profile = overrides && 'profile' in overrides ? overrides.profile : mockProfile
       const goals = overrides?.goals ?? [mockGoal1, mockGoal2]
-      const channels = overrides?.channels ?? [mockChannelSaveUsd]
       const savingsPositions = overrides?.savingsPositions ?? []
       const investmentPositions = overrides?.investmentPositions ?? []
       const snapshots = overrides?.snapshots ?? [mockSnapshotCurrent]
@@ -891,50 +668,33 @@ describe('goals.repository.server', () => {
 
       db.query.financialProfiles.findFirst = vi.fn().mockResolvedValue(profile)
       db.query.financialGoals.findMany = vi.fn().mockResolvedValue(goals)
-      db.query.contributionChannels.findMany = vi.fn().mockResolvedValue(channels)
-      db.query.contributionChannels.findFirst = vi.fn().mockImplementation(({ where }) => {
-        const dummyEq = vi.fn((col, val) => ({ col, val }))
-        const dummyAnd = vi.fn((...conditions) => conditions)
-        if (typeof where === 'function') {
-          const conds = where(
-            { userId: 'userId', fundingMethod: 'fundingMethod', destinationCurrency: 'destinationCurrency' },
-            { eq: dummyEq, and: dummyAnd },
-          )
-          const methodCond = conds.find((c: any) => c.col === 'fundingMethod')
-          const currCond = conds.find((c: any) => c.col === 'destinationCurrency')
-          return channels.find(
-            (c) => c.fundingMethod === methodCond?.val && c.destinationCurrency === currCond?.val,
-          )
-        }
-        return undefined
-      })
       db.query.goalSavingsPositions.findMany = vi.fn().mockResolvedValue(savingsPositions)
       db.query.goalInvestmentPositions.findMany = vi.fn().mockResolvedValue(investmentPositions)
-      db.query.channelPlanSnapshots.findMany = vi.fn().mockResolvedValue(snapshots)
-      db.query.channelPlanSnapshots.findFirst = vi.fn().mockImplementation(({ where }) => {
+      db.query.allocationPlanSnapshots.findMany = vi.fn().mockResolvedValue(snapshots)
+      db.query.allocationPlanSnapshots.findFirst = vi.fn().mockImplementation(({ where }) => {
         const dummyEq = vi.fn((col, val) => ({ col, val }))
         const dummyAnd = vi.fn((...conditions) => conditions)
         if (typeof where === 'function') {
           const conds = where(
-            { channelId: 'channelId', effectiveMonth: 'effectiveMonth' },
+            { userId: 'userId', effectiveMonth: 'effectiveMonth' },
             { eq: dummyEq, and: dummyAnd },
           )
-          const channelCond = conds.find((c: any) => c.col === 'channelId')
+          const userCond = conds.find((c: any) => c.col === 'userId')
           const monthCond = conds.find((c: any) => c.col === 'effectiveMonth')
           return snapshots.find(
-            (s) => s.channelId === channelCond?.val && s.effectiveMonth === monthCond?.val,
+            (s) => s.userId === userCond?.val && s.effectiveMonth === monthCond?.val,
           )
         }
         return undefined
       })
-      db.query.channelPlanAllocations.findMany = vi.fn().mockResolvedValue(allocations)
+      db.query.allocationPlanEntries.findMany = vi.fn().mockResolvedValue(allocations)
 
       mockTx.query = db.query as any
 
       mockTx.select = vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            for: vi.fn().mockResolvedValue([{ id: 'profile_1' }]),
+            for: vi.fn().mockResolvedValue([{ userId: 'user_1' }]),
           }),
         }),
       })
@@ -944,10 +704,7 @@ describe('goals.repository.server', () => {
           if (table === financialGoals) {
             return { returning: vi.fn().mockResolvedValue([{ id: 'goal_created_id' }]) }
           }
-          if (table === contributionChannels) {
-            return { returning: vi.fn().mockResolvedValue([{ id: 'channel_created_id' }]) }
-          }
-          if (table === channelPlanSnapshots) {
+          if (table === allocationPlanSnapshots) {
             return { returning: vi.fn().mockResolvedValue([{ id: 'snapshot_created_id' }]) }
           }
           return { returning: vi.fn().mockResolvedValue([{ id: 'mock_id' }]) }
@@ -980,12 +737,14 @@ describe('goals.repository.server', () => {
       expect(result).toEqual({ goalId: 'goal_created_id' })
       expect(mockTx.select).toHaveBeenCalled()
       expect(mockTx.insert).toHaveBeenCalledWith(financialGoals)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
 
       const goalInsertCall = mockTx.insert.mock.calls.find((call) => call[0] === financialGoals)
       expect(goalInsertCall).toBeDefined()
     })
 
-    it('2. inserts zero-valued investment position when investing is enabled', async () => {
+    it('2. inserts zero-valued investment position when strategy is invest', async () => {
       setupMocks()
       const state = await getGoalCreationState('user_1', currentMonth)
       const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)
@@ -1000,44 +759,29 @@ describe('goals.repository.server', () => {
       expect(mockTx.insert).toHaveBeenCalledWith(goalInvestmentPositions)
     })
 
-    it('3. creates new method/currency combination and inserts next-month snapshot', async () => {
+    it('3. does not insert investment position when strategy is save', async () => {
       setupMocks()
+      const saveDraft: GoalCreationDraft = {
+        ...validDraft,
+        strategy: 'save',
+      }
       const state = await getGoalCreationState('user_1', currentMonth)
-      const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)
+      const token = createGoalCreationPreviewToken(state!, currentMonth, saveDraft)
 
       await confirmGoalCreationInRepository({
         userId: 'user_1',
         currentMonth,
-        draft: validDraft,
+        draft: saveDraft,
         previewToken: token,
       })
 
-      expect(mockTx.insert).toHaveBeenCalledWith(contributionChannels)
-      expect(mockTx.insert).toHaveBeenCalledWith(channelPlanSnapshots)
+      expect(mockTx.insert).not.toHaveBeenCalledWith(goalInvestmentPositions)
     })
 
-    it('4. uses existing combination and inserts new next-month snapshot when none was pending', async () => {
-      setupMocks()
-      const state = await getGoalCreationState('user_1', currentMonth)
-      const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)
-
-      await confirmGoalCreationInRepository({
-        userId: 'user_1',
-        currentMonth,
-        draft: validDraft,
-        previewToken: token,
-      })
-
-      expect(mockTx.update).not.toHaveBeenCalledWith(channelPlanSnapshots)
-    })
-
-    it('5. updates existing next-month snapshot and preserves existing commitmentStatus (e.g. paused)', async () => {
+    it('4. reuses existing next-month snapshot without inserting new snapshot', async () => {
       const pendingSnapshot = {
         id: 's_pending',
-        channelId: 'c_save_usd',
-        monthlyCommitmentAmount: '220000.00',
-        baseCurrency: 'ARS',
-        commitmentStatus: 'paused',
+        userId: 'user_1',
         effectiveMonth: '2026-09-01',
         createdAt: new Date('2026-01-01T00:00:00Z'),
       }
@@ -1056,48 +800,22 @@ describe('goals.repository.server', () => {
         previewToken: token,
       })
 
-      expect(mockTx.update).toHaveBeenCalledWith(channelPlanSnapshots)
-      const updateCall = mockTx.update.mock.results[0]?.value?.set?.mock?.calls?.[0]?.[0]
-      expect(updateCall?.commitmentStatus).toBe('paused')
-      expect(mockTx.delete).toHaveBeenCalledWith(channelPlanAllocations)
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
     })
 
-    it('6. writes explicit 0% rows for every compatible active Goal', async () => {
+    it('5. rejects when allocations were edited after preview without refreshing the token', async () => {
       setupMocks()
       const state = await getGoalCreationState('user_1', currentMonth)
       const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)
 
-      await confirmGoalCreationInRepository({
-        userId: 'user_1',
-        currentMonth,
-        draft: validDraft,
-        previewToken: token,
-      })
-
-      expect(mockTx.insert).toHaveBeenCalledWith(channelPlanAllocations)
-    })
-
-    it('7. rejects when allocations were edited after preview without refreshing the token', async () => {
-      setupMocks()
-      const state = await getGoalCreationState('user_1', currentMonth)
-      // Token generated for validDraft (30/20/50)
-      const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)
-
-      // User modified draft to 25/25/50 after preview
       const editedDraft: GoalCreationDraft = {
         ...validDraft,
         allocations: [
-          {
-            key: 'save:USD',
-            fundingMethod: 'save',
-            destinationCurrency: 'USD',
-            entries: [
-              { goalId: 'g1', percentage: '25.00' },
-              { goalId: 'g2', percentage: '25.00' },
-              { goalId: 'pending-goal', percentage: '50.00' },
-            ],
-          },
-          validDraft.allocations![1],
+          { goalId: 'g1', percentage: '25.00' },
+          { goalId: 'g2', percentage: '25.00' },
+          { goalId: 'pending-goal', percentage: '50.00' },
         ],
       }
 
@@ -1109,9 +827,11 @@ describe('goals.repository.server', () => {
           previewToken: token,
         }),
       ).rejects.toThrow(StaleGoalCreationPreviewError)
+
+      expect(mockTx.insert).not.toHaveBeenCalled()
     })
 
-    it('8. rejects before writes when the state token changed with StaleGoalCreationPreviewError', async () => {
+    it('6. rejects before writes when the state token changed with StaleGoalCreationPreviewError', async () => {
       setupMocks()
       const staleToken = 'f'.repeat(64)
 
@@ -1127,23 +847,16 @@ describe('goals.repository.server', () => {
       expect(mockTx.insert).not.toHaveBeenCalled()
     })
 
-    it('9. rejects before writes when allocations do not sum to 100%', async () => {
+    it('7. rejects before writes when allocations do not sum to 100%', async () => {
       setupMocks()
       const state = await getGoalCreationState('user_1', currentMonth)
 
-      const badDraft = {
+      const badDraft: GoalCreationDraft = {
         ...validDraft,
         allocations: [
-          {
-            key: 'save:USD',
-            fundingMethod: 'save' as const,
-            destinationCurrency: 'USD' as const,
-            entries: [
-              { goalId: 'g1', percentage: '30.00' },
-              { goalId: 'g2', percentage: '20.00' },
-              { goalId: 'pending-goal', percentage: '30.00' }, // 80% != 100%
-            ],
-          },
+          { goalId: 'g1', percentage: '30.00' },
+          { goalId: 'g2', percentage: '20.00' },
+          { goalId: 'pending-goal', percentage: '30.00' },
         ],
       }
       const token = createGoalCreationPreviewToken(state!, currentMonth, badDraft)
@@ -1160,7 +873,7 @@ describe('goals.repository.server', () => {
       expect(mockTx.insert).not.toHaveBeenCalled()
     })
 
-    it('10. transaction rejection leaves no successful result when database error occurs', async () => {
+    it('8. transaction rejection leaves no successful result when database error occurs', async () => {
       setupMocks()
       const state = await getGoalCreationState('user_1', currentMonth)
       const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)

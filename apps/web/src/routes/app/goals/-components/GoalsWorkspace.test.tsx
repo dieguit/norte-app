@@ -25,6 +25,7 @@ function makeGoal(overrides: Partial<GoalWorkspaceItem>): GoalWorkspaceItem {
     type: 'emergency_fund',
     currency: 'USD',
     priority: 'high',
+    strategy: 'save',
     status: 'active',
     createdAt: '2026-08-01T12:00:00Z',
     targetAmount: { amount: '1000.00', currency: 'USD' },
@@ -34,12 +35,8 @@ function makeGoal(overrides: Partial<GoalWorkspaceItem>): GoalWorkspaceItem {
     progressPercentage: '20.00',
     funding: [
       {
-        channelId: 'channel-1',
-        fundingMethod: 'save',
-        destinationCurrency: 'USD',
         percentage: '100.00',
-        commitmentStatus: 'active',
-        monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
+        monthlyContribution: { amount: '50000.00', currency: 'ARS' },
         allocatedBaseAmount: { amount: '50000.00', currency: 'ARS' },
         allocatedDestinationAmount: { amount: '33.33', currency: 'USD' },
         effectiveMonth: '2026-09',
@@ -47,8 +44,6 @@ function makeGoal(overrides: Partial<GoalWorkspaceItem>): GoalWorkspaceItem {
     ],
     projection: { status: 'available', completionMonth: '2028-09' },
     usesPlanningRate: true,
-    saveEnabled: true,
-    investEnabled: false,
     ...overrides,
   }
 }
@@ -75,12 +70,8 @@ describe('GoalsWorkspace component', () => {
       progressPercentage: '33.33',
       funding: [
         {
-          channelId: 'channel-1',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
           percentage: '50.00',
-          commitmentStatus: 'paused',
-          monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
+          monthlyContribution: { amount: '50000.00', currency: 'ARS' },
           allocatedBaseAmount: { amount: '25000.00', currency: 'ARS' },
           allocatedDestinationAmount: { amount: '16.67', currency: 'USD' },
           effectiveMonth: '2026-09',
@@ -258,12 +249,8 @@ describe('GoalsWorkspace component', () => {
       projection: { status: 'plan_paused' },
       funding: [
         {
-          channelId: 'ch-1',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
           percentage: '10.00',
-          commitmentStatus: 'paused',
-          monthlyCommitment: { amount: '10000.00', currency: 'ARS' },
+          monthlyContribution: { amount: '10000.00', currency: 'ARS' },
           allocatedBaseAmount: { amount: '1000.00', currency: 'ARS' },
           allocatedDestinationAmount: { amount: '0.67', currency: 'USD' },
           effectiveMonth: '2026-09',
@@ -368,28 +355,21 @@ describe('GoalsWorkspace component', () => {
     const complexGoal = makeGoal({
       id: 'goal-complex',
       name: 'Fondo para la compra del primer departamento en Buenos Aires con cochera',
+      strategy: 'save',
       funding: [
         {
-          channelId: 'ch-save',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
           percentage: '60.00',
-          commitmentStatus: 'active',
-          monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
+          monthlyContribution: { amount: '100000.00', currency: 'ARS' },
           allocatedBaseAmount: { amount: '60000.00', currency: 'ARS' },
           allocatedDestinationAmount: { amount: '40.00', currency: 'USD' },
           effectiveMonth: '2026-09',
         },
         {
-          channelId: 'ch-invest',
-          fundingMethod: 'invest',
-          destinationCurrency: 'USD',
           percentage: '40.00',
-          commitmentStatus: 'active',
-          monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
+          monthlyContribution: { amount: '100000.00', currency: 'ARS' },
           allocatedBaseAmount: { amount: '40000.00', currency: 'ARS' },
           allocatedDestinationAmount: { amount: '26.67', currency: 'USD' },
-          effectiveMonth: '2026-09',
+          effectiveMonth: '2026-10',
         },
       ],
     })
@@ -404,8 +384,7 @@ describe('GoalsWorkspace component', () => {
 
     await user.click(screen.getByRole('button', { name: /Ver detalle de Fondo para la compra/ }))
 
-    expect(screen.getByText('Ahorrar USD')).toBeInTheDocument()
-    expect(screen.getByText('Invertir USD')).toBeInTheDocument()
+    expect(screen.getAllByText('Ahorrar USD').length).toBe(2)
     expect(screen.getByText('60%')).toBeInTheDocument()
     expect(screen.getByText('40%')).toBeInTheDocument()
     expect(screen.getByText('US$ 40,00 por mes')).toBeInTheDocument()
@@ -420,12 +399,8 @@ describe('GoalsWorkspace component', () => {
       id: 'goal-zero',
       funding: [
         {
-          channelId: 'ch-zero',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
           percentage: '0.00',
-          commitmentStatus: 'active',
-          monthlyCommitment: undefined,
+          monthlyContribution: undefined,
           allocatedBaseAmount: undefined,
           allocatedDestinationAmount: undefined,
           effectiveMonth: '2026-09',

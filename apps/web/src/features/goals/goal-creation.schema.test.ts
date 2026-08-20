@@ -6,6 +6,7 @@ import {
   goalImpactSchema,
   goalPlanSchema,
   goalPrioritySchema,
+  goalStrategySchema,
   goalTypeSchema,
   investmentAvailabilitySchema,
   parseGoalCreationSubmission,
@@ -19,21 +20,18 @@ const baseDraft: GoalCreationDraft = {
   currency: 'ARS',
   desiredMonth: '2027-04',
   priority: 'medium',
-  saveEnabled: true,
-  investEnabled: false,
-  defineSaveCommitment: false,
-  saveMonthlyCommitment: '',
-  defineInvestCommitment: false,
-  investMonthlyCommitment: '',
+  strategy: 'save',
   annualReturnRate: '8',
   availability: 'available_now',
   availableFromMonth: '',
-  allocations: [],
+  allocations: [
+    { goalId: 'pending-goal', percentage: '100.00' },
+  ],
 }
 
 describe('Goal Creation Schemas', () => {
   describe('Enums and Draft Schema', () => {
-    it('validates canonical goal types, priorities, and investment availabilities', () => {
+    it('validates canonical goal types, priorities, strategies, and investment availabilities', () => {
       expect(goalTypeSchema.safeParse('emergency_fund').success).toBe(true)
       expect(goalTypeSchema.safeParse('purchase').success).toBe(true)
       expect(goalTypeSchema.safeParse('retirement').success).toBe(true)
@@ -45,6 +43,11 @@ describe('Goal Creation Schemas', () => {
       expect(goalPrioritySchema.safeParse('low').success).toBe(true)
       expect(goalPrioritySchema.safeParse('urgent').success).toBe(false)
 
+      expect(goalStrategySchema.safeParse('save').success).toBe(true)
+      expect(goalStrategySchema.safeParse('invest').success).toBe(true)
+      expect(goalStrategySchema.safeParse('both').success).toBe(false)
+      expect(goalStrategySchema.safeParse('other').success).toBe(false)
+
       expect(investmentAvailabilitySchema.safeParse('available_now').success).toBe(true)
       expect(investmentAvailabilitySchema.safeParse('available_from').success).toBe(true)
       expect(investmentAvailabilitySchema.safeParse('long_term').success).toBe(true)
@@ -55,6 +58,14 @@ describe('Goal Creation Schemas', () => {
       expect(goalCreationDraftSchema.safeParse({ ...baseDraft, name: '  ' }).success).toBe(false)
       expect(goalCreationDraftSchema.safeParse({ ...baseDraft, name: 'A'.repeat(121) }).success).toBe(false)
       expect(goalCreationDraftSchema.safeParse({ ...baseDraft, name: 'A'.repeat(120) }).success).toBe(true)
+    })
+
+    it('rejects invalid strategy in draft schema', () => {
+      expect(goalCreationDraftSchema.safeParse({ ...baseDraft, strategy: 'both' as any }).success).toBe(false)
+    })
+
+    it('allows empty allocations array in draft schema', () => {
+      expect(goalCreationDraftSchema.safeParse({ ...baseDraft, allocations: [] }).success).toBe(true)
     })
   })
 
@@ -136,74 +147,23 @@ describe('Goal Creation Schemas', () => {
   })
 
   describe('goalPlanSchema', () => {
-    it('requires at least one funding method enabled', () => {
-      const neither = goalPlanSchema.safeParse({
+    it('accepts save strategy without requiring investment fields', () => {
+      const saveDraft = {
         ...baseDraft,
-        saveEnabled: false,
-        investEnabled: false,
-      })
-      expect(neither.success).toBe(false)
-      if (!neither.success) {
-        expect(neither.error.issues[0].message).toBe('Elegí ahorrar, invertir o ambas opciones.')
+        strategy: 'save' as const,
+        annualReturnRate: '',
+        availability: 'available_now' as const,
+        availableFromMonth: '',
       }
+      expect(goalPlanSchema.safeParse(saveDraft).success).toBe(true)
     })
 
-    it('validates saveMonthlyCommitment when save is enabled and commitment is defined', () => {
-      const withoutCommitment = goalPlanSchema.safeParse({
-        ...baseDraft,
-        saveEnabled: true,
-        defineSaveCommitment: false,
-        saveMonthlyCommitment: '',
-      })
-      expect(withoutCommitment.success).toBe(true)
-
-      const withValidCommitment = goalPlanSchema.safeParse({
-        ...baseDraft,
-        saveEnabled: true,
-        defineSaveCommitment: true,
-        saveMonthlyCommitment: '50.000',
-      })
-      expect(withValidCommitment.success).toBe(true)
-
-      const withInvalidCommitment = goalPlanSchema.safeParse({
-        ...baseDraft,
-        saveEnabled: true,
-        defineSaveCommitment: true,
-        saveMonthlyCommitment: '0',
-      })
-      expect(withInvalidCommitment.success).toBe(false)
-      if (!withInvalidCommitment.success) {
-        expect(withInvalidCommitment.error.issues[0].message).toBe('Ingresá un aporte mensual mayor a cero.')
-      }
-    })
-
-    it('validates investMonthlyCommitment when invest is enabled and commitment is defined', () => {
-      const withValidCommitment = goalPlanSchema.safeParse({
-        ...baseDraft,
-        investEnabled: true,
-        defineInvestCommitment: true,
-        investMonthlyCommitment: '100.000',
-      })
-      expect(withValidCommitment.success).toBe(true)
-
-      const withEmptyCommitment = goalPlanSchema.safeParse({
-        ...baseDraft,
-        investEnabled: true,
-        defineInvestCommitment: true,
-        investMonthlyCommitment: '',
-      })
-      expect(withEmptyCommitment.success).toBe(false)
-      if (!withEmptyCommitment.success) {
-        expect(withEmptyCommitment.error.issues[0].message).toBe('Ingresá un aporte mensual mayor a cero.')
-      }
-    })
-
-    it('validates annualReturnRate when invest is enabled', () => {
+    it('validates annualReturnRate when strategy is invest', () => {
       const validRates = ['0', '8', '8.5', '8,25', '100', '12.345']
       for (const rate of validRates) {
         expect(goalPlanSchema.safeParse({
           ...baseDraft,
-          investEnabled: true,
+          strategy: 'invest',
           annualReturnRate: rate,
         }).success).toBe(true)
       }
@@ -212,7 +172,7 @@ describe('Goal Creation Schemas', () => {
       for (const rate of invalidRates) {
         const result = goalPlanSchema.safeParse({
           ...baseDraft,
-          investEnabled: true,
+          strategy: 'invest',
           annualReturnRate: rate,
         })
         expect(result.success).toBe(false)
@@ -222,10 +182,10 @@ describe('Goal Creation Schemas', () => {
       }
     })
 
-    it('validates availableFromMonth when availability is available_from', () => {
+    it('validates availableFromMonth when strategy is invest and availability is available_from', () => {
       const valid = goalPlanSchema.safeParse({
         ...baseDraft,
-        investEnabled: true,
+        strategy: 'invest',
         availability: 'available_from',
         availableFromMonth: '2027-01',
       })
@@ -233,7 +193,7 @@ describe('Goal Creation Schemas', () => {
 
       const missing = goalPlanSchema.safeParse({
         ...baseDraft,
-        investEnabled: true,
+        strategy: 'invest',
         availability: 'available_from',
         availableFromMonth: '',
       })
@@ -244,7 +204,7 @@ describe('Goal Creation Schemas', () => {
 
       const invalidFormat = goalPlanSchema.safeParse({
         ...baseDraft,
-        investEnabled: true,
+        strategy: 'invest',
         availability: 'available_from',
         availableFromMonth: '2027/01',
       })
@@ -252,48 +212,30 @@ describe('Goal Creation Schemas', () => {
     })
   })
 
-  describe('goalImpactSchema & allocationGroupSchema', () => {
-    it('accepts allocation groups summing to 100%', () => {
+  describe('goalImpactSchema & allocationEntrySchema', () => {
+    it('accepts allocations summing to 100%', () => {
       const result = goalImpactSchema.safeParse({
-        ...baseDraft,
-        allocations: [{
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [
-            { goalId: 'goal-1', percentage: '60.00' },
-            { goalId: 'pending-goal', percentage: '40.00' },
-          ],
-        }],
+        allocations: [
+          { goalId: 'goal-1', percentage: '60.00' },
+          { goalId: 'pending-goal', percentage: '40.00' },
+        ],
       })
       expect(result.success).toBe(true)
     })
 
     it('accepts allocation with comma decimal separator summing to 100%', () => {
       const result = goalImpactSchema.safeParse({
-        ...baseDraft,
-        allocations: [{
-          key: 'invest:USD',
-          fundingMethod: 'invest',
-          destinationCurrency: 'USD',
-          entries: [
-            { goalId: 'goal-1', percentage: '33,33' },
-            { goalId: 'pending-goal', percentage: '66,67' },
-          ],
-        }],
+        allocations: [
+          { goalId: 'goal-1', percentage: '33,33' },
+          { goalId: 'pending-goal', percentage: '66,67' },
+        ],
       })
       expect(result.success).toBe(true)
     })
 
-    it('rejects allocation groups not summing to 100%', () => {
+    it('rejects allocations not summing to 100%', () => {
       const result = goalImpactSchema.safeParse({
-        ...baseDraft,
-        allocations: [{
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [{ goalId: 'pending-goal', percentage: '99.99' }],
-        }],
+        allocations: [{ goalId: 'pending-goal', percentage: '99.99' }],
       })
       expect(result.success).toBe(false)
       if (!result.success) {
@@ -303,29 +245,17 @@ describe('Goal Creation Schemas', () => {
 
     it('rejects invalid percentage values in allocation entries', () => {
       const negativeResult = goalImpactSchema.safeParse({
-        ...baseDraft,
-        allocations: [{
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [
-            { goalId: 'goal-1', percentage: '-10' },
-            { goalId: 'pending-goal', percentage: '110' },
-          ],
-        }],
+        allocations: [
+          { goalId: 'goal-1', percentage: '-10' },
+          { goalId: 'pending-goal', percentage: '110' },
+        ],
       })
       expect(negativeResult.success).toBe(false)
 
       const excessDecimals = goalImpactSchema.safeParse({
-        ...baseDraft,
-        allocations: [{
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [
-            { goalId: 'pending-goal', percentage: '100.001' },
-          ],
-        }],
+        allocations: [
+          { goalId: 'pending-goal', percentage: '100.001' },
+        ],
       })
       expect(excessDecimals.success).toBe(false)
     })
@@ -340,25 +270,16 @@ describe('Goal Creation Schemas', () => {
         currency: 'ARS',
         desiredMonth: '2028-12',
         priority: 'high',
-        saveEnabled: true,
-        investEnabled: true,
-        defineSaveCommitment: true,
-        saveMonthlyCommitment: '100.000',
-        defineInvestCommitment: false,
-        investMonthlyCommitment: '',
+        strategy: 'invest',
         annualReturnRate: '7.5',
         availability: 'long_term',
         availableFromMonth: '',
-        allocations: [{
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [{ goalId: 'pending-goal', percentage: '100' }],
-        }],
+        allocations: [{ goalId: 'pending-goal', percentage: '100.00' }],
       }
 
       const parsed = parseGoalCreationSubmission(validSubmission, '2026-08')
       expect(parsed.name).toBe('Nuevo auto')
+      expect(parsed.strategy).toBe('invest')
     })
 
     it('throws error if any stage validation fails', () => {
@@ -405,12 +326,7 @@ describe('Goal Creation Schemas', () => {
     it('rejects invalid final allocations in draft', () => {
       const invalidAllocationDraft = {
         ...baseDraft,
-        allocations: [{
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          entries: [{ goalId: 'pending-goal', percentage: '90.00' }], // not 100%
-        }],
+        allocations: [{ goalId: 'pending-goal', percentage: '90.00' }], // not 100%
       }
 
       const result = confirmGoalCreationSchema.safeParse({

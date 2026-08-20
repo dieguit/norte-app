@@ -37,6 +37,7 @@ export const financialProfiles = pgTable('financial_profiles', {
   approximateMonthlyIncome: numeric('approximate_monthly_income', { precision: 12, scale: 2 }).notNull(),
   approximateMonthlyExpenses: numeric('approximate_monthly_expenses', { precision: 12, scale: 2 }),
   expensesKnowledge: varchar('expenses_knowledge', { length: 16 }).notNull(),
+  plannedMonthlyContribution: numeric('planned_monthly_contribution', { precision: 12, scale: 2 }).notNull(),
   onboardingCompleted: boolean('onboarding_completed').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
@@ -59,8 +60,7 @@ export const financialGoals = pgTable(
     desiredDate: date('desired_date', { mode: 'string' }),
     completedAt: timestamp('completed_at', { withTimezone: true }),
     emergencyFundMonths: integer('emergency_fund_months'),
-    saveEnabled: boolean('save_enabled').notNull().default(false),
-    investEnabled: boolean('invest_enabled').notNull().default(false),
+    strategy: varchar('strategy', { length: 16 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
@@ -71,71 +71,40 @@ export const financialGoals = pgTable(
     index('financial_goals_user_id_idx').on(table.userId),
     check('financial_goals_priority_check', sql`${table.priority} in ('high', 'medium', 'low')`),
     check('financial_goals_status_check', sql`${table.status} in ('active', 'paused', 'completed')`),
+    check('financial_goals_strategy_check', sql`${table.strategy} in ('save', 'invest')`),
   ],
 )
 
-export const contributionChannels = pgTable(
-  'contribution_channels',
+export const allocationPlanSnapshots = pgTable(
+  'allocation_plan_snapshots',
   {
     id: uuid('id').defaultRandom().primaryKey(),
     userId: text('user_id')
       .notNull()
       .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
-    fundingMethod: varchar('funding_method', { length: 16 }).notNull(),
-    destinationCurrency: varchar('destination_currency', { length: 3 }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .defaultNow()
-      .$onUpdate(() => sql`now()`)
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('contribution_channels_user_method_currency_uidx').on(
-      table.userId,
-      table.fundingMethod,
-      table.destinationCurrency,
-    ),
-    check('contribution_channels_method_check', sql`${table.fundingMethod} in ('save', 'invest')`),
-    check('contribution_channels_currency_check', sql`${table.destinationCurrency} in ('ARS', 'USD')`),
-  ],
-)
-
-export const channelPlanSnapshots = pgTable(
-  'channel_plan_snapshots',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    channelId: uuid('channel_id')
-      .notNull()
-      .references(() => contributionChannels.id, { onDelete: 'cascade' }),
-    monthlyCommitmentAmount: numeric('monthly_commitment_amount', { precision: 12, scale: 2 }),
-    baseCurrency: varchar('base_currency', { length: 3 }).notNull(),
-    commitmentStatus: varchar('commitment_status', { length: 8 }).notNull().default('active'),
     effectiveMonth: date('effective_month', { mode: 'string' }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('channel_plan_snapshots_channel_effective_uidx').on(table.channelId, table.effectiveMonth),
-    check('channel_plan_snapshots_commitment_check', sql`${table.monthlyCommitmentAmount} >= 0`),
-    check('channel_plan_snapshots_currency_check', sql`${table.baseCurrency} in ('ARS', 'USD')`),
-    check('channel_plan_snapshots_commitment_status_check', sql`${table.commitmentStatus} in ('active', 'paused')`),
+    uniqueIndex('allocation_plan_snapshots_user_effective_uidx').on(table.userId, table.effectiveMonth),
   ],
 )
 
-export const channelPlanAllocations = pgTable(
-  'channel_plan_allocations',
+export const allocationPlanEntries = pgTable(
+  'allocation_plan_entries',
   {
     id: uuid('id').defaultRandom().primaryKey(),
     snapshotId: uuid('snapshot_id')
       .notNull()
-      .references(() => channelPlanSnapshots.id, { onDelete: 'cascade' }),
+      .references(() => allocationPlanSnapshots.id, { onDelete: 'cascade' }),
     goalId: uuid('goal_id')
       .notNull()
       .references(() => financialGoals.id, { onDelete: 'cascade' }),
     percentage: numeric('percentage', { precision: 5, scale: 2 }).notNull(),
   },
   (table) => [
-    uniqueIndex('channel_plan_allocations_snapshot_goal_uidx').on(table.snapshotId, table.goalId),
-    check('channel_plan_allocations_percentage_check', sql`${table.percentage} between 0 and 100`),
+    uniqueIndex('allocation_plan_entries_snapshot_goal_uidx').on(table.snapshotId, table.goalId),
+    check('allocation_plan_entries_percentage_check', sql`${table.percentage} between 0 and 100`),
   ],
 )
 
@@ -198,8 +167,7 @@ export const goalInvestmentPositions = pgTable(
 export type OnboardingDraft = typeof onboardingDrafts.$inferSelect
 export type FinancialProfile = typeof financialProfiles.$inferSelect
 export type FinancialGoal = typeof financialGoals.$inferSelect
-export type ContributionChannel = typeof contributionChannels.$inferSelect
-export type ChannelPlanSnapshot = typeof channelPlanSnapshots.$inferSelect
-export type ChannelPlanAllocation = typeof channelPlanAllocations.$inferSelect
+export type AllocationPlanSnapshot = typeof allocationPlanSnapshots.$inferSelect
+export type AllocationPlanEntry = typeof allocationPlanEntries.$inferSelect
 export type GoalSavingsPosition = typeof goalSavingsPositions.$inferSelect
 export type GoalInvestmentPosition = typeof goalInvestmentPositions.$inferSelect

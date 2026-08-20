@@ -38,8 +38,7 @@ describe('initial financial plan domain rules', () => {
         targetAmount: undefined,
         currency: 'USD',
         emergencyFundMonths: 6,
-        saveEnabled: true,
-        investEnabled: false,
+        strategy: 'save',
       })
     })
 
@@ -60,8 +59,7 @@ describe('initial financial plan domain rules', () => {
         targetAmount: undefined,
         currency: 'USD',
         emergencyFundMonths: 6,
-        saveEnabled: true,
-        investEnabled: false,
+        strategy: 'save',
       })
     })
 
@@ -81,8 +79,7 @@ describe('initial financial plan domain rules', () => {
         targetAmount: { amount: '300000.00', currency: 'ARS' },
         currency: 'ARS',
         emergencyFundMonths: undefined,
-        saveEnabled: true,
-        investEnabled: false,
+        strategy: 'save',
       })
     })
 
@@ -102,8 +99,7 @@ describe('initial financial plan domain rules', () => {
         targetAmount: { amount: '15000000.00', currency: 'ARS' },
         currency: 'ARS',
         emergencyFundMonths: undefined,
-        saveEnabled: true,
-        investEnabled: false,
+        strategy: 'save',
       })
     })
 

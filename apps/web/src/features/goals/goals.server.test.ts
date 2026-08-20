@@ -11,12 +11,12 @@ function createMockState(goals: GoalCreationState['source']['goals'] = []): Goal
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
       },
       goals,
       savingsPositions: [],
       investmentPositions: [],
-      channels: [],
       snapshots: [],
       allocations: [],
     },
@@ -36,9 +36,8 @@ describe('mapGoalCreationContext', () => {
         targetAmount: '3000.00',
         currency: 'USD',
         priority: 'high',
+        strategy: 'save',
         status: 'completed',
-        saveEnabled: true,
-        investEnabled: false,
         createdAt: '2026-01-01T00:00:00.000Z',
         completedAt: '2026-06-01T00:00:00.000Z',
       },
@@ -46,6 +45,7 @@ describe('mapGoalCreationContext', () => {
 
     expect(mapGoalCreationContext(state, '2026-08')).toMatchObject({
       hasEmergencyFund: true,
+      plannedMonthlyContribution: { amount: '60000.00', currency: 'ARS' },
     })
   })
 
@@ -59,15 +59,15 @@ describe('mapGoalCreationContext', () => {
         targetAmount: '5000000.00',
         currency: 'ARS',
         priority: 'medium',
+        strategy: 'save',
         status: 'active',
-        saveEnabled: true,
-        investEnabled: false,
         createdAt: '2026-01-01T00:00:00.000Z',
       },
     ])
 
     expect(mapGoalCreationContext(state, '2026-08')).toMatchObject({
       hasEmergencyFund: false,
+      plannedMonthlyContribution: { amount: '60000.00', currency: 'ARS' },
     })
   })
 })

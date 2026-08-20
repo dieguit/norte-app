@@ -1,9 +1,9 @@
 import { getTableName } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
+import * as schema from './schema'
 import {
-  channelPlanAllocations,
-  channelPlanSnapshots,
-  contributionChannels,
+  allocationPlanEntries,
+  allocationPlanSnapshots,
   financialGoals,
   financialProfiles,
   goalInvestmentPositions,
@@ -33,7 +33,8 @@ describe('onboarding database schema', () => {
     expect(financialProfiles.approximateMonthlyIncome.name).toBe('approximate_monthly_income')
     expect(financialProfiles.approximateMonthlyExpenses.name).toBe('approximate_monthly_expenses')
     expect(financialProfiles.expensesKnowledge.name).toBe('expenses_knowledge')
-    expect('plannedMonthlyContribution' in financialProfiles).toBe(false)
+    expect(financialProfiles.plannedMonthlyContribution.name).toBe('planned_monthly_contribution')
+    expect(financialProfiles.plannedMonthlyContribution.notNull).toBe(true)
     expect(financialProfiles.onboardingCompleted.name).toBe('onboarding_completed')
   })
 
@@ -46,28 +47,25 @@ describe('onboarding database schema', () => {
     expect(financialGoals.targetAmount.name).toBe('target_amount')
     expect(financialGoals.currency.name).toBe('currency')
     expect(financialGoals.emergencyFundMonths.name).toBe('emergency_fund_months')
-    expect(financialGoals.saveEnabled.name).toBe('save_enabled')
-    expect(financialGoals.investEnabled.name).toBe('invest_enabled')
+    expect(financialGoals.strategy.name).toBe('strategy')
+    expect(financialGoals.strategy.notNull).toBe(true)
   })
 
-  it('stores monthly intent in contribution channel snapshots', () => {
-    expect('plannedMonthlyContribution' in financialProfiles).toBe(false)
+  it('stores monthly intent in global allocation plan snapshots and entries', () => {
+    expect(financialProfiles.plannedMonthlyContribution.name).toBe('planned_monthly_contribution')
+    expect(financialGoals.strategy.name).toBe('strategy')
+    expect(getTableName(allocationPlanSnapshots)).toBe('allocation_plan_snapshots')
+    expect(allocationPlanSnapshots.userId.name).toBe('user_id')
+    expect(allocationPlanSnapshots.effectiveMonth.name).toBe('effective_month')
 
-    expect(getTableName(contributionChannels)).toBe('contribution_channels')
-    expect(contributionChannels.userId.name).toBe('user_id')
-    expect(contributionChannels.fundingMethod.name).toBe('funding_method')
-    expect(contributionChannels.destinationCurrency.name).toBe('destination_currency')
+    expect(getTableName(allocationPlanEntries)).toBe('allocation_plan_entries')
+    expect(allocationPlanEntries.snapshotId.name).toBe('snapshot_id')
+    expect(allocationPlanEntries.goalId.name).toBe('goal_id')
+    expect(allocationPlanEntries.percentage.name).toBe('percentage')
 
-    expect(getTableName(channelPlanSnapshots)).toBe('channel_plan_snapshots')
-    expect(channelPlanSnapshots.channelId.name).toBe('channel_id')
-    expect(channelPlanSnapshots.monthlyCommitmentAmount.name).toBe('monthly_commitment_amount')
-    expect(channelPlanSnapshots.baseCurrency.name).toBe('base_currency')
-    expect(channelPlanSnapshots.effectiveMonth.name).toBe('effective_month')
-
-    expect(getTableName(channelPlanAllocations)).toBe('channel_plan_allocations')
-    expect(channelPlanAllocations.snapshotId.name).toBe('snapshot_id')
-    expect(channelPlanAllocations.goalId.name).toBe('goal_id')
-    expect(channelPlanAllocations.percentage.name).toBe('percentage')
+    expect('contributionChannels' in schema).toBe(false)
+    expect('channelPlanSnapshots' in schema).toBe(false)
+    expect('channelPlanAllocations' in schema).toBe(false)
   })
 
   it('stores Goal workspace lifecycle and actual positions', () => {
@@ -75,8 +73,6 @@ describe('onboarding database schema', () => {
     expect(financialGoals.status.name).toBe('status')
     expect(financialGoals.desiredDate.name).toBe('desired_date')
     expect(financialGoals.completedAt.name).toBe('completed_at')
-    expect(channelPlanSnapshots.commitmentStatus.name).toBe('commitment_status')
-    expect(channelPlanSnapshots.monthlyCommitmentAmount.notNull).toBe(false)
     expect(getTableName(goalSavingsPositions)).toBe('goal_savings_positions')
     expect(goalSavingsPositions.goalId.name).toBe('goal_id')
     expect(goalSavingsPositions.location.name).toBe('location')

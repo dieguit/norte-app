@@ -50,6 +50,13 @@
       "when": 1787154381632,
       "tag": "0006_green_mystique",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787238683659,
+      "tag": "0007_global_goal_plan",
+      "breakpoints": true
     }
   ]
 }

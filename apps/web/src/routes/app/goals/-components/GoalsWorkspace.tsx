@@ -42,24 +42,23 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
           </p>
         ) : (
           <div className="divide-y divide-[var(--line)]">
-            {goal.funding.map((row) => {
-              const paused = row.commitmentStatus === "paused";
+            {goal.funding.map((row, index) => {
+              const strategyLabel =
+                goal.strategy === "save" ? "Ahorrar" : "Invertir";
               return (
                 <div
-                  key={row.channelId}
+                  key={`${row.effectiveMonth}-${index}`}
                   className="flex flex-col justify-between gap-1 py-3 sm:flex-row sm:items-center"
                 >
                   <div>
                     <p className="text-sm font-semibold text-[var(--sea-ink)]">
-                      {row.fundingMethod === "save" ? "Ahorrar" : "Invertir"}{" "}
-                      {row.destinationCurrency}
+                      {strategyLabel} {goal.currency}
                       <span className="ml-2 font-normal text-[var(--sea-ink-soft)]">
                         {Number(row.percentage)}%
                       </span>
                     </p>
                     <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">
                       Desde {formatCalendarMonth(row.effectiveMonth)}
-                      {paused ? " · Pausado" : ""}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-[var(--sea-ink)] sm:text-right">

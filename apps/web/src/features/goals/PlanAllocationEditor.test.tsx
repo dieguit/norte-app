@@ -4,20 +4,16 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { GoalCreationAllocationGroup } from './goal-creation'
+import type { GoalCreationAllocation } from './goal-creation'
 import { PlanAllocationEditor } from './PlanAllocationEditor'
 
 afterEach(cleanup)
 
 describe('PlanAllocationEditor component', () => {
-  const createMockGroup = (
-    overrides?: Partial<GoalCreationAllocationGroup>,
-  ): GoalCreationAllocationGroup => ({
-    key: 'save:ARS',
-    fundingMethod: 'save',
-    destinationCurrency: 'ARS',
-    baseCurrency: 'ARS',
-    monthlyCommitment: { amount: '120000.00', currency: 'ARS' },
+  const createMockAllocation = (
+    overrides?: Partial<GoalCreationAllocation>,
+  ): GoalCreationAllocation => ({
+    monthlyContribution: { amount: '120000.00', currency: 'ARS' },
     effectiveMonth: '2026-09-01',
     totalPercentage: '100.00',
     entries: [
@@ -25,13 +21,15 @@ describe('PlanAllocationEditor component', () => {
         goalId: 'goal-1',
         goalName: 'Fondo de emergencia',
         percentage: '50.00',
-        allocatedDestinationAmount: { amount: '60000.00', currency: 'ARS' },
+        allocatedBaseAmount: { amount: '60000.00', currency: 'ARS' },
+        allocatedDestinationAmount: { amount: '40.00', currency: 'USD' },
         pending: false,
       },
       {
         goalId: 'goal-2',
         goalName: 'Auto nuevo',
         percentage: '30.00',
+        allocatedBaseAmount: { amount: '36000.00', currency: 'ARS' },
         allocatedDestinationAmount: { amount: '36000.00', currency: 'ARS' },
         pending: false,
       },
@@ -39,6 +37,7 @@ describe('PlanAllocationEditor component', () => {
         goalId: 'pending-goal',
         goalName: 'Viaje al sur',
         percentage: '20.00',
+        allocatedBaseAmount: { amount: '24000.00', currency: 'ARS' },
         allocatedDestinationAmount: { amount: '24000.00', currency: 'ARS' },
         pending: true,
       },
@@ -47,24 +46,23 @@ describe('PlanAllocationEditor component', () => {
   })
 
   describe('Step 1: Rendering, language and copy boundaries', () => {
-    it('renders method header, commitment summary, all goal names, derived amounts and section subtitles in DOM order', () => {
-      const group = createMockGroup()
+    it('renders global summary, group heading, all goal names, derived amounts and USD conversion', () => {
+      const allocation = createMockAllocation()
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={vi.fn()}
           onPercentageCommit={vi.fn()}
         />,
       )
 
-      // Method header
-      expect(screen.getByText('Ahorrar en ARS')).toBeVisible()
+      // Group heading
+      expect(screen.getByText('Distribución de tu aporte mensual')).toBeVisible()
 
-      // Summary line with commitment and percentage
-      expect(
-        screen.getByText('De tus $ 120.000,00 mensuales, asignaste el 100% a objetivos.'),
-      ).toBeVisible()
+      // Header summary with monthly contribution
+      expect(screen.getByText('Tu aporte mensual')).toBeVisible()
+      expect(screen.getByText('$ 120.000,00')).toBeVisible()
 
       // Goal names in DOM order: pending goal first, then existing goals
       const names = screen
@@ -76,27 +74,37 @@ describe('PlanAllocationEditor component', () => {
       expect(screen.getByText('Nuevo objetivo')).toBeVisible()
       expect(screen.getByText('Tus objetivos actuales')).toBeVisible()
 
-      // Only one "Nuevo objetivo" rendered (section subtitle, no duplicate badge)
-      expect(screen.getAllByText('Nuevo objetivo')).toHaveLength(1)
-
-      // Derived amounts
+      // Derived ARS amounts
       expect(screen.getByText('$ 60.000,00')).toBeVisible()
       expect(screen.getByText('$ 36.000,00')).toBeVisible()
       expect(screen.getByText('$ 24.000,00')).toBeVisible()
 
+      // USD conversion estimate rendered for USD destination
+      expect(screen.getByText('≈ USD 40,00 por mes')).toBeVisible()
+
       // Input values formatted with Argentine comma decimal separator
-      expect(screen.getByRole('textbox', { name: /porcentaje para fondo de emergencia/i })).toHaveValue('50,00')
-      expect(screen.getByRole('textbox', { name: /porcentaje para auto nuevo/i })).toHaveValue('30,00')
-      expect(screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i })).toHaveValue('20,00')
+      expect(
+        screen.getByRole('textbox', { name: /porcentaje para fondo de emergencia/i }),
+      ).toHaveValue('50,00')
+      expect(
+        screen.getByRole('textbox', { name: /porcentaje para auto nuevo/i }),
+      ).toHaveValue('30,00')
+      expect(
+        screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i }),
+      ).toHaveValue('20,00')
+
+      // Ensure legacy channel headings are not rendered
+      expect(screen.queryByText(/Ahorrar en|Invertir en/)).not.toBeInTheDocument()
     })
 
     it('renders only pending section subtitle when there are no existing goals', () => {
-      const group = createMockGroup({
+      const allocation = createMockAllocation({
         entries: [
           {
             goalId: 'pending-goal',
             goalName: 'Viaje al sur',
             percentage: '100.00',
+            allocatedBaseAmount: { amount: '120000.00', currency: 'ARS' },
             allocatedDestinationAmount: { amount: '120000.00', currency: 'ARS' },
             pending: true,
           },
@@ -105,7 +113,7 @@ describe('PlanAllocationEditor component', () => {
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={vi.fn()}
           onPercentageCommit={vi.fn()}
         />,
@@ -117,12 +125,13 @@ describe('PlanAllocationEditor component', () => {
     })
 
     it('renders only existing section subtitle when there is no pending goal', () => {
-      const group = createMockGroup({
+      const allocation = createMockAllocation({
         entries: [
           {
             goalId: 'goal-1',
             goalName: 'Fondo de emergencia',
             percentage: '100.00',
+            allocatedBaseAmount: { amount: '120000.00', currency: 'ARS' },
             allocatedDestinationAmount: { amount: '120000.00', currency: 'ARS' },
             pending: false,
           },
@@ -131,7 +140,7 @@ describe('PlanAllocationEditor component', () => {
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={vi.fn()}
           onPercentageCommit={vi.fn()}
         />,
@@ -143,11 +152,11 @@ describe('PlanAllocationEditor component', () => {
     })
 
     it('explicitly rejects internal terminology from user-facing UI', () => {
-      const group = createMockGroup()
+      const allocation = createMockAllocation()
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={vi.fn()}
           onPercentageCommit={vi.fn()}
         />,
@@ -155,46 +164,24 @@ describe('PlanAllocationEditor component', () => {
 
       expect(screen.queryByText(/canal/i)).not.toBeInTheDocument()
       expect(screen.queryByText(/snapshot/i)).not.toBeInTheDocument()
-      expect(screen.queryByText(/asignaci[oó]n/i)).not.toBeInTheDocument()
       expect(screen.queryByText(/allocation/i)).not.toBeInTheDocument()
     })
 
-    it('renders invest method header correctly', () => {
-      const group = createMockGroup({
-        key: 'invest:USD',
-        fundingMethod: 'invest',
-        destinationCurrency: 'USD',
-        monthlyCommitment: { amount: '200.00', currency: 'USD' },
+    it('handles allocation when monthlyContribution is undefined', () => {
+      const allocation = createMockAllocation({
+        monthlyContribution: undefined,
       })
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={vi.fn()}
           onPercentageCommit={vi.fn()}
         />,
       )
 
-      expect(screen.getByText('Invertir en USD')).toBeVisible()
-      expect(
-        screen.getByText('De tus US$ 200,00 mensuales, asignaste el 100% a objetivos.'),
-      ).toBeVisible()
-    })
-
-    it('renders group summary without commitment amount when monthlyCommitment is not defined', () => {
-      const group = createMockGroup({
-        monthlyCommitment: undefined,
-      })
-
-      render(
-        <PlanAllocationEditor
-          groups={[group]}
-          onPercentageChange={vi.fn()}
-          onPercentageCommit={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByText('Asignaste el 100% a objetivos.')).toBeVisible()
+      expect(screen.getByText('Distribución de tu aporte mensual')).toBeVisible()
+      expect(screen.queryByText('Tu aporte mensual')).not.toBeInTheDocument()
     })
   })
 
@@ -205,24 +192,18 @@ describe('PlanAllocationEditor component', () => {
       const onPercentageCommit = vi.fn()
 
       function TestHarness() {
-        const [groups, setGroups] = useState<GoalCreationAllocationGroup[]>([createMockGroup()])
+        const [allocation, setAllocation] = useState<GoalCreationAllocation>(createMockAllocation())
         return (
           <PlanAllocationEditor
-            groups={groups}
-            onPercentageChange={(groupKey, goalId, percentage) => {
-              onPercentageChange(groupKey, goalId, percentage)
-              setGroups((prev) =>
-                prev.map((g) =>
-                  g.key === groupKey
-                    ? {
-                        ...g,
-                        entries: g.entries.map((e) =>
-                          e.goalId === goalId ? { ...e, percentage } : e,
-                        ),
-                      }
-                    : g,
+            allocation={allocation}
+            onPercentageChange={(goalId, percentage) => {
+              onPercentageChange(goalId, percentage)
+              setAllocation((prev) => ({
+                ...prev,
+                entries: prev.entries.map((e) =>
+                  e.goalId === goalId ? { ...e, percentage } : e,
                 ),
-              )
+              }))
             }}
             onPercentageCommit={onPercentageCommit}
           />
@@ -235,17 +216,17 @@ describe('PlanAllocationEditor component', () => {
       await user.clear(input)
       await user.type(input, '25,50')
 
-      expect(onPercentageChange).toHaveBeenLastCalledWith('save:ARS', 'pending-goal', '25,50')
+      expect(onPercentageChange).toHaveBeenLastCalledWith('pending-goal', '25,50')
     })
 
     it('calls onPercentageCommit on text input blur', async () => {
       const user = userEvent.setup()
       const onPercentageCommit = vi.fn()
-      const group = createMockGroup()
+      const allocation = createMockAllocation()
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={vi.fn()}
           onPercentageCommit={onPercentageCommit}
         />,
@@ -261,11 +242,11 @@ describe('PlanAllocationEditor component', () => {
     it('synchronizes slider change with onPercentageChange formatted to two decimals', () => {
       const onPercentageChange = vi.fn()
       const onPercentageCommit = vi.fn()
-      const group = createMockGroup()
+      const allocation = createMockAllocation()
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={onPercentageChange}
           onPercentageCommit={onPercentageCommit}
         />,
@@ -274,11 +255,11 @@ describe('PlanAllocationEditor component', () => {
       const sliders = screen.getAllByRole('slider', { hidden: true })
       fireEvent.change(sliders[0], { target: { value: '30' } })
 
-      expect(onPercentageChange).toHaveBeenLastCalledWith('save:ARS', 'pending-goal', '30.00')
+      expect(onPercentageChange).toHaveBeenLastCalledWith('pending-goal', '30.00')
     })
 
     it('displays "Falta asignar X%" and marks fields as invalid when total is less than 100%', () => {
-      const group = createMockGroup({
+      const allocation = createMockAllocation({
         entries: [
           {
             goalId: 'goal-1',
@@ -303,7 +284,7 @@ describe('PlanAllocationEditor component', () => {
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={vi.fn()}
           onPercentageCommit={vi.fn()}
         />,
@@ -319,7 +300,7 @@ describe('PlanAllocationEditor component', () => {
     })
 
     it('displays "Te excediste X%" and marks fields as invalid when total exceeds 100%', () => {
-      const group = createMockGroup({
+      const allocation = createMockAllocation({
         entries: [
           {
             goalId: 'goal-1',
@@ -344,7 +325,7 @@ describe('PlanAllocationEditor component', () => {
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           onPercentageChange={vi.fn()}
           onPercentageCommit={vi.fn()}
         />,
@@ -360,11 +341,11 @@ describe('PlanAllocationEditor component', () => {
     })
 
     it('disables all inputs and sliders when disabled prop is true', () => {
-      const group = createMockGroup()
+      const allocation = createMockAllocation()
 
       render(
         <PlanAllocationEditor
-          groups={[group]}
+          allocation={allocation}
           disabled={true}
           onPercentageChange={vi.fn()}
           onPercentageCommit={vi.fn()}
@@ -380,44 +361,6 @@ describe('PlanAllocationEditor component', () => {
       for (const slider of sliders) {
         expect(slider).toBeDisabled()
       }
-    })
-
-    it('renders multiple groups independently', () => {
-      const saveGroup = createMockGroup()
-      const investGroup = createMockGroup({
-        key: 'invest:USD',
-        fundingMethod: 'invest',
-        destinationCurrency: 'USD',
-        baseCurrency: 'ARS',
-        monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
-        entries: [
-          {
-            goalId: 'pending-goal',
-            goalName: 'Viaje al sur',
-            percentage: '100.00',
-            pending: true,
-          },
-        ],
-      })
-
-      const onPercentageChange = vi.fn()
-
-      render(
-        <PlanAllocationEditor
-          groups={[saveGroup, investGroup]}
-          onPercentageChange={onPercentageChange}
-          onPercentageCommit={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByText('Ahorrar en ARS')).toBeVisible()
-      expect(screen.getByText('Invertir en USD')).toBeVisible()
-
-      const inputs = screen.getAllByRole('textbox', { name: /porcentaje para viaje al sur/i })
-      expect(inputs).toHaveLength(2)
-
-      fireEvent.change(inputs[1], { target: { value: '80' } })
-      expect(onPercentageChange).toHaveBeenCalledWith('invest:USD', 'pending-goal', '80')
     })
   })
 })

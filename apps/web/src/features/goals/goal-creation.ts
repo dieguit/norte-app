@@ -4,17 +4,17 @@ import {
   type Money,
   calculateAllocationAmounts,
   createMoney,
-  multiplyMoneyByFactor,
   parseMoneyInput,
 } from '../../lib/money'
 import {
-  type FundingMethod,
   PLANNING_ARS_PER_USD,
   convertCommitmentToDestination,
+  deriveEmergencyFundTarget,
 } from '../financial/financial'
 import {
   type GoalPriority,
   type GoalProjection,
+  type GoalStrategy,
   type GoalsWorkspaceSource,
   type InvestmentAvailability,
   buildGoalsWorkspace,
@@ -22,6 +22,20 @@ import {
 import type { GoalCreationDraft } from './goal-creation.schema'
 
 export const PENDING_GOAL_ID = 'pending-goal'
+
+export interface GoalCreationContext {
+  currentMonth: string
+  expensesKnowledge: 'known' | 'unknown'
+  hasEmergencyFund: boolean
+  plannedMonthlyContribution?: Money
+  currentAllocation?: {
+    effectiveMonth: string
+    entries: Array<{
+      goalId: string
+      percentage: string
+    }>
+  }
+}
 
 export interface GoalCreationState {
   source: GoalsWorkspaceSource
@@ -38,14 +52,8 @@ export interface GoalCreationAllocationEntry {
   pending: boolean
 }
 
-export interface GoalCreationAllocationGroup {
-  key: string
-  channelId?: string
-  fundingMethod: FundingMethod
-  destinationCurrency: CurrencyCode
-  baseCurrency: CurrencyCode
-  monthlyCommitment?: Money
-  destinationCommitment?: Money
+export interface GoalCreationAllocation {
+  monthlyContribution?: Money
   effectiveMonth: string
   entries: GoalCreationAllocationEntry[]
   totalPercentage: string
@@ -69,32 +77,18 @@ export interface GoalCreationProposal {
     targetAmount?: Money
     currency: CurrencyCode
     priority: GoalPriority
+    strategy: GoalStrategy
     desiredDate?: string
     emergencyFundMonths?: number
-    saveEnabled: boolean
-    investEnabled: boolean
   }
   investment?: {
     annualReturnRate: string
     availability: InvestmentAvailability
     availableFrom?: string
   }
-  allocationGroups: GoalCreationAllocationGroup[]
+  allocation: GoalCreationAllocation
   impacts: GoalCreationImpact[]
   proposedSource: GoalsWorkspaceSource
-}
-
-export interface GoalCreationContext {
-  currentMonth: string
-  expensesKnowledge: 'known' | 'unknown'
-  hasEmergencyFund: boolean
-  fundingOptions: Array<{
-    fundingMethod: FundingMethod
-    destinationCurrency: CurrencyCode
-    baseCurrency: CurrencyCode
-    monthlyCommitment?: Money
-    commitmentStatus: 'active' | 'paused'
-  }>
 }
 
 export interface GoalCreationPreviewResult {
@@ -198,17 +192,17 @@ export function rebalanceAllocationEntries<T extends { goalId: string; percentag
 }
 
 export function recalculateAllocationAmounts(input: {
-  monthlyCommitment?: Money
-  destinationCurrency: CurrencyCode
+  monthlyContribution?: Money
   entries: Array<{
     goalId: string
     percentage: string
+    currency: CurrencyCode
   }>
 }): Map<string, { allocatedBaseAmount?: Money; allocatedDestinationAmount?: Money }> {
-  const { monthlyCommitment, destinationCurrency, entries } = input
+  const { monthlyContribution, entries } = input
   const map = new Map<string, { allocatedBaseAmount?: Money; allocatedDestinationAmount?: Money }>()
 
-  if (!monthlyCommitment) {
+  if (!monthlyContribution) {
     for (const entry of entries) {
       map.set(entry.goalId, {})
     }
@@ -219,7 +213,7 @@ export function recalculateAllocationAmounts(input: {
 
   if (totalBn.isEqualTo(100)) {
     const allocatedBaseList = calculateAllocationAmounts(
-      monthlyCommitment,
+      monthlyContribution,
       entries.map((e) => ({
         id: e.goalId,
         percentage: (e.percentage || '0').replace(',', '.'),
@@ -232,7 +226,7 @@ export function recalculateAllocationAmounts(input: {
         const allocatedBaseAmount = allocated.amount
         const allocatedDestinationAmount = convertCommitmentToDestination(
           allocatedBaseAmount,
-          destinationCurrency,
+          entry.currency,
         )
         map.set(entry.goalId, {
           allocatedBaseAmount,
@@ -256,11 +250,11 @@ export function recalculateAllocationAmounts(input: {
       }
 
       if (pctBn) {
-        const amountBn = new BigNumber(monthlyCommitment.amount).times(pctBn).dividedBy(100)
-        const allocatedBaseAmount = createMoney(amountBn.toFixed(2), monthlyCommitment.currency)
+        const amountBn = new BigNumber(monthlyContribution.amount).times(pctBn).dividedBy(100)
+        const allocatedBaseAmount = createMoney(amountBn.toFixed(2), monthlyContribution.currency)
         const allocatedDestinationAmount = convertCommitmentToDestination(
           allocatedBaseAmount,
-          destinationCurrency,
+          entry.currency,
         )
         map.set(entry.goalId, {
           allocatedBaseAmount,
@@ -287,8 +281,7 @@ export function buildGoalCreationProposal(input: {
   const type = draft.type
   const currency = draft.currency
   const priority = draft.priority
-  const saveEnabled = draft.saveEnabled
-  const investEnabled = draft.investEnabled
+  const strategy = draft.strategy
 
   let desiredDate: string | undefined
   if (draft.desiredMonth && draft.desiredMonth.trim() !== '') {
@@ -304,10 +297,10 @@ export function buildGoalCreationProposal(input: {
       state.source.profile?.expensesKnowledge === 'known' &&
       state.source.profile.approximateMonthlyExpenses
     ) {
-      const monthlyExp = new BigNumber(state.source.profile.approximateMonthlyExpenses)
-      const baseCurr = state.source.profile.baseCurrency
-      const totalExpBase = createMoney(monthlyExp.times(6).toFixed(2), baseCurr)
-      targetAmount = convertCommitmentToDestination(totalExpBase, currency)
+      targetAmount = deriveEmergencyFundTarget(
+        createMoney(state.source.profile.approximateMonthlyExpenses, 'ARS'),
+        6,
+      )
     }
   } else if (draft.targetAmount) {
     targetAmount = parseMoneyInput(draft.targetAmount, currency) ?? undefined
@@ -319,27 +312,28 @@ export function buildGoalCreationProposal(input: {
     targetAmount,
     currency,
     priority,
+    strategy,
     desiredDate,
     emergencyFundMonths,
-    saveEnabled,
-    investEnabled,
   }
 
-  const investment: GoalCreationProposal['investment'] = investEnabled
-    ? {
-        annualReturnRate: (draft.annualReturnRate || '8.0').replace(',', '.'),
-        availability: draft.availability,
-        availableFrom:
-          draft.availability === 'available_from' && draft.availableFromMonth
-            ? `${draft.availableFromMonth.slice(0, 7)}-01`
-            : undefined,
-      }
-    : undefined
+  const investment: GoalCreationProposal['investment'] =
+    strategy === 'invest'
+      ? {
+          annualReturnRate: (draft.annualReturnRate || '8.0').replace(',', '.'),
+          availability: draft.availability,
+          availableFrom:
+            draft.availability === 'available_from' && draft.availableFromMonth
+              ? `${draft.availableFromMonth.slice(0, 7)}-01`
+              : undefined,
+        }
+      : undefined
 
-  // 2. Pending goal workspace item and investment position for simulation
+  // 2. Next effective month
   const nextMonthStr = getNextCalendarMonthStr(currentMonth)
   const nextMonthEffective = `${nextMonthStr}-01`
 
+  // 3. Pending goal workspace item and investment position for simulation
   const pendingGoal: GoalsWorkspaceSource['goals'][number] = {
     id: PENDING_GOAL_ID,
     userId: state.source.profile?.userId,
@@ -348,310 +342,216 @@ export function buildGoalCreationProposal(input: {
     targetAmount: normalizedGoal.targetAmount ? normalizedGoal.targetAmount.amount : null,
     currency: normalizedGoal.currency,
     priority: normalizedGoal.priority,
+    strategy: normalizedGoal.strategy,
     status: 'active' as const,
     desiredDate: normalizedGoal.desiredDate ?? null,
     emergencyFundMonths: normalizedGoal.emergencyFundMonths ?? null,
-    saveEnabled: normalizedGoal.saveEnabled,
-    investEnabled: normalizedGoal.investEnabled,
     createdAt: `${currentMonth}-01T00:00:00.000Z`,
   }
 
-  const pendingInvestmentPosition = investEnabled
-    ? {
-        id: `pos-${PENDING_GOAL_ID}`,
-        goalId: PENDING_GOAL_ID,
-        currentValue: '0.00',
-        currency: normalizedGoal.currency,
-        annualReturnRate: investment?.annualReturnRate ?? null,
-        availability: investment?.availability ?? null,
-        availableFrom: investment?.availableFrom ?? null,
-      }
-    : null
+  const pendingInvestmentPosition =
+    strategy === 'invest'
+      ? {
+          id: `pos-${PENDING_GOAL_ID}`,
+          goalId: PENDING_GOAL_ID,
+          currentValue: '0.00',
+          currency: normalizedGoal.currency,
+          annualReturnRate: investment?.annualReturnRate ?? null,
+          availability: investment?.availability ?? null,
+          availableFrom: investment?.availableFrom ?? null,
+        }
+      : null
 
-  // 3. Assemble allocation groups for each enabled method
-  const enabledMethods: FundingMethod[] = []
-  if (saveEnabled) enabledMethods.push('save')
-  if (investEnabled) enabledMethods.push('invest')
+  // 4. Candidate active existing goals
+  const activeExistingGoals = (state.source.goals ?? []).filter((g) => g.status === 'active')
 
-  const allocationGroups: GoalCreationAllocationGroup[] = []
+  // 5. Selected snapshot for allocation baseline
+  const pendingNextSnapshot = state.pendingSnapshots?.find(
+    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
+  )
+  const sourceNextSnapshot = state.source.snapshots?.find(
+    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
+  )
+  const currentSnapshot = state.source.snapshots
+    ?.filter((s) => s.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
+    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
 
-  // Track before allocations for each group to compare later
-  const beforeGroupData = new Map<
-    string,
-    {
-      selectedSnapshot?: GoalsWorkspaceSource['snapshots'][number]
-      sourceAllocs: GoalsWorkspaceSource['allocations']
-      commitment?: Money
-    }
-  >()
+  const selectedSnapshot = pendingNextSnapshot ?? sourceNextSnapshot ?? currentSnapshot
 
-  const profileBaseCurrency = state.source.profile?.baseCurrency ?? 'ARS'
+  const sourceAllocs = selectedSnapshot
+    ? (pendingNextSnapshot ? state.pendingAllocations : state.source.allocations)?.filter(
+        (a) => a.snapshotId === selectedSnapshot.id,
+      ) ?? []
+    : []
 
-  for (const fundingMethod of enabledMethods) {
-    const destinationCurrency = currency
-    const groupKey = `${fundingMethod}:${destinationCurrency}`
+  // 6. Assemble entries
+  let entries: GoalCreationAllocationEntry[] = []
 
-    // Candidate active existing goals matching currency AND funding method capability
-    const eligibleExistingGoals = state.source.goals.filter(
-      (g) =>
-        g.status === 'active' &&
-        g.currency === destinationCurrency &&
-        (fundingMethod === 'save' ? g.saveEnabled : g.investEnabled),
+  if (sourceAllocs.length > 0) {
+    const activeAllocGoalIds = new Set(
+      sourceAllocs.map((a) => a.goalId).filter((id) => activeExistingGoals.some((g) => g.id === id)),
     )
 
-    const channel = state.source.channels.find(
-      (c) => c.fundingMethod === fundingMethod && c.destinationCurrency === destinationCurrency,
-    )
-    const channelId = channel?.id
-
-    const pendingSnapshot = channelId
-      ? state.pendingSnapshots.find((s) => s.channelId === channelId)
-      : undefined
-    const currentSnapshot = channelId
-      ? state.source.snapshots.find((s) => s.channelId === channelId)
-      : undefined
-    const selectedSnapshot = pendingSnapshot ?? currentSnapshot
-
-    const sourceAllocs = selectedSnapshot
-      ? pendingSnapshot
-        ? state.pendingAllocations.filter((a) => a.snapshotId === selectedSnapshot.id)
-        : state.source.allocations.filter((a) => a.snapshotId === selectedSnapshot.id)
-      : []
-
-    // Monthly commitment determination
-    let monthlyCommitment: Money | undefined
-    let snapshotMonthlyCommitment: Money | undefined
-
-    if (
-      selectedSnapshot?.monthlyCommitmentAmount !== null &&
-      selectedSnapshot?.monthlyCommitmentAmount !== undefined
-    ) {
-      snapshotMonthlyCommitment = createMoney(
-        selectedSnapshot.monthlyCommitmentAmount,
-        selectedSnapshot.baseCurrency,
-      )
-    }
-
-    if (fundingMethod === 'save') {
-      if (draft.defineSaveCommitment && draft.saveMonthlyCommitment) {
-        monthlyCommitment = parseMoneyInput(draft.saveMonthlyCommitment, profileBaseCurrency) ?? undefined
-      } else {
-        monthlyCommitment = snapshotMonthlyCommitment
-      }
-    } else if (fundingMethod === 'invest') {
-      if (draft.defineInvestCommitment && draft.investMonthlyCommitment) {
-        monthlyCommitment = parseMoneyInput(draft.investMonthlyCommitment, profileBaseCurrency) ?? undefined
-      } else {
-        monthlyCommitment = snapshotMonthlyCommitment
-      }
-    }
-
-    beforeGroupData.set(groupKey, {
-      selectedSnapshot,
-      sourceAllocs,
-      commitment: snapshotMonthlyCommitment,
-    })
-
-    const baseCurrency = selectedSnapshot?.baseCurrency ?? profileBaseCurrency
-    const destinationCommitment = monthlyCommitment
-      ? convertCommitmentToDestination(monthlyCommitment, destinationCurrency)
-      : undefined
-
-    // 4. Assemble entries
-    let entries: GoalCreationAllocationEntry[] = []
-
-    if (sourceAllocs.length > 0) {
-      const activeAllocGoalIds = new Set(
-        sourceAllocs.map((a) => a.goalId).filter((id) => eligibleExistingGoals.some((g) => g.id === id)),
-      )
-
-      for (const a of sourceAllocs) {
-        const existingGoal = eligibleExistingGoals.find((g) => g.id === a.goalId)
-        if (existingGoal) {
-          entries.push({
-            goalId: a.goalId,
-            goalName: existingGoal.name,
-            percentage: new BigNumber(a.percentage).toFixed(2),
-            pending: false,
-          })
-        }
-      }
-
-      for (const g of eligibleExistingGoals) {
-        if (!activeAllocGoalIds.has(g.id)) {
-          entries.push({
-            goalId: g.id,
-            goalName: g.name,
-            percentage: '0.00',
-            pending: false,
-          })
-        }
-      }
-
-      entries.push({
-        goalId: PENDING_GOAL_ID,
-        goalName: normalizedGoal.name,
-        percentage: '0.00',
-        pending: true,
-      })
-    } else {
-      entries = eligibleExistingGoals.map((g) => ({
-        goalId: g.id,
-        goalName: g.name,
-        percentage: '0.00',
-        pending: false,
-      }))
-
-      entries.push({
-        goalId: PENDING_GOAL_ID,
-        goalName: normalizedGoal.name,
-        percentage: '100.00',
-        pending: true,
-      })
-    }
-
-    // 5. Overlay user-submitted draft allocations if valid
-    const submittedGroup = draft.allocations?.find((g) => g.key === groupKey)
-    if (submittedGroup) {
-      const expectedIds = new Set(entries.map((e) => e.goalId))
-      const submittedIds = new Set(submittedGroup.entries.map((e) => e.goalId))
-      const isExactMatch =
-        submittedIds.size === expectedIds.size &&
-        [...expectedIds].every((id) => submittedIds.has(id))
-
-      if (isExactMatch) {
-        entries = entries.map((entry) => {
-          const subEntry = submittedGroup.entries.find((e) => e.goalId === entry.goalId)
-          if (subEntry) {
-            const parsedPct = new BigNumber((subEntry.percentage || '0').replace(',', '.'))
-            return {
-              ...entry,
-              percentage: parsedPct.toFixed(2),
-            }
-          }
-          return entry
+    for (const a of sourceAllocs) {
+      const existingGoal = activeExistingGoals.find((g) => g.id === a.goalId)
+      if (existingGoal) {
+        entries.push({
+          goalId: a.goalId,
+          goalName: existingGoal.name,
+          percentage: new BigNumber(a.percentage).toFixed(2),
+          pending: false,
         })
       }
     }
 
-    // 6. Verify total percentage equals 100%
-    const totalBn = calculatePercentageSum(entries)
-    if (!totalBn.isEqualTo(100)) {
-      throw new Error(
-        `Allocation percentages for ${groupKey} must sum to 100%, got ${totalBn.toFixed(2)}%`,
-      )
+    for (const g of activeExistingGoals) {
+      if (!activeAllocGoalIds.has(g.id)) {
+        entries.push({
+          goalId: g.id,
+          goalName: g.name,
+          percentage: '0.00',
+          pending: false,
+        })
+      }
     }
 
-    // 7. Calculate allocation amounts
-    if (monthlyCommitment) {
-      const amountsMap = recalculateAllocationAmounts({
-        monthlyCommitment,
-        destinationCurrency,
-        entries,
-      })
+    entries.push({
+      goalId: PENDING_GOAL_ID,
+      goalName: normalizedGoal.name,
+      percentage: '0.00',
+      pending: true,
+    })
+  } else {
+    entries = activeExistingGoals.map((g) => ({
+      goalId: g.id,
+      goalName: g.name,
+      percentage: '0.00',
+      pending: false,
+    }))
 
-      entries = entries.map((entry) => {
-        const amounts = amountsMap.get(entry.goalId)
-        return {
-          ...entry,
-          allocatedBaseAmount: amounts?.allocatedBaseAmount,
-          allocatedDestinationAmount: amounts?.allocatedDestinationAmount,
-        }
-      })
-    }
-
-    allocationGroups.push({
-      key: groupKey,
-      channelId,
-      fundingMethod,
-      destinationCurrency,
-      baseCurrency,
-      monthlyCommitment,
-      destinationCommitment,
-      effectiveMonth: nextMonthEffective,
-      entries,
-      totalPercentage: totalBn.toFixed(2),
+    entries.push({
+      goalId: PENDING_GOAL_ID,
+      goalName: normalizedGoal.name,
+      percentage: '100.00',
+      pending: true,
     })
   }
 
-  // 8. Build before workspace from current source
-  const beforeWorkspace = buildGoalsWorkspace(state.source, currentMonth)
+  // 7. Overlay user-submitted draft allocations if valid
+  if (draft.allocations && draft.allocations.length > 0) {
+    const expectedIds = new Set(entries.map((e) => e.goalId))
+    const submittedIds = new Set(draft.allocations.map((e) => e.goalId))
+    const isExactMatch =
+      submittedIds.size === expectedIds.size &&
+      [...expectedIds].every((id) => submittedIds.has(id))
 
-  // 9. Build proposed source and after workspace
-  const proposedChannels = [...state.source.channels]
-  for (const group of allocationGroups) {
-    if (
-      !proposedChannels.some(
-        (c) =>
-          c.fundingMethod === group.fundingMethod &&
-          c.destinationCurrency === group.destinationCurrency,
-      )
-    ) {
-      proposedChannels.push({
-        id: `channel-${group.fundingMethod}-${group.destinationCurrency.toLowerCase()}`,
-        userId: state.source.profile?.userId,
-        fundingMethod: group.fundingMethod,
-        destinationCurrency: group.destinationCurrency,
+    if (isExactMatch) {
+      entries = entries.map((entry) => {
+        const subEntry = draft.allocations.find((e) => e.goalId === entry.goalId)
+        if (subEntry) {
+          const parsedPct = new BigNumber((subEntry.percentage || '0').replace(',', '.'))
+          return {
+            ...entry,
+            percentage: parsedPct.toFixed(2),
+          }
+        }
+        return entry
       })
     }
   }
 
-  const proposedSnapshots = [...state.source.snapshots]
-  const proposedAllocations = [...state.source.allocations]
-
-  for (const group of allocationGroups) {
-    const channelId =
-      group.channelId ??
-      proposedChannels.find(
-        (c) =>
-          c.fundingMethod === group.fundingMethod &&
-          c.destinationCurrency === group.destinationCurrency,
-      )!.id
-
-    const pendingSnap = state.pendingSnapshots.find((s) => s.channelId === channelId)
-    const snapshotId =
-      pendingSnap?.id ??
-      `snap-${group.fundingMethod}-${group.destinationCurrency.toLowerCase()}-${nextMonthStr}`
-
-    const newSnapshot = {
-      id: snapshotId,
-      channelId,
-      monthlyCommitmentAmount: group.monthlyCommitment ? group.monthlyCommitment.amount : null,
-      baseCurrency: group.baseCurrency,
-      commitmentStatus: 'active' as const,
-      effectiveMonth: group.effectiveMonth,
-    }
-
-    const existingSnapIndex = proposedSnapshots.findIndex(
-      (s) => s.channelId === channelId && s.effectiveMonth === group.effectiveMonth,
-    )
-    if (existingSnapIndex >= 0) {
-      proposedSnapshots[existingSnapIndex] = newSnapshot
-    } else {
-      proposedSnapshots.push(newSnapshot)
-    }
-
-    // Replace allocations for this snapshot
-    const filteredAllocations = proposedAllocations.filter((a) => a.snapshotId !== snapshotId)
-    const newAllocRows = group.entries.map((entry) => ({
-      id: `alloc-${snapshotId}-${entry.goalId}`,
-      snapshotId,
-      goalId: entry.goalId,
-      percentage: entry.percentage,
-    }))
-
-    proposedAllocations.length = 0
-    proposedAllocations.push(...filteredAllocations, ...newAllocRows)
+  // 8. Verify total percentage equals 100%
+  const totalBn = calculatePercentageSum(entries)
+  if (!totalBn.isEqualTo(100)) {
+    throw new Error(`Allocation percentages must sum to 100%, got ${totalBn.toFixed(2)}%`)
   }
+
+  // 9. Monthly contribution and allocation amounts
+  let monthlyContribution: Money | undefined
+  if (
+    state.source.profile?.plannedMonthlyContribution !== null &&
+    state.source.profile?.plannedMonthlyContribution !== undefined
+  ) {
+    const baseCurr = state.source.profile.baseCurrency ?? 'ARS'
+    monthlyContribution = createMoney(state.source.profile.plannedMonthlyContribution, baseCurr)
+  }
+
+  const entriesCurrencyMap = new Map<string, CurrencyCode>()
+  for (const g of activeExistingGoals) {
+    entriesCurrencyMap.set(g.id, g.currency)
+  }
+  entriesCurrencyMap.set(PENDING_GOAL_ID, normalizedGoal.currency)
+
+  if (monthlyContribution) {
+    const amountsMap = recalculateAllocationAmounts({
+      monthlyContribution,
+      entries: entries.map((e) => ({
+        goalId: e.goalId,
+        percentage: e.percentage,
+        currency: entriesCurrencyMap.get(e.goalId) ?? 'ARS',
+      })),
+    })
+
+    entries = entries.map((entry) => {
+      const amounts = amountsMap.get(entry.goalId)
+      return {
+        ...entry,
+        allocatedBaseAmount: amounts?.allocatedBaseAmount,
+        allocatedDestinationAmount: amounts?.allocatedDestinationAmount,
+      }
+    })
+  }
+
+  const allocation: GoalCreationAllocation = {
+    monthlyContribution,
+    effectiveMonth: nextMonthEffective,
+    entries,
+    totalPercentage: totalBn.toFixed(2),
+  }
+
+  // 10. Build before workspace from current source
+  const beforeWorkspace = buildGoalsWorkspace(state.source, currentMonth)
+
+  // 11. Build proposed source and after workspace
+  const proposedSnapshots = [...(state.source.snapshots ?? [])]
+  const proposedAllocations = [...(state.source.allocations ?? [])]
+
+  const pendingSnap = state.pendingSnapshots?.find((s) => s.effectiveMonth === nextMonthEffective)
+  const snapshotId = pendingSnap?.id ?? `snap-allocation-${nextMonthStr}`
+
+  const newSnapshot = {
+    id: snapshotId,
+    userId: state.source.profile?.userId,
+    effectiveMonth: nextMonthEffective,
+  }
+
+  const existingSnapIndex = proposedSnapshots.findIndex(
+    (s) => s.effectiveMonth === nextMonthEffective,
+  )
+  if (existingSnapIndex >= 0) {
+    proposedSnapshots[existingSnapIndex] = newSnapshot
+  } else {
+    proposedSnapshots.push(newSnapshot)
+  }
+
+  const filteredAllocations = proposedAllocations.filter((a) => a.snapshotId !== snapshotId)
+  const newAllocRows = entries.map((entry) => ({
+    id: `alloc-${snapshotId}-${entry.goalId}`,
+    snapshotId,
+    goalId: entry.goalId,
+    percentage: entry.percentage,
+  }))
+
+  proposedAllocations.length = 0
+  proposedAllocations.push(...filteredAllocations, ...newAllocRows)
 
   const proposedSource: GoalsWorkspaceSource = {
     profile: state.source.profile,
-    goals: [...state.source.goals, pendingGoal],
+    goals: [...(state.source.goals ?? []), pendingGoal],
     savingsPositions: state.source.savingsPositions,
     investmentPositions: pendingInvestmentPosition
-      ? [...state.source.investmentPositions, pendingInvestmentPosition]
+      ? [...(state.source.investmentPositions ?? []), pendingInvestmentPosition]
       : state.source.investmentPositions,
-    channels: proposedChannels,
     snapshots: proposedSnapshots,
     allocations: proposedAllocations,
   }
@@ -661,7 +561,7 @@ export function buildGoalCreationProposal(input: {
   const beforeGoals = beforeWorkspace.groups.flatMap((g) => g.goals)
   const afterGoals = afterWorkspace.groups.flatMap((g) => g.goals)
 
-  // 10. Assemble impacts
+  // 12. Assemble impacts
   const impacts: GoalCreationImpact[] = []
 
   // Pending goal impact
@@ -674,7 +574,7 @@ export function buildGoalCreationProposal(input: {
   })
 
   // Existing goals impact
-  for (const goal of state.source.goals) {
+  for (const goal of state.source.goals ?? []) {
     const beforeGoal = beforeGoals.find((g) => g.id === goal.id)
     const afterGoal = afterGoals.find((g) => g.id === goal.id)
 
@@ -688,29 +588,22 @@ export function buildGoalCreationProposal(input: {
     const beforeAllocatedAmounts: Money[] = []
     let amountsChanged = false
 
-    for (const group of allocationGroups) {
-      const groupData = beforeGroupData.get(group.key)
-      let beforeDestAmount: Money | undefined
+    const beforeFundingRow = beforeGoal?.funding?.find(
+      (f) => f.effectiveMonth === selectedSnapshot?.effectiveMonth,
+    ) ?? beforeGoal?.funding?.[0]
 
-      if (groupData?.commitment && groupData.sourceAllocs.length > 0) {
-        const foundAlloc = groupData.sourceAllocs.find((a) => a.goalId === goal.id)
-        if (foundAlloc) {
-          const factor = new BigNumber(foundAlloc.percentage).dividedBy(100).toString()
-          const baseAmount = multiplyMoneyByFactor(groupData.commitment, factor)
-          beforeDestAmount = convertCommitmentToDestination(baseAmount, group.destinationCurrency)
-          beforeAllocatedAmounts.push(beforeDestAmount)
-        }
-      }
+    if (beforeFundingRow?.allocatedDestinationAmount) {
+      beforeAllocatedAmounts.push(beforeFundingRow.allocatedDestinationAmount)
+    }
 
-      const afterEntry = group.entries.find((e) => e.goalId === goal.id)
-      const afterDestAmount = afterEntry?.allocatedDestinationAmount
+    const afterEntry = allocation.entries.find((e) => e.goalId === goal.id)
+    const afterDestAmount = afterEntry?.allocatedDestinationAmount
 
-      if (
-        beforeDestAmount?.amount !== afterDestAmount?.amount ||
-        beforeDestAmount?.currency !== afterDestAmount?.currency
-      ) {
-        amountsChanged = true
-      }
+    if (
+      beforeFundingRow?.allocatedDestinationAmount?.amount !== afterDestAmount?.amount ||
+      beforeFundingRow?.allocatedDestinationAmount?.currency !== afterDestAmount?.currency
+    ) {
+      amountsChanged = true
     }
 
     const projectionChanged =
@@ -733,7 +626,7 @@ export function buildGoalCreationProposal(input: {
   return {
     normalizedGoal,
     investment,
-    allocationGroups,
+    allocation,
     impacts,
     proposedSource,
   }
@@ -765,6 +658,7 @@ export function serializeGoalCreationState(
           approximateMonthlyIncome: source.profile.approximateMonthlyIncome,
           approximateMonthlyExpenses: source.profile.approximateMonthlyExpenses ?? null,
           expensesKnowledge: source.profile.expensesKnowledge,
+          plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
           onboardingCompleted: source.profile.onboardingCompleted,
         }
       : null,
@@ -777,12 +671,11 @@ export function serializeGoalCreationState(
         targetAmount: g.targetAmount ?? null,
         currency: g.currency,
         priority: g.priority,
+        strategy: g.strategy,
         status: g.status,
         desiredDate: g.desiredDate ?? null,
         completedAt: g.completedAt ?? null,
         emergencyFundMonths: g.emergencyFundMonths ?? null,
-        saveEnabled: g.saveEnabled ?? null,
-        investEnabled: g.investEnabled ?? null,
         createdAt: g.createdAt,
       }))
       .sort((a, b) => a.id.localeCompare(b.id)),
@@ -806,21 +699,10 @@ export function serializeGoalCreationState(
         availableFrom: i.availableFrom ?? null,
       }))
       .sort((a, b) => a.id.localeCompare(b.id)),
-    channels: (source.channels ?? [])
-      .map((c) => ({
-        id: c.id,
-        userId: c.userId ?? null,
-        fundingMethod: c.fundingMethod,
-        destinationCurrency: c.destinationCurrency,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
     snapshots: (source.snapshots ?? [])
       .map((s) => ({
         id: s.id,
-        channelId: s.channelId,
-        monthlyCommitmentAmount: s.monthlyCommitmentAmount ?? null,
-        baseCurrency: s.baseCurrency,
-        commitmentStatus: s.commitmentStatus,
+        userId: s.userId ?? null,
         effectiveMonth: s.effectiveMonth,
       }))
       .sort((a, b) => a.id.localeCompare(b.id)),
@@ -835,10 +717,7 @@ export function serializeGoalCreationState(
     pendingSnapshots: (pendingSnapshots ?? [])
       .map((s) => ({
         id: s.id,
-        channelId: s.channelId,
-        monthlyCommitmentAmount: s.monthlyCommitmentAmount ?? null,
-        baseCurrency: s.baseCurrency,
-        commitmentStatus: s.commitmentStatus,
+        userId: s.userId ?? null,
         effectiveMonth: s.effectiveMonth,
       }))
       .sort((a, b) => a.id.localeCompare(b.id)),
@@ -858,26 +737,16 @@ export function serializeGoalCreationState(
           currency: draft.currency,
           desiredMonth: draft.desiredMonth ?? null,
           priority: draft.priority,
-          saveEnabled: draft.saveEnabled,
-          investEnabled: draft.investEnabled,
-          defineSaveCommitment: draft.defineSaveCommitment,
-          saveMonthlyCommitment: draft.saveMonthlyCommitment,
-          defineInvestCommitment: draft.defineInvestCommitment,
-          investMonthlyCommitment: draft.investMonthlyCommitment,
+          strategy: draft.strategy,
           annualReturnRate: draft.annualReturnRate,
           availability: draft.availability,
           availableFromMonth: draft.availableFromMonth ?? null,
           allocations: (draft.allocations ?? [])
-            .map((g) => ({
-              key: g.key,
-              entries: [...g.entries]
-                .map((e) => ({
-                  goalId: e.goalId,
-                  percentage: new BigNumber((e.percentage || '0').replace(',', '.')).toFixed(2),
-                }))
-                .sort((a, b) => a.goalId.localeCompare(b.goalId)),
+            .map((e) => ({
+              goalId: e.goalId,
+              percentage: new BigNumber((e.percentage || '0').replace(',', '.')).toFixed(2),
             }))
-            .sort((a, b) => a.key.localeCompare(b.key)),
+            .sort((a, b) => a.goalId.localeCompare(b.goalId)),
         }
       : null,
   }

@@ -13,17 +13,16 @@ import {
   confirmGoalCreation,
 } from '../../../../features/goals/goals.functions'
 import type {
-  GoalCreationAllocationGroup,
+  GoalCreationAllocationEntry,
   GoalCreationContext,
   GoalCreationPreviewResult,
 } from '../../../../features/goals/goal-creation'
 import { useStore } from '@tanstack/react-form'
 import { useGoalCreationForm } from './useGoalCreationForm'
 import { GoalObjectiveFields } from './GoalObjectiveFields'
-import { GoalPlanFields } from './GoalPlanFields'
 import { GoalImpact } from './GoalImpact'
 
-export type GoalCreationStage = 'objective' | 'plan' | 'impact'
+export type GoalCreationStage = 'objective' | 'impact'
 
 export interface GoalCreationProps {
   context: GoalCreationContext
@@ -79,74 +78,66 @@ export function GoalCreation({
     if (!preview) return false
     const draftAllocations = values.allocations
     if (!draftAllocations || draftAllocations.length === 0) return true
-    return draftAllocations.every((draftGroup) => {
-      const propGroup = preview.proposal.allocationGroups.find((g) => g.key === draftGroup.key)
-      if (!propGroup) return false
-      return draftGroup.entries.every((draftEntry) => {
-        const propEntry = propGroup.entries.find((e) => e.goalId === draftEntry.goalId)
-        if (!propEntry) return false
-        try {
-          const dPct = new BigNumber((draftEntry.percentage || '0').trim().replace(',', '.'))
-          const pPct = new BigNumber((propEntry.percentage || '0').trim().replace(',', '.'))
-          if (!dPct.isFinite() || dPct.isNaN() || !pPct.isFinite() || pPct.isNaN()) return false
-          return dPct.toFixed(2) === pPct.toFixed(2)
-        } catch {
-          return false
-        }
-      })
+    return draftAllocations.every((draftEntry) => {
+      const propEntry = preview.proposal.allocation.entries.find((e) => e.goalId === draftEntry.goalId)
+      if (!propEntry) return false
+      try {
+        const dPct = new BigNumber((draftEntry.percentage || '0').trim().replace(',', '.'))
+        const pPct = new BigNumber((propEntry.percentage || '0').trim().replace(',', '.'))
+        if (!dPct.isFinite() || dPct.isNaN() || !pPct.isFinite() || pPct.isNaN()) return false
+        return dPct.toFixed(2) === pPct.toFixed(2)
+      } catch {
+        return false
+      }
     })
   }, [preview, values.allocations])
 
   const isAllocationsValid = useMemo(() => {
     const allocations = values.allocations || []
-    return (
-      allocations.length > 0 &&
-      allocations.every((group) => {
-        const totalBn = group.entries.reduce((sum, e) => {
-          const cleaned = (e.percentage ?? '').trim().replace(',', '.')
-          if (!cleaned) return sum
-          try {
-            const val = new BigNumber(cleaned)
-            return sum.plus(val.isFinite() && !val.isNaN() ? val : 0)
-          } catch {
-            return sum
-          }
-        }, new BigNumber(0))
-        return totalBn.isEqualTo(100)
-      })
-    )
+    if (allocations.length === 0) return false
+    const totalBn = allocations.reduce((sum, e) => {
+      const cleaned = (e.percentage ?? '').trim().replace(',', '.')
+      if (!cleaned) return sum
+      try {
+        const val = new BigNumber(cleaned)
+        return sum.plus(val.isFinite() && !val.isNaN() ? val : 0)
+      } catch {
+        return sum
+      }
+    }, new BigNumber(0))
+    return totalBn.isEqualTo(100)
   }, [values.allocations])
 
   const continueFromObjective = async () => {
     setServerError(null)
-    const result = createObjectiveSchema(context.currentMonth).safeParse(form.state.values)
-    if (!result.success) {
-      applyZodIssuesToForm(result.error.issues)
-      focusFirstInvalidField()
-      return
-    }
-    setValidationErrors({})
-    setStage('plan')
-  }
+    const objResult = createObjectiveSchema(context.currentMonth).safeParse(form.state.values)
+    const planResult = goalPlanSchema.safeParse(form.state.values)
 
-  const continueFromPlan = async () => {
-    setServerError(null)
-    const result = goalPlanSchema.safeParse(form.state.values)
-    if (!result.success) {
-      applyZodIssuesToForm(result.error.issues)
+    if (!objResult.success || !planResult.success) {
+      const issues = [
+        ...(!objResult.success ? objResult.error.issues : []),
+        ...(!planResult.success ? planResult.error.issues : []),
+      ]
+      applyZodIssuesToForm(issues)
       focusFirstInvalidField()
       return
     }
     setValidationErrors({})
+
     setIsPreviewPending(true)
     try {
       const previewResult = await previewGoalCreation({ data: form.state.values })
       setPreview(previewResult)
 
-      // First entry into impact: seed allocations if empty
       const existingAllocations = form.state.values.allocations
       if (!existingAllocations || existingAllocations.length === 0) {
-        form.setFieldValue('allocations', previewResult.proposal.allocationGroups)
+        form.setFieldValue(
+          'allocations',
+          previewResult.proposal.allocation.entries.map((e) => ({
+            goalId: e.goalId,
+            percentage: e.percentage,
+          })),
+        )
       }
 
       setStage('impact')
@@ -161,21 +152,18 @@ export function GoalCreation({
 
   const handlePercentageCommit = async () => {
     const allocations = form.state.values.allocations || []
-    const allGroupsValid =
-      allocations.length > 0 &&
-      allocations.every((group) => {
-        const totalBn = group.entries.reduce((sum, e) => {
-          try {
-            const val = new BigNumber((e.percentage || '').replace(',', '.'))
-            return sum.plus(val.isFinite() && !val.isNaN() ? val : 0)
-          } catch {
-            return sum
-          }
-        }, new BigNumber(0))
-        return totalBn.isEqualTo(100)
-      })
+    if (allocations.length === 0) return
 
-    if (!allGroupsValid) {
+    const totalBn = allocations.reduce((sum, e) => {
+      try {
+        const val = new BigNumber((e.percentage || '').replace(',', '.'))
+        return sum.plus(val.isFinite() && !val.isNaN() ? val : 0)
+      } catch {
+        return sum
+      }
+    }, new BigNumber(0))
+
+    if (!totalBn.isEqualTo(100)) {
       return
     }
 
@@ -192,26 +180,13 @@ export function GoalCreation({
     }
   }
 
-  const mergeStillEligiblePercentages = (serverGroups: GoalCreationAllocationGroup[]) => {
+  const mergeStillEligiblePercentages = (serverEntries: GoalCreationAllocationEntry[]) => {
     const currentAllocations = form.state.values.allocations || []
-    const merged = serverGroups.map((serverGroup) => {
-      const currentGroup = currentAllocations.find((g) => g.key === serverGroup.key)
-      if (!currentGroup) return serverGroup
-
-      const currentMap = new Map(currentGroup.entries.map((e) => [e.goalId, e.percentage]))
-      const mergedEntries = serverGroup.entries.map((entry) => {
-        const existingPct = currentMap.get(entry.goalId)
-        return {
-          ...entry,
-          percentage: existingPct !== undefined ? existingPct : entry.percentage,
-        }
-      })
-
-      return {
-        ...serverGroup,
-        entries: mergedEntries,
-      }
-    })
+    const currentMap = new Map(currentAllocations.map((e) => [e.goalId, e.percentage]))
+    const merged = serverEntries.map((entry) => ({
+      goalId: entry.goalId,
+      percentage: currentMap.get(entry.goalId) ?? entry.percentage,
+    }))
     form.setFieldValue('allocations', merged)
   }
 
@@ -229,7 +204,7 @@ export function GoalCreation({
       })
 
       if (result.status === 'stale') {
-        mergeStillEligiblePercentages(result.preview.proposal.allocationGroups)
+        mergeStillEligiblePercentages(result.preview.proposal.allocation.entries)
         setPreview(result.preview)
         setServerError('Tu Plan cambió. Revisá la distribución actualizada antes de confirmar.')
         setTimeout(() => serverErrorRef.current?.focus(), 0)
@@ -247,6 +222,9 @@ export function GoalCreation({
     }
   }
 
+  const stageTitle = stage === 'objective' ? '1. Objetivo' : '2. Distribución e impacto'
+  const stageNumber = stage === 'objective' ? '1' : '2'
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Scrollable Stage Body */}
@@ -254,12 +232,10 @@ export function GoalCreation({
         {/* Step progress heading */}
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
           <h3 className="text-base font-semibold text-[var(--sea-ink)]">
-            {stage === 'objective' && '1. Objetivo'}
-            {stage === 'plan' && '2. Plan'}
-            {stage === 'impact' && '3. Impacto en tu Plan'}
+            {stageTitle}
           </h3>
           <span className="text-xs font-semibold text-[var(--sea-ink-soft)] uppercase tracking-wider">
-            Paso {stage === 'objective' ? '1' : stage === 'plan' ? '2' : '3'} de 3
+            Paso {stageNumber} de 2
           </span>
         </div>
 
@@ -278,14 +254,6 @@ export function GoalCreation({
         {/* Stage Components */}
         {stage === 'objective' && (
           <GoalObjectiveFields
-            form={form}
-            context={context}
-            validationErrors={validationErrors}
-          />
-        )}
-
-        {stage === 'plan' && (
-          <GoalPlanFields
             form={form}
             context={context}
             validationErrors={validationErrors}
@@ -320,7 +288,7 @@ export function GoalCreation({
             onClick={() => {
               setServerError(null)
               setValidationErrors({})
-              setStage(stage === 'impact' ? 'plan' : 'objective')
+              setStage('objective')
             }}
           >
             Volver
@@ -330,19 +298,10 @@ export function GoalCreation({
         {stage === 'objective' && (
           <Button
             type="button"
+            disabled={isPreviewPending}
             onClick={continueFromObjective}
           >
-            Continuar al Plan
-          </Button>
-        )}
-
-        {stage === 'plan' && (
-          <Button
-            type="button"
-            disabled={isPreviewPending}
-            onClick={continueFromPlan}
-          >
-            {isPreviewPending ? 'Calculando...' : 'Continuar al impacto'}
+            {isPreviewPending ? 'Calculando...' : 'Continuar a la distribución'}
           </Button>
         )}
 
@@ -359,4 +318,3 @@ export function GoalCreation({
     </div>
   )
 }
-

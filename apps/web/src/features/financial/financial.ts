@@ -44,8 +44,7 @@ export interface DerivedInitialGoal {
   targetAmount?: Money
   currency: CurrencyCode
   emergencyFundMonths?: number
-  saveEnabled: boolean
-  investEnabled: boolean
+  strategy: 'save' | 'invest'
 }
 
 export interface DerivedInitialChannel {
@@ -144,8 +143,7 @@ export function deriveInitialGoal(plan: InitialPlan): DerivedInitialGoal {
     targetAmount: isEmergency ? undefined : plan.fixedTarget,
     currency: isEmergency ? 'USD' : 'ARS',
     emergencyFundMonths: isEmergency ? 6 : undefined,
-    saveEnabled: true,
-    investEnabled: false,
+    strategy: 'save',
   }
 }
 

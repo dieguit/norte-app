@@ -21,9 +21,8 @@ function makeGoal(overrides: Partial<GoalWorkspaceItem> = {}): GoalWorkspaceItem
     projection: { status: 'available', completionMonth: '2029-06' },
     annualReturnRate: '8.00',
     availability: 'available_now',
+    strategy: 'save',
     usesPlanningRate: false,
-    saveEnabled: true,
-    investEnabled: false,
     ...overrides,
   }
 }

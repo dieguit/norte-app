@@ -30,22 +30,20 @@ vi.mock('../../../../features/goals/goals.functions', () => ({
 
 afterEach(cleanup)
 
-describe('GoalCreation component', () => {
+describe('GoalCreation component (2-step flow)', () => {
   const mockInvalidate = vi.fn().mockResolvedValue(undefined)
 
   const defaultContext: GoalCreationContext = {
     currentMonth: '2026-08',
     expensesKnowledge: 'known',
     hasEmergencyFund: false,
-    fundingOptions: [
-      {
-        fundingMethod: 'save',
-        destinationCurrency: 'ARS',
-        baseCurrency: 'ARS',
-        monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
-        commitmentStatus: 'active',
-      },
-    ],
+    plannedMonthlyContribution: { amount: '100000.00', currency: 'ARS' },
+    currentAllocation: {
+      effectiveMonth: '2026-08-01',
+      entries: [
+        { goalId: 'goal-1', percentage: '100.00' },
+      ],
+    },
   }
 
   const makeMockPreview = (overrides?: Partial<GoalCreationPreviewResult>): GoalCreationPreviewResult => ({
@@ -57,38 +55,32 @@ describe('GoalCreation component', () => {
         targetAmount: { amount: '3500000.00', currency: 'ARS' },
         currency: 'ARS',
         priority: 'medium',
+        strategy: 'save',
         desiredDate: '2027-04-01',
-        saveEnabled: true,
-        investEnabled: false,
       },
-      allocationGroups: [
-        {
-          key: 'save:ARS',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-          baseCurrency: 'ARS',
-          monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
-          destinationCommitment: { amount: '100000.00', currency: 'ARS' },
-          effectiveMonth: '2026-09-01',
-          totalPercentage: '100.00',
-          entries: [
-            {
-              goalId: 'goal-1',
-              goalName: 'Fondo de emergencia',
-              percentage: '60.00',
-              allocatedDestinationAmount: { amount: '60000.00', currency: 'ARS' },
-              pending: false,
-            },
-            {
-              goalId: 'pending-goal',
-              goalName: 'Viaje al sur',
-              percentage: '40.00',
-              allocatedDestinationAmount: { amount: '40000.00', currency: 'ARS' },
-              pending: true,
-            },
-          ],
-        },
-      ],
+      allocation: {
+        monthlyContribution: { amount: '100000.00', currency: 'ARS' },
+        effectiveMonth: '2026-09-01',
+        totalPercentage: '100.00',
+        entries: [
+          {
+            goalId: 'goal-1',
+            goalName: 'Fondo de emergencia',
+            percentage: '60.00',
+            allocatedBaseAmount: { amount: '60000.00', currency: 'ARS' },
+            allocatedDestinationAmount: { amount: '60000.00', currency: 'ARS' },
+            pending: false,
+          },
+          {
+            goalId: 'pending-goal',
+            goalName: 'Viaje al sur',
+            percentage: '40.00',
+            allocatedBaseAmount: { amount: '40000.00', currency: 'ARS' },
+            allocatedDestinationAmount: { amount: '40000.00', currency: 'ARS' },
+            pending: true,
+          },
+        ],
+      },
       impacts: [
         {
           goalId: 'pending-goal',
@@ -112,7 +104,6 @@ describe('GoalCreation component', () => {
         goals: [],
         savingsPositions: [],
         investmentPositions: [],
-        channels: [],
         snapshots: [],
         allocations: [],
       },
@@ -127,22 +118,27 @@ describe('GoalCreation component', () => {
     } as any)
   })
 
-  describe('Step 1: Objective and Plan interactions', () => {
-    it('validates required objective fields and displays Spanish validation errors', async () => {
+  describe('Step 1: Objective fields & strategy', () => {
+    it('renders Step 1 of 2 header and validates required fields with Spanish messages', async () => {
       const user = userEvent.setup()
       const onCancel = vi.fn()
       const onCreated = vi.fn()
 
       render(<GoalCreation context={defaultContext} onCancel={onCancel} onCreated={onCreated} />)
 
-      // Step 1: Objective is active
-      expect(screen.getByRole('heading', { name: /objetivo/i })).toBeVisible()
+      // Step 1 header and progress
+      expect(screen.getByRole('heading', { name: '1. Objetivo' })).toBeVisible()
+      expect(screen.getByText('Paso 1 de 2')).toBeVisible()
 
       // Default priority should be medium
       expect(screen.getByText('Prioridad media')).toBeVisible()
 
+      // Default strategy is Ahorrar and it is checked
+      const saveRadio = screen.getByRole('radio', { name: 'Ahorrar' })
+      expect(saveRadio).toBeChecked()
+
       // Attempt to continue with empty name and target
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
 
       expect(screen.getByText('Ingresá un nombre.')).toBeVisible()
       expect(screen.getByText('Ingresá un monto objetivo mayor a cero.')).toBeVisible()
@@ -152,7 +148,35 @@ describe('GoalCreation component', () => {
       expect(onCancel).toHaveBeenCalledTimes(1)
     })
 
-    it('requires future desired month for fixed goals when desired month is entered', async () => {
+    it('toggles strategy exclusively and conditionally displays investment assumptions', async () => {
+      const user = userEvent.setup()
+
+      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
+
+      const saveRadio = screen.getByRole('radio', { name: 'Ahorrar' })
+      const investRadio = screen.getByRole('radio', { name: 'Invertir' })
+
+      expect(saveRadio).toBeChecked()
+      expect(investRadio).not.toBeChecked()
+      expect(screen.queryByLabelText(/rendimiento anual estimado/i)).not.toBeInTheDocument()
+
+      // Select Invertir
+      await user.click(investRadio)
+      expect(investRadio).toBeChecked()
+      expect(saveRadio).not.toBeChecked()
+
+      // Investment fields now visible
+      expect(screen.getByLabelText(/rendimiento anual estimado/i)).toBeVisible()
+      expect(screen.getByLabelText(/disponibilidad de los fondos/i)).toBeVisible()
+
+      // Switch back to Ahorrar
+      await user.click(saveRadio)
+      expect(saveRadio).toBeChecked()
+      expect(investRadio).not.toBeChecked()
+      expect(screen.queryByLabelText(/rendimiento anual estimado/i)).not.toBeInTheDocument()
+    })
+
+    it('requires future desired month when specified', async () => {
       const user = userEvent.setup()
 
       render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
@@ -166,24 +190,18 @@ describe('GoalCreation component', () => {
       // Current month (August 2026) is disabled
       expect(screen.getByRole('button', { name: 'Ago' })).toBeDisabled()
 
-      // Select a future month (e.g. September 2026)
+      // Select a future month (September 2026)
       await user.click(screen.getByRole('button', { name: 'Sep' }))
 
-      // Visible trigger value changes
       expect(screen.getByRole('button', { name: /mes objetivo/i })).toHaveTextContent(/septiembre de 2026/i)
-
-      // Advances to Plan stage
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-      expect(screen.getByRole('heading', { name: /plan/i })).toBeVisible()
     })
 
-    it('emergency fund prefills name, locks USD, defaults saving, and explains unknown expenses', async () => {
+    it('emergency fund prefills name, locks USD, and explains unknown expenses', async () => {
       const user = userEvent.setup()
       const contextUnknown: GoalCreationContext = {
         currentMonth: '2026-08',
         expensesKnowledge: 'unknown',
         hasEmergencyFund: false,
-        fundingOptions: [],
       }
 
       render(<GoalCreation context={contextUnknown} onCancel={vi.fn()} onCreated={vi.fn()} />)
@@ -203,165 +221,70 @@ describe('GoalCreation component', () => {
       expect(
         screen.getByText(/vamos a calcular el monto sugerido una vez que definas tus gastos/i),
       ).toBeVisible()
-
-      // Switching away from emergency fund resets the name
-      fireEvent.click(screen.getByLabelText(/tipo de objetivo/i))
-      await user.click(screen.getByRole('option', { name: /otro objetivo/i }))
-      expect(screen.getByLabelText(/nombre del objetivo/i)).toHaveValue('')
-
-      // Switch back to emergency fund
-      fireEvent.click(screen.getByLabelText(/tipo de objetivo/i))
-      await user.click(screen.getByRole('option', { name: /colchón financiero/i }))
-      expect(screen.getByLabelText(/nombre del objetivo/i)).toHaveValue('Colchón financiero')
-
-      // Target amount input is not required for emergency fund
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-      // Transitions to Plan
-      expect(screen.getByRole('heading', { name: /plan/i })).toBeVisible()
     })
+  })
 
-    it('hides emergency fund option when context hasEmergencyFund is true', async () => {
+  describe('Step 2: Distribution and impact flow', () => {
+    it('validates Step 1, requests preview, seeds allocations, and enters Step 2 of 2', async () => {
       const user = userEvent.setup()
-      const contextWithEmergencyFund: GoalCreationContext = {
-        ...defaultContext,
-        hasEmergencyFund: true,
-      }
-
-      render(<GoalCreation context={contextWithEmergencyFund} onCancel={vi.fn()} onCreated={vi.fn()} />)
-
-      const typeSelect = screen.getByLabelText(/tipo de objetivo/i)
-      await user.click(typeSelect)
-
-      expect(screen.queryByRole('option', { name: /colchón financiero/i })).not.toBeInTheDocument()
-      expect(screen.getByRole('option', { name: /compra o gasto grande/i })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: /jubilación/i })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: /otro objetivo/i })).toBeInTheDocument()
-    })
-
-    it('plan requires at least one method', async () => {
-      const user = userEvent.setup()
+      const mockPreview = makeMockPreview()
+      vi.mocked(previewGoalCreation).mockResolvedValue(mockPreview)
 
       render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
 
-      await user.type(screen.getByLabelText(/nombre/i), 'Auto nuevo')
-      await user.type(screen.getByLabelText(/monto objetivo/i), '5000000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
+      await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
 
-      expect(screen.getByRole('heading', { name: /plan/i })).toBeVisible()
+      expect(previewGoalCreation).not.toHaveBeenCalled()
 
-      // Uncheck saveEnabled (investEnabled is false by default)
-      const saveCheckbox = screen.getByRole('checkbox', { name: /ahorrar/i })
-      expect(saveCheckbox).toBeChecked()
-      await user.click(saveCheckbox)
+      // Click "Continuar a la distribución"
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
 
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-      expect(screen.getByText('Elegí ahorrar, invertir o ambas opciones.')).toBeVisible()
-    })
-
-    it('shows established commitment as read-only, and missing commitment with define option', async () => {
-      const user = userEvent.setup()
-      // Context has save in ARS established ($100.000), but no invest in ARS
-      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
-
-      await user.type(screen.getByLabelText(/nombre/i), 'Vacaciones')
-      await user.type(screen.getByLabelText(/monto objetivo/i), '1000000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-      // Save has established commitment
-      expect(screen.getByText(/\$ 100\.000/i)).toBeVisible()
-      expect(screen.queryByRole('checkbox', { name: /definir aporte mensual para ahorrar/i })).not.toBeInTheDocument()
-
-      // Enable investing (which has no established commitment in context)
-      const investCheckbox = screen.getByRole('checkbox', { name: /invertir/i })
-      await user.click(investCheckbox)
-
-      // Reveals define commitment for investing
-      const defineInvest = screen.getByRole('checkbox', { name: /definir aporte mensual para invertir/i })
-      expect(defineInvest).toBeVisible()
-      expect(defineInvest).not.toBeChecked()
-
-      // Check define commitment reveals input
-      await user.click(defineInvest)
-      const investCommitmentInput = screen.getByRole('textbox', {
-        name: /aporte mensual para invertir/i,
+      // Validates and immediately requests preview
+      await waitFor(() => {
+        expect(previewGoalCreation).toHaveBeenCalledTimes(1)
       })
-      expect(investCommitmentInput).toBeVisible()
 
-      // Also investing controls are revealed
-      expect(screen.getByLabelText(/rendimiento/i)).toBeVisible()
-      expect(screen.getByLabelText(/disponibilidad/i)).toBeVisible()
+      // Step 2 header & progress
+      expect(await screen.findByRole('heading', { name: '2. Distribución e impacto' })).toBeVisible()
+      expect(screen.getByText('Paso 2 de 2')).toBeVisible()
+
+      // Trajectories rendered
+      expect((await screen.findAllByText('Antes'))[0]).toBeVisible()
+      expect(screen.getAllByText('Con este cambio')[0]).toBeVisible()
+      expect(screen.getByText('Objetivo todavía no creado')).toBeVisible()
+
+      // Allocation entries rendered
+      expect(screen.getAllByText('Fondo de emergencia')[0]).toBeVisible()
+      expect(screen.getAllByText('Viaje al sur')[0]).toBeVisible()
     })
 
-    it('preserves form values when navigating back and forward', async () => {
+    it('navigates back to Step 1 preserving values and allows returning to Step 2', async () => {
       const user = userEvent.setup()
+      const mockPreview = makeMockPreview()
+      vi.mocked(previewGoalCreation).mockResolvedValue(mockPreview)
 
       render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
 
       await user.type(screen.getByLabelText(/nombre/i), 'Casa propia')
       await user.type(screen.getByLabelText(/monto objetivo/i), '25000000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      await user.click(screen.getByRole('radio', { name: 'Invertir' }))
 
-      expect(screen.getByRole('heading', { name: /plan/i })).toBeVisible()
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
 
-      // Click Volver to return to Objective
+      expect(await screen.findByRole('heading', { name: '2. Distribución e impacto' })).toBeVisible()
+
+      // Click Volver to return to Step 1
       await user.click(screen.getByRole('button', { name: 'Volver' }))
 
-      expect(screen.getByRole('heading', { name: /objetivo/i })).toBeVisible()
+      expect(screen.getByRole('heading', { name: '1. Objetivo' })).toBeVisible()
+      expect(screen.getByText('Paso 1 de 2')).toBeVisible()
       expect(screen.getByLabelText(/nombre/i)).toHaveValue('Casa propia')
       expect(screen.getByLabelText(/monto objetivo/i)).toHaveValue('25.000.000')
+      expect(screen.getByRole('radio', { name: 'Invertir' })).toBeChecked()
     })
 
-    it('advances a valid objective to the plan stage and displays updated plan heading', async () => {
-      const user = userEvent.setup()
-
-      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
-
-      await user.type(screen.getByLabelText(/nombre/i), 'Auto nuevo')
-      await user.type(screen.getByLabelText(/monto objetivo/i), '5000000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-      expect(screen.getByRole('heading', { name: /plan/i })).toBeVisible()
-      expect(
-        screen.getByRole('heading', { name: '¿Qué necesitas para conseguir este objetivo?' }),
-      ).toBeVisible()
-    })
-  })
-
-  describe('Step 2: Impact lifecycle', () => {
-    it('requests preview only after valid Objective and Plan, and renders trajectories', async () => {
-      const user = userEvent.setup()
-      const mockPreview = makeMockPreview()
-      vi.mocked(previewGoalCreation).mockResolvedValue(mockPreview)
-
-      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
-
-      // Stage 1
-      await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
-      await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-      // Stage 2
-      expect(previewGoalCreation).not.toHaveBeenCalled()
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-      // Stage 3 - preview requested
-      await waitFor(() => {
-        expect(previewGoalCreation).toHaveBeenCalledTimes(1)
-      })
-
-      // Trajectories rendered with exact Spanish labels
-      expect((await screen.findAllByText('Antes'))[0]).toBeVisible()
-      expect(screen.getAllByText('Con este cambio')[0]).toBeVisible()
-      expect(screen.getByText('Objetivo todavía no creado')).toBeVisible()
-
-      // Allocation editor rendered with compatible goals
-      expect(screen.getAllByText('Fondo de emergencia')[0]).toBeVisible()
-      expect(screen.getAllByText('Viaje al sur')[0]).toBeVisible()
-    })
-
-    it('disables confirmation and hides trajectories when total percentage is invalid', async () => {
+    it('disables submit button and shows warning when allocations total != 100%', async () => {
       const user = userEvent.setup()
       const mockPreview = makeMockPreview()
       vi.mocked(previewGoalCreation).mockResolvedValue(mockPreview)
@@ -370,8 +293,7 @@ describe('GoalCreation component', () => {
 
       await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
       await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
 
       await screen.findAllByText('Con este cambio')
 
@@ -379,56 +301,12 @@ describe('GoalCreation component', () => {
       const input = screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i })
       fireEvent.change(input, { target: { value: 'abc' } })
 
-      // Invalid input prevents rebalancing and makes total != 100%
       expect(screen.getByText('Completá la distribución para calcular el impacto')).toBeVisible()
       expect(screen.getByRole('button', { name: 'Crear objetivo y actualizar Plan' })).toBeDisabled()
       expect(screen.queryByText('Con este cambio')).not.toBeInTheDocument()
     })
 
-    it('refreshes preview after percentage commit on blur or slider change', async () => {
-      const user = userEvent.setup()
-      const mockPreview1 = makeMockPreview()
-      const mockPreview2 = makeMockPreview({
-        proposal: {
-          ...mockPreview1.proposal,
-          impacts: [
-            {
-              goalId: 'pending-goal',
-              goalName: 'Viaje al sur',
-              before: { status: 'not_created' },
-              after: { status: 'available', completionMonth: '2027-02' },
-            },
-          ],
-        },
-      })
-
-      vi.mocked(previewGoalCreation)
-        .mockResolvedValueOnce(mockPreview1)
-        .mockResolvedValueOnce(mockPreview2)
-
-      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
-
-      await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
-      await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-      await screen.findAllByText('Con este cambio')
-      expect(previewGoalCreation).toHaveBeenCalledTimes(1)
-
-      // Edit percentage: setting fondo de emergencia to 50% automatically rebalances viaje al sur to 50%
-      const input1 = screen.getByRole('textbox', { name: /porcentaje para fondo de emergencia/i })
-      fireEvent.change(input1, { target: { value: '50' } })
-
-      // Blur to trigger commit
-      fireEvent.blur(input1)
-
-      await waitFor(() => {
-        expect(previewGoalCreation).toHaveBeenCalledTimes(2)
-      })
-    })
-
-    it('handles stale confirmation by merging still-eligible percentages, updating token, showing error, and staying on stage 3', async () => {
+    it('handles stale preview on confirmation, displays alert, merges allocations, and stays on Step 2', async () => {
       const user = userEvent.setup()
       const mockPreview = makeMockPreview()
       const refreshedPreview = makeMockPreview({
@@ -445,8 +323,7 @@ describe('GoalCreation component', () => {
 
       await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
       await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
 
       await screen.findAllByText('Con este cambio')
 
@@ -458,11 +335,12 @@ describe('GoalCreation component', () => {
         await screen.findByText('Tu Plan cambió. Revisá la distribución actualizada antes de confirmar.'),
       ).toBeVisible()
 
-      // User stays on stage 3 (Impact)
+      // User stays on Step 2 (Impact)
+      expect(screen.getByRole('heading', { name: '2. Distribución e impacto' })).toBeVisible()
       expect(screen.getByRole('button', { name: 'Crear objetivo y actualizar Plan' })).toBeVisible()
     })
 
-    it('handles persistence error, focuses error summary, preserves draft, and succeeds on retry', async () => {
+    it('handles persistence error, focuses error summary, and succeeds on retry', async () => {
       const user = userEvent.setup()
       const mockPreview = makeMockPreview()
       const onCreated = vi.fn()
@@ -476,8 +354,7 @@ describe('GoalCreation component', () => {
 
       await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
       await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
 
       await screen.findAllByText('Con este cambio')
 
@@ -498,76 +375,6 @@ describe('GoalCreation component', () => {
         expect(toast.success).toHaveBeenCalledWith('Objetivo creado y Plan actualizado.')
         expect(onCreated).toHaveBeenCalledTimes(1)
       })
-    })
-
-    it('rebalances existing allocation entries proportionally when adjusting pending goal slider', async () => {
-      const user = userEvent.setup()
-      const mockPreview = makeMockPreview({
-        proposal: {
-          ...makeMockPreview().proposal,
-          allocationGroups: [
-            {
-              key: 'save:ARS',
-              fundingMethod: 'save',
-              destinationCurrency: 'ARS',
-              baseCurrency: 'ARS',
-              monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
-              destinationCommitment: { amount: '100000.00', currency: 'ARS' },
-              effectiveMonth: '2026-09-01',
-              totalPercentage: '100.00',
-              entries: [
-                {
-                  goalId: 'pending-goal',
-                  goalName: 'Viaje al sur',
-                  percentage: '0.00',
-                  allocatedDestinationAmount: { amount: '0.00', currency: 'ARS' },
-                  pending: true,
-                },
-                {
-                  goalId: 'goal-1',
-                  goalName: 'Fondo de emergencia',
-                  percentage: '70.00',
-                  allocatedDestinationAmount: { amount: '70000.00', currency: 'ARS' },
-                  pending: false,
-                },
-                {
-                  goalId: 'goal-2',
-                  goalName: 'Vacaciones',
-                  percentage: '30.00',
-                  allocatedDestinationAmount: { amount: '30000.00', currency: 'ARS' },
-                  pending: false,
-                },
-              ],
-            },
-          ],
-        },
-      })
-
-      vi.mocked(previewGoalCreation).mockResolvedValue(mockPreview)
-
-      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
-
-      await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
-      await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-      await screen.findAllByText('Con este cambio')
-
-      // Find the sliders and change the first slider (pending goal) to 20
-      const sliders = screen.getAllByRole('slider', { hidden: true })
-      fireEvent.change(sliders[0], { target: { value: '20' } })
-
-      // Verify the three percentage inputs read 20,00, 56,00, and 24,00 before committing
-      const pendingInput = screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i })
-      const goal1Input = screen.getByRole('textbox', {
-        name: /porcentaje para fondo de emergencia/i,
-      })
-      const goal2Input = screen.getByRole('textbox', { name: /porcentaje para vacaciones/i })
-
-      expect(pendingInput).toHaveValue('20,00')
-      expect(goal1Input).toHaveValue('56,00')
-      expect(goal2Input).toHaveValue('24,00')
     })
   })
 })

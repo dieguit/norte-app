@@ -1,9 +1,8 @@
 import '@tanstack/react-start/server-only'
 import { db } from '../../db/client'
 import {
-  channelPlanAllocations,
-  channelPlanSnapshots,
-  contributionChannels,
+  allocationPlanEntries,
+  allocationPlanSnapshots,
   financialGoals,
   financialProfiles,
 } from '../../db/schema'
@@ -36,6 +35,7 @@ export async function persistInitialPlan(
         approximateMonthlyIncome: plan.income.amount,
         approximateMonthlyExpenses: plan.expenses?.amount ?? null,
         expensesKnowledge: plan.expensesKnowledge,
+        plannedMonthlyContribution: plan.plannedContribution.amount,
         onboardingCompleted: true,
       })
       .onConflictDoNothing({ target: financialProfiles.userId })
@@ -52,32 +52,19 @@ export async function persistInitialPlan(
         targetAmount: goal.targetAmount?.amount ?? null,
         currency: goal.currency,
         emergencyFundMonths: goal.emergencyFundMonths ?? null,
-        saveEnabled: goal.saveEnabled,
-        investEnabled: goal.investEnabled,
+        strategy: goal.strategy,
       })
       .returning({ id: financialGoals.id })
 
-    const [insertedChannel] = await tx
-      .insert(contributionChannels)
+    const [insertedSnapshot] = await tx
+      .insert(allocationPlanSnapshots)
       .values({
         userId,
-        fundingMethod: channel.fundingMethod,
-        destinationCurrency: channel.destinationCurrency,
-      })
-      .returning({ id: contributionChannels.id })
-
-    const [insertedSnapshot] = await tx
-      .insert(channelPlanSnapshots)
-      .values({
-        channelId: insertedChannel.id,
-        monthlyCommitmentAmount: channel.monthlyCommitment.amount,
-        baseCurrency: channel.monthlyCommitment.currency,
-        commitmentStatus: 'active',
         effectiveMonth: `${channel.effectiveMonth}-01`,
       })
-      .returning({ id: channelPlanSnapshots.id })
+      .returning({ id: allocationPlanSnapshots.id })
 
-    await tx.insert(channelPlanAllocations).values({
+    await tx.insert(allocationPlanEntries).values({
       snapshotId: insertedSnapshot.id,
       goalId: insertedGoal.id,
       percentage: '100.00',
@@ -97,20 +84,15 @@ export async function getInitialHomeState(userId: string): Promise<InitialHomeSt
     where: (goals, { eq }) => eq(goals.userId, userId),
     orderBy: (goals, { asc }) => [asc(goals.createdAt)],
   })
-  const channel = await db.query.contributionChannels.findFirst({
-    where: (channels, { eq }) => eq(channels.userId, userId),
-    orderBy: (channels, { asc }) => [asc(channels.createdAt)],
-  })
-  if (!goal || !channel) return null
+  if (!goal) return null
 
-  const snapshot = await db.query.channelPlanSnapshots.findFirst({
-    where: (snapshots, { eq }) => eq(snapshots.channelId, channel.id),
+  const snapshot = await db.query.allocationPlanSnapshots.findFirst({
+    where: (snapshots, { eq }) => eq(snapshots.userId, userId),
     orderBy: (snapshots, { desc }) => [desc(snapshots.effectiveMonth)],
   })
   if (!snapshot) return null
-  if (snapshot.monthlyCommitmentAmount === null || snapshot.commitmentStatus === 'paused') return null
 
-  const allocation = await db.query.channelPlanAllocations.findFirst({
+  const allocation = await db.query.allocationPlanEntries.findFirst({
     where: (allocations, { and, eq }) => and(
       eq(allocations.snapshotId, snapshot.id),
       eq(allocations.goalId, goal.id),
@@ -129,10 +111,10 @@ export async function getInitialHomeState(userId: string): Promise<InitialHomeSt
     : goal.targetAmount
       ? createMoney(goal.targetAmount, goal.currency as CurrencyCode)
       : undefined
-  const monthlyCommitment = createMoney(snapshot.monthlyCommitmentAmount, snapshot.baseCurrency as CurrencyCode)
+  const monthlyCommitment = createMoney(profile.plannedMonthlyContribution, profile.baseCurrency as CurrencyCode)
   const destinationAmount = convertCommitmentToDestination(
     monthlyCommitment,
-    channel.destinationCurrency as CurrencyCode,
+    goal.currency as CurrencyCode,
   )
   const effectiveMonth = snapshot.effectiveMonth.slice(0, 7)
   const projection = targetAmount
@@ -144,8 +126,8 @@ export async function getInitialHomeState(userId: string): Promise<InitialHomeSt
     expensesKnowledge,
     expenses,
     plan: {
-      fundingMethod: channel.fundingMethod as FundingMethod,
-      destinationCurrency: channel.destinationCurrency as CurrencyCode,
+      fundingMethod: goal.strategy as FundingMethod,
+      destinationCurrency: goal.currency as CurrencyCode,
       monthlyCommitment,
       destinationAmount,
       effectiveMonth,

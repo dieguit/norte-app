@@ -7,7 +7,6 @@ import {
   multiplyMoneyByFactor,
 } from '../../lib/money'
 import {
-  type FundingMethod,
   convertCommitmentToDestination,
   deriveEmergencyFundTarget,
   PROJECTION_HORIZON_MONTHS,
@@ -15,6 +14,7 @@ import {
 
 export type GoalPriority = 'high' | 'medium' | 'low'
 export type GoalStatus = 'active' | 'paused' | 'completed'
+export type GoalStrategy = 'save' | 'invest'
 export type InvestmentAvailability = 'available_now' | 'available_from' | 'long_term'
 
 export const GOAL_STATUS_LABELS: Record<GoalStatus, string> = {
@@ -33,12 +33,8 @@ export type GoalProjection =
   | { status: 'outside_horizon' }
 
 export interface GoalFundingRow {
-  channelId: string
-  fundingMethod: FundingMethod
-  destinationCurrency: CurrencyCode
   percentage: string
-  commitmentStatus: 'active' | 'paused'
-  monthlyCommitment?: Money
+  monthlyContribution?: Money
   allocatedBaseAmount?: Money
   allocatedDestinationAmount?: Money
   effectiveMonth: string
@@ -50,6 +46,7 @@ export interface GoalWorkspaceItem {
   type: string
   currency: CurrencyCode
   priority: GoalPriority
+  strategy: GoalStrategy
   status: GoalStatus
   createdAt: string
   desiredDate?: string
@@ -66,8 +63,6 @@ export interface GoalWorkspaceItem {
   availability?: InvestmentAvailability
   availableFrom?: string
   usesPlanningRate: boolean
-  saveEnabled: boolean
-  investEnabled: boolean
 }
 
 export interface GoalsWorkspace {
@@ -85,6 +80,7 @@ export interface GoalsWorkspaceSource {
     approximateMonthlyIncome: string
     approximateMonthlyExpenses?: string | null
     expensesKnowledge: 'known' | 'unknown' | string
+    plannedMonthlyContribution?: string | null
     onboardingCompleted: boolean
   } | null
   goals: Array<{
@@ -95,12 +91,11 @@ export interface GoalsWorkspaceSource {
     targetAmount?: string | null
     currency: CurrencyCode
     priority: GoalPriority
+    strategy: GoalStrategy
     status: GoalStatus
     desiredDate?: string | null
     completedAt?: string | null
     emergencyFundMonths?: number | null
-    saveEnabled?: boolean
-    investEnabled?: boolean
     createdAt: string
   }>
   savingsPositions: Array<{
@@ -119,18 +114,9 @@ export interface GoalsWorkspaceSource {
     availability?: InvestmentAvailability | null
     availableFrom?: string | null
   }>
-  channels: Array<{
-    id: string
-    userId?: string
-    fundingMethod: FundingMethod
-    destinationCurrency: CurrencyCode
-  }>
   snapshots: Array<{
     id: string
-    channelId: string
-    monthlyCommitmentAmount?: string | null
-    baseCurrency: CurrencyCode
-    commitmentStatus: 'active' | 'paused'
+    userId?: string
     effectiveMonth: string
   }>
   allocations: Array<{
@@ -167,22 +153,22 @@ function addMonthsToMonth(monthStr: string, monthsToAdd: number): string {
   return `${targetYear}-${String(targetMonth).padStart(2, '0')}`
 }
 
-export function selectFundingForMonth(funding: GoalFundingRow[], month: string): GoalFundingRow[] {
-  const selected = new Map<string, GoalFundingRow>()
+export function selectFundingForMonth(funding: GoalFundingRow[], month: string): GoalFundingRow | undefined {
+  let selected: GoalFundingRow | undefined
 
   for (const row of funding) {
     if (row.effectiveMonth.slice(0, 7) > month.slice(0, 7)) continue
-    const current = selected.get(row.channelId)
-    if (!current || current.effectiveMonth.localeCompare(row.effectiveMonth) < 0) {
-      selected.set(row.channelId, row)
+    if (!selected || selected.effectiveMonth.localeCompare(row.effectiveMonth) < 0) {
+      selected = row
     }
   }
 
-  return [...selected.values()]
+  return selected
 }
 
 export function projectGoalCompletion(params: {
   status: GoalStatus
+  strategy: GoalStrategy
   targetAmount?: Money
   actualValue: Money
   savingsValue: Money
@@ -193,6 +179,7 @@ export function projectGoalCompletion(params: {
 }): GoalProjection {
   const {
     status,
+    strategy,
     targetAmount,
     actualValue,
     savingsValue,
@@ -221,31 +208,30 @@ export function projectGoalCompletion(params: {
     addMonthsToMonth(currentMonth, PROJECTION_HORIZON_MONTHS - 1),
   )
 
-  // Active funding rows with allocated amount
-  const activeFunding = horizonFunding.filter(
-    (f) => f.commitmentStatus === 'active' && new BigNumber(f.percentage).isGreaterThan(0),
-  )
+  const horizonHasPositive =
+    horizonFunding !== undefined && new BigNumber(horizonFunding.percentage).isGreaterThan(0)
 
-  const positiveFunding = horizonFunding.filter((f) => new BigNumber(f.percentage).isGreaterThan(0))
-  if (positiveFunding.length > 0 && positiveFunding.every((f) => f.commitmentStatus === 'paused')) {
-    return { status: 'plan_paused' }
-  }
+  const hasPositiveAllocation =
+    funding.some((f) => new BigNumber(f.percentage).isGreaterThan(0)) || horizonHasPositive
 
-  const hasCommitmentAbsent = activeFunding.some((f) => f.monthlyCommitment === undefined)
+  const hasCommitmentAbsent =
+    funding.some(
+      (f) => new BigNumber(f.percentage).isGreaterThan(0) && f.monthlyContribution === undefined,
+    ) || (horizonHasPositive && horizonFunding.monthlyContribution === undefined)
+
   if (hasCommitmentAbsent) {
     return { status: 'commitment_absent' }
   }
 
-  const hasInvestFunding = activeFunding.some((f) => f.fundingMethod === 'invest')
   const hasInvestBalance = new BigNumber(investmentValue.amount).isGreaterThan(0)
-  const needsInvestmentSimulation = hasInvestFunding || hasInvestBalance
+  const needsInvestmentSimulation = strategy === 'invest' && (hasPositiveAllocation || hasInvestBalance)
 
   let monthlyRate: BigNumber | undefined
   if (needsInvestmentSimulation) {
     if (annualReturnRate === undefined || annualReturnRate === null || annualReturnRate.trim() === '') {
       return { status: 'investment_assumption_unavailable' }
     }
-    const annualNum = Number(annualReturnRate)
+    const annualNum = Number(annualReturnRate.replace(',', '.'))
     if (!Number.isFinite(annualNum) || annualNum <= -100) {
       return { status: 'investment_assumption_unavailable' }
     }
@@ -257,11 +243,6 @@ export function projectGoalCompletion(params: {
     monthlyRate = new BigNumber(compoundRate)
   }
 
-  // If no future allocation and no investment growth
-  if (activeFunding.length === 0 && !hasInvestBalance) {
-    return { status: 'no_future_allocation' }
-  }
-
   // Bounded monthly simulation: 0..719
   let currentSavings = new BigNumber(savingsValue.amount)
   let currentInvestments = new BigNumber(investmentValue.amount)
@@ -271,28 +252,30 @@ export function projectGoalCompletion(params: {
   for (let m = 0; m < PROJECTION_HORIZON_MONTHS; m++) {
     const projectedMonth = addMonthsToMonth(baseMonth, m)
 
-    if (m > 0 && monthlyRate) {
+    if (m > 0 && monthlyRate && strategy === 'invest') {
       currentInvestments = currentInvestments.times(new BigNumber(1).plus(monthlyRate))
     }
 
     const monthFunding = selectFundingForMonth(funding, projectedMonth)
-    for (const row of monthFunding) {
-      if (
-        row.commitmentStatus === 'active' &&
-        row.allocatedDestinationAmount &&
-        new BigNumber(row.percentage).isGreaterThan(0)
-      ) {
-        if (row.fundingMethod === 'save') {
-          currentSavings = currentSavings.plus(row.allocatedDestinationAmount.amount)
-        } else if (row.fundingMethod === 'invest') {
-          currentInvestments = currentInvestments.plus(row.allocatedDestinationAmount.amount)
-        }
+    if (
+      monthFunding &&
+      monthFunding.allocatedDestinationAmount &&
+      new BigNumber(monthFunding.percentage).isGreaterThan(0)
+    ) {
+      if (strategy === 'save') {
+        currentSavings = currentSavings.plus(monthFunding.allocatedDestinationAmount.amount)
+      } else if (strategy === 'invest') {
+        currentInvestments = currentInvestments.plus(monthFunding.allocatedDestinationAmount.amount)
       }
     }
 
     if (currentSavings.plus(currentInvestments).isGreaterThanOrEqualTo(targetBn)) {
       return { status: 'available', completionMonth: projectedMonth }
     }
+  }
+
+  if (!horizonHasPositive && (!hasInvestBalance || strategy !== 'invest')) {
+    return { status: 'no_future_allocation' }
   }
 
   return { status: 'outside_horizon' }
@@ -304,7 +287,7 @@ export function buildGoalsWorkspace(
 ): GoalsWorkspace {
   const goalItems: GoalWorkspaceItem[] = rows.goals.map((goal) => {
     // 1. Savings value
-    const goalSavings = rows.savingsPositions.filter((pos) => pos.goalId === goal.id)
+    const goalSavings = (rows.savingsPositions ?? []).filter((pos) => pos.goalId === goal.id)
     for (const pos of goalSavings) {
       if (pos.currency !== goal.currency) {
         throw new Error(`Persisted savings position currency mismatch: ${pos.currency} vs ${goal.currency}`)
@@ -316,7 +299,7 @@ export function buildGoalsWorkspace(
     )
 
     // 2. Investment value & assumptions
-    const goalInvestments = rows.investmentPositions.filter((pos) => pos.goalId === goal.id)
+    const goalInvestments = (rows.investmentPositions ?? []).filter((pos) => pos.goalId === goal.id)
     for (const pos of goalInvestments) {
       if (pos.currency !== goal.currency) {
         throw new Error(`Persisted investment position currency mismatch: ${pos.currency} vs ${goal.currency}`)
@@ -362,32 +345,28 @@ export function buildGoalsWorkspace(
     }
 
     // 5. Funding rows
-    const goalAllocations = rows.allocations.filter((alloc) => alloc.goalId === goal.id)
+    const goalAllocations = (rows.allocations ?? []).filter((alloc) => alloc.goalId === goal.id)
     const funding: GoalFundingRow[] = []
 
     for (const alloc of goalAllocations) {
-      const snapshot = rows.snapshots.find((s) => s.id === alloc.snapshotId)
+      const snapshot = (rows.snapshots ?? []).find((s) => s.id === alloc.snapshotId)
       if (!snapshot) continue
-      const channel = rows.channels.find((c) => c.id === snapshot.channelId)
-      if (!channel) continue
 
-      if (channel.destinationCurrency !== goal.currency) {
-        throw new Error(
-          `Channel destination currency mismatch: ${channel.destinationCurrency} vs ${goal.currency}`,
-        )
-      }
-
-      let monthlyCommitment: Money | undefined
+      let monthlyContribution: Money | undefined
       let allocatedBaseAmount: Money | undefined
       let allocatedDestinationAmount: Money | undefined
 
-      if (snapshot.monthlyCommitmentAmount !== null && snapshot.monthlyCommitmentAmount !== undefined) {
-        monthlyCommitment = createMoney(snapshot.monthlyCommitmentAmount, snapshot.baseCurrency)
+      if (
+        rows.profile?.plannedMonthlyContribution !== null &&
+        rows.profile?.plannedMonthlyContribution !== undefined
+      ) {
+        const baseCurr = rows.profile?.baseCurrency ?? 'ARS'
+        monthlyContribution = createMoney(rows.profile.plannedMonthlyContribution, baseCurr)
         const factor = new BigNumber(alloc.percentage).dividedBy(100).toString()
-        allocatedBaseAmount = multiplyMoneyByFactor(monthlyCommitment, factor)
+        allocatedBaseAmount = multiplyMoneyByFactor(monthlyContribution, factor)
         allocatedDestinationAmount = convertCommitmentToDestination(
           allocatedBaseAmount,
-          channel.destinationCurrency,
+          goal.currency,
         )
 
         if (allocatedBaseAmount.currency !== allocatedDestinationAmount.currency) {
@@ -396,53 +375,18 @@ export function buildGoalsWorkspace(
       }
 
       funding.push({
-        channelId: channel.id,
-        fundingMethod: channel.fundingMethod,
-        destinationCurrency: channel.destinationCurrency,
         percentage: alloc.percentage,
-        commitmentStatus: snapshot.commitmentStatus as 'active' | 'paused',
-        monthlyCommitment,
+        monthlyContribution,
         allocatedBaseAmount,
         allocatedDestinationAmount,
         effectiveMonth: snapshot.effectiveMonth,
       })
     }
 
-    // Enabled funding methods visibility
-    const saveEnabled =
-      goal.saveEnabled ?? (goalSavings.length > 0 || funding.some((f) => f.fundingMethod === 'save'))
-    const investEnabled =
-      goal.investEnabled ?? (goalInvestments.length > 0 || funding.some((f) => f.fundingMethod === 'invest'))
-
-    const enabledMethods: FundingMethod[] = []
-    if (saveEnabled) enabledMethods.push('save')
-    if (investEnabled) enabledMethods.push('invest')
-
-    for (const method of enabledMethods) {
-      const hasMethodRow = funding.some((f) => f.fundingMethod === method)
-      if (!hasMethodRow) {
-        const compatibleChannels = rows.channels.filter(
-          (c) => c.fundingMethod === method && c.destinationCurrency === goal.currency,
-        )
-        for (const channel of compatibleChannels) {
-          if (!funding.some((f) => f.channelId === channel.id)) {
-            const snapshot = rows.snapshots.find((s) => s.channelId === channel.id)
-            funding.push({
-              channelId: channel.id,
-              fundingMethod: channel.fundingMethod,
-              destinationCurrency: channel.destinationCurrency,
-              percentage: '0',
-              commitmentStatus: (snapshot?.commitmentStatus ?? 'active') as 'active' | 'paused',
-              effectiveMonth: snapshot?.effectiveMonth ?? currentMonth,
-            })
-          }
-        }
-      }
-    }
-
     // 6. Projection
     const projection = projectGoalCompletion({
       status: goal.status,
+      strategy: goal.strategy,
       targetAmount,
       actualValue,
       savingsValue,
@@ -466,6 +410,7 @@ export function buildGoalsWorkspace(
       type: goal.type,
       currency: goal.currency,
       priority: goal.priority,
+      strategy: goal.strategy,
       status: goal.status,
       createdAt: goal.createdAt,
       desiredDate: goal.desiredDate ?? undefined,
@@ -482,8 +427,6 @@ export function buildGoalsWorkspace(
       availability,
       availableFrom,
       usesPlanningRate,
-      saveEnabled,
-      investEnabled,
     }
   })
 

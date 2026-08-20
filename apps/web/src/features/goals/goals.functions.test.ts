@@ -16,7 +16,6 @@ import {
 import { buildGoalCreationProposal, type GoalCreationState } from './goal-creation'
 import type { GoalCreationDraft } from './goal-creation.schema'
 
-
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: vi.fn().mockImplementation(() => {
     let validatorFn: ((input: unknown) => unknown) | null = null
@@ -54,6 +53,7 @@ vi.mock('./goals.repository.server', async (importOriginal) => {
         approximateMonthlyIncome: rows.profile.approximateMonthlyIncome,
         approximateMonthlyExpenses: rows.profile.approximateMonthlyExpenses,
         expensesKnowledge: rows.profile.expensesKnowledge,
+        plannedMonthlyContribution: rows.profile.plannedMonthlyContribution,
         onboardingCompleted: rows.profile.onboardingCompleted,
       },
       goals: rows.goals.map((g: any) => ({
@@ -63,14 +63,11 @@ vi.mock('./goals.repository.server', async (importOriginal) => {
       })),
       savingsPositions: rows.savingsPositions,
       investmentPositions: rows.investmentPositions,
-      channels: rows.channels,
       snapshots: rows.snapshots,
       allocations: rows.allocations,
     })),
   }
 })
-
-
 
 describe('getGoalsWorkspace', () => {
   beforeEach(() => {
@@ -111,6 +108,7 @@ describe('getGoalsWorkspace', () => {
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -124,12 +122,11 @@ describe('getGoalsWorkspace', () => {
           targetAmount: '2000.00',
           currency: 'USD',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           desiredDate: null,
           completedAt: null,
           emergencyFundMonths: 6,
-          saveEnabled: true,
-          investEnabled: false,
           createdAt: new Date('2026-01-01T00:00:00Z'),
           updatedAt: new Date('2026-01-01T00:00:00Z'),
         },
@@ -146,23 +143,10 @@ describe('getGoalsWorkspace', () => {
         },
       ],
       investmentPositions: [],
-      channels: [
-        {
-          id: 'c1',
-          userId: 'user_456',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          updatedAt: new Date('2026-01-01T00:00:00Z'),
-        },
-      ],
       snapshots: [
         {
           id: 's1',
-          channelId: 'c1',
-          monthlyCommitmentAmount: '150000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user_456',
           effectiveMonth: '2026-08-01',
           createdAt: new Date('2026-01-01T00:00:00Z'),
         },
@@ -233,7 +217,7 @@ describe('getGoalCreationContext', () => {
     vi.useRealTimers()
   })
 
-  it('returns present profile state with route-safe goal creation context', async () => {
+  it('returns present profile state with route-safe goal creation context and planned contribution', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
     vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
@@ -246,6 +230,7 @@ describe('getGoalCreationContext', () => {
           approximateMonthlyIncome: '1000000.00',
           approximateMonthlyExpenses: '500000.00',
           expensesKnowledge: 'known',
+          plannedMonthlyContribution: '60000.00',
           onboardingCompleted: true,
         },
         goals: [
@@ -257,12 +242,11 @@ describe('getGoalCreationContext', () => {
             targetAmount: '2000.00',
             currency: 'USD',
             priority: 'high',
+            strategy: 'save',
             status: 'active',
             desiredDate: null,
             completedAt: null,
             emergencyFundMonths: 6,
-            saveEnabled: true,
-            investEnabled: false,
             createdAt: '2026-01-01T00:00:00.000Z',
           },
         ],
@@ -270,27 +254,10 @@ describe('getGoalCreationContext', () => {
           { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
         ],
         investmentPositions: [],
-        channels: [
-          {
-            id: 'c1',
-            userId: 'user_456',
-            fundingMethod: 'save',
-            destinationCurrency: 'USD',
-          },
-          {
-            id: 'c2',
-            userId: 'user_456',
-            fundingMethod: 'invest',
-            destinationCurrency: 'USD',
-          },
-        ],
         snapshots: [
           {
             id: 's1',
-            channelId: 'c1',
-            monthlyCommitmentAmount: '150000.00',
-            baseCurrency: 'ARS',
-            commitmentStatus: 'active',
+            userId: 'user_456',
             effectiveMonth: '2026-08-01',
           },
         ],
@@ -306,10 +273,7 @@ describe('getGoalCreationContext', () => {
       pendingSnapshots: [
         {
           id: 's1_next',
-          channelId: 'c1',
-          monthlyCommitmentAmount: '180000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user_456',
           effectiveMonth: '2026-09-01',
         },
       ],
@@ -334,29 +298,20 @@ describe('getGoalCreationContext', () => {
         currentMonth: '2026-08',
         expensesKnowledge: 'known',
         hasEmergencyFund: true,
-        fundingOptions: [
-          {
-            fundingMethod: 'save',
-            destinationCurrency: 'USD',
-            baseCurrency: 'ARS',
-            monthlyCommitment: { amount: '180000.00', currency: 'ARS' },
-            commitmentStatus: 'active',
-          },
-          {
-            fundingMethod: 'invest',
-            destinationCurrency: 'USD',
-            baseCurrency: 'ARS',
-            monthlyCommitment: undefined,
-            commitmentStatus: 'active',
-          },
-        ],
+        plannedMonthlyContribution: { amount: '60000.00', currency: 'ARS' },
+        currentAllocation: {
+          effectiveMonth: '2026-08-01',
+          entries: [
+            { goalId: 'g1', percentage: '100.00' },
+          ],
+        },
       },
     })
 
-    // Assert that raw source positions and allocations are not exposed in context
     expect((result as any).context.source).toBeUndefined()
     expect((result as any).context.savingsPositions).toBeUndefined()
     expect((result as any).context.snapshots).toBeUndefined()
+    expect((result as any).context.fundingOptions).toBeUndefined()
 
     vi.useRealTimers()
   })
@@ -370,25 +325,13 @@ describe('previewGoalCreation', () => {
     currency: 'USD',
     desiredMonth: '2027-01',
     priority: 'medium',
-    saveEnabled: true,
-    investEnabled: false,
-    defineSaveCommitment: false,
-    saveMonthlyCommitment: '',
-    defineInvestCommitment: false,
-    investMonthlyCommitment: '',
+    strategy: 'save',
     annualReturnRate: '',
     availability: 'available_now',
     availableFromMonth: '',
     allocations: [
-      {
-        key: 'save:USD',
-        fundingMethod: 'save',
-        destinationCurrency: 'USD',
-        entries: [
-          { goalId: 'g1', percentage: '40.00' },
-          { goalId: 'pending-goal', percentage: '60.00' },
-        ],
-      },
+      { goalId: 'g1', percentage: '40.00' },
+      { goalId: 'pending-goal', percentage: '60.00' },
     ],
   }
 
@@ -400,6 +343,7 @@ describe('previewGoalCreation', () => {
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
       },
       goals: [
@@ -411,12 +355,11 @@ describe('previewGoalCreation', () => {
           targetAmount: '2000.00',
           currency: 'USD',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           desiredDate: null,
           completedAt: null,
           emergencyFundMonths: 6,
-          saveEnabled: true,
-          investEnabled: false,
           createdAt: '2026-01-01T00:00:00.000Z',
         },
       ],
@@ -424,21 +367,10 @@ describe('previewGoalCreation', () => {
         { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
       ],
       investmentPositions: [],
-      channels: [
-        {
-          id: 'c1',
-          userId: 'user_456',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
-        },
-      ],
       snapshots: [
         {
           id: 's1',
-          channelId: 'c1',
-          monthlyCommitmentAmount: '150000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user_456',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -489,15 +421,8 @@ describe('previewGoalCreation', () => {
     const invalidDraft = {
       ...validDraft,
       allocations: [
-        {
-          key: 'save:USD',
-          fundingMethod: 'save' as const,
-          destinationCurrency: 'USD' as const,
-          entries: [
-            { goalId: 'g1', percentage: '30.00' },
-            { goalId: 'pending-goal', percentage: '50.00' }, // Sums to 80% != 100%
-          ],
-        },
+        { goalId: 'g1', percentage: '30.00' },
+        { goalId: 'pending-goal', percentage: '50.00' },
       ],
     }
 
@@ -522,7 +447,7 @@ describe('previewGoalCreation', () => {
       amount: '2000.00',
       currency: 'USD',
     })
-    expect(result.proposal.allocationGroups).toHaveLength(1)
+    expect(result.proposal.allocation.entries).toHaveLength(2)
     expect(result.proposal.impacts).toHaveLength(2)
 
     vi.useRealTimers()
@@ -541,25 +466,13 @@ describe('confirmGoalCreation', () => {
     currency: 'USD',
     desiredMonth: '2027-01',
     priority: 'medium',
-    saveEnabled: true,
-    investEnabled: false,
-    defineSaveCommitment: false,
-    saveMonthlyCommitment: '',
-    defineInvestCommitment: false,
-    investMonthlyCommitment: '',
+    strategy: 'save',
     annualReturnRate: '',
     availability: 'available_now',
     availableFromMonth: '',
     allocations: [
-      {
-        key: 'save:USD',
-        fundingMethod: 'save',
-        destinationCurrency: 'USD',
-        entries: [
-          { goalId: 'g1', percentage: '40.00' },
-          { goalId: 'pending-goal', percentage: '60.00' },
-        ],
-      },
+      { goalId: 'g1', percentage: '40.00' },
+      { goalId: 'pending-goal', percentage: '60.00' },
     ],
   }
 
@@ -571,6 +484,7 @@ describe('confirmGoalCreation', () => {
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
       },
       goals: [
@@ -582,12 +496,11 @@ describe('confirmGoalCreation', () => {
           targetAmount: '2000.00',
           currency: 'USD',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           desiredDate: null,
           completedAt: null,
           emergencyFundMonths: 6,
-          saveEnabled: true,
-          investEnabled: false,
           createdAt: '2026-01-01T00:00:00.000Z',
         },
       ],
@@ -595,21 +508,10 @@ describe('confirmGoalCreation', () => {
         { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
       ],
       investmentPositions: [],
-      channels: [
-        {
-          id: 'c1',
-          userId: 'user_456',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
-        },
-      ],
       snapshots: [
         {
           id: 's1',
-          channelId: 'c1',
-          monthlyCommitmentAmount: '150000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user_456',
           effectiveMonth: '2026-08-01',
         },
       ],

@@ -28,15 +28,11 @@ const sampleContext: GoalCreationContext = {
   currentMonth: '2026-08',
   expensesKnowledge: 'known',
   hasEmergencyFund: false,
-  fundingOptions: [
-    {
-      fundingMethod: 'save',
-      destinationCurrency: 'ARS',
-      baseCurrency: 'ARS',
-      monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
-      commitmentStatus: 'active',
-    },
-  ],
+  plannedMonthlyContribution: { amount: '100000.00', currency: 'ARS' },
+  currentAllocation: {
+    effectiveMonth: '2026-08-01',
+    entries: [{ goalId: 'g1', percentage: '100.00' }],
+  },
 }
 
 describe('GoalCreationSheet', () => {

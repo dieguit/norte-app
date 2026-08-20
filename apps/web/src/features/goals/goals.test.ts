@@ -10,16 +10,12 @@ import {
 } from './goals'
 
 function fundingRow(
-  overrides: Partial<GoalFundingRow> & { channelId: string; percentage: string; amount?: string; effectiveMonth: string },
+  overrides: Partial<GoalFundingRow> & { percentage: string; amount?: string; effectiveMonth: string },
 ): GoalFundingRow {
   const amount = overrides.amount
   const base: GoalFundingRow = {
-    channelId: overrides.channelId,
-    fundingMethod: 'save',
-    destinationCurrency: 'ARS',
     percentage: overrides.percentage,
-    commitmentStatus: overrides.commitmentStatus ?? 'active',
-    monthlyCommitment: amount !== undefined ? createMoney(amount, 'ARS') : undefined,
+    monthlyContribution: amount !== undefined ? createMoney(amount, 'ARS') : undefined,
     allocatedBaseAmount: amount !== undefined ? createMoney(amount, 'ARS') : undefined,
     allocatedDestinationAmount: amount !== undefined ? createMoney(amount, 'ARS') : undefined,
     effectiveMonth: overrides.effectiveMonth,
@@ -34,9 +30,10 @@ function createMockGoalItem(overrides: Partial<GoalWorkspaceItem> = {}): GoalWor
   return {
     id: 'goal-1',
     name: 'Goal 1',
-    type: 'fixed_savings',
+    type: 'purchase',
     currency: 'ARS',
     priority: 'medium',
+    strategy: 'save',
     status: 'active',
     createdAt: '2026-08-01T00:00:00.000Z',
     savingsValue: createMoney('0', 'ARS'),
@@ -45,8 +42,6 @@ function createMockGoalItem(overrides: Partial<GoalWorkspaceItem> = {}): GoalWor
     funding: [],
     projection: { status: 'no_future_allocation' },
     usesPlanningRate: false,
-    saveEnabled: false,
-    investEnabled: false,
     ...overrides,
   }
 }
@@ -118,47 +113,38 @@ function createMockWorkspaceSource(overrides: Partial<GoalsWorkspaceSource> = {}
       approximateMonthlyIncome: '1000000.00',
       approximateMonthlyExpenses: '600000.00',
       expensesKnowledge: 'known',
+      plannedMonthlyContribution: '100000.00',
       onboardingCompleted: true,
     },
     goals: [],
     savingsPositions: [],
     investmentPositions: [],
-    channels: [],
     snapshots: [],
     allocations: [],
     ...overrides,
   }
 }
 
-describe('buildGoalsWorkspace - channel amounts and progress', () => {
+describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
   it('calculates ARS 25% of ARS 100,000 gives ARS 25,000', () => {
     const source = createMockWorkspaceSource({
       goals: [
         {
           id: 'goal-1',
           name: 'Vacaciones',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        {
-          id: 'chan-1',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
         },
       ],
       snapshots: [
         {
           id: 'snap-1',
-          channelId: 'chan-1',
-          monthlyCommitmentAmount: '100000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -176,20 +162,26 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
     const item = workspace.groups[0].goals[0]
     expect(item.funding).toHaveLength(1)
     expect(item.funding[0]).toMatchObject({
-      channelId: 'chan-1',
-      fundingMethod: 'save',
-      destinationCurrency: 'ARS',
       percentage: '25.00',
-      commitmentStatus: 'active',
-      monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
+      monthlyContribution: { amount: '100000.00', currency: 'ARS' },
       allocatedBaseAmount: { amount: '25000.00', currency: 'ARS' },
       allocatedDestinationAmount: { amount: '25000.00', currency: 'ARS' },
+      effectiveMonth: '2026-08-01',
     })
     expect(item.usesPlanningRate).toBe(false)
   })
 
   it('uses planning rate when destination currency is USD', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '150000.00',
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-usd',
@@ -198,24 +190,15 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
           targetAmount: '1000.00',
           currency: 'USD',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        {
-          id: 'chan-usd',
-          fundingMethod: 'save',
-          destinationCurrency: 'USD',
         },
       ],
       snapshots: [
         {
           id: 'snap-usd',
-          channelId: 'chan-usd',
-          monthlyCommitmentAmount: '150000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -232,45 +215,43 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
     const workspace = buildGoalsWorkspace(source, '2026-08')
     const item = workspace.groups[0].goals[0]
     expect(item.funding[0]).toMatchObject({
-      channelId: 'chan-usd',
-      fundingMethod: 'save',
-      destinationCurrency: 'USD',
       percentage: '50.00',
-      monthlyCommitment: { amount: '150000.00', currency: 'ARS' },
+      monthlyContribution: { amount: '150000.00', currency: 'ARS' },
       allocatedBaseAmount: { amount: '75000.00', currency: 'ARS' },
       allocatedDestinationAmount: { amount: '50.00', currency: 'USD' },
+      effectiveMonth: '2026-08-01',
     })
     expect(item.usesPlanningRate).toBe(true)
   })
 
-  it('leaves derived amounts absent when commitment is null', () => {
+  it('leaves derived amounts absent when plannedMonthlyContribution is null', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: null as any,
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-1',
           name: 'Meta',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        {
-          id: 'chan-1',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
         },
       ],
       snapshots: [
         {
           id: 'snap-1',
-          channelId: 'chan-1',
-          monthlyCommitmentAmount: null,
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -286,60 +267,9 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
 
     const workspace = buildGoalsWorkspace(source, '2026-08')
     const item = workspace.groups[0].goals[0]
-    expect(item.funding[0].monthlyCommitment).toBeUndefined()
+    expect(item.funding[0].monthlyContribution).toBeUndefined()
     expect(item.funding[0].allocatedBaseAmount).toBeUndefined()
     expect(item.funding[0].allocatedDestinationAmount).toBeUndefined()
-  })
-
-  it('retains display amount for paused commitment', () => {
-    const source = createMockWorkspaceSource({
-      goals: [
-        {
-          id: 'goal-1',
-          name: 'Meta',
-          type: 'fixed_savings',
-          targetAmount: '100000.00',
-          currency: 'ARS',
-          priority: 'high',
-          status: 'active',
-          createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        {
-          id: 'chan-1',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-        },
-      ],
-      snapshots: [
-        {
-          id: 'snap-1',
-          channelId: 'chan-1',
-          monthlyCommitmentAmount: '100000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'paused',
-          effectiveMonth: '2026-08-01',
-        },
-      ],
-      allocations: [
-        {
-          id: 'alloc-1',
-          snapshotId: 'snap-1',
-          goalId: 'goal-1',
-          percentage: '30.00',
-        },
-      ],
-    })
-
-    const workspace = buildGoalsWorkspace(source, '2026-08')
-    const item = workspace.groups[0].goals[0]
-    expect(item.funding[0]).toMatchObject({
-      commitmentStatus: 'paused',
-      monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
-      allocatedBaseAmount: { amount: '30000.00', currency: 'ARS' },
-      allocatedDestinationAmount: { amount: '30000.00', currency: 'ARS' },
-    })
   })
 
   it('calculates actual value from savings and investment positions', () => {
@@ -347,11 +277,12 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
       goals: [
         {
           id: 'goal-1',
-          name: 'Meta Mixta',
-          type: 'fixed_savings',
+          name: 'Meta Inversión',
+          type: 'purchase',
           targetAmount: '200000.00',
           currency: 'ARS',
           priority: 'high',
+          strategy: 'invest',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
@@ -398,9 +329,10 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
         {
           id: 'goal-1',
           name: 'Meta Vacía',
-          type: 'fixed_savings',
+          type: 'purchase',
           currency: 'USD',
           priority: 'medium',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
@@ -420,9 +352,10 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
         {
           id: 'goal-1',
           name: 'Meta ARS',
-          type: 'fixed_savings',
+          type: 'purchase',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
@@ -446,9 +379,10 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
         {
           id: 'goal-1',
           name: 'Meta ARS',
-          type: 'fixed_savings',
+          type: 'purchase',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'invest',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
@@ -472,10 +406,11 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
         {
           id: 'goal-1',
           name: 'Superada',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100.00',
           currency: 'USD',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
@@ -495,85 +430,48 @@ describe('buildGoalsWorkspace - channel amounts and progress', () => {
     expect(item.progressPercentage).toBe('125.00')
   })
 
-  it('leaves progress percentage absent when target is unknown', () => {
-    const source = createMockWorkspaceSource({
-      profile: {
-        userId: 'user-1',
-        baseCurrency: 'USD',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: null,
-        expensesKnowledge: 'unknown',
-        onboardingCompleted: true,
-      },
-      goals: [
-        {
-          id: 'goal-1',
-          name: 'Sin Meta Fija',
-          type: 'emergency_fund',
-          targetAmount: null,
-          currency: 'USD',
-          priority: 'high',
-          status: 'active',
-          createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      savingsPositions: [
-        {
-          id: 'sav-1',
-          goalId: 'goal-1',
-          amount: '500.00',
-          currency: 'USD',
-        },
-      ],
-    })
-
-    const workspace = buildGoalsWorkspace(source, '2026-08')
-    const item = workspace.groups[0].goals[0]
-    expect(item.progressPercentage).toBeUndefined()
-    expect(item.actualValue).toEqual({ amount: '500.00', currency: 'USD' })
-  })
-
   it('calculates desiredDateDeltaMonths: negative is ahead, zero is same month, positive is behind', () => {
     const createSourceWithDesiredDate = (desiredDate: string) =>
       createMockWorkspaceSource({
+        profile: {
+          userId: 'user-1',
+          baseCurrency: 'ARS',
+          approximateMonthlyIncome: '1000000.00',
+          approximateMonthlyExpenses: '600000.00',
+          expensesKnowledge: 'known',
+          plannedMonthlyContribution: '100.00',
+          onboardingCompleted: true,
+        },
         goals: [
           {
             id: 'goal-delta',
             name: 'Meta Delta',
-            type: 'fixed_savings',
+            type: 'purchase',
             targetAmount: '1000.00',
             currency: 'ARS',
             priority: 'high',
+            strategy: 'save',
             status: 'active',
             createdAt: '2026-08-01T00:00:00.000Z',
             desiredDate,
           },
         ],
-        // Set up a simple 100 ARS/month saving channel starting 2026-08
-        channels: [{ id: 'chan-1', fundingMethod: 'save', destinationCurrency: 'ARS' }],
         snapshots: [
           {
             id: 'snap-1',
-            channelId: 'chan-1',
-            monthlyCommitmentAmount: '100.00',
-            baseCurrency: 'ARS',
-            commitmentStatus: 'active',
+            userId: 'user-1',
             effectiveMonth: '2026-08-01',
           },
         ],
         allocations: [{ id: 'alloc-1', snapshotId: 'snap-1', goalId: 'goal-delta', percentage: '100.00' }],
       })
 
-    // Target 1000 with 100/month starting 2026-08 reaches at month 9 (2027-05) -> 10 months total (Aug 2026 .. May 2027)
-    // Desired: 2027-07-01 -> delta = 2027-05 - 2027-07 = -2 (ahead)
     const aheadWorkspace = buildGoalsWorkspace(createSourceWithDesiredDate('2027-07-01'), '2026-08')
     expect(aheadWorkspace.groups[0].goals[0].desiredDateDeltaMonths).toBe(-2)
 
-    // Desired: 2027-05-15 -> delta = 2027-05 - 2027-05 = 0 (same month)
     const sameWorkspace = buildGoalsWorkspace(createSourceWithDesiredDate('2027-05-15'), '2026-08')
     expect(sameWorkspace.groups[0].goals[0].desiredDateDeltaMonths).toBe(0)
 
-    // Desired: 2027-03-01 -> delta = 2027-05 - 2027-03 = 2 (behind)
     const behindWorkspace = buildGoalsWorkspace(createSourceWithDesiredDate('2027-03-01'), '2026-08')
     expect(behindWorkspace.groups[0].goals[0].desiredDateDeltaMonths).toBe(2)
   })
@@ -584,26 +482,32 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
 
   it('projects saving-only completion month accurately', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '20000.00',
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-save',
           name: 'Ahorro Puro',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
       ],
-      channels: [{ id: 'chan-save', fundingMethod: 'save', destinationCurrency: 'ARS' }],
       snapshots: [
         {
           id: 'snap-save',
-          channelId: 'chan-save',
-          monthlyCommitmentAmount: '20000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -619,14 +523,24 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
 
   it('projects 8% investment-only completion month compounding monthly', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '10000.00',
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-inv',
           name: 'Inversión 8%',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'invest',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
@@ -640,14 +554,10 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
           annualReturnRate: '8.000',
         },
       ],
-      channels: [{ id: 'chan-inv', fundingMethod: 'invest', destinationCurrency: 'ARS' }],
       snapshots: [
         {
           id: 'snap-inv',
-          channelId: 'chan-inv',
-          monthlyCommitmentAmount: '10000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -661,69 +571,54 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
     })
   })
 
-  it('projects mixed funding with savings and investment contributions', () => {
+  it('does not compound savings goals even if investment position exists', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '20000.00',
+        onboardingCompleted: true,
+      },
       goals: [
         {
-          id: 'goal-mixed',
-          name: 'Mixta',
-          type: 'fixed_savings',
+          id: 'goal-save-with-inv',
+          name: 'Ahorro con Inversión Previa',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      savingsPositions: [
-        {
-          id: 'sav-pos',
-          goalId: 'goal-mixed',
-          amount: '10000.00',
-          currency: 'ARS',
         },
       ],
       investmentPositions: [
         {
           id: 'inv-pos',
-          goalId: 'goal-mixed',
-          currentValue: '10000.00',
+          goalId: 'goal-save-with-inv',
+          currentValue: '0.00',
           currency: 'ARS',
           annualReturnRate: '8.000',
         },
       ],
-      channels: [
-        { id: 'chan-save', fundingMethod: 'save', destinationCurrency: 'ARS' },
-        { id: 'chan-inv', fundingMethod: 'invest', destinationCurrency: 'ARS' },
-      ],
       snapshots: [
         {
           id: 'snap-save',
-          channelId: 'chan-save',
-          monthlyCommitmentAmount: '5000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
-          effectiveMonth: '2026-08-01',
-        },
-        {
-          id: 'snap-inv',
-          channelId: 'chan-inv',
-          monthlyCommitmentAmount: '5000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
-      allocations: [
-        { id: 'alloc-save', snapshotId: 'snap-save', goalId: 'goal-mixed', percentage: '100.00' },
-        { id: 'alloc-inv', snapshotId: 'snap-inv', goalId: 'goal-mixed', percentage: '100.00' },
-      ],
+      allocations: [{ id: 'alloc-save', snapshotId: 'snap-save', goalId: 'goal-save-with-inv', percentage: '100.00' }],
     })
 
     const workspace = buildGoalsWorkspace(source, currentMonth)
+    // At 20,000/month flat with 0 initial: 5 months (Aug, Sep, Oct, Nov, Dec 2026)
     expect(workspace.groups[0].goals[0].projection).toEqual({
       status: 'available',
-      completionMonth: '2027-03',
+      completionMonth: '2026-12',
     })
   })
 
@@ -733,10 +628,11 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         {
           id: 'goal-reached',
           name: 'Alcanzada',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '50000.00',
           currency: 'ARS',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
@@ -764,22 +660,19 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         {
           id: 'goal-paused',
           name: 'Meta Pausada',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'save',
           status: 'paused',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
       ],
-      channels: [{ id: 'chan-1', fundingMethod: 'save', destinationCurrency: 'ARS' }],
       snapshots: [
         {
           id: 'snap-1',
-          channelId: 'chan-1',
-          monthlyCommitmentAmount: '20000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -793,28 +686,34 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
     })
   })
 
-  it('returns commitment_absent when active funding commitment is null', () => {
+  it('returns commitment_absent when plannedMonthlyContribution is null', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: null as any,
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-absent',
           name: 'Sin Compromiso',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
       ],
-      channels: [{ id: 'chan-1', fundingMethod: 'save', destinationCurrency: 'ARS' }],
       snapshots: [
         {
           id: 'snap-1',
-          channelId: 'chan-1',
-          monthlyCommitmentAmount: null,
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -829,26 +728,32 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
 
   it('returns no_future_allocation when goal has zero allocation', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '50000.00',
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-zero',
           name: 'Cero Aporte',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
       ],
-      channels: [{ id: 'chan-1', fundingMethod: 'save', destinationCurrency: 'ARS' }],
       snapshots: [
         {
           id: 'snap-1',
-          channelId: 'chan-1',
-          monthlyCommitmentAmount: '50000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -861,28 +766,34 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
     })
   })
 
-  it('returns investment_assumption_unavailable when investment assumption is missing or invalid', () => {
+  it('returns investment_assumption_unavailable when investment assumption is missing or invalid for invest strategy', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '10000.00',
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-missing-rate',
           name: 'Sin Tasa',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '100000.00',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'invest',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
       ],
-      channels: [{ id: 'chan-inv', fundingMethod: 'invest', destinationCurrency: 'ARS' }],
       snapshots: [
         {
           id: 'snap-inv',
-          channelId: 'chan-inv',
-          monthlyCommitmentAmount: '10000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -897,26 +808,32 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
 
   it('does not count first contribution until its next-month effective date (2026-09)', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '10000.00',
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-next-month',
           name: 'Aporte Futuro',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '10000.00',
           currency: 'ARS',
           priority: 'medium',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
       ],
-      channels: [{ id: 'chan-1', fundingMethod: 'save', destinationCurrency: 'ARS' }],
       snapshots: [
         {
           id: 'snap-1',
-          channelId: 'chan-1',
-          monthlyCommitmentAmount: '10000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-09-01',
         },
       ],
@@ -932,26 +849,32 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
 
   it('returns outside_horizon when completion would require 721 months', () => {
     const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '100.00',
+        onboardingCompleted: true,
+      },
       goals: [
         {
           id: 'goal-horizon',
           name: 'Muy Lejana',
-          type: 'fixed_savings',
+          type: 'purchase',
           targetAmount: '72100.00',
           currency: 'ARS',
           priority: 'low',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
       ],
-      channels: [{ id: 'chan-1', fundingMethod: 'save', destinationCurrency: 'ARS' }],
       snapshots: [
         {
           id: 'snap-1',
-          channelId: 'chan-1',
-          monthlyCommitmentAmount: '100.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
+          userId: 'user-1',
           effectiveMonth: '2026-08-01',
         },
       ],
@@ -965,7 +888,7 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
   })
 })
 
-describe('buildGoalsWorkspace - emergency-fund target derivation and enabled funding visibility', () => {
+describe('buildGoalsWorkspace - emergency-fund target derivation', () => {
   const currentMonth = '2026-08'
 
   it('derives target amount for emergency fund with known expenses and 6 months', () => {
@@ -976,6 +899,7 @@ describe('buildGoalsWorkspace - emergency-fund target derivation and enabled fun
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
+        plannedMonthlyContribution: '100000.00',
         onboardingCompleted: true,
       },
       goals: [
@@ -986,6 +910,7 @@ describe('buildGoalsWorkspace - emergency-fund target derivation and enabled fun
           targetAmount: null,
           currency: 'USD',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           createdAt: '2026-08-01T00:00:00.000Z',
         },
@@ -1016,6 +941,7 @@ describe('buildGoalsWorkspace - emergency-fund target derivation and enabled fun
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
+        plannedMonthlyContribution: '100000.00',
         onboardingCompleted: true,
       },
       goals: [
@@ -1026,6 +952,7 @@ describe('buildGoalsWorkspace - emergency-fund target derivation and enabled fun
           targetAmount: null,
           currency: 'USD',
           priority: 'high',
+          strategy: 'save',
           status: 'active',
           emergencyFundMonths: 6,
           createdAt: '2026-08-01T00:00:00.000Z',
@@ -1039,261 +966,20 @@ describe('buildGoalsWorkspace - emergency-fund target derivation and enabled fun
     expect(goal.progressPercentage).toBeUndefined()
     expect(goal.projection).toEqual({ status: 'target_unavailable' })
   })
-
-  it('retains visible funding row at 0% for enabled save method with no persisted allocation', () => {
-    const source = createMockWorkspaceSource({
-      goals: [
-        {
-          id: 'goal-save-enabled',
-          name: 'Meta Ahorro',
-          type: 'fixed_savings',
-          targetAmount: '100000.00',
-          currency: 'ARS',
-          priority: 'medium',
-          status: 'active',
-          saveEnabled: true,
-          investEnabled: false,
-          createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        {
-          id: 'chan-save',
-          fundingMethod: 'save',
-          destinationCurrency: 'ARS',
-        },
-      ],
-      snapshots: [
-        {
-          id: 'snap-save',
-          channelId: 'chan-save',
-          monthlyCommitmentAmount: '50000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
-          effectiveMonth: '2026-08-01',
-        },
-      ],
-      allocations: [],
-    })
-
-    const workspace = buildGoalsWorkspace(source, currentMonth)
-    const goal = workspace.groups[0].goals[0]
-    expect(goal.saveEnabled).toBe(true)
-    expect(goal.investEnabled).toBe(false)
-    expect(goal.funding).toHaveLength(1)
-    expect(goal.funding[0]).toMatchObject({
-      channelId: 'chan-save',
-      fundingMethod: 'save',
-      destinationCurrency: 'ARS',
-      percentage: '0',
-      commitmentStatus: 'active',
-      effectiveMonth: '2026-08-01',
-    })
-    expect(goal.funding[0].allocatedBaseAmount).toBeUndefined()
-    expect(goal.funding[0].allocatedDestinationAmount).toBeUndefined()
-  })
-
-  it('retains visible funding row at 0% for enabled invest method with no persisted allocation', () => {
-    const source = createMockWorkspaceSource({
-      goals: [
-        {
-          id: 'goal-invest-enabled',
-          name: 'Meta Inversión',
-          type: 'fixed_savings',
-          targetAmount: '100000.00',
-          currency: 'ARS',
-          priority: 'medium',
-          status: 'active',
-          saveEnabled: false,
-          investEnabled: true,
-          createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        {
-          id: 'chan-inv',
-          fundingMethod: 'invest',
-          destinationCurrency: 'ARS',
-        },
-      ],
-      snapshots: [
-        {
-          id: 'snap-inv',
-          channelId: 'chan-inv',
-          monthlyCommitmentAmount: '30000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
-          effectiveMonth: '2026-08-01',
-        },
-      ],
-      allocations: [],
-    })
-
-    const workspace = buildGoalsWorkspace(source, currentMonth)
-    const goal = workspace.groups[0].goals[0]
-    expect(goal.saveEnabled).toBe(false)
-    expect(goal.investEnabled).toBe(true)
-    expect(goal.funding).toHaveLength(1)
-    expect(goal.funding[0]).toMatchObject({
-      channelId: 'chan-inv',
-      fundingMethod: 'invest',
-      destinationCurrency: 'ARS',
-      percentage: '0',
-      commitmentStatus: 'active',
-    })
-  })
-
-  it('retains both funding rows at 0% when both save and invest methods are enabled without allocations', () => {
-    const source = createMockWorkspaceSource({
-      goals: [
-        {
-          id: 'goal-both-enabled',
-          name: 'Meta Doble',
-          type: 'fixed_savings',
-          targetAmount: '100000.00',
-          currency: 'ARS',
-          priority: 'medium',
-          status: 'active',
-          saveEnabled: true,
-          investEnabled: true,
-          createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        { id: 'chan-save', fundingMethod: 'save', destinationCurrency: 'ARS' },
-        { id: 'chan-inv', fundingMethod: 'invest', destinationCurrency: 'ARS' },
-      ],
-      snapshots: [
-        {
-          id: 'snap-save',
-          channelId: 'chan-save',
-         monthlyCommitmentAmount: undefined,
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
-          effectiveMonth: '2026-08-01',
-        },
-        {
-          id: 'snap-inv',
-          channelId: 'chan-inv',
-           monthlyCommitmentAmount: undefined,
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
-          effectiveMonth: '2026-08-01',
-        },
-      ],
-      allocations: [],
-    })
-
-    const workspace = buildGoalsWorkspace(source, currentMonth)
-    const goal = workspace.groups[0].goals[0]
-    expect(goal.saveEnabled).toBe(true)
-    expect(goal.investEnabled).toBe(true)
-    expect(goal.funding).toHaveLength(2)
-    expect(goal.funding.map((f) => f.fundingMethod)).toEqual(['save', 'invest'])
-  })
-
-  it('returns plan_paused when all positive allocations on an active goal are paused', () => {
-    const source = createMockWorkspaceSource({
-      goals: [
-        {
-          id: 'goal-paused-allocs',
-          name: 'Meta Aportes Pausados',
-          type: 'fixed_savings',
-          targetAmount: '100000.00',
-          currency: 'ARS',
-          priority: 'high',
-          status: 'active',
-          createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        { id: 'chan-1', fundingMethod: 'save', destinationCurrency: 'ARS' },
-      ],
-      snapshots: [
-        {
-         id: 'snap-1',
-         channelId: 'chan-1',
-          monthlyCommitmentAmount: null,
-          baseCurrency: 'ARS',
-          commitmentStatus: 'paused',
-          effectiveMonth: '2026-08-01',
-        },
-      ],
-      allocations: [
-        { id: 'alloc-1', snapshotId: 'snap-1', goalId: 'goal-paused-allocs', percentage: '100.00' },
-      ],
-    })
-
-    const workspace = buildGoalsWorkspace(source, currentMonth)
-    const goal = workspace.groups[0].goals[0]
-    expect(goal.projection).toEqual({
-      status: 'plan_paused',
-    })
-  })
-
-  it('projects from active allocation when active and paused allocations coexist', () => {
-    const source = createMockWorkspaceSource({
-      goals: [
-        {
-          id: 'goal-mixed-allocs',
-          name: 'Meta Mixta Activo y Pausado',
-          type: 'fixed_savings',
-          targetAmount: '100000.00',
-          currency: 'ARS',
-          priority: 'high',
-          status: 'active',
-          createdAt: '2026-08-01T00:00:00.000Z',
-        },
-      ],
-      channels: [
-        { id: 'chan-save', fundingMethod: 'save', destinationCurrency: 'ARS' },
-        { id: 'chan-inv', fundingMethod: 'invest', destinationCurrency: 'ARS' },
-      ],
-      snapshots: [
-        {
-          id: 'snap-save',
-          channelId: 'chan-save',
-          monthlyCommitmentAmount: '20000.00',
-          baseCurrency: 'ARS',
-          commitmentStatus: 'active',
-          effectiveMonth: '2026-08-01',
-        },
-        {
-         id: 'snap-inv',
-         channelId: 'chan-inv',
-          monthlyCommitmentAmount: null,
-          baseCurrency: 'ARS',
-          commitmentStatus: 'paused',
-          effectiveMonth: '2026-08-01',
-        },
-      ],
-      allocations: [
-        { id: 'alloc-save', snapshotId: 'snap-save', goalId: 'goal-mixed-allocs', percentage: '100.00' },
-        { id: 'alloc-inv', snapshotId: 'snap-inv', goalId: 'goal-mixed-allocs', percentage: '100.00' },
-      ],
-    })
-
-    const workspace = buildGoalsWorkspace(source, currentMonth)
-    const goal = workspace.groups[0].goals[0]
-    expect(goal.projection).toEqual({
-      status: 'available',
-      completionMonth: '2026-12',
-    })
-  })
 })
 
 describe('projectGoalCompletion', () => {
   function projectWithFutureRow(futureOverrides: Partial<GoalFundingRow>) {
     return projectGoalCompletion({
       status: 'active',
+      strategy: 'save',
       targetAmount: createMoney('250.00', 'ARS'),
       actualValue: createMoney('0', 'ARS'),
       savingsValue: createMoney('0', 'ARS'),
       investmentValue: createMoney('0', 'ARS'),
       funding: [
-        fundingRow({ channelId: 'save-ars', percentage: '100.00', amount: '100.00', effectiveMonth: '2026-08-01' }),
+        fundingRow({ percentage: '100.00', amount: '100.00', effectiveMonth: '2026-08-01' }),
         fundingRow({
-          channelId: 'save-ars',
           percentage: '50.00',
           amount: '50.00',
           effectiveMonth: '2026-09-01',
@@ -1307,13 +993,14 @@ describe('projectGoalCompletion', () => {
   it('keeps the current allocation through its month and applies the replacement next month', () => {
     const projection = projectGoalCompletion({
       status: 'active',
+      strategy: 'save',
       targetAmount: createMoney('250.00', 'ARS'),
       actualValue: createMoney('0', 'ARS'),
       savingsValue: createMoney('0', 'ARS'),
       investmentValue: createMoney('0', 'ARS'),
       funding: [
-        fundingRow({ channelId: 'save-ars', percentage: '100.00', amount: '100.00', effectiveMonth: '2026-08-01' }),
-        fundingRow({ channelId: 'save-ars', percentage: '50.00', amount: '50.00', effectiveMonth: '2026-09-01' }),
+        fundingRow({ percentage: '100.00', amount: '100.00', effectiveMonth: '2026-08-01' }),
+        fundingRow({ percentage: '50.00', amount: '50.00', effectiveMonth: '2026-09-01' }),
       ],
       currentMonth: '2026-08',
     })
@@ -1321,9 +1008,8 @@ describe('projectGoalCompletion', () => {
     expect(projection).toEqual({ status: 'available', completionMonth: '2026-11' })
   })
 
-  it('handles paused, absent, and zero future funding at horizon', () => {
+  it('handles absent and zero future funding at horizon', () => {
     expect(projectWithFutureRow({ percentage: '0.00' })).toEqual({ status: 'no_future_allocation' })
-    expect(projectWithFutureRow({ commitmentStatus: 'paused' })).toEqual({ status: 'plan_paused' })
-    expect(projectWithFutureRow({ monthlyCommitment: undefined })).toEqual({ status: 'commitment_absent' })
+    expect(projectWithFutureRow({ monthlyContribution: undefined })).toEqual({ status: 'commitment_absent' })
   })
 })

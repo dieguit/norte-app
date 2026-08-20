@@ -32,24 +32,34 @@ export function mapGoalCreationContext(
   state: GoalCreationState,
   currentMonth: string,
 ): GoalCreationContext {
+  const profile = state.source.profile
+  const plannedMonthlyContribution =
+    profile?.plannedMonthlyContribution !== null && profile?.plannedMonthlyContribution !== undefined
+      ? createMoney(profile.plannedMonthlyContribution, profile.baseCurrency ?? 'ARS')
+      : undefined
+
+  const winningSnapshot = state.source.snapshots?.[0]
+  let currentAllocation: GoalCreationContext['currentAllocation'] = undefined
+
+  if (winningSnapshot) {
+    const entries = (state.source.allocations ?? [])
+      .filter((a) => a.snapshotId === winningSnapshot.id)
+      .map((a) => ({
+        goalId: a.goalId,
+        percentage: a.percentage,
+      }))
+    currentAllocation = {
+      effectiveMonth: winningSnapshot.effectiveMonth,
+      entries,
+    }
+  }
+
   return {
     currentMonth,
-    expensesKnowledge: state.source.profile?.expensesKnowledge === 'known' ? 'known' : 'unknown',
+    expensesKnowledge: profile?.expensesKnowledge === 'known' ? 'known' : 'unknown',
     hasEmergencyFund: state.source.goals.some((goal) => goal.type === 'emergency_fund'),
-    fundingOptions: state.source.channels.map((channel) => {
-      const pending = state.pendingSnapshots.find((snapshot) => snapshot.channelId === channel.id)
-      const current = state.source.snapshots.find((snapshot) => snapshot.channelId === channel.id)
-      const snapshot = pending ?? current
-      return {
-        fundingMethod: channel.fundingMethod,
-        destinationCurrency: channel.destinationCurrency,
-        baseCurrency: snapshot?.baseCurrency ?? state.source.profile?.baseCurrency ?? 'ARS',
-        monthlyCommitment: snapshot?.monthlyCommitmentAmount
-          ? createMoney(snapshot.monthlyCommitmentAmount, snapshot.baseCurrency)
-          : undefined,
-        commitmentStatus: snapshot?.commitmentStatus ?? 'active',
-      }
-    }),
+    plannedMonthlyContribution,
+    currentAllocation,
   }
 }
 

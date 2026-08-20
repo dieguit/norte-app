@@ -57,18 +57,11 @@ const sampleGoal: GoalWorkspaceItem = {
   savingsValue: { amount: '200.00', currency: 'USD' },
   investmentValue: { amount: '100.00', currency: 'USD' },
   actualValue: { amount: '300.00', currency: 'USD' },
-  progressPercentage: '30.00',
-  usesPlanningRate: false,
-  saveEnabled: true,
-  investEnabled: true,
+  strategy: 'save',
   funding: [
     {
-      channelId: 'ch-1',
-      fundingMethod: 'save',
-      destinationCurrency: 'USD',
       percentage: '100.00',
-      commitmentStatus: 'active',
-      monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
+      monthlyContribution: { amount: '50000.00', currency: 'ARS' },
       allocatedBaseAmount: { amount: '50000.00', currency: 'ARS' },
       allocatedDestinationAmount: { amount: '33.33', currency: 'USD' },
       effectiveMonth: '2026-09',
@@ -81,6 +74,7 @@ const sampleGoal: GoalWorkspaceItem = {
   desiredDateDeltaMonths: 5,
   annualReturnRate: '8.000',
   availability: 'available_now',
+  usesPlanningRate: false,
 }
 
 const sampleWorkspace: GoalsWorkspace = {
