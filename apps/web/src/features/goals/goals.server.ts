@@ -35,6 +35,7 @@ export function mapGoalCreationContext(
   return {
     currentMonth,
     expensesKnowledge: state.source.profile?.expensesKnowledge === 'known' ? 'known' : 'unknown',
+    hasEmergencyFund: state.source.goals.some((goal) => goal.type === 'emergency_fund'),
     fundingOptions: state.source.channels.map((channel) => {
       const pending = state.pendingSnapshots.find((snapshot) => snapshot.channelId === channel.id)
       const current = state.source.snapshots.find((snapshot) => snapshot.channelId === channel.id)

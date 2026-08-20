@@ -20,7 +20,9 @@ Provide the minimum financial-input experience needed for NORTE to estimate mont
 
 - No bank synchronization, automatic imports, reconciliation, or shared accounts.
 - No custom categories, category CRUD, category budgets, advanced filters, search, reports, or advanced analytics.
-- No inflation, FX conversion, taxes, real-time prices, or portfolio analytics.
+- No inflation, live or user-configurable FX, taxes, real-time prices, or
+  portfolio analytics. USD goal funding uses the shared fixed ARS-to-USD
+  reference rate outside this feature's cash-flow calculations.
 - No complex recurrence editor, drag-and-drop roadmap editing, or inline roadmap editing.
 - Do not treat estimated margin as actual savings or automatically change the user's plan.
 
@@ -85,6 +87,9 @@ estimatedMargin = totalIncome - totalExpenses
 - Include an occurrence when its schedule is active in that month.
 - `estimatedMargin` is an estimate of available margin, not actual savings and not a balance.
 - Planned contribution remains intent. Actual contribution changes only through explicit `Ahorré` or `Invertí` actions.
+- The monthly actual-contribution summary is expressed in ARS: direct ARS
+  contributions use their amount, while USD savings and investments use their
+  persisted ARS spend.
 - If `plannedMonthlyContribution > estimatedMargin`, show a neutral warning and leave the plan unchanged.
 - If expenses are incomplete or unavailable, label the result as incomplete instead of guessing.
 - Recalculation must update the Finances summary, projections, roadmap summaries, and any affected goal dates.

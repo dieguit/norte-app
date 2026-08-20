@@ -87,6 +87,7 @@ export interface GoalCreationProposal {
 export interface GoalCreationContext {
   currentMonth: string
   expensesKnowledge: 'known' | 'unknown'
+  hasEmergencyFund: boolean
   fundingOptions: Array<{
     fundingMethod: FundingMethod
     destinationCurrency: CurrencyCode
@@ -110,10 +111,90 @@ function getNextCalendarMonthStr(currentMonth: string): string {
 }
 
 export function calculatePercentageSum(entries: Array<{ percentage: string }>): BigNumber {
-  return entries.reduce(
-    (sum, e) => sum.plus(new BigNumber((e.percentage || '0').replace(',', '.'))),
-    new BigNumber(0),
-  )
+  return entries.reduce((sum, e) => {
+    try {
+      const normalized = (e.percentage || '0').trim().replace(',', '.')
+      const bn = new BigNumber(normalized)
+      return bn.isFinite() && !bn.isNaN() ? sum.plus(bn) : sum.plus(NaN)
+    } catch {
+      return sum.plus(NaN)
+    }
+  }, new BigNumber(0))
+}
+
+export function rebalanceAllocationEntries<T extends { goalId: string; percentage: string }>(
+  entries: T[],
+  selectedGoalId: string,
+  nextPercentage: string,
+): T[] {
+  const normalizedInput = (nextPercentage ?? '').trim().replace(',', '.')
+  let selected: BigNumber | null = null
+
+  if (normalizedInput !== '') {
+    try {
+      const bn = new BigNumber(normalizedInput)
+      if (
+        bn.isFinite() &&
+        !bn.isNaN() &&
+        bn.isGreaterThanOrEqualTo(0) &&
+        bn.isLessThanOrEqualTo(100)
+      ) {
+        selected = bn
+      }
+    } catch {
+      selected = null
+    }
+  }
+
+  if (selected === null) {
+    return entries.map((entry) =>
+      entry.goalId === selectedGoalId ? { ...entry, percentage: nextPercentage } : entry,
+    )
+  }
+
+  const others = entries.filter((entry) => entry.goalId !== selectedGoalId)
+  if (others.length === 0) {
+    return entries.map((entry) =>
+      entry.goalId === selectedGoalId ? { ...entry, percentage: '100.00' } : entry,
+    )
+  }
+
+  const remaining = new BigNumber(100).minus(selected)
+  const percentageOf = (entry: { percentage: string }) => {
+    try {
+      const bn = new BigNumber((entry.percentage || '0').replace(',', '.'))
+      return bn.isFinite() && !bn.isNaN() && bn.isGreaterThanOrEqualTo(0) ? bn : new BigNumber(0)
+    } catch {
+      return new BigNumber(0)
+    }
+  }
+  const previousTotal = others.reduce((sum, e) => sum.plus(percentageOf(e)), new BigNumber(0))
+  const shares = previousTotal.isZero()
+    ? others.map(() => new BigNumber(1).dividedBy(others.length))
+    : others.map((entry) => percentageOf(entry).dividedBy(previousTotal))
+
+  const allocatedOthersMap = new Map<string, string>()
+  let accumulatedBn = new BigNumber(0)
+
+  for (let i = 0; i < others.length; i++) {
+    const other = others[i]
+    if (i === others.length - 1) {
+      const lastAmountBn = remaining.minus(accumulatedBn)
+      allocatedOthersMap.set(other.goalId, lastAmountBn.toFixed(2))
+    } else {
+      const amountBn = remaining.times(shares[i])
+      const roundedStr = amountBn.toFixed(2)
+      accumulatedBn = accumulatedBn.plus(new BigNumber(roundedStr))
+      allocatedOthersMap.set(other.goalId, roundedStr)
+    }
+  }
+
+  return entries.map((entry) => {
+    if (entry.goalId === selectedGoalId) {
+      return { ...entry, percentage: selected!.toFixed(2) }
+    }
+    return { ...entry, percentage: allocatedOthersMap.get(entry.goalId)! }
+  })
 }
 
 export function recalculateAllocationAmounts(input: {
@@ -163,8 +244,18 @@ export function recalculateAllocationAmounts(input: {
     }
   } else {
     for (const entry of entries) {
-      const pctBn = new BigNumber((entry.percentage || '0').replace(',', '.'))
-      if (pctBn.isFinite() && !pctBn.isNaN() && pctBn.isGreaterThanOrEqualTo(0)) {
+      let pctBn: BigNumber | null = null
+      try {
+        const normalized = (entry.percentage || '0').trim().replace(',', '.')
+        const bn = new BigNumber(normalized)
+        if (bn.isFinite() && !bn.isNaN() && bn.isGreaterThanOrEqualTo(0)) {
+          pctBn = bn
+        }
+      } catch {
+        pctBn = null
+      }
+
+      if (pctBn) {
         const amountBn = new BigNumber(monthlyCommitment.amount).times(pctBn).dividedBy(100)
         const allocatedBaseAmount = createMoney(amountBn.toFixed(2), monthlyCommitment.currency)
         const allocatedDestinationAmount = convertCommitmentToDestination(

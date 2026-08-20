@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   PENDING_GOAL_ID,
   buildGoalCreationProposal,
+  calculatePercentageSum,
+  rebalanceAllocationEntries,
   serializeGoalCreationState,
   type GoalCreationState,
 } from './goal-creation'
@@ -794,4 +796,189 @@ describe('serializeGoalCreationState', () => {
     expect(saveGroup?.destinationCommitment).toEqual({ amount: '250.00', currency: 'USD' })
   })
 })
+
+describe('rebalanceAllocationEntries', () => {
+  it('rebalances pending entry from 0 to 20 proportionally across existing 70/30 entries', () => {
+    const entries = [
+      { goalId: PENDING_GOAL_ID, percentage: '0.00' },
+      { goalId: 'goal-1', percentage: '70.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ]
+
+    const result = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, '20')
+
+    expect(result).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '20.00' },
+      { goalId: 'goal-1', percentage: '56.00' },
+      { goalId: 'goal-2', percentage: '24.00' },
+    ])
+    expect(calculatePercentageSum(result).toFixed(2)).toBe('100.00')
+  })
+
+  it('rebalances when modifying an existing entry instead of pending goal', () => {
+    const entries = [
+      { goalId: PENDING_GOAL_ID, percentage: '20.00' },
+      { goalId: 'goal-1', percentage: '56.00' },
+      { goalId: 'goal-2', percentage: '24.00' },
+    ]
+
+    // Modify goal-1 from 56.00 to 50: remaining 50 distributed to pending (20/44) and goal-2 (24/44)
+    const result = rebalanceAllocationEntries(entries, 'goal-1', '50')
+
+    expect(result).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '22.73' },
+      { goalId: 'goal-1', percentage: '50.00' },
+      { goalId: 'goal-2', percentage: '27.27' },
+    ])
+    expect(calculatePercentageSum(result).toFixed(2)).toBe('100.00')
+  })
+
+  it('distributes remaining percentage equally when all other entries are zero', () => {
+    const entries = [
+      { goalId: PENDING_GOAL_ID, percentage: '100.00' },
+      { goalId: 'goal-1', percentage: '0.00' },
+      { goalId: 'goal-2', percentage: '0.00' },
+    ]
+
+    const result = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, '40')
+
+    expect(result).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '40.00' },
+      { goalId: 'goal-1', percentage: '30.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ])
+    expect(calculatePercentageSum(result).toFixed(2)).toBe('100.00')
+  })
+
+  it('sets other entries to 0.00 when selected entry is 100%', () => {
+    const entries = [
+      { goalId: PENDING_GOAL_ID, percentage: '20.00' },
+      { goalId: 'goal-1', percentage: '50.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ]
+
+    const result = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, '100')
+
+    expect(result).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '100.00' },
+      { goalId: 'goal-1', percentage: '0.00' },
+      { goalId: 'goal-2', percentage: '0.00' },
+    ])
+    expect(calculatePercentageSum(result).toFixed(2)).toBe('100.00')
+  })
+
+  it('keeps single-entry group at 100.00 regardless of valid input', () => {
+    const entries = [{ goalId: PENDING_GOAL_ID, percentage: '100.00' }]
+
+    const result = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, '50')
+
+    expect(result).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '100.00' },
+    ])
+    expect(calculatePercentageSum(result).toFixed(2)).toBe('100.00')
+  })
+
+  it('produces exact 100.00 sum for fractional divisions', () => {
+    // If pending is set to 33.33 with equal distribution among others
+    const zeroEntries = [
+      { goalId: PENDING_GOAL_ID, percentage: '0.00' },
+      { goalId: 'goal-1', percentage: '0.00' },
+      { goalId: 'goal-2', percentage: '0.00' },
+      { goalId: 'goal-3', percentage: '0.00' },
+    ]
+    const result = rebalanceAllocationEntries(zeroEntries, PENDING_GOAL_ID, '10')
+
+    // 90 divided among 3 others = 30.00 each
+    expect(result).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '10.00' },
+      { goalId: 'goal-1', percentage: '30.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+      { goalId: 'goal-3', percentage: '30.00' },
+    ])
+    expect(calculatePercentageSum(result).toFixed(2)).toBe('100.00')
+
+    // 100 divided among 3 goals when pending is 0
+    const threeGoals = [
+      { goalId: 'goal-1', percentage: '0.00' },
+      { goalId: 'goal-2', percentage: '0.00' },
+      { goalId: 'goal-3', percentage: '0.00' },
+    ]
+    const res3 = rebalanceAllocationEntries(threeGoals, 'goal-1', '0')
+    expect(res3).toMatchObject([
+      { goalId: 'goal-1', percentage: '0.00' },
+      { goalId: 'goal-2', percentage: '50.00' },
+      { goalId: 'goal-3', percentage: '50.00' },
+    ])
+    expect(calculatePercentageSum(res3).toFixed(2)).toBe('100.00')
+
+    // 3 entries with fractional shares: pending 0, goal-1 33.33, goal-2 33.33, goal-3 33.34
+    // set pending to 10 -> remaining 90 divided proportionally (1/3 each = 30.00)
+    const thirdEntries = [
+      { goalId: PENDING_GOAL_ID, percentage: '0.00' },
+      { goalId: 'goal-1', percentage: '33.33' },
+      { goalId: 'goal-2', percentage: '33.33' },
+      { goalId: 'goal-3', percentage: '33.34' },
+    ]
+    const resThird = rebalanceAllocationEntries(thirdEntries, PENDING_GOAL_ID, '10')
+    expect(calculatePercentageSum(resThird).toFixed(2)).toBe('100.00')
+  })
+
+  it('handles comma as decimal separator in valid inputs', () => {
+    const entries = [
+      { goalId: PENDING_GOAL_ID, percentage: '0.00' },
+      { goalId: 'goal-1', percentage: '70.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ]
+
+    const result = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, '20,5')
+
+    expect(result).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '20.50' },
+      { goalId: 'goal-1', percentage: '55.65' },
+      { goalId: 'goal-2', percentage: '23.85' },
+    ])
+    expect(calculatePercentageSum(result).toFixed(2)).toBe('100.00')
+  })
+
+  it('returns raw text without rebalancing other entries when input is invalid or out of bounds', () => {
+    const entries = [
+      { goalId: PENDING_GOAL_ID, percentage: '20.00' },
+      { goalId: 'goal-1', percentage: '50.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ]
+
+    // Non-numeric
+    const nonNumeric = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, 'abc')
+    expect(nonNumeric).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: 'abc' },
+      { goalId: 'goal-1', percentage: '50.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ])
+
+    // Empty string
+    const emptyInput = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, '')
+    expect(emptyInput).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '' },
+      { goalId: 'goal-1', percentage: '50.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ])
+
+    // Negative
+    const negative = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, '-10')
+    expect(negative).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '-10' },
+      { goalId: 'goal-1', percentage: '50.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ])
+
+    // Greater than 100
+    const over100 = rebalanceAllocationEntries(entries, PENDING_GOAL_ID, '105')
+    expect(over100).toMatchObject([
+      { goalId: PENDING_GOAL_ID, percentage: '105' },
+      { goalId: 'goal-1', percentage: '50.00' },
+      { goalId: 'goal-2', percentage: '30.00' },
+    ])
+  })
+})
+
 

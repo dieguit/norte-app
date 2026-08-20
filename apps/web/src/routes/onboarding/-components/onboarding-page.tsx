@@ -161,10 +161,10 @@ export function OnboardingPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
   // Load draft data on mount
   useEffect(() => {
     if (!mounted) return;
+    let isCancelled = false;
 
     // 1. Get or generate device ID
     const invitedDeviceId = getInvitedDeviceId(new URLSearchParams(window.location.search).get("invitado"));
@@ -207,6 +207,7 @@ export function OnboardingPage() {
     // 3. Call getOnboardingDraft and compare timestamps
     getOnboardingDraft({ data: { deviceId: id } })
       .then((serverDraft) => {
+        if (isCancelled) return;
         if (serverDraft) {
           const localTime = local ? new Date(local.updatedAt).getTime() : 0;
           const serverTime = serverDraft.updatedAt
@@ -242,8 +243,14 @@ export function OnboardingPage() {
         }
       })
       .catch((err) => {
-        console.error("Failed to retrieve onboarding draft from server:", err);
+        if (!isCancelled) {
+          console.error("Failed to retrieve onboarding draft from server:", err);
+        }
       });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [mounted]);
 
   // Derive active steps

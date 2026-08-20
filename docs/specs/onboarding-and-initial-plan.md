@@ -35,7 +35,8 @@ The experience must communicate the core loop without requiring a full financial
 - A long financial questionnaire or detailed income/expense capture during onboarding.
 - Creating additional goals, editing allocations, recording savings/investments, or managing recurring finances in this MVP.
 - Calculating an emergency-fund target or completion date when expenses are unknown.
-- FX conversion, inflation assumptions, investment projections, recommendations, or plan impact previews.
+- USD-goal onboarding, live FX, user-configurable exchange rates, inflation
+  assumptions, investment projections, recommendations, or plan impact previews.
 - Building a second design system, formatting layer, global state library, or bespoke modal pattern.
 
 ## Rules
@@ -46,8 +47,8 @@ The experience must communicate the core loop without requiring a full financial
   - Intro: `Empecemos con algunos datos básicos. No tienen que ser exactos y podés cambiarlos después.`
   - Expense option: `No sé todavía`
   - Final CTA: `Ver mi plan`
-- The first-goal choices are `Colchón financiero`, selected by default, `Quiero ahorrar cierta suma de dinero`, and `Quiero cambiar el auto`. Display `Podés cambiar o agregar objetivos más adelante.`
-- `Colchón financiero` has a target of `monthly expenses × emergencyFundMonths`, with `emergencyFundMonths = 6`. The other two choices collect one positive target amount and create fixed-target savings Goals; changing a car does not collect vehicle details, a target date, or an allocation.
+- The first-goal choices are `Colchón financiero`, selected by default, `Quiero ahorrar cierta suma de dinero`, and `Quiero cambiar el auto`. Display `Podés cambiar o agregar objetivos más adelante.` The fixed-target choices use ARS.
+- `Colchón financiero` has a target of `monthly expenses × emergencyFundMonths`, with `emergencyFundMonths = 6`. The other two choices collect one positive ARS target amount and create fixed-target savings Goals; changing a car does not collect vehicle details, a target date, or an allocation.
 - Income and expenses collected here are approximate planning inputs. They must not be presented as recorded income, expenses, or actual contributions.
 - Approximate monthly income is required but may be zero.
 - Planned monthly contribution is intent, not actual progress. It must be greater than zero.
@@ -71,7 +72,7 @@ validation errors.
 
 - Present `Colchón financiero` as the default, plus `Quiero ahorrar cierta suma de dinero` and `Quiero cambiar el auto`.
 - Display `Podés cambiar o agregar objetivos más adelante.` No additional-goal creation is available in this MVP.
-- An emergency fund uses `emergencyFundMonths: 6`. The other choices require one positive target amount and create fixed-target savings Goals without custom names or vehicle details.
+- An emergency fund uses `emergencyFundMonths: 6`. The other choices require one positive ARS target amount and create fixed-target savings Goals without custom names or vehicle details.
 
 #### Step 2: Approximate monthly income
 

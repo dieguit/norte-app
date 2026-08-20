@@ -87,7 +87,8 @@ full detail route pattern.
 - Showing every recurring transaction or installment as a major event.
 - Bank synchronization, automatic imports, real-time prices/FX, advanced
   reporting, portfolio analytics, or a financial-health score.
-- Cross-currency inference, inflation assumptions, or day-level completion
+- Live FX, user-configurable exchange rates, currencies beyond the fixed
+  ARS-to-USD reference rate, inflation assumptions, or day-level completion
   precision.
 - A separate Home state model that diverges from repository and projection
   contracts.
@@ -95,7 +96,9 @@ full detail route pattern.
 ## Domain rules
 
 - **Plan and actual are distinct.** Planned contribution is intent. Only
-  explicit `Ahorré` and `Invertí` actions increase actual goal progress.
+  explicit `Ahorré ARS`, `Ahorré USD`, and `Invertí` actions increase actual
+  goal progress. Monthly actual-versus-planned status remains ARS: USD actions
+  contribute their recorded ARS spend to that comparison.
 - **Historical allocations are immutable snapshots.** Current percentages apply
   only to future contributions. An explicit action correction updates that
   action's snapshot and refreshes the affected roadmap state.
@@ -112,8 +115,8 @@ full detail route pattern.
   grouped; installments show status and one end event, not each installment.
 - **Incomplete data is not an error.** Unknown expenses produce `Fecha por
   calcular` for the emergency fund and a prompt to add major expenses.
-- **Cross-currency projections do not guess FX.** Show `Proyección pendiente`
-  when normalization is unavailable.
+- **USD projections use the fixed ARS-to-USD reference rate.** Show
+  `Proyección pendiente` only for unsupported currency relationships.
 - **Completion dates are month-level or approximate-year values.** If the
   projection horizon is exceeded, show the explicit not-reached state.
 - **All user-facing copy is natural Argentine Spanish with voseo.** Use the
@@ -129,7 +132,8 @@ Route: `/app`.
   contribution summary, projection, and roadmap data through Clerk-authenticated
   server actions.
 - Render the four required sections in order.
-- `Registrar aporte` enters the existing `Ahorré` flow.
+- `Registrar aporte` opens the record menu with **Ahorré ARS**, **Ahorré USD**,
+  and investment actions.
 - `Ver todos` links to `/app/goals`.
 - Goal cards link to goal detail using the established mobile Drawer/route and
   desktop Sheet behavior.
@@ -146,7 +150,7 @@ Route: `/app`.
 
 ### Record and refresh
 
-The Home CTA may launch `Ahorré` or the global record menu. On successful save,
+The Home CTA opens the global record menu. On successful save,
 the owning feature persists the action and refreshes actual progress, projection,
 roadmap events, monthly status, and goal summary. The Home surface must not
 reimplement contribution allocation or persistence.
@@ -171,8 +175,8 @@ Each Home subsection and the roadmap must define:
 - **Incomplete-data:** explain what is missing and how to add it. For example,
   `Todavía necesitamos conocer tus gastos para calcular esta fecha.`
 
-The roadmap must also handle no events, a horizon-exceeded projection, a
-pending cross-currency projection, and a current month with no actual
+The roadmap must also handle no events, a horizon-exceeded projection, an
+unsupported-currency projection, and a current month with no actual
 contribution. These are valid product states, not failures.
 
 ## Acceptance criteria
@@ -197,8 +201,9 @@ contribution. These are valid product states, not failures.
   solely because of the transfer.
 - Allocation, monthly-plan, new-goal, and recommendation changes show a
   non-mutating before/after result before confirmation.
-- Home presents projected dates, deltas, estimates, warnings, incomplete data,
-  horizon limits, and cross-currency limitations without invented precision.
+- Home presents projected dates, deltas, fixed-rate USD estimates, warnings,
+  incomplete data, horizon limits, and unsupported-currency limitations without
+  invented precision.
 - Loading, empty, error, success, and incomplete-data states are implemented;
   mutation errors preserve entered data and support retry.
 - Mobile uses the established bottom navigation and touch targets; desktop uses
@@ -220,7 +225,8 @@ contribution. These are valid product states, not failures.
 - **Contributions:** record action menu, saving/investment flows, allocation
   snapshots, and mutation refresh behavior.
 - **Projection domain:** `ProjectionResult`, `GoalProjection`, monthly cash flow,
-  warnings, completion horizon, and cross-currency states.
+  warnings, completion horizon, the fixed ARS-to-USD reference rate, and
+  unsupported-currency states.
 - **Roadmap domain:** `RoadmapEvent`, event builder/grouping/classification,
   adaptive period compression, and event-detail mapping.
 - **Recommendations/plans:** deterministic recommendations,

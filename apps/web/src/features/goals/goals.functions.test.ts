@@ -333,6 +333,7 @@ describe('getGoalCreationContext', () => {
       context: {
         currentMonth: '2026-08',
         expensesKnowledge: 'known',
+        hasEmergencyFund: true,
         fundingOptions: [
           {
             fundingMethod: 'save',

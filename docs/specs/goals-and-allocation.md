@@ -21,7 +21,8 @@ User-facing copy is natural Argentine Spanish with voseo. The feature supports t
 
 ## Non-goals
 
-- Cross-currency conversion or FX assumptions.
+- Live FX, user-configurable rates, or currency conversion beyond the fixed
+  application-owned ARS-to-USD reference rate.
 - Inflation, indexed, or dynamically valued targets.
 - Mixed strategies or multiple investments per goal.
 - Automatic redistribution, priority-based silent changes, or automatic plan mutation.
@@ -31,7 +32,7 @@ User-facing copy is natural Argentine Spanish with voseo. The feature supports t
 
 ### Goal model
 
-Each goal has an id, name, type, optional fixed target amount, currency, optional desired date, priority, allocation percentage, strategy (`save` or one investment), status, and timestamps. New goals default to `active`; editing must preserve the goal id and history.
+Each goal has an id, name, type, optional fixed target amount, currency, optional desired date, priority, allocation percentage, strategy (`save` or one investment), status, and timestamps. New goals default to `active`; editing must preserve the goal id and history. The allocation percentage always represents a share of the global ARS monthly plan, including for USD goals.
 
 Priority is qualitative only. It must never change allocation without an explicit user action.
 
@@ -57,6 +58,7 @@ Priority is qualitative only. It must never change allocation without an explici
 - Adding, pausing, resuming, or completing a goal must show the proposed redistribution before persistence.
 - Future planned contributions use the current allocation; past contributions never change.
 - Contribution allocation amounts use decimal-safe arithmetic, round to currency precision, and assign any remainder deterministically so amounts sum exactly to the contribution.
+- Actual savings distribute only to active goals in the saving action's currency. Within that currency channel, use compatible goals' global allocation percentages proportionally so the whole recorded amount is assigned. An ARS saving never credits USD goals, and a USD saving never credits ARS goals.
 
 ### Allocation history
 
@@ -74,7 +76,7 @@ Historical contribution records store their own allocation snapshot. The UI may 
 
 ### Planned contribution
 
-There is one global planned monthly contribution. It represents intent, not actual savings. Future monthly contribution for an active goal is `plannedMonthlyContribution * allocationPercent`.
+There is one global planned monthly contribution in ARS. It represents intent, not actual savings. Future monthly contribution for an active ARS goal is `plannedMonthlyContribution * allocationPercent`. For a USD goal, convert that allocated ARS amount with the fixed ARS-per-USD reference rate. The reference-rate estimate does not create a monthly spendable balance.
 
 Changing the monthly plan is a previewable trajectory change. Do not persist it, alter actual progress, or silently change allocations before confirmation.
 
@@ -102,13 +104,13 @@ If a date is unavailable, show the reason (`Fecha por calcular`, `Proyección pe
 ### Create goal
 
 1. Choose type; emergency fund is available as the default onboarding goal.
-2. Enter name, fixed target/currency when applicable, optional desired date, priority, strategy, and proposed allocation.
+2. Enter name, fixed target/currency when applicable, optional desired date, priority, strategy, and proposed allocation. For a USD goal, explain that the allocation is its share of the global ARS plan and show its approximate monthly USD equivalent using the fixed reference rate; do not ask for an independent USD monthly contribution.
 3. Validate the goal and allocation.
 4. Show proposed redistribution and impact preview.
 5. Confirm once; persist goal and allocation snapshot atomically.
 6. Refresh projections and roadmap; show contextual success feedback.
 
-The form must explain that indexed targets and cross-currency projections are not supported in this MVP.
+The form must explain that indexed targets and live FX are not supported in this MVP. USD projections use the fixed ARS-to-USD reference rate.
 
 ### Goal detail/edit
 
@@ -132,7 +134,7 @@ Every screen and flow defines:
 
 - **Loading:** skeleton cards and controls; no misleading zero values.
 - **Empty:** actionable explanation and primary CTA.
-- **Incomplete data:** distinguish from error. Emergency funds with unknown expenses show `Fecha por calcular`; unsupported currency conversion shows `Proyección pendiente`.
+- **Incomplete data:** distinguish from error. Emergency funds with unknown expenses show `Fecha por calcular`; unsupported currencies outside the ARS-to-USD rule show `Proyección pendiente`.
 - **Editing:** local draft may have invalid allocation totals; clearly show the remaining amount to reach 100%.
 - **Preview:** before/after values, deltas, and affected goals; no persistence has occurred.
 - **Validation error:** inline labels and messages; preserve entered values.
@@ -151,7 +153,7 @@ Every screen and flow defines:
 - Changing allocation or monthly contribution shows a non-mutating before/after preview before confirmation.
 - Completed-goal redistribution shows the released percentage and requires confirmation before applying a replacement allocation.
 - Confirmed changes update future projections and goal dates without changing actual contribution history.
-- Currency mismatches produce `Proyección pendiente`; no exchange rate is inferred.
+- USD goal projections use the fixed ARS-to-USD reference rate from the global ARS plan; unsupported currency relationships produce `Proyección pendiente`.
 - Targets are fixed amounts only; indexed/inflation behavior is not offered.
 - Forms have visible labels, inline validation, keyboard access, focus management for `Drawer`/`Sheet`, and textual equivalents for progress and status.
 - User-facing copy follows the PRD’s Argentine Spanish requirement.

@@ -47,6 +47,65 @@ export function PlanAllocationEditor({
           }
         }
 
+        const pendingEntry = group.entries.find((entry) => entry.pending)
+        const existingEntries = group.entries.filter((entry) => !entry.pending)
+
+        const renderEntry = (entry: GoalCreationAllocationGroup['entries'][number]) => {
+          const sliderValue = Number(entry.percentage.replace(',', '.')) || 0
+
+          return (
+            <Field key={entry.goalId} data-invalid={!isGroupValid}>
+              <div className="flex items-center justify-between gap-4">
+                <FieldLabel
+                  id={`${group.key}-${entry.goalId}-label`}
+                  htmlFor={`${group.key}-${entry.goalId}-input`}
+                  className="flex flex-col items-start gap-0.5 cursor-pointer"
+                >
+                  <span className="text-sm font-medium text-[var(--sea-ink)]">
+                    {entry.goalName}
+                  </span>
+                  {entry.allocatedDestinationAmount && (
+                    <span className="text-xs text-[var(--sea-ink-soft)] font-normal">
+                      {formatMoney(entry.allocatedDestinationAmount)}
+                    </span>
+                  )}
+                </FieldLabel>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    id={`${group.key}-${entry.goalId}-input`}
+                    aria-label={`Porcentaje para ${entry.goalName}`}
+                    aria-invalid={!isGroupValid}
+                    disabled={disabled}
+                    inputMode="decimal"
+                    value={entry.percentage != null ? entry.percentage.replace('.', ',') : ''}
+                    onBlur={onPercentageCommit}
+                    onChange={(event) =>
+                      onPercentageChange(group.key, entry.goalId, event.target.value)
+                    }
+                    className="w-20 text-right font-mono text-sm"
+                  />
+                  <span aria-hidden="true" className="text-sm font-medium text-[var(--sea-ink-soft)]">
+                    %
+                  </span>
+                </div>
+              </div>
+              <Slider
+                aria-label={`Porcentaje para ${entry.goalName}`}
+                disabled={disabled}
+                min={0}
+                max={100}
+                step={1}
+                value={[sliderValue]}
+                onValueChange={(val) => {
+                  const num = Array.isArray(val) ? val[0] : (val as number)
+                  onPercentageChange(group.key, entry.goalId, Number(num ?? 0).toFixed(2))
+                }}
+                onValueCommitted={onPercentageCommit}
+              />
+            </Field>
+          )
+        }
+
         return (
           <section
             key={group.key}
@@ -59,69 +118,26 @@ export function PlanAllocationEditor({
               {errorMessage && <FieldError>{errorMessage}</FieldError>}
             </div>
 
-            <div className="flex flex-col gap-4">
-              {group.entries.map((entry) => {
-                const sliderValue = Number(entry.percentage.replace(',', '.')) || 0
+            <div className="flex flex-col gap-6">
+              {pendingEntry && (
+                <div className="flex flex-col gap-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
+                    Nuevo objetivo
+                  </h4>
+                  {renderEntry(pendingEntry)}
+                </div>
+              )}
 
-                return (
-                  <Field key={entry.goalId} data-invalid={!isGroupValid}>
-                    <div className="flex items-center justify-between gap-4">
-                      <FieldLabel
-                        id={`${group.key}-${entry.goalId}-label`}
-                        htmlFor={`${group.key}-${entry.goalId}-input`}
-                        className="flex flex-col items-start gap-0.5 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-[var(--sea-ink)]">
-                            {entry.goalName}
-                          </span>
-                          {entry.pending && (
-                            <span className="inline-flex items-center rounded-full bg-[var(--foam)] border border-[var(--line)] px-2 py-0.5 text-xs font-medium text-[var(--pine)]">
-                              Nuevo objetivo
-                            </span>
-                          )}
-                        </div>
-                        {entry.allocatedDestinationAmount && (
-                          <span className="text-xs text-[var(--sea-ink-soft)] font-normal">
-                            {formatMoney(entry.allocatedDestinationAmount)}
-                          </span>
-                        )}
-                      </FieldLabel>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          id={`${group.key}-${entry.goalId}-input`}
-                          aria-label={`Porcentaje para ${entry.goalName}`}
-                          aria-invalid={!isGroupValid}
-                          disabled={disabled}
-                          inputMode="decimal"
-                          value={entry.percentage != null ? entry.percentage.replace('.', ',') : ''}
-                          onBlur={onPercentageCommit}
-                          onChange={(event) =>
-                            onPercentageChange(group.key, entry.goalId, event.target.value)
-                          }
-                          className="w-20 text-right font-mono text-sm"
-                        />
-                        <span aria-hidden="true" className="text-sm font-medium text-[var(--sea-ink-soft)]">
-                          %
-                        </span>
-                      </div>
-                    </div>
-                    <Slider
-                      aria-label={`Porcentaje para ${entry.goalName}`}
-                      disabled={disabled}
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={[sliderValue]}
-                      onValueChange={(val) => {
-                        const num = Array.isArray(val) ? val[0] : (val as number)
-                        onPercentageChange(group.key, entry.goalId, Number(num ?? 0).toFixed(2))
-                      }}
-                      onValueCommitted={onPercentageCommit}
-                    />
-                  </Field>
-                )
-              })}
+              {existingEntries.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
+                    Tus objetivos actuales
+                  </h4>
+                  <div className="flex flex-col gap-4">
+                    {existingEntries.map(renderEntry)}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         )

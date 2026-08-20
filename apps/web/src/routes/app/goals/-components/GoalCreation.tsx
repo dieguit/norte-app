@@ -85,9 +85,14 @@ export function GoalCreation({
       return draftGroup.entries.every((draftEntry) => {
         const propEntry = propGroup.entries.find((e) => e.goalId === draftEntry.goalId)
         if (!propEntry) return false
-        const dPct = new BigNumber((draftEntry.percentage || '0').replace(',', '.')).toFixed(2)
-        const pPct = new BigNumber((propEntry.percentage || '0').replace(',', '.')).toFixed(2)
-        return dPct === pPct
+        try {
+          const dPct = new BigNumber((draftEntry.percentage || '0').trim().replace(',', '.'))
+          const pPct = new BigNumber((propEntry.percentage || '0').trim().replace(',', '.'))
+          if (!dPct.isFinite() || dPct.isNaN() || !pPct.isFinite() || pPct.isNaN()) return false
+          return dPct.toFixed(2) === pPct.toFixed(2)
+        } catch {
+          return false
+        }
       })
     })
   }, [preview, values.allocations])

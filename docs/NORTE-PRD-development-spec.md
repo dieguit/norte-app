@@ -69,7 +69,9 @@ rules.
 The feature specifications must preserve these boundaries rather than invent a
 solution:
 
-- Cross-currency projection and FX normalization.
+- General cross-currency projection and FX normalization. The MVP only supports
+  a fixed, application-owned ARS-to-USD reference rate for USD goals and
+  investments funded from the global ARS plan; it is not live market data.
 - Inflation or indexed goal targets.
 - Full retirement modeling.
 - Roadmap event materiality beyond the documented grouped-event rules.

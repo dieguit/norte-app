@@ -36,6 +36,7 @@ describe('GoalCreation component', () => {
   const defaultContext: GoalCreationContext = {
     currentMonth: '2026-08',
     expensesKnowledge: 'known',
+    hasEmergencyFund: false,
     fundingOptions: [
       {
         fundingMethod: 'save',
@@ -159,19 +160,20 @@ describe('GoalCreation component', () => {
       await user.type(screen.getByLabelText(/nombre/i), 'Auto nuevo')
       await user.type(screen.getByLabelText(/monto objetivo/i), '5000000')
 
-      // Set past/current desired month
-      const monthInput = screen.getByLabelText(/mes objetivo/i)
-      fireEvent.change(monthInput, { target: { value: '2026-08' } })
+      // Open month picker
+      await user.click(screen.getByRole('button', { name: /mes objetivo/i }))
 
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      // Current month (August 2026) is disabled
+      expect(screen.getByRole('button', { name: 'Ago' })).toBeDisabled()
 
-      expect(screen.getByText('Elegí un mes posterior al actual.')).toBeVisible()
+      // Select a future month (e.g. September 2026)
+      await user.click(screen.getByRole('button', { name: 'Sep' }))
 
-      // Change to future month
-      fireEvent.change(monthInput, { target: { value: '2027-01' } })
-      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      // Visible trigger value changes
+      expect(screen.getByRole('button', { name: /mes objetivo/i })).toHaveTextContent(/septiembre de 2026/i)
 
       // Advances to Plan stage
+      await user.click(screen.getByRole('button', { name: /continuar/i }))
       expect(screen.getByRole('heading', { name: /plan/i })).toBeVisible()
     })
 
@@ -180,6 +182,7 @@ describe('GoalCreation component', () => {
       const contextUnknown: GoalCreationContext = {
         currentMonth: '2026-08',
         expensesKnowledge: 'unknown',
+        hasEmergencyFund: false,
         fundingOptions: [],
       }
 
@@ -201,11 +204,39 @@ describe('GoalCreation component', () => {
         screen.getByText(/vamos a calcular el monto sugerido una vez que definas tus gastos/i),
       ).toBeVisible()
 
+      // Switching away from emergency fund resets the name
+      fireEvent.click(screen.getByLabelText(/tipo de objetivo/i))
+      await user.click(screen.getByRole('option', { name: /otro objetivo/i }))
+      expect(screen.getByLabelText(/nombre del objetivo/i)).toHaveValue('')
+
+      // Switch back to emergency fund
+      fireEvent.click(screen.getByLabelText(/tipo de objetivo/i))
+      await user.click(screen.getByRole('option', { name: /colchón financiero/i }))
+      expect(screen.getByLabelText(/nombre del objetivo/i)).toHaveValue('Colchón financiero')
+
       // Target amount input is not required for emergency fund
       await user.click(screen.getByRole('button', { name: /continuar/i }))
 
       // Transitions to Plan
       expect(screen.getByRole('heading', { name: /plan/i })).toBeVisible()
+    })
+
+    it('hides emergency fund option when context hasEmergencyFund is true', async () => {
+      const user = userEvent.setup()
+      const contextWithEmergencyFund: GoalCreationContext = {
+        ...defaultContext,
+        hasEmergencyFund: true,
+      }
+
+      render(<GoalCreation context={contextWithEmergencyFund} onCancel={vi.fn()} onCreated={vi.fn()} />)
+
+      const typeSelect = screen.getByLabelText(/tipo de objetivo/i)
+      await user.click(typeSelect)
+
+      expect(screen.queryByRole('option', { name: /colchón financiero/i })).not.toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /compra o gasto grande/i })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /jubilación/i })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /otro objetivo/i })).toBeInTheDocument()
     })
 
     it('plan requires at least one method', async () => {
@@ -281,6 +312,21 @@ describe('GoalCreation component', () => {
       expect(screen.getByLabelText(/nombre/i)).toHaveValue('Casa propia')
       expect(screen.getByLabelText(/monto objetivo/i)).toHaveValue('25.000.000')
     })
+
+    it('advances a valid objective to the plan stage and displays updated plan heading', async () => {
+      const user = userEvent.setup()
+
+      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
+
+      await user.type(screen.getByLabelText(/nombre/i), 'Auto nuevo')
+      await user.type(screen.getByLabelText(/monto objetivo/i), '5000000')
+      await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+      expect(screen.getByRole('heading', { name: /plan/i })).toBeVisible()
+      expect(
+        screen.getByRole('heading', { name: '¿Qué necesitas para conseguir este objetivo?' }),
+      ).toBeVisible()
+    })
   })
 
   describe('Step 2: Impact lifecycle', () => {
@@ -329,12 +375,11 @@ describe('GoalCreation component', () => {
 
       await screen.findAllByText('Con este cambio')
 
-      // Edit percentage to make it invalid
+      // Edit percentage to an invalid non-numeric value
       const input = screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i })
-      await user.clear(input)
-      await user.type(input, '10,00')
+      fireEvent.change(input, { target: { value: 'abc' } })
 
-      // Total is 60 + 10 = 70% != 100%
+      // Invalid input prevents rebalancing and makes total != 100%
       expect(screen.getByText('Completá la distribución para calcular el impacto')).toBeVisible()
       expect(screen.getByRole('button', { name: 'Crear objetivo y actualizar Plan' })).toBeDisabled()
       expect(screen.queryByText('Con este cambio')).not.toBeInTheDocument()
@@ -371,17 +416,12 @@ describe('GoalCreation component', () => {
       await screen.findAllByText('Con este cambio')
       expect(previewGoalCreation).toHaveBeenCalledTimes(1)
 
-      // Edit percentages: 50% / 50%
+      // Edit percentage: setting fondo de emergencia to 50% automatically rebalances viaje al sur to 50%
       const input1 = screen.getByRole('textbox', { name: /porcentaje para fondo de emergencia/i })
-      await user.clear(input1)
-      await user.type(input1, '50,00')
-
-      const input2 = screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i })
-      await user.clear(input2)
-      await user.type(input2, '50,00')
+      fireEvent.change(input1, { target: { value: '50' } })
 
       // Blur to trigger commit
-      await user.tab()
+      fireEvent.blur(input1)
 
       await waitFor(() => {
         expect(previewGoalCreation).toHaveBeenCalledTimes(2)
@@ -458,6 +498,76 @@ describe('GoalCreation component', () => {
         expect(toast.success).toHaveBeenCalledWith('Objetivo creado y Plan actualizado.')
         expect(onCreated).toHaveBeenCalledTimes(1)
       })
+    })
+
+    it('rebalances existing allocation entries proportionally when adjusting pending goal slider', async () => {
+      const user = userEvent.setup()
+      const mockPreview = makeMockPreview({
+        proposal: {
+          ...makeMockPreview().proposal,
+          allocationGroups: [
+            {
+              key: 'save:ARS',
+              fundingMethod: 'save',
+              destinationCurrency: 'ARS',
+              baseCurrency: 'ARS',
+              monthlyCommitment: { amount: '100000.00', currency: 'ARS' },
+              destinationCommitment: { amount: '100000.00', currency: 'ARS' },
+              effectiveMonth: '2026-09-01',
+              totalPercentage: '100.00',
+              entries: [
+                {
+                  goalId: 'pending-goal',
+                  goalName: 'Viaje al sur',
+                  percentage: '0.00',
+                  allocatedDestinationAmount: { amount: '0.00', currency: 'ARS' },
+                  pending: true,
+                },
+                {
+                  goalId: 'goal-1',
+                  goalName: 'Fondo de emergencia',
+                  percentage: '70.00',
+                  allocatedDestinationAmount: { amount: '70000.00', currency: 'ARS' },
+                  pending: false,
+                },
+                {
+                  goalId: 'goal-2',
+                  goalName: 'Vacaciones',
+                  percentage: '30.00',
+                  allocatedDestinationAmount: { amount: '30000.00', currency: 'ARS' },
+                  pending: false,
+                },
+              ],
+            },
+          ],
+        },
+      })
+
+      vi.mocked(previewGoalCreation).mockResolvedValue(mockPreview)
+
+      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
+
+      await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
+      await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
+      await user.click(screen.getByRole('button', { name: /continuar/i }))
+      await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+      await screen.findAllByText('Con este cambio')
+
+      // Find the sliders and change the first slider (pending goal) to 20
+      const sliders = screen.getAllByRole('slider', { hidden: true })
+      fireEvent.change(sliders[0], { target: { value: '20' } })
+
+      // Verify the three percentage inputs read 20,00, 56,00, and 24,00 before committing
+      const pendingInput = screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i })
+      const goal1Input = screen.getByRole('textbox', {
+        name: /porcentaje para fondo de emergencia/i,
+      })
+      const goal2Input = screen.getByRole('textbox', { name: /porcentaje para vacaciones/i })
+
+      expect(pendingInput).toHaveValue('20,00')
+      expect(goal1Input).toHaveValue('56,00')
+      expect(goal2Input).toHaveValue('24,00')
     })
   })
 })

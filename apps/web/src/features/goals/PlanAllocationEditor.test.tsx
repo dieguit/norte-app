@@ -47,7 +47,7 @@ describe('PlanAllocationEditor component', () => {
   })
 
   describe('Step 1: Rendering, language and copy boundaries', () => {
-    it('renders method header, commitment summary, all goal names, derived amounts and pending indicator', () => {
+    it('renders method header, commitment summary, all goal names, derived amounts and section subtitles in DOM order', () => {
       const group = createMockGroup()
 
       render(
@@ -66,23 +66,80 @@ describe('PlanAllocationEditor component', () => {
         screen.getByText('De tus $ 120.000,00 mensuales, asignaste el 100% a objetivos.'),
       ).toBeVisible()
 
-      // Goal names
-      expect(screen.getByText('Fondo de emergencia')).toBeVisible()
-      expect(screen.getByText('Auto nuevo')).toBeVisible()
-      expect(screen.getByText('Viaje al sur')).toBeVisible()
+      // Goal names in DOM order: pending goal first, then existing goals
+      const names = screen
+        .getAllByText(/Viaje al sur|Fondo de emergencia|Auto nuevo/)
+        .map((node) => node.textContent)
+      expect(names).toEqual(['Viaje al sur', 'Fondo de emergencia', 'Auto nuevo'])
+
+      // Section subtitles
+      expect(screen.getByText('Nuevo objetivo')).toBeVisible()
+      expect(screen.getByText('Tus objetivos actuales')).toBeVisible()
+
+      // Only one "Nuevo objetivo" rendered (section subtitle, no duplicate badge)
+      expect(screen.getAllByText('Nuevo objetivo')).toHaveLength(1)
 
       // Derived amounts
       expect(screen.getByText('$ 60.000,00')).toBeVisible()
       expect(screen.getByText('$ 36.000,00')).toBeVisible()
       expect(screen.getByText('$ 24.000,00')).toBeVisible()
 
-      // Pending indicator
-      expect(screen.getByText('Nuevo objetivo')).toBeVisible()
-
       // Input values formatted with Argentine comma decimal separator
       expect(screen.getByRole('textbox', { name: /porcentaje para fondo de emergencia/i })).toHaveValue('50,00')
       expect(screen.getByRole('textbox', { name: /porcentaje para auto nuevo/i })).toHaveValue('30,00')
       expect(screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i })).toHaveValue('20,00')
+    })
+
+    it('renders only pending section subtitle when there are no existing goals', () => {
+      const group = createMockGroup({
+        entries: [
+          {
+            goalId: 'pending-goal',
+            goalName: 'Viaje al sur',
+            percentage: '100.00',
+            allocatedDestinationAmount: { amount: '120000.00', currency: 'ARS' },
+            pending: true,
+          },
+        ],
+      })
+
+      render(
+        <PlanAllocationEditor
+          groups={[group]}
+          onPercentageChange={vi.fn()}
+          onPercentageCommit={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('Nuevo objetivo')).toBeVisible()
+      expect(screen.queryByText('Tus objetivos actuales')).not.toBeInTheDocument()
+      expect(screen.getByText('Viaje al sur')).toBeVisible()
+    })
+
+    it('renders only existing section subtitle when there is no pending goal', () => {
+      const group = createMockGroup({
+        entries: [
+          {
+            goalId: 'goal-1',
+            goalName: 'Fondo de emergencia',
+            percentage: '100.00',
+            allocatedDestinationAmount: { amount: '120000.00', currency: 'ARS' },
+            pending: false,
+          },
+        ],
+      })
+
+      render(
+        <PlanAllocationEditor
+          groups={[group]}
+          onPercentageChange={vi.fn()}
+          onPercentageCommit={vi.fn()}
+        />,
+      )
+
+      expect(screen.queryByText('Nuevo objetivo')).not.toBeInTheDocument()
+      expect(screen.getByText('Tus objetivos actuales')).toBeVisible()
+      expect(screen.getByText('Fondo de emergencia')).toBeVisible()
     })
 
     it('explicitly rejects internal terminology from user-facing UI', () => {
@@ -215,7 +272,7 @@ describe('PlanAllocationEditor component', () => {
       )
 
       const sliders = screen.getAllByRole('slider', { hidden: true })
-      fireEvent.change(sliders[2], { target: { value: '30' } })
+      fireEvent.change(sliders[0], { target: { value: '30' } })
 
       expect(onPercentageChange).toHaveBeenLastCalledWith('save:ARS', 'pending-goal', '30.00')
     })

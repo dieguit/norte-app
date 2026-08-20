@@ -24,7 +24,9 @@ The experience must answer: **qué cambió, cómo afecta mis objetivos y qué pu
 - No AI advisor, free-form advice, chat, or generated recommendation types.
 - No automatic saving, investment, allocation, or plan mutation.
 - No automatic assumption that estimated margin was saved.
-- No automatic FX conversion, inflation model, retirement model, bank sync, or transaction import.
+- No live or user-configurable FX, conversion beyond the fixed ARS-to-USD
+  reference rate, inflation model, retirement model, bank sync, or transaction
+  import.
 - No final decision on the deviation threshold; keep it configurable/deferred as described below.
 - No recommendation history UI beyond the roadmap event created after application.
 
@@ -33,10 +35,10 @@ The experience must answer: **qué cambió, cómo afecta mis objetivos y qué pu
 ### Month-close deviation
 
 - `plannedAmount` is the current global planned monthly contribution for the closed month.
-- `actualAmount` is the sum of explicit contributions whose `occurredAt` falls in that month. Estimated margin is never included.
+- `actualAmount` is the ARS value of explicit contributions whose `occurredAt` falls in that month: direct ARS contributions use their amount; USD savings and investments use their recorded ARS spent. Estimated margin is never included.
 - `shortfall = plannedAmount - actualAmount`.
 - A deviation exists for this MVP when `actualAmount < plannedAmount` and the difference changes at least one calculable projected goal date. A positive difference must not be presented as a shortfall.
-- If a goal has unknown expenses, cross-currency projection, or another incomplete-data condition, show the incomplete state and do not invent a date or delta.
+- If a goal has unknown expenses, an unsupported currency relationship, or another incomplete-data condition, show the incomplete state and do not invent a date or delta.
 - Historical contribution allocations remain the allocation snapshot recorded on each contribution. Current allocations apply only to future projections.
 - The month-close result is explanatory until the user confirms an action. Viewing it, opening a recommendation, or requesting a preview does not mutate state.
 

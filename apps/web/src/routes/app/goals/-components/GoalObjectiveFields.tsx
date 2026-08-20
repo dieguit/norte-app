@@ -8,6 +8,7 @@ import {
   FieldSet,
 } from "../../../../components/ui/field";
 import { Input } from "../../../../components/ui/input";
+import { MonthPickerInput } from "../../../../components/MonthPicker";
 import {
   Select,
   SelectContent,
@@ -50,10 +51,19 @@ export function GoalObjectiveFields({
 }: GoalObjectiveFieldsProps) {
   const values = useStore(form.store, (state) => state.values);
 
+  const goalTypeOptions = context.hasEmergencyFund
+    ? GOAL_TYPE_OPTIONS.filter((option) => option.value !== "emergency_fund")
+    : GOAL_TYPE_OPTIONS;
+
   const handleTypeChange = (newType: string | null) => {
     if (!newType) return;
     const currentName = values.name;
+    const wasEmergencyFund = values.type === "emergency_fund";
     form.setFieldValue("type", newType as any);
+
+    if (wasEmergencyFund && newType !== "emergency_fund") {
+      form.setFieldValue("name", "");
+    }
 
     if (newType === "emergency_fund") {
       if (
@@ -88,12 +98,12 @@ export function GoalObjectiveFields({
               className="w-full"
             >
               <SelectValue>
-                {GOAL_TYPE_OPTIONS.find((opt) => opt.value === values.type)
+                {goalTypeOptions.find((opt) => opt.value === values.type)
                   ?.label ?? "Seleccionar tipo"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {GOAL_TYPE_OPTIONS.map((option) => (
+              {goalTypeOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -203,12 +213,12 @@ export function GoalObjectiveFields({
           <FieldLabel htmlFor="goal-desired-month-input">
             Mes objetivo (opcional)
           </FieldLabel>
-          <Input
+          <MonthPickerInput
             id="goal-desired-month-input"
             aria-label="Mes objetivo"
-            type="month"
             value={values.desiredMonth}
-            onChange={(e) => form.setFieldValue("desiredMonth", e.target.value)}
+            minMonth={context.currentMonth}
+            onValueChange={(month) => form.setFieldValue("desiredMonth", month)}
           />
           <FieldDescription>
             Dejalo vacío si no tenés una fecha límite definida.

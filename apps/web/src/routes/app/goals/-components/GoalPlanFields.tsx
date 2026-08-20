@@ -55,7 +55,9 @@ export function GoalPlanFields({
       {/* Methods Choice */}
       <FieldGroup className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h3 className="text-base font-semibold text-[var(--sea-ink)]">¿Cómo vas a fondear este objetivo?</h3>
+          <h3 className="text-base font-semibold text-[var(--sea-ink)]">
+            ¿Qué necesitas para conseguir este objetivo?
+          </h3>
           <p className="text-sm text-[var(--sea-ink-soft)]">
             Podés ahorrar, invertir o combinar ambos métodos.
           </p>

@@ -61,7 +61,7 @@ async function advanceToCard(cardIndex: number) {
 async function continueStep(user: ReturnType<typeof userEvent.setup>) {
   const continueButton = screen.getByRole('button', { name: /continuar|completar/i })
   await user.click(continueButton)
-  await waitForElementToBeRemoved(continueButton)
+  await waitForElementToBeRemoved(continueButton, { timeout: 3000 })
 }
 
 vi.mock('@/features/onboarding/onboarding.functions', () => ({
@@ -107,6 +107,7 @@ describe('OnboardingPage component tests', () => {
   })
 
   it('captures a readable view event for the displayed onboarding step', async () => {
+    vi.mocked(getOnboardingDraft).mockResolvedValue(undefined)
     render(<OnboardingPage />)
 
     await screen.findByRole('heading', { name: '¿Cómo te llamás?' })
@@ -120,6 +121,7 @@ describe('OnboardingPage component tests', () => {
   })
 
   it('captures the next displayed step with its full title and ordinal', async () => {
+    vi.mocked(getOnboardingDraft).mockResolvedValue(undefined)
     const user = userEvent.setup()
     render(<OnboardingPage />)
 

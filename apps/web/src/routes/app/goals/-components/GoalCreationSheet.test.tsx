@@ -27,6 +27,7 @@ afterEach(() => {
 const sampleContext: GoalCreationContext = {
   currentMonth: '2026-08',
   expensesKnowledge: 'known',
+  hasEmergencyFund: false,
   fundingOptions: [
     {
       fundingMethod: 'save',

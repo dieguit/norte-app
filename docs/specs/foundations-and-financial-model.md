@@ -25,8 +25,9 @@ The implementation must preserve NORTE's central distinction:
 - Provide shared formatting for money, percentages, dates, and month deltas.
 - Establish form, responsive, accessibility, loading, empty, error, success,
   and incomplete-data conventions used by onboarding and financial features.
-- Support `ARS` and `USD` as explicit currencies without inferring exchange
-  rates.
+- Support `ARS` and `USD` as explicit currencies, including the fixed
+  application-owned ARS-to-USD reference rate used to fund and project USD
+  goals and investments from the global ARS plan.
 - Keep feature components dependent on domain contracts rather than fixtures
   or concrete storage.
 
@@ -63,9 +64,15 @@ interface Money {
 - `currency` is never inferred from a locale, symbol, or formatted input.
 - A `Money` value is only directly added, subtracted, allocated, or projected
   with another value in the same currency.
-- V1 does not convert ARS to USD or USD to ARS. If a target and its inputs do
-  not share a currency, return an explicit unavailable result and render
-  **Proyección pendiente**. Never invent an exchange rate.
+- The global plan and all profile money values are ARS. A USD goal or USD
+  investment is funded from its allocated ARS share using one fixed,
+  application-owned ARS-per-USD reference rate. This is an explicit MVP
+  assumption, not inferred or live FX data.
+- Historical USD contributions persist their ARS spent, USD credited, and
+  effective ARS-per-USD rate. Changing the reference rate never changes a
+  recorded action.
+- No other currency conversion is supported. Inputs and values that cannot be
+  connected through this ARS-to-USD rule return an explicit unavailable result.
 - User input may contain Argentine separators, but it is normalized to
   `Money` before entering the domain. Invalid input remains visible in the
   form and is not silently coerced.
@@ -89,7 +96,8 @@ interface FinancialProfile {
 }
 ```
 
-- All profile money values use `baseCurrency`.
+- `baseCurrency` is `ARS`; all profile money values, including the global plan,
+  use ARS.
 - Onboarding values are approximate planning inputs, not recorded income or
   expenses. Later records are the source for more accurate monthly cash flow.
 - `plannedMonthlyContribution` is required and positive. It is intent, not
@@ -116,7 +124,8 @@ mandatory:
 - Historical contribution allocations are stored as snapshots. Past actions
   never change when today's allocation changes. A user may explicitly correct
   or delete an action; its correction updates its own snapshot atomically.
-- A saving contribution applies the current allocation snapshot.
+- An ARS or USD saving applies the current allocation snapshot only to active
+  goals in that saving's currency, normalized within that currency channel.
 - New-money investment contributions go directly to the selected investment's
   goal and do not apply global allocation again.
 - An existing-savings investment is a same-goal transfer: saved value falls,
@@ -136,7 +145,7 @@ not UI strings.
 
 Required boundaries:
 
-- `calculateAllocationAmounts(money, allocations)`
+- `calculateAllocationAmounts(money, compatibleAllocations)`
 - `deriveMonthlyCashFlow(incomes, expenses, month)`
 - `projectGoals(input)`
 - `calculatePlanImpact(beforeInput, afterInput)`
@@ -145,7 +154,12 @@ Required boundaries:
 Rules for the functions:
 
 - `estimatedMargin = totalIncome - totalExpenses`; it is not actual savings.
-- Future saving contribution is `plannedMonthlyContribution × allocationPercent`.
+- Future contribution for an ARS goal is `plannedMonthlyContribution ×
+  allocationPercent`. For a USD goal, divide that allocated ARS amount by the
+  fixed ARS-per-USD reference rate. Label USD projections as estimates using
+  the reference rate.
+- For monthly actual-versus-planned comparisons, ARS contributions use their
+  amount and USD savings/investments use their persisted ARS spend.
 - Investment projection uses the PRD monthly-rate formula and is always labeled
   as an estimate, never a guarantee.
 - Completion dates have month-level precision only and must stop at 720 months
@@ -249,9 +263,10 @@ Analytics convention:
 - Adding or editing goals and allocations cannot persist an active plan whose
   allocations do not sum to `100`; trajectory-changing changes show a
   before/after impact preview before persistence.
-- Same-currency projections calculate with decimal-safe arithmetic, month-level
-  dates, and a 60-year safety horizon. Cross-currency projections return an
-  explicit unavailable state and render **Proyección pendiente**.
+- ARS and USD goal projections calculate with decimal-safe arithmetic,
+  month-level dates, and a 60-year safety horizon. USD projections use the
+  fixed ARS-per-USD reference rate; unsupported currency relationships return
+  an explicit unavailable state.
 - Monthly cash flow distinguishes estimated margin from actual contributions and
   warns neutrally when the plan exceeds estimated margin.
 - Forms preserve user input on validation or persistence errors, and every
