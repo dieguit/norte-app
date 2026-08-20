@@ -107,7 +107,9 @@ describe('GoalsWorkspace component', () => {
     expect(screen.queryByRole('heading', { level: 2, name: 'Activos' })).not.toBeInTheDocument()
     expect(screen.queryByText('Activos')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Ver Colchón financiero/i })).not.toBeInTheDocument()
-    expect(screen.getByText('Colchón financiero')).toBeInTheDocument()
+    const activeArticle = screen.getByRole('article', { name: 'Colchón financiero' })
+    expect(within(activeArticle).queryByText('Activo')).not.toBeInTheDocument()
+    expect(within(activeArticle).queryByText('Prioridad alta')).not.toBeInTheDocument()
 
     const actualValueEl = screen.getByLabelText('Valor actual de Colchón financiero')
     expect(actualValueEl).toHaveTextContent('US$ 200,00')
@@ -206,10 +208,11 @@ describe('GoalsWorkspace component', () => {
       screen.getByRole('button', { name: 'Ocultar detalle de Colchón financiero' }),
     ).toHaveAttribute('aria-expanded', 'true')
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Composición' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Tus avances hasta hoy' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument()
-    expect(screen.getByText('Ahorrar USD')).toBeInTheDocument()
-    expect(screen.getByText('US$ 33,33 por mes')).toBeInTheDocument()
+    expect(
+      screen.getByText('Ahorrar US$ 33,33 por mes (100% de tu capacidad mensual)'),
+    ).toBeInTheDocument()
   })
 
   it('keeps only one goal expanded', async () => {
@@ -256,10 +259,12 @@ describe('GoalsWorkspace component', () => {
     const details = screen.getByRole('region', { name: 'Detalles de Colchón financiero' })
     expect(details).toHaveClass('grid-cols-1', 'sm:grid-cols-2')
     expect(within(details).getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent))
-      .toEqual(['Plan', 'Composición'])
+      .toEqual(['Plan', 'Tus avances hasta hoy'])
     expect(within(details).getByText('US$ 125,00')).toBeInTheDocument()
     expect(within(details).getByText('US$ 75,00')).toBeInTheDocument()
-    expect(within(details).getByText('Ahorrar USD')).toBeInTheDocument()
+    expect(
+      within(details).getByText('Ahorrar US$ 33,33 por mes (100% de tu capacidad mensual)'),
+    ).toBeInTheDocument()
   })
 
   it('omits empty groups from rendering', () => {
@@ -339,8 +344,9 @@ describe('GoalsWorkspace component', () => {
     expect(within(pausedArticle).getByText('Proyección pausada')).toBeInTheDocument()
 
     await user.click(within(pausedArticle).getByRole('button', { name: 'Ver detalle de Fondo de viaje' }))
-    expect(within(pausedArticle).getByText('Ahorrar USD')).toBeInTheDocument()
-    expect(within(pausedArticle).getByText('US$ 0,67 por mes')).toBeInTheDocument()
+    expect(
+      within(pausedArticle).getByText('Ahorrar US$ 0,67 por mes (10% de tu capacidad mensual)'),
+    ).toBeInTheDocument()
   })
 
   it('renders unknown target as Objetivo por calcular and omits progress percentage', () => {
@@ -455,11 +461,12 @@ describe('GoalsWorkspace component', () => {
 
     await user.click(screen.getByRole('button', { name: /Ver detalle de Fondo para la compra/ }))
 
-    expect(screen.getAllByText('Ahorrar USD').length).toBe(2)
-    expect(screen.getByText('60%')).toBeInTheDocument()
-    expect(screen.getByText('40%')).toBeInTheDocument()
-    expect(screen.getByText('US$ 40,00 por mes')).toBeInTheDocument()
-    expect(screen.getByText('US$ 26,67 por mes')).toBeInTheDocument()
+    expect(
+      screen.getByText('Ahorrar US$ 40,00 por mes (60% de tu capacidad mensual)'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Ahorrar US$ 26,67 por mes (40% de tu capacidad mensual)'),
+    ).toBeInTheDocument()
 
     expect(screen.queryByRole('link', { name: /Fondo para la compra/i })).not.toBeInTheDocument()
   })
@@ -487,7 +494,6 @@ describe('GoalsWorkspace component', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
 
-    expect(screen.getByText('0%')).toBeInTheDocument()
     expect(screen.getByText('Sin aporte mensual')).toBeInTheDocument()
   })
 })

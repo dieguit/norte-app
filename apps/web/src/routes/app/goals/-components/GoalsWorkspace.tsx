@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { Badge } from "../../../../components/ui/badge";
 import {
   formatCalendarMonth,
   formatMoney,
   formatPercentage,
 } from "../../../../lib/format";
 import {
-  GOAL_STATUS_LABELS,
   type GoalsWorkspace as GoalsWorkspaceType,
   type GoalWorkspaceItem,
 } from "../../../../features/goals/goals";
-import { GOAL_PRIORITY_LABELS, getGoalProjectionDisplay } from "./goal-display";
+import { getGoalProjectionDisplay } from "./goal-display";
 
 import { Button } from "../../../../components/ui/button";
 
@@ -49,23 +47,15 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
               return (
                 <div
                   key={`${row.effectiveMonth}-${index}`}
-                  className="flex flex-col justify-between gap-1 py-3 sm:flex-row sm:items-center"
+                  className="py-3"
                 >
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--sea-ink)]">
-                      {strategyLabel} {goal.currency}
-                      <span className="ml-2 font-normal text-[var(--sea-ink-soft)]">
-                        {Number(row.percentage)}%
-                      </span>
-                    </p>
-                    <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">
-                      Desde {formatCalendarMonth(row.effectiveMonth)}
-                    </p>
-                  </div>
-                  <p className="text-sm font-semibold text-[var(--sea-ink)] sm:text-right">
+                  <p className="text-sm font-semibold text-[var(--sea-ink)]">
                     {row.allocatedDestinationAmount
-                      ? `${formatMoney(row.allocatedDestinationAmount)} por mes`
+                      ? `${strategyLabel} ${formatMoney(row.allocatedDestinationAmount)} por mes (${Number(row.percentage)}% de tu capacidad mensual)`
                       : "Sin aporte mensual"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">
+                    Desde {formatCalendarMonth(row.effectiveMonth)}
                   </p>
                 </div>
               );
@@ -76,7 +66,7 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
 
       <section className="border-t border-[var(--line)] pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
         <h4 className="text-sm font-semibold text-[var(--sea-ink)]">
-          Composición
+          Tus avances hasta hoy
         </h4>
         <dl className="grid grid-cols-2 gap-4 py-2">
           <div>
@@ -120,14 +110,6 @@ function GoalCard({ goal, expanded, onToggle }: GoalCardProps) {
             >
               {goal.name}
             </h3>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="text-[11px]">
-                {GOAL_STATUS_LABELS[goal.status]}
-              </Badge>
-              <Badge variant="outline" className="text-[11px]">
-                {GOAL_PRIORITY_LABELS[goal.priority]}
-              </Badge>
-            </div>
           </div>
           <p className="text-xs text-[var(--sea-ink-soft)] sm:text-right">
             {projectionLabel}
