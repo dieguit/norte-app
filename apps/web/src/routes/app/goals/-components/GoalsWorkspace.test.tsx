@@ -211,7 +211,10 @@ describe('GoalsWorkspace component', () => {
     expect(screen.getByRole('heading', { name: 'Tus avances hasta hoy' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument()
     expect(
-      screen.getByText('Ahorrar US$ 33,33 por mes (100% de tu capacidad mensual)'),
+      screen.getByText('Ahorrar US$ 33,33 por mes'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('(100% de tu capacidad mensual)'),
     ).toBeInTheDocument()
   })
 
@@ -263,7 +266,10 @@ describe('GoalsWorkspace component', () => {
     expect(within(details).getByText('US$ 125,00')).toBeInTheDocument()
     expect(within(details).getByText('US$ 75,00')).toBeInTheDocument()
     expect(
-      within(details).getByText('Ahorrar US$ 33,33 por mes (100% de tu capacidad mensual)'),
+      within(details).getByText('Ahorrar US$ 33,33 por mes'),
+    ).toBeInTheDocument()
+    expect(
+      within(details).getByText('(100% de tu capacidad mensual)'),
     ).toBeInTheDocument()
   })
 
@@ -345,7 +351,10 @@ describe('GoalsWorkspace component', () => {
 
     await user.click(within(pausedArticle).getByRole('button', { name: 'Ver detalle de Fondo de viaje' }))
     expect(
-      within(pausedArticle).getByText('Ahorrar US$ 0,67 por mes (10% de tu capacidad mensual)'),
+      within(pausedArticle).getByText('Ahorrar US$ 0,67 por mes'),
+    ).toBeInTheDocument()
+    expect(
+      within(pausedArticle).getByText('(10% de tu capacidad mensual)'),
     ).toBeInTheDocument()
   })
 
@@ -462,10 +471,16 @@ describe('GoalsWorkspace component', () => {
     await user.click(screen.getByRole('button', { name: /Ver detalle de Fondo para la compra/ }))
 
     expect(
-      screen.getByText('Ahorrar US$ 40,00 por mes (60% de tu capacidad mensual)'),
+      screen.getByText('Ahorrar US$ 40,00 por mes'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Ahorrar US$ 26,67 por mes (40% de tu capacidad mensual)'),
+      screen.getByText('(60% de tu capacidad mensual)'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Ahorrar US$ 26,67 por mes'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('(40% de tu capacidad mensual)'),
     ).toBeInTheDocument()
 
     expect(screen.queryByRole('link', { name: /Fondo para la compra/i })).not.toBeInTheDocument()

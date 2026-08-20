@@ -49,11 +49,21 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
                   key={`${row.effectiveMonth}-${index}`}
                   className="py-3"
                 >
-                  <p className="text-sm font-semibold text-[var(--sea-ink)]">
-                    {row.allocatedDestinationAmount
-                      ? `${strategyLabel} ${formatMoney(row.allocatedDestinationAmount)} por mes (${Number(row.percentage)}% de tu capacidad mensual)`
-                      : "Sin aporte mensual"}
-                  </p>
+                  {row.allocatedDestinationAmount ? (
+                    <>
+                      <p className="text-sm font-semibold text-[var(--sea-ink)]">
+                        {strategyLabel}{" "}
+                        {formatMoney(row.allocatedDestinationAmount)} por mes
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">
+                        ({Number(row.percentage)}% de tu capacidad mensual)
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm font-semibold text-[var(--sea-ink)]">
+                      Sin aporte mensual
+                    </p>
+                  )}
                   <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">
                     Desde {formatCalendarMonth(row.effectiveMonth)}
                   </p>
