@@ -7,6 +7,7 @@ import type {
   GoalCreationContext,
   GoalCreationPreviewResult,
 } from '../../../../features/goals/goal-creation'
+import { AllocationImpactComparison } from './AllocationImpactComparison'
 import { GoalImpact } from './GoalImpact'
 import { useGoalCreationForm } from './useGoalCreationForm'
 
@@ -181,3 +182,55 @@ describe('GoalImpact component', () => {
     expect(screen.queryByText('Objetivo todavía no creado')).not.toBeInTheDocument()
   })
 })
+
+describe('AllocationImpactComparison component', () => {
+  it('renders existing-goal comparisons with before/after projection months', () => {
+    render(
+      <AllocationImpactComparison
+        impacts={[
+          {
+            goalId: 'goal-1',
+            goalName: 'Fondo de emergencia',
+            before: {
+              status: 'existing',
+              projection: { status: 'available', completionMonth: '2027-01' },
+            },
+            after: { status: 'available', completionMonth: '2027-03' },
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Fondo de emergencia')).toBeVisible()
+    expect(screen.getByText('Antes')).toBeVisible()
+    expect(screen.getByText('Con este cambio')).toBeVisible()
+    expect(screen.getByText('enero de 2027')).toBeVisible()
+    expect(screen.getByText('marzo de 2027')).toBeVisible()
+  })
+
+  it('renders pending goal with custom beforeNotCreatedLabel', () => {
+    render(
+      <AllocationImpactComparison
+        impacts={[
+          {
+            goalId: 'pending-goal',
+            goalName: 'Viaje al sur',
+            before: { status: 'not_created' },
+            after: { status: 'available', completionMonth: '2027-04' },
+          },
+        ]}
+        beforeNotCreatedLabel="Objetivo todavía no creado"
+      />,
+    )
+
+    expect(screen.getByText('Viaje al sur')).toBeVisible()
+    expect(screen.getByText('Objetivo todavía no creado')).toBeVisible()
+    expect(screen.getByText('abril de 2027')).toBeVisible()
+  })
+
+  it('renders nothing when impacts array is empty', () => {
+    const { container } = render(<AllocationImpactComparison impacts={[]} />)
+    expect(container.firstChild).toBeNull()
+  })
+})
+

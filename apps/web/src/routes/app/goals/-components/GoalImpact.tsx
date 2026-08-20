@@ -1,8 +1,6 @@
 import { useStore } from '@tanstack/react-form'
 import BigNumber from 'bignumber.js'
-import { formatCalendarMonth } from '../../../../lib/format'
 import { PlanAllocationEditor } from '../../../../features/goals/PlanAllocationEditor'
-import type { GoalProjection } from '../../../../features/goals/goals'
 import {
   calculatePercentageSum,
   recalculateAllocationAmounts,
@@ -11,32 +9,19 @@ import {
   type GoalCreationContext,
   type GoalCreationPreviewResult,
 } from '../../../../features/goals/goal-creation'
+import {
+  AllocationImpactComparison,
+  formatGoalProjection,
+} from './AllocationImpactComparison'
 import type { GoalCreationFormApi } from './useGoalCreationForm'
+
+export { formatGoalProjection }
 
 export const impactLabels = {
   before: 'Antes',
   after: 'Con este cambio',
   pendingGoalBefore: 'Objetivo todavía no creado',
   invalid: 'Completá la distribución para calcular el impacto',
-}
-
-export function formatGoalProjection(projection: GoalProjection): string {
-  switch (projection.status) {
-    case 'available':
-      return formatCalendarMonth(projection.completionMonth)
-    case 'target_unavailable':
-      return 'Objetivo por calcular'
-    case 'plan_paused':
-      return 'Proyección pausada'
-    case 'commitment_absent':
-      return 'Sin aporte mensual'
-    case 'no_future_allocation':
-      return 'Sin asignación futura'
-    case 'investment_assumption_unavailable':
-      return 'Supuesto de inversión no disponible'
-    case 'outside_horizon':
-      return 'No alcanzado dentro del horizonte'
-  }
 }
 
 export interface GoalImpactProps {
@@ -161,48 +146,14 @@ export function GoalImpact({
           </div>
         ) : preview?.proposal.impacts && preview.proposal.impacts.length > 0 ? (
           <div
-            className={`flex flex-col gap-3 transition-opacity ${
+            className={`transition-opacity ${
               isPreviewPending ? 'opacity-50' : 'opacity-100'
             }`}
           >
-            {preview.proposal.impacts.map((impact) => {
-              return (
-                <div
-                  key={impact.goalId}
-                  className="flex flex-col gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--foam)]/20 p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-[var(--sea-ink)]">
-                      {impact.goalName}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {/* Before */}
-                    <div className="flex flex-col gap-0.5 rounded-lg bg-[var(--surface)] p-2.5 border border-[var(--line)]">
-                      <span className="text-xs font-semibold text-[var(--sea-ink-soft)] uppercase tracking-wider">
-                        {impactLabels.before}
-                      </span>
-                      <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
-                        {impact.before.status === 'not_created'
-                          ? impactLabels.pendingGoalBefore
-                          : formatGoalProjection(impact.before.projection)}
-                      </p>
-                    </div>
-
-                    {/* After */}
-                    <div className="flex flex-col gap-0.5 rounded-lg bg-[var(--foam)]/60 p-2.5 border border-[var(--line)]">
-                      <span className="text-xs font-semibold text-[var(--pine)] uppercase tracking-wider">
-                        {impactLabels.after}
-                      </span>
-                      <p className="text-sm font-semibold text-[var(--sea-ink)]">
-                        {formatGoalProjection(impact.after)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            <AllocationImpactComparison
+              impacts={preview.proposal.impacts}
+              beforeNotCreatedLabel={impactLabels.pendingGoalBefore}
+            />
           </div>
         ) : null}
       </section>
