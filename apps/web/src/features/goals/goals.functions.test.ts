@@ -1,20 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { auth } from '@clerk/tanstack-react-start/server'
 import {
+  confirmAllocationChange,
   confirmGoalCreation,
+  getAllocationChangeContext,
   getGoalCreationContext,
   getGoalsWorkspace,
+  previewAllocationChange,
   previewGoalCreation,
 } from './goals.functions'
 import {
+  confirmAllocationChangeInRepository,
   confirmGoalCreationInRepository,
+  createAllocationChangePreviewToken,
   createGoalCreationPreviewToken,
+  getAllocationChangeState,
   getGoalCreationState,
   getGoalsWorkspaceRows,
+  StaleAllocationChangePreviewError,
   StaleGoalCreationPreviewError,
 } from './goals.repository.server'
 import { buildGoalCreationProposal, type GoalCreationState } from './goal-creation'
 import type { GoalCreationDraft } from './goal-creation.schema'
+import {
+  buildAllocationChangeProposal,
+  type AllocationChangeState,
+} from './allocation-change'
+import type { AllocationChangeDraft } from './allocation-change.schema'
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: vi.fn().mockImplementation(() => {
@@ -46,6 +58,8 @@ vi.mock('./goals.repository.server', async (importOriginal) => {
     getGoalsWorkspaceRows: vi.fn(),
     getGoalCreationState: vi.fn(),
     confirmGoalCreationInRepository: vi.fn(),
+    getAllocationChangeState: vi.fn(),
+    confirmAllocationChangeInRepository: vi.fn(),
     mapRowsToGoalsWorkspaceSource: vi.fn().mockImplementation((rows) => ({
       profile: {
         userId: rows.profile.userId,
@@ -611,3 +625,473 @@ describe('confirmGoalCreation', () => {
     vi.useRealTimers()
   })
 })
+
+describe('getAllocationChangeContext', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(getAllocationChangeContext()).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('passes authenticated userId and UTC YYYY-MM to repository and returns missing profile state', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getAllocationChangeState).mockResolvedValue(null)
+
+    const result = await getAllocationChangeContext()
+
+    expect(getAllocationChangeState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result).toEqual({ profile: 'missing' })
+
+    vi.useRealTimers()
+  })
+
+  it('returns present profile state with active goals, planned monthly contribution, and current/pending allocations', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    const mockState: AllocationChangeState = {
+      source: {
+        profile: {
+          userId: 'user_456',
+          baseCurrency: 'ARS',
+          approximateMonthlyIncome: '1000000.00',
+          approximateMonthlyExpenses: '500000.00',
+          expensesKnowledge: 'known',
+          plannedMonthlyContribution: '60000.00',
+          onboardingCompleted: true,
+        },
+        goals: [
+          {
+            id: 'g1',
+            userId: 'user_456',
+            name: 'Reserva',
+            type: 'emergency_fund',
+            targetAmount: '2000.00',
+            currency: 'USD',
+            priority: 'high',
+            strategy: 'save',
+            status: 'active',
+            desiredDate: null,
+            completedAt: null,
+            emergencyFundMonths: 6,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'g2',
+            userId: 'user_456',
+            name: 'Vacaciones',
+            type: 'purchase',
+            targetAmount: '1000.00',
+            currency: 'USD',
+            priority: 'medium',
+            strategy: 'save',
+            status: 'active',
+            desiredDate: null,
+            completedAt: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        savingsPositions: [
+          { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
+        ],
+        investmentPositions: [],
+        snapshots: [
+          {
+            id: 's1',
+            userId: 'user_456',
+            effectiveMonth: '2026-08-01',
+          },
+        ],
+        allocations: [
+          {
+            id: 'a1',
+            snapshotId: 's1',
+            goalId: 'g1',
+            percentage: '60.00',
+          },
+          {
+            id: 'a2',
+            snapshotId: 's1',
+            goalId: 'g2',
+            percentage: '40.00',
+          },
+        ],
+      },
+      pendingSnapshots: [
+        {
+          id: 's1_next',
+          userId: 'user_456',
+          effectiveMonth: '2026-09-01',
+        },
+      ],
+      pendingAllocations: [
+        {
+          id: 'a1_next',
+          snapshotId: 's1_next',
+          goalId: 'g1',
+          percentage: '50.00',
+        },
+        {
+          id: 'a2_next',
+          snapshotId: 's1_next',
+          goalId: 'g2',
+          percentage: '50.00',
+        },
+      ],
+    }
+
+    vi.mocked(getAllocationChangeState).mockResolvedValue(mockState)
+
+    const result = await getAllocationChangeContext()
+
+    expect(getAllocationChangeState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result).toEqual({
+      profile: 'present',
+      context: {
+        currentMonth: '2026-08',
+        plannedMonthlyContribution: { amount: '60000.00', currency: 'ARS' },
+        activeGoals: [
+          { id: 'g1', name: 'Reserva', currency: 'USD' },
+          { id: 'g2', name: 'Vacaciones', currency: 'USD' },
+        ],
+        currentAllocation: {
+          effectiveMonth: '2026-08-01',
+          entries: [
+            { goalId: 'g1', percentage: '60.00' },
+            { goalId: 'g2', percentage: '40.00' },
+          ],
+        },
+        pendingAllocation: {
+          effectiveMonth: '2026-09-01',
+          entries: [
+            { goalId: 'g1', percentage: '50.00' },
+            { goalId: 'g2', percentage: '50.00' },
+          ],
+        },
+      },
+    })
+
+    expect((result as any).context.source).toBeUndefined()
+    expect((result as any).context.savingsPositions).toBeUndefined()
+    expect((result as any).context.snapshots).toBeUndefined()
+
+    vi.useRealTimers()
+  })
+})
+
+describe('previewAllocationChange', () => {
+  const validDraft: AllocationChangeDraft = {
+    allocations: [
+      { goalId: 'g1', percentage: '50.00' },
+      { goalId: 'g2', percentage: '50.00' },
+    ],
+  }
+
+  const mockState: AllocationChangeState = {
+    source: {
+      profile: {
+        userId: 'user_456',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: 'g1',
+          userId: 'user_456',
+          name: 'Reserva',
+          type: 'emergency_fund',
+          targetAmount: '2000.00',
+          currency: 'USD',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          emergencyFundMonths: 6,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'g2',
+          userId: 'user_456',
+          name: 'Vacaciones',
+          type: 'purchase',
+          targetAmount: '1000.00',
+          currency: 'USD',
+          priority: 'medium',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [
+        { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
+      ],
+      investmentPositions: [],
+      snapshots: [
+        {
+          id: 's1',
+          userId: 'user_456',
+          effectiveMonth: '2026-08-01',
+        },
+      ],
+      allocations: [
+        {
+          id: 'a1',
+          snapshotId: 's1',
+          goalId: 'g1',
+          percentage: '60.00',
+        },
+        {
+          id: 'a2',
+          snapshotId: 's1',
+          goalId: 'g2',
+          percentage: '40.00',
+        },
+      ],
+    },
+    pendingSnapshots: [],
+    pendingAllocations: [],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(previewAllocationChange({ data: validDraft })).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('throws when financial profile is missing', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getAllocationChangeState).mockResolvedValue(null)
+
+    await expect(previewAllocationChange({ data: validDraft })).rejects.toThrow(
+      'Completá tu perfil financiero antes de cambiar la planificación.',
+    )
+
+    vi.useRealTimers()
+  })
+
+  it('rejects invalid draft input through validator / schema rejection', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getAllocationChangeState).mockResolvedValue(mockState)
+
+    const invalidDraft = {
+      allocations: [
+        { goalId: 'g1', percentage: '30.00' },
+        { goalId: 'g2', percentage: '50.00' },
+      ],
+    }
+
+    await expect(previewAllocationChange({ data: invalidDraft as any })).rejects.toThrow()
+
+    vi.useRealTimers()
+  })
+
+  it('returns read-only proposal and a 64-character preview token without persisting data', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getAllocationChangeState).mockResolvedValue(mockState)
+
+    const result = await previewAllocationChange({ data: validDraft })
+
+    expect(getAllocationChangeState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result.previewToken).toMatch(/^[a-f0-9]{64}$/)
+    expect(result.proposal.allocation.entries).toHaveLength(2)
+    expect(result.proposal.impacts).toHaveLength(2)
+
+    vi.useRealTimers()
+  })
+})
+
+describe('confirmAllocationChange', () => {
+  const currentMonth = '2026-08'
+  const validToken = 'a'.repeat(64)
+  const staleToken = 'b'.repeat(64)
+
+  const validDraft: AllocationChangeDraft = {
+    allocations: [
+      { goalId: 'g1', percentage: '50.00' },
+      { goalId: 'g2', percentage: '50.00' },
+    ],
+  }
+
+  const mockState: AllocationChangeState = {
+    source: {
+      profile: {
+        userId: 'user_456',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: 'g1',
+          userId: 'user_456',
+          name: 'Reserva',
+          type: 'emergency_fund',
+          targetAmount: '2000.00',
+          currency: 'USD',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          emergencyFundMonths: 6,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'g2',
+          userId: 'user_456',
+          name: 'Vacaciones',
+          type: 'purchase',
+          targetAmount: '1000.00',
+          currency: 'USD',
+          priority: 'medium',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [
+        { id: 'sp1', goalId: 'g1', amount: '500.00', currency: 'USD', location: null },
+      ],
+      investmentPositions: [],
+      snapshots: [
+        {
+          id: 's1',
+          userId: 'user_456',
+          effectiveMonth: '2026-08-01',
+        },
+      ],
+      allocations: [
+        {
+          id: 'a1',
+          snapshotId: 's1',
+          goalId: 'g1',
+          percentage: '60.00',
+        },
+        {
+          id: 'a2',
+          snapshotId: 's1',
+          goalId: 'g2',
+          percentage: '40.00',
+        },
+      ],
+    },
+    pendingSnapshots: [],
+    pendingAllocations: [],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(
+      confirmAllocationChange({ data: { draft: validDraft, previewToken: validToken } }),
+    ).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('rejects invalid payload or malformed previewToken through validator schema', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    await expect(
+      confirmAllocationChange({ data: { draft: validDraft, previewToken: 'short_token' } }),
+    ).rejects.toThrow()
+
+    vi.useRealTimers()
+  })
+
+  it('returns updated status on successful confirmation in repository', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(confirmAllocationChangeInRepository).mockResolvedValue(undefined)
+
+    const result = await confirmAllocationChange({
+      data: { draft: validDraft, previewToken: validToken },
+    })
+
+    expect(confirmAllocationChangeInRepository).toHaveBeenCalledWith({
+      userId: 'user_456',
+      currentMonth: '2026-08',
+      draft: validDraft,
+      previewToken: validToken,
+    })
+    expect(result).toEqual({
+      status: 'updated',
+    })
+
+    vi.useRealTimers()
+  })
+
+  it('returns stale status with refreshed preview when repository throws StaleAllocationChangePreviewError', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    const refreshedProposal = buildAllocationChangeProposal({
+      draft: validDraft,
+      state: mockState,
+      currentMonth,
+    })
+    const refreshedToken = createAllocationChangePreviewToken(mockState, currentMonth, validDraft)
+    const staleError = new StaleAllocationChangePreviewError({
+      proposal: refreshedProposal,
+      previewToken: refreshedToken,
+    })
+
+    vi.mocked(confirmAllocationChangeInRepository).mockRejectedValue(staleError)
+
+    const result = await confirmAllocationChange({
+      data: { draft: validDraft, previewToken: staleToken },
+    })
+
+    expect(result).toEqual({
+      status: 'stale',
+      preview: {
+        proposal: refreshedProposal,
+        previewToken: refreshedToken,
+      },
+    })
+
+    vi.useRealTimers()
+  })
+})
+

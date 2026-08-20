@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { mapGoalCreationContext } from './goals.server'
+import { mapAllocationChangeContext, mapGoalCreationContext } from './goals.server'
 import type { GoalCreationState } from './goal-creation'
+import type { AllocationChangeState } from './allocation-change'
 
 function createMockState(goals: GoalCreationState['source']['goals'] = []): GoalCreationState {
   return {
@@ -71,3 +72,84 @@ describe('mapGoalCreationContext', () => {
     })
   })
 })
+
+describe('mapAllocationChangeContext', () => {
+  it('maps active goals, planned contribution, and winning and pending snapshots', () => {
+    const state: AllocationChangeState = {
+      source: {
+        profile: {
+          userId: 'user-1',
+          baseCurrency: 'ARS',
+          approximateMonthlyIncome: '1000000.00',
+          approximateMonthlyExpenses: '500000.00',
+          expensesKnowledge: 'known',
+          plannedMonthlyContribution: '75000.00',
+          onboardingCompleted: true,
+        },
+        goals: [
+          {
+            id: 'g1',
+            userId: 'user-1',
+            name: 'Reserva',
+            type: 'emergency_fund',
+            targetAmount: '2000.00',
+            currency: 'USD',
+            priority: 'high',
+            strategy: 'save',
+            status: 'active',
+            desiredDate: null,
+            completedAt: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'g2',
+            userId: 'user-1',
+            name: 'Auto',
+            type: 'purchase',
+            targetAmount: '5000.00',
+            currency: 'USD',
+            priority: 'medium',
+            strategy: 'save',
+            status: 'paused',
+            desiredDate: null,
+            completedAt: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        savingsPositions: [],
+        investmentPositions: [],
+        snapshots: [
+          { id: 'snap-1', userId: 'user-1', effectiveMonth: '2026-08-01' },
+        ],
+        allocations: [
+          { id: 'alloc-1', snapshotId: 'snap-1', goalId: 'g1', percentage: '100.00' },
+        ],
+      },
+      pendingSnapshots: [
+        { id: 'snap-2', userId: 'user-1', effectiveMonth: '2026-09-01' },
+      ],
+      pendingAllocations: [
+        { id: 'alloc-2', snapshotId: 'snap-2', goalId: 'g1', percentage: '100.00' },
+      ],
+    }
+
+    const context = mapAllocationChangeContext(state, '2026-08')
+
+    expect(context).toEqual({
+      currentMonth: '2026-08',
+      plannedMonthlyContribution: { amount: '75000.00', currency: 'ARS' },
+      activeGoals: [
+        { id: 'g1', name: 'Reserva', currency: 'USD' },
+      ],
+      currentAllocation: {
+        effectiveMonth: '2026-08-01',
+        entries: [{ goalId: 'g1', percentage: '100.00' }],
+      },
+      pendingAllocation: {
+        effectiveMonth: '2026-09-01',
+        entries: [{ goalId: 'g1', percentage: '100.00' }],
+      },
+    })
+  })
+})
+

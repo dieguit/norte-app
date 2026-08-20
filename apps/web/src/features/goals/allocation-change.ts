@@ -24,6 +24,30 @@ export interface AllocationChangeState {
   pendingAllocations: GoalsWorkspaceSource['allocations']
 }
 
+export interface AllocationChangeContext {
+  currentMonth: string
+  plannedMonthlyContribution?: Money
+  activeGoals: Array<{
+    id: string
+    name: string
+    currency: CurrencyCode
+  }>
+  currentAllocation?: {
+    effectiveMonth: string
+    entries: Array<{
+      goalId: string
+      percentage: string
+    }>
+  }
+  pendingAllocation?: {
+    effectiveMonth: string
+    entries: Array<{
+      goalId: string
+      percentage: string
+    }>
+  }
+}
+
 export interface AllocationChangeProposal {
   allocation: GoalCreationAllocation
   impacts: Array<{
