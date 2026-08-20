@@ -2,15 +2,21 @@ import { createServerFn } from '@tanstack/react-start'
 import {
   confirmAllocationChangeServer,
   confirmGoalCreationServer,
+  confirmGoalEditServer,
   getAllocationChangeContextServer,
   getGoalCreationContextServer,
+  getGoalEditContextServer,
   getGoalsWorkspaceServer,
   previewAllocationChangeServer,
   previewGoalCreationServer,
+  previewGoalEditServer,
 } from './goals.server'
 import {
   confirmGoalCreationSchema,
+  confirmGoalEditSchema,
   goalCreationDraftSchema,
+  goalEditRequestSchema,
+  previewGoalEditSchema,
 } from './goal-creation.schema'
 import {
   allocationChangeDraftSchema,
@@ -31,6 +37,18 @@ export const confirmGoalCreation = createServerFn({ method: 'POST' })
   .validator((data) => confirmGoalCreationSchema.parse(data))
   .handler(confirmGoalCreationServer)
 
+export const getGoalEditContext = createServerFn({ method: 'GET' })
+  .validator((data) => goalEditRequestSchema.parse(data))
+  .handler(getGoalEditContextServer)
+
+export const previewGoalEdit = createServerFn({ method: 'POST' })
+  .validator((data) => previewGoalEditSchema.parse(data))
+  .handler(previewGoalEditServer)
+
+export const confirmGoalEdit = createServerFn({ method: 'POST' })
+  .validator((data) => confirmGoalEditSchema.parse(data))
+  .handler(confirmGoalEditServer)
+
 export const getAllocationChangeContext = createServerFn({ method: 'GET' })
   .handler(getAllocationChangeContextServer)
 
@@ -41,4 +59,5 @@ export const previewAllocationChange = createServerFn({ method: 'POST' })
 export const confirmAllocationChange = createServerFn({ method: 'POST' })
   .validator((data) => confirmAllocationChangeSchema.parse(data))
   .handler(confirmAllocationChangeServer)
+
 

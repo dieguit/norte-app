@@ -28,6 +28,7 @@ import {
   PENDING_GOAL_ID,
   buildGoalCreationProposal,
   serializeGoalCreationState,
+  serializeGoalEditState,
   type GoalCreationAllocation,
   type GoalCreationPreviewResult,
   type GoalCreationState,
@@ -43,6 +44,14 @@ import type { AllocationChangeDraft } from './allocation-change.schema'
 
 export class StaleGoalCreationPreviewError extends Error {
   readonly code = 'STALE_GOAL_CREATION_PREVIEW'
+
+  constructor(readonly refreshedPreview: GoalCreationPreviewResult) {
+    super('Tu Plan cambió mientras revisabas el impacto.')
+  }
+}
+
+export class StaleGoalEditPreviewError extends Error {
+  readonly code = 'STALE_GOAL_EDIT_PREVIEW'
 
   constructor(readonly refreshedPreview: GoalCreationPreviewResult) {
     super('Tu Plan cambió mientras revisabas el impacto.')
@@ -228,6 +237,31 @@ export async function getGoalCreationState(
   return getGoalCreationStateWithExecutor(db, userId, currentMonth)
 }
 
+export async function getGoalEditStateWithExecutor(
+  executor: any,
+  userId: string,
+  currentMonth: string,
+  goalId: string,
+): Promise<GoalCreationState | null> {
+  const state = await getActiveGoalPlanStateWithExecutor(executor, userId, currentMonth)
+  if (!state) {
+    return null
+  }
+  const goal = state.source.goals.find((g) => g.id === goalId && g.status === 'active')
+  if (!goal) {
+    throw new Error('Goal not found or is not active.')
+  }
+  return state
+}
+
+export async function getGoalEditState(
+  userId: string,
+  currentMonth: string,
+  goalId: string,
+): Promise<GoalCreationState | null> {
+  return getGoalEditStateWithExecutor(db, userId, currentMonth, goalId)
+}
+
 export async function getAllocationChangeStateWithExecutor(
   executor: any,
   userId: string,
@@ -380,6 +414,86 @@ export async function confirmAllocationChangeInRepository(input: {
   })
 }
 
+export async function confirmGoalEditInRepository(input: {
+  userId: string
+  goalId: string
+  currentMonth: string
+  draft: GoalCreationDraft
+  previewToken: string
+}): Promise<void> {
+  const { userId, goalId, currentMonth, draft, previewToken } = input
+
+  return db.transaction(async (tx) => {
+    const lockedProfile = await tx
+      .select({ userId: financialProfiles.userId })
+      .from(financialProfiles)
+      .where(eq(financialProfiles.userId, userId))
+      .for('update')
+
+    if (!lockedProfile.length) {
+      throw new Error('Financial profile not found.')
+    }
+
+    const state = await getGoalEditStateWithExecutor(tx, userId, currentMonth, goalId)
+    if (!state) throw new Error('Financial profile not found.')
+
+    const selectedGoal = state.source.goals.find((g) => g.id === goalId && g.status === 'active')
+    if (!selectedGoal) {
+      throw new Error('Goal not found or is not active.')
+    }
+
+    if (
+      draft.type !== selectedGoal.type ||
+      draft.currency !== selectedGoal.currency ||
+      draft.strategy !== selectedGoal.strategy
+    ) {
+      throw new Error('Cannot modify immutable goal fields (type, currency, strategy).')
+    }
+
+    const currentToken = createGoalEditPreviewToken(state, currentMonth, goalId, draft)
+    const proposal = buildGoalCreationProposal({
+      draft,
+      state,
+      currentMonth,
+      subjectGoalId: goalId,
+    })
+    if (currentToken !== previewToken) {
+      throw new StaleGoalEditPreviewError({ proposal, previewToken: currentToken })
+    }
+
+    await tx
+      .update(financialGoals)
+      .set({
+        name: proposal.normalizedGoal.name,
+        targetAmount: proposal.normalizedGoal.targetAmount?.amount,
+        desiredDate: proposal.normalizedGoal.desiredDate,
+        emergencyFundMonths: proposal.normalizedGoal.emergencyFundMonths,
+      })
+      .where(eq(financialGoals.id, goalId))
+
+    if (proposal.investment) {
+      await tx
+        .update(goalInvestmentPositions)
+        .set({
+          annualReturnRate: proposal.investment.annualReturnRate,
+          availability: proposal.investment.availability,
+          availableFrom: proposal.investment.availableFrom,
+        })
+        .where(eq(goalInvestmentPositions.goalId, goalId))
+    }
+
+    const snapshotId = await replacePendingAllocationSnapshot(tx, userId, proposal.allocation)
+    await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
+    await tx.insert(allocationPlanEntries).values(
+      proposal.allocation.entries.map((entry) => ({
+        snapshotId,
+        goalId: entry.goalId,
+        percentage: entry.percentage,
+      })),
+    )
+  })
+}
+
 export function createGoalCreationPreviewToken(
   state: GoalCreationState,
   currentMonth: string,
@@ -387,6 +501,17 @@ export function createGoalCreationPreviewToken(
 ): string {
   return createHash('sha256')
     .update(serializeGoalCreationState(state, currentMonth, draft))
+    .digest('hex')
+}
+
+export function createGoalEditPreviewToken(
+  state: GoalCreationState,
+  currentMonth: string,
+  goalId: string,
+  draft?: GoalCreationDraft,
+): string {
+  return createHash('sha256')
+    .update(serializeGoalEditState(state, currentMonth, goalId, draft))
     .digest('hex')
 }
 

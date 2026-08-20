@@ -1,29 +1,39 @@
 import '@tanstack/react-start/server-only'
+import BigNumber from 'bignumber.js'
 import { createMoney } from '../../lib/money'
+import { getNextCalendarMonth } from '../financial/financial'
 import { requireFinancialUser } from '../financial/auth.server'
 import { buildGoalsWorkspace, type GoalsAppState } from './goals'
 import {
   confirmAllocationChangeInRepository,
   confirmGoalCreationInRepository,
+  confirmGoalEditInRepository,
   createAllocationChangePreviewToken,
   createGoalCreationPreviewToken,
+  createGoalEditPreviewToken,
   getAllocationChangeState,
   getGoalCreationState,
+  getGoalEditState,
   getGoalsWorkspaceRows,
   mapRowsToGoalsWorkspaceSource,
   StaleAllocationChangePreviewError,
   StaleGoalCreationPreviewError,
+  StaleGoalEditPreviewError,
 } from './goals.repository.server'
 import {
   buildGoalCreationProposal,
   type GoalCreationContext,
   type GoalCreationPreviewResult,
   type GoalCreationState,
+  type GoalEditContext,
 } from './goal-creation'
 import {
   parseGoalCreationSubmission,
   type ConfirmGoalCreationInput,
+  type ConfirmGoalEditInput,
   type GoalCreationDraft,
+  type GoalEditRequestInput,
+  type PreviewGoalEditInput,
 } from './goal-creation.schema'
 import {
   buildAllocationChangeProposal,
@@ -36,11 +46,20 @@ import type {
   ConfirmAllocationChangeInput,
 } from './allocation-change.schema'
 
-export type { GoalsAppState, GoalCreationContextState, AllocationChangeContextState }
+export type {
+  GoalsAppState,
+  GoalCreationContextState,
+  GoalEditContextState,
+  AllocationChangeContextState,
+}
 
 type GoalCreationContextState =
   | { profile: 'missing' }
   | { profile: 'present'; context: GoalCreationContext }
+
+type GoalEditContextState =
+  | { profile: 'missing' }
+  | ({ profile: 'present' } & GoalEditContext)
 
 type AllocationChangeContextState =
   | { profile: 'missing' }
@@ -149,6 +168,171 @@ export async function confirmGoalCreationServer({
     return { status: 'created' as const, goalId: result.goalId }
   } catch (error) {
     if (error instanceof StaleGoalCreationPreviewError) {
+      return { status: 'stale' as const, preview: error.refreshedPreview }
+    }
+    throw error
+  }
+}
+
+export function mapGoalEditContext(
+  state: GoalCreationState,
+  currentMonth: string,
+  goalId: string,
+): GoalEditContext {
+  const goal = state.source.goals.find((g) => g.id === goalId && g.status === 'active')
+  if (!goal) {
+    throw new Error('Goal not found or is not active.')
+  }
+  const activeGoals = state.source.goals.filter((g) => g.status === 'active')
+  const nextMonthStr = `${getNextCalendarMonth(new Date(`${currentMonth.slice(0, 7)}-01T00:00:00Z`))}`
+
+  const pendingNextSnapshot = state.pendingSnapshots?.find(
+    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
+  )
+  const sourceNextSnapshot = state.source.snapshots?.find(
+    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
+  )
+  const currentSnapshot = state.source.snapshots
+    ?.filter((s) => s.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
+    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
+
+  const selectedSnapshot = pendingNextSnapshot ?? sourceNextSnapshot ?? currentSnapshot
+
+  const sourceAllocs = selectedSnapshot
+    ? (pendingNextSnapshot ? state.pendingAllocations : state.source.allocations)?.filter(
+        (a) => a.snapshotId === selectedSnapshot.id,
+      ) ?? []
+    : []
+
+  let selectedAllocationEntries: Array<{ goalId: string; percentage: string }> = []
+
+  if (sourceAllocs.length > 0) {
+    const activeAllocGoalIds = new Set(
+      sourceAllocs.map((a) => a.goalId).filter((id) => activeGoals.some((g) => g.id === id)),
+    )
+
+    for (const a of sourceAllocs) {
+      if (activeGoals.some((g) => g.id === a.goalId)) {
+        selectedAllocationEntries.push({
+          goalId: a.goalId,
+          percentage: new BigNumber(a.percentage).toFixed(2),
+        })
+      }
+    }
+
+    for (const g of activeGoals) {
+      if (!activeAllocGoalIds.has(g.id)) {
+        selectedAllocationEntries.push({
+          goalId: g.id,
+          percentage: '0.00',
+        })
+      }
+    }
+  } else {
+    selectedAllocationEntries = activeGoals.map((g) => ({
+      goalId: g.id,
+      percentage: activeGoals.length === 1 ? '100.00' : '0.00',
+    }))
+  }
+
+  const investment = state.source.investmentPositions?.find((p) => p.goalId === goalId)
+
+  const draft: GoalCreationDraft = {
+    type: goal.type as GoalCreationDraft['type'],
+    name: goal.name,
+    targetAmount: goal.targetAmount ?? '',
+    currency: goal.currency,
+    desiredMonth: goal.desiredDate?.slice(0, 7) ?? '',
+    priority: goal.priority,
+    strategy: goal.strategy,
+    annualReturnRate: investment?.annualReturnRate ?? '8',
+    availability: investment?.availability ?? 'available_now',
+    availableFromMonth: investment?.availableFrom?.slice(0, 7) ?? '',
+    allocations: selectedAllocationEntries,
+  }
+
+  return {
+    goalId,
+    draft,
+    context: mapGoalCreationContext(state, currentMonth),
+  }
+}
+
+export async function getGoalEditContextServer({
+  data,
+}: {
+  data: GoalEditRequestInput
+}): Promise<GoalEditContextState> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const state = await getGoalEditState(userId, currentMonth, data.goalId)
+  if (!state) {
+    return { profile: 'missing' }
+  }
+  const editContext = mapGoalEditContext(state, currentMonth, data.goalId)
+  return {
+    profile: 'present',
+    ...editContext,
+  }
+}
+
+export async function previewGoalEditServer({
+  data,
+}: {
+  data: PreviewGoalEditInput
+}): Promise<GoalCreationPreviewResult> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const state = await getGoalEditState(userId, currentMonth, data.goalId)
+  if (!state) {
+    throw new Error('Completá tu perfil financiero antes de editar un objetivo.')
+  }
+  const selectedGoal = state.source.goals.find((g) => g.id === data.goalId && g.status === 'active')
+  if (!selectedGoal) {
+    throw new Error('Goal not found or is not active.')
+  }
+  const draft = parseGoalCreationSubmission(data.draft, currentMonth)
+  if (
+    draft.type !== selectedGoal.type ||
+    draft.currency !== selectedGoal.currency ||
+    draft.strategy !== selectedGoal.strategy
+  ) {
+    throw new Error('Cannot modify immutable goal fields (type, currency, strategy).')
+  }
+
+  const proposal = buildGoalCreationProposal({
+    draft,
+    state,
+    currentMonth,
+    subjectGoalId: data.goalId,
+  })
+
+  return {
+    proposal,
+    previewToken: createGoalEditPreviewToken(state, currentMonth, data.goalId, draft),
+  }
+}
+
+export async function confirmGoalEditServer({
+  data,
+}: {
+  data: ConfirmGoalEditInput
+}): Promise<{ status: 'updated' } | { status: 'stale'; preview: GoalCreationPreviewResult }> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const draft = parseGoalCreationSubmission(data.draft, currentMonth)
+
+  try {
+    await confirmGoalEditInRepository({
+      userId,
+      goalId: data.goalId,
+      currentMonth,
+      draft,
+      previewToken: data.previewToken,
+    })
+    return { status: 'updated' as const }
+  } catch (error) {
+    if (error instanceof StaleGoalEditPreviewError) {
       return { status: 'stale' as const, preview: error.refreshedPreview }
     }
     throw error

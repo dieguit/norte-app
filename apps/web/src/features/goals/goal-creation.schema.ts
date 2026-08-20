@@ -107,6 +107,13 @@ export const goalEditRequestSchema = z.object({
 
 export type GoalEditRequestInput = z.infer<typeof goalEditRequestSchema>
 
+export const previewGoalEditSchema = z.object({
+  goalId: z.string().uuid(),
+  draft: goalCreationDraftSchema,
+})
+
+export type PreviewGoalEditInput = z.infer<typeof previewGoalEditSchema>
+
 export const confirmGoalEditSchema = z.object({
   goalId: z.string().uuid(),
   draft: goalCreationDraftSchema,

@@ -37,6 +37,12 @@ export interface GoalCreationContext {
   }
 }
 
+export interface GoalEditContext {
+  goalId: string
+  draft: GoalCreationDraft
+  context: GoalCreationContext
+}
+
 export interface GoalCreationState {
   source: GoalsWorkspaceSource
   pendingSnapshots: GoalsWorkspaceSource['snapshots']
@@ -547,6 +553,7 @@ export function buildGoalCreationProposal(input: {
     const submittedIds = new Set(draft.allocations.map((e) => e.goalId))
     const isExactMatch =
       submittedIds.size === expectedIds.size &&
+      draft.allocations.length === expectedIds.size &&
       [...expectedIds].every((id) => submittedIds.has(id))
 
     if (isExactMatch) {
@@ -561,6 +568,8 @@ export function buildGoalCreationProposal(input: {
         }
         return entry
       })
+    } else if (isEditing) {
+      throw new Error('Allocation draft must contain exactly the active goals')
     }
   }
 
@@ -757,6 +766,130 @@ export function serializeGoalCreationState(
   const { source, pendingSnapshots, pendingAllocations } = state
 
   const normalized = {
+    currentMonth,
+    planningArsPerUsd: PLANNING_ARS_PER_USD,
+    profile: source.profile
+      ? {
+          userId: source.profile.userId,
+          baseCurrency: source.profile.baseCurrency,
+          approximateMonthlyIncome: source.profile.approximateMonthlyIncome,
+          approximateMonthlyExpenses: source.profile.approximateMonthlyExpenses ?? null,
+          expensesKnowledge: source.profile.expensesKnowledge,
+          plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
+          onboardingCompleted: source.profile.onboardingCompleted,
+        }
+      : null,
+    goals: (source.goals ?? [])
+      .map((g) => ({
+        id: g.id,
+        userId: g.userId ?? null,
+        name: g.name,
+        type: g.type,
+        targetAmount: g.targetAmount ?? null,
+        currency: g.currency,
+        priority: g.priority,
+        strategy: g.strategy,
+        status: g.status,
+        desiredDate: g.desiredDate ?? null,
+        completedAt: g.completedAt ?? null,
+        emergencyFundMonths: g.emergencyFundMonths ?? null,
+        createdAt: g.createdAt,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    savingsPositions: (source.savingsPositions ?? [])
+      .map((s) => ({
+        id: s.id,
+        goalId: s.goalId,
+        amount: s.amount,
+        currency: s.currency,
+        location: s.location ?? null,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    investmentPositions: (source.investmentPositions ?? [])
+      .map((i) => ({
+        id: i.id,
+        goalId: i.goalId,
+        currentValue: i.currentValue,
+        currency: i.currency,
+        annualReturnRate: i.annualReturnRate ?? null,
+        availability: i.availability ?? null,
+        availableFrom: i.availableFrom ?? null,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    snapshots: (source.snapshots ?? [])
+      .map((s) => ({
+        id: s.id,
+        userId: s.userId ?? null,
+        effectiveMonth: s.effectiveMonth,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    allocations: (source.allocations ?? [])
+      .map((a) => ({
+        id: a.id,
+        snapshotId: a.snapshotId,
+        goalId: a.goalId,
+        percentage: a.percentage,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    pendingSnapshots: (pendingSnapshots ?? [])
+      .map((s) => ({
+        id: s.id,
+        userId: s.userId ?? null,
+        effectiveMonth: s.effectiveMonth,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    pendingAllocations: (pendingAllocations ?? [])
+      .map((a) => ({
+        id: a.id,
+        snapshotId: a.snapshotId,
+        goalId: a.goalId,
+        percentage: a.percentage,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    draft: draft
+      ? {
+          type: draft.type,
+          name: draft.name.trim(),
+          targetAmount: draft.targetAmount,
+          currency: draft.currency,
+          desiredMonth: draft.desiredMonth ?? null,
+          priority: draft.priority,
+          strategy: draft.strategy,
+          annualReturnRate: draft.annualReturnRate,
+          availability: draft.availability,
+          availableFromMonth: draft.availableFromMonth ?? null,
+          allocations: (draft.allocations ?? [])
+            .map((e) => ({
+              goalId: e.goalId,
+              percentage: new BigNumber((e.percentage || '0').replace(',', '.')).toFixed(2),
+            }))
+            .sort((a, b) => a.goalId.localeCompare(b.goalId)),
+        }
+      : null,
+  }
+
+  return JSON.stringify(normalized)
+}
+
+export function serializeGoalEditState(
+  stateOrSource: GoalCreationState | GoalsWorkspaceSource,
+  currentMonth: string,
+  goalId: string,
+  draft?: GoalCreationDraft,
+): string {
+  const state: GoalCreationState =
+    'source' in stateOrSource && stateOrSource.source
+      ? (stateOrSource as GoalCreationState)
+      : {
+          source: stateOrSource as GoalsWorkspaceSource,
+          pendingSnapshots: [],
+          pendingAllocations: [],
+        }
+
+  const { source, pendingSnapshots, pendingAllocations } = state
+
+  const normalized = {
+    goalId,
     currentMonth,
     planningArsPerUsd: PLANNING_ARS_PER_USD,
     profile: source.profile
