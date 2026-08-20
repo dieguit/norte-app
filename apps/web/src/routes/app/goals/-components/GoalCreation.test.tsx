@@ -130,8 +130,8 @@ describe('GoalCreation component (2-step flow)', () => {
       expect(screen.getByRole('heading', { name: '1. Objetivo' })).toBeVisible()
       expect(screen.getByText('Paso 1 de 2')).toBeVisible()
 
-      // Default priority should be medium
-      expect(screen.getByText('Prioridad media')).toBeVisible()
+      // Priority field should be hidden from UI
+      expect(screen.queryByLabelText('Prioridad')).not.toBeInTheDocument()
 
       // Default strategy is Ahorrar and it is checked
       const saveRadio = screen.getByRole('radio', { name: 'Ahorrar' })

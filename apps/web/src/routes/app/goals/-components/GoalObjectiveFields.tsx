@@ -38,12 +38,6 @@ const CURRENCY_OPTIONS = [
   { value: 'USD', label: 'Dólares (USD)' },
 ] as const
 
-const PRIORITY_OPTIONS = [
-  { value: 'high', label: 'Prioridad alta' },
-  { value: 'medium', label: 'Prioridad media' },
-  { value: 'low', label: 'Prioridad baja' },
-] as const
-
 const AVAILABILITY_OPTIONS = [
   { value: 'available_now', label: 'Disponible en cualquier momento' },
   { value: 'available_from', label: 'Disponible a partir de una fecha' },
@@ -233,37 +227,6 @@ export function GoalObjectiveFields({
           )}
         </Field>
 
-        {/* Priority */}
-        <Field data-invalid={!!validationErrors.priority}>
-          <FieldLabel htmlFor="goal-priority-trigger">Prioridad</FieldLabel>
-          <Select
-            value={values.priority}
-            onValueChange={(val) =>
-              val && form.setFieldValue('priority', val as any)
-            }
-          >
-            <SelectTrigger
-              id="goal-priority-trigger"
-              aria-label="Prioridad"
-              className="w-full"
-            >
-              <SelectValue>
-                {PRIORITY_OPTIONS.find((opt) => opt.value === values.priority)
-                  ?.label ?? 'Seleccionar prioridad'}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {PRIORITY_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {validationErrors.priority && (
-            <FieldError>{validationErrors.priority}</FieldError>
-          )}
-        </Field>
 
         {/* Strategy Radio Group */}
         <Field data-invalid={!!validationErrors.strategy}>
