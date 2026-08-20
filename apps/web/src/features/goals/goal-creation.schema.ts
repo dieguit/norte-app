@@ -101,6 +101,27 @@ export const confirmGoalCreationSchema = z.object({
 
 export type ConfirmGoalCreationInput = z.infer<typeof confirmGoalCreationSchema>
 
+export const goalEditRequestSchema = z.object({
+  goalId: z.string().uuid(),
+})
+
+export type GoalEditRequestInput = z.infer<typeof goalEditRequestSchema>
+
+export const confirmGoalEditSchema = z.object({
+  goalId: z.string().uuid(),
+  draft: goalCreationDraftSchema,
+  previewToken: z.string().regex(/^[a-f0-9]{64}$/),
+}).superRefine((input, context) => {
+  const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations })
+  if (!impactResult.success) {
+    for (const issue of impactResult.error.issues) {
+      context.addIssue({ code: 'custom', message: issue.message, path: ['draft', ...issue.path] })
+    }
+  }
+})
+
+export type ConfirmGoalEditInput = z.infer<typeof confirmGoalEditSchema>
+
 export function parseGoalCreationSubmission(input: unknown, currentMonth: string): GoalCreationDraft {
   const draft = goalCreationDraftSchema.parse(input)
   createObjectiveSchema(currentMonth).parse(draft)
@@ -110,3 +131,4 @@ export function parseGoalCreationSubmission(input: unknown, currentMonth: string
   }
   return draft
 }
+

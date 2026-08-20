@@ -489,6 +489,157 @@ describe('buildGoalCreationProposal', () => {
       expect(proposal.proposedSource.investmentPositions.some((p) => p.goalId === PENDING_GOAL_ID)).toBe(false)
     })
   })
+
+  describe('Editing an existing active goal', () => {
+    it('replaces the existing goal and updates its investment position while preserving goal id, status, createdAt, and position currentValue', () => {
+      const source = createBaseWorkspaceSource()
+      // Setup goal-2 as invest with existing position
+      source.goals[1] = {
+        ...source.goals[1],
+        strategy: 'invest',
+      }
+      source.investmentPositions = [
+        {
+          id: 'pos-goal-2',
+          goalId: 'goal-2',
+          currentValue: '5000.00',
+          currency: 'ARS',
+          annualReturnRate: '6.0',
+          availability: 'available_now',
+          availableFrom: null,
+        },
+      ]
+
+      const state: GoalCreationState = {
+        source,
+        pendingSnapshots: [],
+        pendingAllocations: [],
+      }
+
+      const draft = createBaseDraft({
+        name: 'Casa propia',
+        strategy: 'invest',
+        annualReturnRate: '7.5',
+        allocations: [
+          { goalId: 'goal-1', percentage: '40.00' },
+          { goalId: 'goal-2', percentage: '60.00' },
+        ],
+      })
+
+      const proposal = buildGoalCreationProposal({
+        draft,
+        state,
+        currentMonth: '2026-08',
+        subjectGoalId: 'goal-2',
+      })
+
+      expect(proposal.proposedSource.goals).toHaveLength(2)
+      expect(proposal.proposedSource.goals.find((g) => g.id === 'goal-2')).toMatchObject({
+        id: 'goal-2',
+        name: 'Casa propia',
+        strategy: 'invest',
+        status: 'active',
+        createdAt: '2026-02-01T00:00:00Z',
+      })
+      expect(proposal.proposedSource.investmentPositions.find((p) => p.goalId === 'goal-2')).toMatchObject({
+        id: 'pos-goal-2',
+        goalId: 'goal-2',
+        currentValue: '5000.00',
+        annualReturnRate: '7.5',
+      })
+
+      // Allocation entries should reference existing goals, not pending-goal
+      expect(proposal.allocation.entries).toEqual([
+        expect.objectContaining({ goalId: 'goal-1', percentage: '40.00', pending: false }),
+        expect.objectContaining({ goalId: 'goal-2', percentage: '60.00', pending: false, goalName: 'Casa propia' }),
+      ])
+      expect(proposal.allocation.entries.some((e) => e.goalId === PENDING_GOAL_ID)).toBe(false)
+
+      // Impact should describe existing goal with status 'existing'
+      const goal2Impact = proposal.impacts.find((i) => i.goalId === 'goal-2')
+      expect(goal2Impact).toBeDefined()
+      expect(goal2Impact?.goalName).toBe('Casa propia')
+      expect(goal2Impact?.before).toMatchObject({
+        status: 'existing',
+      })
+      expect(proposal.impacts.some((i) => i.goalId === PENDING_GOAL_ID)).toBe(false)
+    })
+
+    it('throws error when subjectGoalId is not found or is not active', () => {
+      const source = createBaseWorkspaceSource()
+      const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
+
+      expect(() =>
+        buildGoalCreationProposal({
+          draft: createBaseDraft(),
+          state,
+          currentMonth: '2026-08',
+          subjectGoalId: 'non-existent-goal',
+        }),
+      ).toThrow('Goal not found or is not active.')
+    })
+
+    it('removes investment position when strategy changes from invest to save on edit', () => {
+      const source = createBaseWorkspaceSource()
+      source.goals[1] = { ...source.goals[1], strategy: 'invest' }
+      source.investmentPositions = [
+        {
+          id: 'pos-goal-2',
+          goalId: 'goal-2',
+          currentValue: '5000.00',
+          currency: 'ARS',
+          annualReturnRate: '6.0',
+          availability: 'available_now',
+          availableFrom: null,
+        },
+      ]
+      const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
+
+      const draft = createBaseDraft({
+        strategy: 'save',
+        allocations: [
+          { goalId: 'goal-1', percentage: '60.00' },
+          { goalId: 'goal-2', percentage: '40.00' },
+        ],
+      })
+
+      const proposal = buildGoalCreationProposal({
+        draft,
+        state,
+        currentMonth: '2026-08',
+        subjectGoalId: 'goal-2',
+      })
+
+      expect(proposal.proposedSource.investmentPositions.find((p) => p.goalId === 'goal-2')).toBeUndefined()
+    })
+
+    it('creates investment position with 0.00 currentValue when strategy changes from save to invest on edit', () => {
+      const source = createBaseWorkspaceSource()
+      const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
+
+      const draft = createBaseDraft({
+        strategy: 'invest',
+        annualReturnRate: '9.0',
+        allocations: [
+          { goalId: 'goal-1', percentage: '60.00' },
+          { goalId: 'goal-2', percentage: '40.00' },
+        ],
+      })
+
+      const proposal = buildGoalCreationProposal({
+        draft,
+        state,
+        currentMonth: '2026-08',
+        subjectGoalId: 'goal-2',
+      })
+
+      expect(proposal.proposedSource.investmentPositions.find((p) => p.goalId === 'goal-2')).toMatchObject({
+        goalId: 'goal-2',
+        currentValue: '0.00',
+        annualReturnRate: '9.0',
+      })
+    })
+  })
 })
 
 describe('serializeGoalCreationState', () => {
