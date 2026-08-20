@@ -33,11 +33,26 @@ import {
   type GoalCreationState,
 } from './goal-creation'
 import type { GoalCreationDraft } from './goal-creation.schema'
+import {
+  buildAllocationChangeProposal,
+  serializeAllocationChangeState,
+  type AllocationChangePreviewResult,
+  type AllocationChangeState,
+} from './allocation-change'
+import type { AllocationChangeDraft } from './allocation-change.schema'
 
 export class StaleGoalCreationPreviewError extends Error {
   readonly code = 'STALE_GOAL_CREATION_PREVIEW'
 
   constructor(readonly refreshedPreview: GoalCreationPreviewResult) {
+    super('Tu Plan cambió mientras revisabas el impacto.')
+  }
+}
+
+export class StaleAllocationChangePreviewError extends Error {
+  readonly code = 'STALE_ALLOCATION_CHANGE_PREVIEW'
+
+  constructor(readonly refreshedPreview: AllocationChangePreviewResult) {
     super('Tu Plan cambió mientras revisabas el impacto.')
   }
 }
@@ -156,11 +171,11 @@ export function mapAllocation(a: AllocationPlanEntry): GoalsWorkspaceSource['all
   }
 }
 
-export async function getGoalCreationStateWithExecutor(
+export async function getActiveGoalPlanStateWithExecutor(
   executor: any,
   userId: string,
   currentMonth: string,
-): Promise<GoalCreationState | null> {
+): Promise<AllocationChangeState | null> {
   const base = await getOwnedGoalPlanBase(executor, userId)
   if (!base) {
     return null
@@ -198,11 +213,34 @@ export async function getGoalCreationStateWithExecutor(
   }
 }
 
+export async function getGoalCreationStateWithExecutor(
+  executor: any,
+  userId: string,
+  currentMonth: string,
+): Promise<GoalCreationState | null> {
+  return getActiveGoalPlanStateWithExecutor(executor, userId, currentMonth)
+}
+
 export async function getGoalCreationState(
   userId: string,
   currentMonth: string,
 ): Promise<GoalCreationState | null> {
   return getGoalCreationStateWithExecutor(db, userId, currentMonth)
+}
+
+export async function getAllocationChangeStateWithExecutor(
+  executor: any,
+  userId: string,
+  currentMonth: string,
+): Promise<AllocationChangeState | null> {
+  return getActiveGoalPlanStateWithExecutor(executor, userId, currentMonth)
+}
+
+export async function getAllocationChangeState(
+  userId: string,
+  currentMonth: string,
+): Promise<AllocationChangeState | null> {
+  return getAllocationChangeStateWithExecutor(db, userId, currentMonth)
 }
 
 export async function replacePendingAllocationSnapshot(
@@ -302,6 +340,46 @@ export async function confirmGoalCreationInRepository(input: {
   })
 }
 
+export async function confirmAllocationChangeInRepository(input: {
+  userId: string
+  currentMonth: string
+  draft: AllocationChangeDraft
+  previewToken: string
+}): Promise<void> {
+  const { userId, currentMonth, draft, previewToken } = input
+
+  return db.transaction(async (tx) => {
+    const lockedProfile = await tx
+      .select({ userId: financialProfiles.userId })
+      .from(financialProfiles)
+      .where(eq(financialProfiles.userId, userId))
+      .for('update')
+
+    if (!lockedProfile.length) {
+      throw new Error('Financial profile not found.')
+    }
+
+    const state = await getAllocationChangeStateWithExecutor(tx, userId, currentMonth)
+    if (!state) throw new Error('Financial profile not found.')
+
+    const currentToken = createAllocationChangePreviewToken(state, currentMonth, draft)
+    const proposal = buildAllocationChangeProposal({ draft, state, currentMonth })
+    if (currentToken !== previewToken) {
+      throw new StaleAllocationChangePreviewError({ proposal, previewToken: currentToken })
+    }
+
+    const snapshotId = await replacePendingAllocationSnapshot(tx, userId, proposal.allocation)
+    await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
+    await tx.insert(allocationPlanEntries).values(
+      proposal.allocation.entries.map((entry) => ({
+        snapshotId,
+        goalId: entry.goalId,
+        percentage: entry.percentage,
+      })),
+    )
+  })
+}
+
 export function createGoalCreationPreviewToken(
   state: GoalCreationState,
   currentMonth: string,
@@ -309,6 +387,16 @@ export function createGoalCreationPreviewToken(
 ): string {
   return createHash('sha256')
     .update(serializeGoalCreationState(state, currentMonth, draft))
+    .digest('hex')
+}
+
+export function createAllocationChangePreviewToken(
+  state: AllocationChangeState,
+  currentMonth: string,
+  draft?: AllocationChangeDraft,
+): string {
+  return createHash('sha256')
+    .update(serializeAllocationChangeState(state, currentMonth, draft))
     .digest('hex')
 }
 

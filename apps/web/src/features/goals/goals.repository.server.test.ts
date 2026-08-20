@@ -7,12 +7,17 @@ import {
   goalInvestmentPositions,
 } from '../../db/schema'
 import {
+  confirmAllocationChangeInRepository,
   confirmGoalCreationInRepository,
+  createAllocationChangePreviewToken,
   createGoalCreationPreviewToken,
+  getAllocationChangeState,
   getGoalCreationState,
   getGoalsWorkspaceRows,
+  StaleAllocationChangePreviewError,
   StaleGoalCreationPreviewError,
 } from './goals.repository.server'
+import type { AllocationChangeDraft } from './allocation-change.schema'
 import type { GoalCreationDraft } from './goal-creation.schema'
 
 const mockTx = {
@@ -884,6 +889,520 @@ describe('goals.repository.server', () => {
 
       await expect(
         confirmGoalCreationInRepository({
+          userId: 'user_1',
+          currentMonth,
+          draft: validDraft,
+          previewToken: token,
+        }),
+      ).rejects.toThrow('database deadlock or connection error')
+    })
+  })
+
+  describe('getAllocationChangeState', () => {
+    it('returns null when profile is absent', async () => {
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(undefined as never)
+
+      const result = await getAllocationChangeState('user_1', '2026-08')
+
+      expect(result).toBeNull()
+      expect(db.query.financialGoals.findMany).not.toHaveBeenCalled()
+      expect(db.query.allocationPlanSnapshots.findMany).not.toHaveBeenCalled()
+    })
+
+    it('filters profile, goals, and snapshots by userId, returns only active goals in source, loads positions, returns current winning and next-month pending snapshots, and loads entries for both', async () => {
+      const mockProfile = {
+        userId: 'user_1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
+        onboardingCompleted: true,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      const mockGoalActive1 = {
+        id: 'g1',
+        userId: 'user_1',
+        name: 'Fondo de Emergencia',
+        type: 'emergency_fund',
+        targetAmount: '3000.00',
+        currency: 'USD',
+        priority: 'high',
+        strategy: 'save',
+        status: 'active',
+        desiredDate: '2027-01-01',
+        completedAt: null,
+        emergencyFundMonths: 6,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+      const mockGoalActive2 = {
+        id: 'g2',
+        userId: 'user_1',
+        name: 'Inversión Retiro',
+        type: 'retirement',
+        targetAmount: '50000.00',
+        currency: 'USD',
+        priority: 'medium',
+        strategy: 'invest',
+        status: 'active',
+        desiredDate: '2036-01-01',
+        completedAt: null,
+        emergencyFundMonths: null,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+      const mockGoalPaused = {
+        id: 'g3',
+        userId: 'user_1',
+        name: 'Auto nuevo',
+        type: 'purchase',
+        targetAmount: '10000.00',
+        currency: 'USD',
+        priority: 'low',
+        strategy: 'save',
+        status: 'paused',
+        desiredDate: '2028-01-01',
+        completedAt: null,
+        emergencyFundMonths: null,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      const mockSavingsPos1 = {
+        id: 'sp1',
+        goalId: 'g1',
+        amount: '1000.00',
+        currency: 'USD',
+        location: 'Banco',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+      const mockInvestPos2 = {
+        id: 'ip1',
+        goalId: 'g2',
+        currentValue: '5000.00',
+        currency: 'USD',
+        annualReturnRate: '7.000',
+        availability: 'available_now',
+        availableFrom: null,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      const currentSnapshot = {
+        id: 's2',
+        userId: 'user_1',
+        effectiveMonth: '2026-08-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+      const septemberSnapshot = {
+        id: 's3',
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+      const pastSnapshot = {
+        id: 's1',
+        userId: 'user_1',
+        effectiveMonth: '2026-07-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+      const farFutureSnapshot = {
+        id: 's4',
+        userId: 'user_1',
+        effectiveMonth: '2026-11-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      const currentAllocations = [
+        { id: 'a1', snapshotId: 's2', goalId: 'g1', percentage: '100.00' },
+      ]
+      const septemberAllocations = [
+        { id: 'a2', snapshotId: 's3', goalId: 'g1', percentage: '60.00' },
+        { id: 'a3', snapshotId: 's3', goalId: 'g2', percentage: '40.00' },
+      ]
+
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
+      vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([
+        mockGoalActive1,
+        mockGoalActive2,
+        mockGoalPaused,
+      ] as never)
+      vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([mockSavingsPos1] as never)
+      vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([mockInvestPos2] as never)
+      vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([
+        pastSnapshot,
+        currentSnapshot,
+        septemberSnapshot,
+        farFutureSnapshot,
+      ] as never)
+      vi.mocked(db.query.allocationPlanEntries.findMany).mockResolvedValue([
+        ...currentAllocations,
+        ...septemberAllocations,
+      ] as never)
+
+      const state = await getAllocationChangeState('user_1', '2026-08')
+
+      expect(state).not.toBeNull()
+      expect(state?.source.goals.map((g) => g.id)).toEqual(['g1', 'g2'])
+      expect(state?.source.snapshots).toEqual([
+        {
+          id: 's2',
+          userId: 'user_1',
+          effectiveMonth: '2026-08-01',
+        },
+      ])
+      expect(state?.source.allocations).toEqual([
+        { id: 'a1', snapshotId: 's2', goalId: 'g1', percentage: '100.00' },
+      ])
+      expect(state?.pendingSnapshots).toEqual([
+        {
+          id: 's3',
+          userId: 'user_1',
+          effectiveMonth: '2026-09-01',
+        },
+      ])
+      expect(state?.pendingAllocations).toEqual([
+        { id: 'a2', snapshotId: 's3', goalId: 'g1', percentage: '60.00' },
+        { id: 'a3', snapshotId: 's3', goalId: 'g2', percentage: '40.00' },
+      ])
+    })
+  })
+
+  describe('createAllocationChangePreviewToken', () => {
+    it('generates a 64-character sha256 hex string that is deterministic for state, currentMonth, and draft', () => {
+      const state = {
+        source: {
+          profile: {
+            userId: 'user_1',
+            baseCurrency: 'ARS' as const,
+            approximateMonthlyIncome: '1000000.00',
+            approximateMonthlyExpenses: '500000.00',
+            expensesKnowledge: 'known',
+            plannedMonthlyContribution: '60000.00',
+            onboardingCompleted: true,
+          },
+          goals: [],
+          savingsPositions: [],
+          investmentPositions: [],
+          snapshots: [],
+          allocations: [],
+        },
+        pendingSnapshots: [],
+        pendingAllocations: [],
+      }
+
+      const draft: AllocationChangeDraft = {
+        allocations: [{ goalId: 'g1', percentage: '100.00' }],
+      }
+
+      const token1 = createAllocationChangePreviewToken(state, '2026-08', draft)
+      const token2 = createAllocationChangePreviewToken(state, '2026-08', draft)
+      const tokenDiffMonth = createAllocationChangePreviewToken(state, '2026-09', draft)
+
+      expect(token1).toMatch(/^[a-f0-9]{64}$/)
+      expect(token1).toBe(token2)
+      expect(token1).not.toBe(tokenDiffMonth)
+    })
+  })
+
+  describe('confirmAllocationChangeInRepository', () => {
+    const currentMonth = '2026-08'
+
+    const mockProfile = {
+      userId: 'user_1',
+      baseCurrency: 'ARS',
+      approximateMonthlyIncome: '1000000.00',
+      approximateMonthlyExpenses: '500000.00',
+      expensesKnowledge: 'known',
+      plannedMonthlyContribution: '60000.00',
+      onboardingCompleted: true,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }
+
+    const mockGoal1 = {
+      id: 'g1',
+      userId: 'user_1',
+      name: 'Fondo de Emergencia',
+      type: 'emergency_fund',
+      targetAmount: '3000.00',
+      currency: 'USD',
+      priority: 'high',
+      strategy: 'save',
+      status: 'active',
+      desiredDate: '2027-01-01',
+      completedAt: null,
+      emergencyFundMonths: 6,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }
+
+    const mockGoal2 = {
+      id: 'g2',
+      userId: 'user_1',
+      name: 'Viaje a Japón',
+      type: 'purchase',
+      targetAmount: '5000.00',
+      currency: 'USD',
+      priority: 'medium',
+      strategy: 'invest',
+      status: 'active',
+      desiredDate: '2028-06-01',
+      completedAt: null,
+      emergencyFundMonths: null,
+      createdAt: new Date('2026-02-01T00:00:00Z'),
+      updatedAt: new Date('2026-02-01T00:00:00Z'),
+    }
+
+    const mockSnapshotCurrent = {
+      id: 's_current',
+      userId: 'user_1',
+      effectiveMonth: '2026-08-01',
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+    }
+
+    const mockAlloc1 = {
+      id: 'a1',
+      snapshotId: 's_current',
+      goalId: 'g1',
+      percentage: '60.00',
+    }
+    const mockAlloc2 = {
+      id: 'a2',
+      snapshotId: 's_current',
+      goalId: 'g2',
+      percentage: '40.00',
+    }
+
+    const validDraft: AllocationChangeDraft = {
+      allocations: [
+        { goalId: 'g1', percentage: '25.00' },
+        { goalId: 'g2', percentage: '75.00' },
+      ],
+    }
+
+    function setupMocks(overrides?: {
+      profile?: any
+      goals?: any[]
+      savingsPositions?: any[]
+      investmentPositions?: any[]
+      snapshots?: any[]
+      allocations?: any[]
+    }) {
+      const profile = overrides && 'profile' in overrides ? overrides.profile : mockProfile
+      const goals = overrides?.goals ?? [mockGoal1, mockGoal2]
+      const savingsPositions = overrides?.savingsPositions ?? []
+      const investmentPositions = overrides?.investmentPositions ?? []
+      const snapshots = overrides?.snapshots ?? [mockSnapshotCurrent]
+      const allocations = overrides?.allocations ?? [mockAlloc1, mockAlloc2]
+
+      db.query.financialProfiles.findFirst = vi.fn().mockResolvedValue(profile)
+      db.query.financialGoals.findMany = vi.fn().mockResolvedValue(goals)
+      db.query.goalSavingsPositions.findMany = vi.fn().mockResolvedValue(savingsPositions)
+      db.query.goalInvestmentPositions.findMany = vi.fn().mockResolvedValue(investmentPositions)
+      db.query.allocationPlanSnapshots.findMany = vi.fn().mockResolvedValue(snapshots)
+      db.query.allocationPlanSnapshots.findFirst = vi.fn().mockImplementation(({ where }) => {
+        const dummyEq = vi.fn((col, val) => ({ col, val }))
+        const dummyAnd = vi.fn((...conditions) => conditions)
+        if (typeof where === 'function') {
+          const conds = where(
+            { userId: 'userId', effectiveMonth: 'effectiveMonth' },
+            { eq: dummyEq, and: dummyAnd },
+          )
+          const userCond = conds.find((c: any) => c.col === 'userId')
+          const monthCond = conds.find((c: any) => c.col === 'effectiveMonth')
+          return snapshots.find(
+            (s) => s.userId === userCond?.val && s.effectiveMonth === monthCond?.val,
+          )
+        }
+        return undefined
+      })
+      db.query.allocationPlanEntries.findMany = vi.fn().mockResolvedValue(allocations)
+
+      mockTx.query = db.query as any
+
+      mockTx.select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            for: vi.fn().mockResolvedValue([{ userId: 'user_1' }]),
+          }),
+        }),
+      })
+
+      mockTx.insert.mockImplementation((table: any) => ({
+        values: vi.fn().mockImplementation((_val: any) => {
+          if (table === allocationPlanSnapshots) {
+            return { returning: vi.fn().mockResolvedValue([{ id: 'snapshot_created_id' }]) }
+          }
+          return { returning: vi.fn().mockResolvedValue([{ id: 'mock_id' }]) }
+        }),
+      }))
+
+      mockTx.update.mockImplementation((_table: any) => ({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ id: 'updated_id' }]),
+        }),
+      }))
+
+      mockTx.delete.mockImplementation((_table: any) => ({
+        where: vi.fn().mockResolvedValue(undefined),
+      }))
+    }
+
+    it('1. atomically updates next-month snapshot entries and leaves goals/positions untouched', async () => {
+      setupMocks()
+      const state = await getAllocationChangeState('user_1', currentMonth)
+      const token = createAllocationChangePreviewToken(state!, currentMonth, validDraft)
+
+      await confirmAllocationChangeInRepository({
+        userId: 'user_1',
+        currentMonth,
+        draft: validDraft,
+        previewToken: token,
+      })
+
+      expect(mockTx.select).toHaveBeenCalled()
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).not.toHaveBeenCalledWith(financialGoals)
+      expect(mockTx.insert).not.toHaveBeenCalledWith(goalInvestmentPositions)
+    })
+
+    it('2. throws StaleAllocationChangePreviewError when saved allocation changes after preview generation', async () => {
+      setupMocks()
+      const state = await getAllocationChangeState('user_1', currentMonth)
+      const token = createAllocationChangePreviewToken(state!, currentMonth, validDraft)
+
+      db.query.allocationPlanEntries.findMany = vi.fn().mockResolvedValue([
+        { id: 'a1', snapshotId: 's_current', goalId: 'g1', percentage: '70.00' },
+        { id: 'a2', snapshotId: 's_current', goalId: 'g2', percentage: '30.00' },
+      ])
+
+      let error: StaleAllocationChangePreviewError | null = null
+      try {
+        await confirmAllocationChangeInRepository({
+          userId: 'user_1',
+          currentMonth,
+          draft: validDraft,
+          previewToken: token,
+        })
+      } catch (err: any) {
+        error = err
+      }
+
+      expect(error).toBeInstanceOf(StaleAllocationChangePreviewError)
+      expect(error?.code).toBe('STALE_ALLOCATION_CHANGE_PREVIEW')
+      expect(error?.refreshedPreview.previewToken).not.toBe(token)
+      expect(mockTx.delete).not.toHaveBeenCalled()
+      expect(mockTx.insert).not.toHaveBeenCalled()
+    })
+
+    it('3. rejects before writes when draft contains paused or invalid goals', async () => {
+      const pausedGoal = {
+        id: 'g3',
+        userId: 'user_1',
+        name: 'Goal pausado',
+        type: 'purchase',
+        targetAmount: '1000.00',
+        currency: 'USD',
+        priority: 'low',
+        strategy: 'save',
+        status: 'paused',
+        desiredDate: null,
+        completedAt: null,
+        emergencyFundMonths: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      setupMocks({
+        goals: [mockGoal1, mockGoal2, pausedGoal],
+      })
+
+      const badDraft: AllocationChangeDraft = {
+        allocations: [
+          { goalId: 'g1', percentage: '25.00' },
+          { goalId: 'g2', percentage: '25.00' },
+          { goalId: 'g3', percentage: '50.00' },
+        ],
+      }
+
+      await expect(
+        confirmAllocationChangeInRepository({
+          userId: 'user_1',
+          currentMonth,
+          draft: badDraft,
+          previewToken: 'any-token',
+        }),
+      ).rejects.toThrow('Allocation draft must contain exactly the active goals')
+
+      expect(mockTx.delete).not.toHaveBeenCalled()
+      expect(mockTx.insert).not.toHaveBeenCalled()
+    })
+
+    it('4. rejects before writes when allocations do not sum to 100%', async () => {
+      setupMocks()
+      const badDraft: AllocationChangeDraft = {
+        allocations: [
+          { goalId: 'g1', percentage: '30.00' },
+          { goalId: 'g2', percentage: '30.00' },
+        ],
+      }
+
+      await expect(
+        confirmAllocationChangeInRepository({
+          userId: 'user_1',
+          currentMonth,
+          draft: badDraft,
+          previewToken: 'some-token',
+        }),
+      ).rejects.toThrow('Allocation percentages must sum to 100%')
+
+      expect(mockTx.delete).not.toHaveBeenCalled()
+      expect(mockTx.insert).not.toHaveBeenCalled()
+    })
+
+    it('5. reuses existing next-month snapshot without inserting new snapshot', async () => {
+      const pendingSnapshot = {
+        id: 's_pending',
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      setupMocks({
+        snapshots: [mockSnapshotCurrent, pendingSnapshot],
+      })
+
+      const state = await getAllocationChangeState('user_1', currentMonth)
+      const token = createAllocationChangePreviewToken(state!, currentMonth, validDraft)
+
+      await confirmAllocationChangeInRepository({
+        userId: 'user_1',
+        currentMonth,
+        draft: validDraft,
+        previewToken: token,
+      })
+
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
+    it('6. transaction rejection leaves no successful result when database error occurs', async () => {
+      setupMocks()
+      const state = await getAllocationChangeState('user_1', currentMonth)
+      const token = createAllocationChangePreviewToken(state!, currentMonth, validDraft)
+
+      mockTx.insert.mockImplementationOnce(() => {
+        throw new Error('database deadlock or connection error')
+      })
+
+      await expect(
+        confirmAllocationChangeInRepository({
           userId: 'user_1',
           currentMonth,
           draft: validDraft,
