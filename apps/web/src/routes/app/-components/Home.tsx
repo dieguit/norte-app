@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { Button } from '../../../components/ui/button'
-import { formatCalendarMonth, formatMoney } from '../../../lib/format'
+import { formatCalendarMonth, formatMoney, formatMonthName } from '../../../lib/format'
 import {
   PLANNING_ARS_PER_USD,
+  getPreviousCalendarMonth,
   type InitialHomeState,
 } from '../../../features/financial/financial'
 import { ContributionActionSheet } from './ContributionActionSheet'
 
 export interface HomeProps {
   home: InitialHomeState
+  now?: Date
 }
 
-export function Home({ home }: HomeProps) {
+export function Home({ home, now }: HomeProps) {
   const [isContributionOpen, setIsContributionOpen] = useState(false)
 
   const isUnknownExpensesEmergency =
@@ -25,6 +27,9 @@ export function Home({ home }: HomeProps) {
         ? 'Fecha por calcular'
         : 'No alcanzado dentro del horizonte'
 
+  const closedMonth = getPreviousCalendarMonth(now)
+  const previousMonthName = formatMonthName(closedMonth)
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
       {/* Top Header */}
@@ -36,6 +41,28 @@ export function Home({ home }: HomeProps) {
           Acá vas a ver el resumen de tu planificación inicial y los próximos pasos para tu patrimonio.
         </p>
       </div>
+
+      {home.previousMonthShortfalls && home.previousMonthShortfalls.length > 0 && (
+        <section
+          aria-labelledby="previous-month-shortfalls-heading"
+          className="rounded-xl border border-[var(--line)] bg-[var(--foam)] p-5"
+        >
+          <h2
+            id="previous-month-shortfalls-heading"
+            className="text-base font-semibold text-[var(--sea-ink)]"
+          >
+            No cumpliste todos tus objetivos de {previousMonthName}.
+          </h2>
+          <ul className="mt-2 flex flex-col gap-1 text-sm text-[var(--sea-ink-soft)]">
+            {home.previousMonthShortfalls.map((shortfall, index) => (
+              <li key={`${shortfall.kind}-${shortfall.currency}-${index}`}>
+                En {previousMonthName} te faltaron {formatMoney(shortfall.amount)} para{' '}
+                {shortfall.kind === 'investment' ? 'inversión' : 'ahorro'}.
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="flex items-center">
         <Button type="button" onClick={() => setIsContributionOpen(true)}>

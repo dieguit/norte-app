@@ -7,6 +7,7 @@ import {
   formatDate,
   formatMonthDelta,
   formatCalendarMonth,
+  formatMonthName,
 } from "./format";
 
 describe("es-AR Presentation Boundary", () => {
@@ -111,6 +112,14 @@ describe("es-AR Presentation Boundary", () => {
   describe("formatCalendarMonth", () => {
     it("formats a calendar month in Argentine Spanish", () => {
       expect(formatCalendarMonth("2026-09")).toBe("septiembre de 2026");
+    });
+  });
+
+  describe("formatMonthName", () => {
+    it("formats a month name in Argentine Spanish lowercase", () => {
+      expect(formatMonthName("2026-04")).toBe("abril");
+      expect(formatMonthName("2026-08")).toBe("agosto");
+      expect(formatMonthName("2026-09")).toBe("septiembre");
     });
   });
 });

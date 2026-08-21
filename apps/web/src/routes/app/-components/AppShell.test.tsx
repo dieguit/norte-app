@@ -50,6 +50,7 @@ describe('AppShell', () => {
       emergencyFundMonths: 6,
     },
     projection: { status: 'available' as const, completionMonth: '2029-03' },
+    previousMonthShortfalls: [],
   }
 
   it('renders responsive navigation regions, active home link, enabled goals links, unavailable finance controls, account controls, and child content', () => {

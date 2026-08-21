@@ -77,6 +77,7 @@ describe('App route layout', () => {
           emergencyFundMonths: 6,
         },
         projection: { status: 'available', completionMonth: '2029-03' },
+        previousMonthShortfalls: [],
       },
     })
 

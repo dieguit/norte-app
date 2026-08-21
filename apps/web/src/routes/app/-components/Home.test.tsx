@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Home } from './Home'
 import type { InitialHomeState } from '../../../features/financial/financial'
+import type { PreviousMonthShortfall } from '../../../features/contributions/saving-contribution'
 import { getSavingContributionContext } from '../../../features/contributions/saving-contribution.functions'
 
 vi.mock('../../../features/contributions/saving-contribution.functions', () => ({
@@ -22,6 +23,7 @@ vi.mock('@tanstack/react-router', () => ({
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  vi.useRealTimers()
 })
 
 describe('Home initial-plan component', () => {
@@ -45,6 +47,7 @@ describe('Home initial-plan component', () => {
       emergencyFundMonths: 6,
     },
     projection: { status: 'available', completionMonth: '2029-03' },
+    previousMonthShortfalls: [],
   }
 
   const unknownExpenseEmergencyFund: InitialHomeState = {
@@ -66,6 +69,7 @@ describe('Home initial-plan component', () => {
       emergencyFundMonths: 6,
     },
     projection: { status: 'unknown_expenses' },
+    previousMonthShortfalls: [],
   }
 
   const fixedSavingsHome: InitialHomeState = {
@@ -88,6 +92,7 @@ describe('Home initial-plan component', () => {
       emergencyFundMonths: undefined,
     },
     projection: { status: 'available', completionMonth: '2027-02' },
+    previousMonthShortfalls: [],
   }
 
   const outsideHorizonHome: InitialHomeState = {
@@ -110,7 +115,49 @@ describe('Home initial-plan component', () => {
       emergencyFundMonths: undefined,
     },
     projection: { status: 'outside_horizon' },
+    previousMonthShortfalls: [],
   }
+
+  it('renders one prior-month alert with every shortfall', () => {
+    vi.setSystemTime(new Date('2026-05-15T12:00:00Z'))
+    const shortfalls: PreviousMonthShortfall[] = [
+      {
+        kind: 'saving',
+        currency: 'USD',
+        amount: { amount: '20.00', currency: 'USD' },
+      },
+      {
+        kind: 'investment',
+        currency: 'ARS',
+        amount: { amount: '25000.00', currency: 'ARS' },
+      },
+    ]
+
+    render(<Home home={{ ...fixedSavingsHome, previousMonthShortfalls: shortfalls }} />)
+
+    expect(screen.getByText('No cumpliste todos tus objetivos de abril.')).toBeVisible()
+    expect(screen.getByText('En abril te faltaron US$ 20,00 para ahorro.')).toBeVisible()
+    expect(screen.getByText('En abril te faltaron $ 25.000,00 para inversión.')).toBeVisible()
+
+    const section = screen.getByRole('region', { name: 'No cumpliste todos tus objetivos de abril.' })
+    expect(section).toBeVisible()
+    const heading = screen.getByRole('heading', { level: 2, name: 'No cumpliste todos tus objetivos de abril.' })
+    expect(heading).toHaveAttribute('id', 'previous-month-shortfalls-heading')
+
+    const list = screen.getByRole('list')
+    expect(list).toBeVisible()
+    const items = screen.getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+
+    expect(section.querySelector('button')).toBeNull()
+  })
+
+  it('renders nothing when previousMonthShortfalls is empty', () => {
+    render(<Home home={{ ...fixedSavingsHome, previousMonthShortfalls: [] }} />)
+
+    expect(screen.queryByRole('heading', { name: /No cumpliste todos tus objetivos/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: /No cumpliste todos tus objetivos/i })).not.toBeInTheDocument()
+  })
 
   it('shows the canonical Plan separately from empty actual progress', () => {
     render(<Home home={knownExpenseEmergencyFund} />)

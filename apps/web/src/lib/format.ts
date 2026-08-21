@@ -68,3 +68,12 @@ export function formatCalendarMonth(month: string): string {
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
 }
+
+export function formatMonthName(month: string): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  return new Intl.DateTimeFormat(ES_AR_LOCALE, {
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+}
+
