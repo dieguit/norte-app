@@ -164,6 +164,8 @@ describe('getSavingContributionContext', () => {
       eligibleGoalsUsd: [
         { id: 'g1', name: 'Reserva', percentage: '100.00' },
       ],
+      eligibleInvestmentGoals: [],
+      eligibleInvestmentGoalsUsd: [],
     }
 
     vi.mocked(getSavingContributionState).mockResolvedValue(mockState)
@@ -252,6 +254,8 @@ describe('previewSavingContribution', () => {
     eligibleGoalsUsd: [
       { id: 'g1', name: 'Reserva', percentage: '100.00' },
     ],
+    eligibleInvestmentGoals: [],
+    eligibleInvestmentGoalsUsd: [],
   }
 
   beforeEach(() => {
@@ -364,6 +368,56 @@ describe('previewSavingContribution', () => {
 
     vi.useRealTimers()
   })
+
+  it('previews investment draft using eligible investment goals', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getSavingContributionState).mockResolvedValue({
+      ...mockState,
+      eligibleInvestmentGoals: [{ id: 'g_inv_1', name: 'Cedears', percentage: '100.00' }],
+    } as any)
+    vi.mocked(createSavingContributionPreviewToken).mockReturnValue('c'.repeat(64))
+
+    const result = await previewSavingContribution({
+      data: {
+        kind: 'investment',
+        currency: 'ARS',
+        amount: '50000.00',
+      },
+    })
+
+    expect(result.previewToken).toBe('c'.repeat(64))
+    expect(result.preview.draft.currency).toBe('ARS')
+    expect(result.preview.draft.amount).toEqual({ amount: '50000.00', currency: 'ARS' })
+    expect(result.preview.allocations).toHaveLength(1)
+    expect(result.preview.allocations[0].goalId).toBe('g_inv_1')
+    expect(result.preview.allocations[0].amount).toEqual({ amount: '50000.00', currency: 'ARS' })
+
+    vi.useRealTimers()
+  })
+
+  it('throws error when there are no eligible investment goals', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getSavingContributionState).mockResolvedValue({
+      ...mockState,
+      eligibleInvestmentGoals: [],
+    } as any)
+
+    await expect(
+      previewSavingContribution({
+        data: {
+          kind: 'investment',
+          currency: 'ARS',
+          amount: '50000.00',
+        },
+      }),
+    ).rejects.toThrow('No hay objetivos activos para distribuir la inversión en ARS.')
+
+    vi.useRealTimers()
+  })
 })
 
 describe('confirmSavingContribution', () => {
@@ -469,6 +523,43 @@ describe('confirmSavingContribution', () => {
     expect(result).toEqual({
       status: 'stale',
       preview: refreshedPreview,
+    })
+
+    vi.useRealTimers()
+  })
+
+  it('confirms investment draft and forwards kind to repository', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(createSavingContributionInRepository).mockResolvedValue({
+      contributionId: '550e8400-e29b-41d4-a716-446655440001',
+    })
+
+    const result = await confirmSavingContribution({
+      data: {
+        draft: {
+          kind: 'investment',
+          currency: 'ARS',
+          amount: '50000.00',
+        },
+        previewToken: validToken,
+      },
+    })
+
+    expect(createSavingContributionInRepository).toHaveBeenCalledWith({
+      userId: 'user_456',
+      currentMonth: '2026-08',
+      draft: expect.objectContaining({
+        kind: 'investment',
+        currency: 'ARS',
+        amount: '50000.00',
+      }),
+      previewToken: validToken,
+    })
+    expect(result).toEqual({
+      status: 'created',
+      contributionId: '550e8400-e29b-41d4-a716-446655440001',
     })
 
     vi.useRealTimers()

@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '../../db/client'
 import {
   allocationPlanEntries,
+  goalInvestmentPositions,
   goalSavingsPositions,
+  investmentContributionAllocations,
+  investmentContributions,
   savingContributionAllocations,
   savingContributions,
 } from '../../db/schema'
@@ -32,6 +35,7 @@ const mockTx = {
       findMany: vi.fn(),
     },
     goalInvestmentPositions: {
+      findFirst: vi.fn(),
       findMany: vi.fn(),
     },
     allocationPlanSnapshots: {
@@ -46,6 +50,13 @@ const mockTx = {
       findMany: vi.fn(),
     },
     savingContributionAllocations: {
+      findMany: vi.fn(),
+    },
+    investmentContributions: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+    },
+    investmentContributionAllocations: {
       findMany: vi.fn(),
     },
   },
@@ -65,6 +76,7 @@ vi.mock('../../db/client', () => ({
         findMany: vi.fn(),
       },
       goalInvestmentPositions: {
+        findFirst: vi.fn(),
         findMany: vi.fn(),
       },
       allocationPlanSnapshots: {
@@ -79,6 +91,13 @@ vi.mock('../../db/client', () => ({
         findMany: vi.fn(),
       },
       savingContributionAllocations: {
+        findMany: vi.fn(),
+      },
+      investmentContributions: {
+        findFirst: vi.fn(),
+        findMany: vi.fn(),
+      },
+      investmentContributionAllocations: {
         findMany: vi.fn(),
       },
     },
@@ -207,6 +226,114 @@ describe('saving-contribution.repository.server', () => {
     percentage: '100.00',
   }
 
+  const mockInvestGoalArs1 = {
+    id: 'g_inv_ars_1',
+    userId,
+    name: 'Cedears Acciones',
+    type: 'purchase',
+    targetAmount: '1000000.00',
+    currency: 'ARS',
+    priority: 'high',
+    strategy: 'invest',
+    status: 'active',
+    desiredDate: '2028-01-01',
+    completedAt: null,
+    emergencyFundMonths: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  }
+
+  const mockInvestGoalArs2 = {
+    id: 'g_inv_ars_2',
+    userId,
+    name: 'Bonos Soberanos',
+    type: 'purchase',
+    targetAmount: '500000.00',
+    currency: 'ARS',
+    priority: 'medium',
+    strategy: 'invest',
+    status: 'active',
+    desiredDate: '2028-01-01',
+    completedAt: null,
+    emergencyFundMonths: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  }
+
+  const mockInvestGoalUsd1 = {
+    id: 'g_inv_usd_1',
+    userId,
+    name: 'ETF SPY USD',
+    type: 'purchase',
+    targetAmount: '10000.00',
+    currency: 'USD',
+    priority: 'high',
+    strategy: 'invest',
+    status: 'active',
+    desiredDate: '2030-01-01',
+    completedAt: null,
+    emergencyFundMonths: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  }
+
+  const mockInvestPosArs1 = {
+    id: 'ip_ars_1',
+    goalId: 'g_inv_ars_1',
+    currentValue: '10000.00',
+    currency: 'ARS',
+    annualReturnRate: '8.000',
+    availability: 'available_now',
+    availableFrom: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  }
+
+  const mockInvestPosArs2 = {
+    id: 'ip_ars_2',
+    goalId: 'g_inv_ars_2',
+    currentValue: '5000.00',
+    currency: 'ARS',
+    annualReturnRate: '8.000',
+    availability: 'available_now',
+    availableFrom: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  }
+
+  const mockInvestPosUsd1 = {
+    id: 'ip_usd_1',
+    goalId: 'g_inv_usd_1',
+    currentValue: '1000.00',
+    currency: 'USD',
+    annualReturnRate: '10.000',
+    availability: 'available_now',
+    availableFrom: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  }
+
+  const mockAllocInvestArs1 = {
+    id: 'a_inv_1',
+    snapshotId: 'snap_winning',
+    goalId: 'g_inv_ars_1',
+    percentage: '60.00',
+  }
+
+  const mockAllocInvestArs2 = {
+    id: 'a_inv_2',
+    snapshotId: 'snap_winning',
+    goalId: 'g_inv_ars_2',
+    percentage: '40.00',
+  }
+
+  const mockAllocInvestUsd1 = {
+    id: 'a_inv_3',
+    snapshotId: 'snap_winning',
+    goalId: 'g_inv_usd_1',
+    percentage: '100.00',
+  }
+
   function setupDbMocks(overrides?: {
     profile?: any
     goals?: any[]
@@ -216,24 +343,58 @@ describe('saving-contribution.repository.server', () => {
     allocations?: any[]
     contribution?: any
     contributionAllocations?: any[]
+    investmentContribution?: any
+    investmentContributionAllocations?: any[]
   }) {
     const profile = overrides && 'profile' in overrides ? overrides.profile : mockProfile
-    const goals = overrides?.goals ?? [mockGoalArs1, mockGoalArs2, mockGoalUsd1, mockGoalPaused]
+    const goals =
+      overrides?.goals ?? [
+        mockGoalArs1,
+        mockGoalArs2,
+        mockGoalUsd1,
+        mockGoalPaused,
+        mockInvestGoalArs1,
+        mockInvestGoalArs2,
+        mockInvestGoalUsd1,
+      ]
     const savingsPositions = overrides?.savingsPositions ?? [mockSavingsPos1]
-    const investmentPositions = overrides?.investmentPositions ?? []
+    const investmentPositions =
+      overrides?.investmentPositions ?? [
+        mockInvestPosArs1,
+        mockInvestPosArs2,
+        mockInvestPosUsd1,
+      ]
     const snapshots = overrides?.snapshots ?? [mockSnapshotWinning]
-    const allocations = overrides?.allocations ?? [mockAllocArs1, mockAllocArs2, mockAllocUsd1]
+    const allocations =
+      overrides?.allocations ?? [
+        mockAllocArs1,
+        mockAllocArs2,
+        mockAllocUsd1,
+        mockAllocInvestArs1,
+        mockAllocInvestArs2,
+        mockAllocInvestUsd1,
+      ]
     const contribution = overrides?.contribution
     const contributionAllocations = overrides?.contributionAllocations ?? []
+    const investmentContribution = overrides?.investmentContribution
+    const investmentAllocations = overrides?.investmentContributionAllocations ?? []
 
     db.query.financialProfiles.findFirst = vi.fn().mockResolvedValue(profile)
     db.query.financialGoals.findMany = vi.fn().mockResolvedValue(goals)
     db.query.goalSavingsPositions.findMany = vi.fn().mockResolvedValue(savingsPositions)
     db.query.goalInvestmentPositions.findMany = vi.fn().mockResolvedValue(investmentPositions)
+    db.query.goalInvestmentPositions.findFirst = vi.fn().mockImplementation(() => {
+      // Return position matching id if queried
+      return investmentPositions[0] ?? null
+    })
     db.query.allocationPlanSnapshots.findMany = vi.fn().mockResolvedValue(snapshots)
     db.query.allocationPlanEntries.findMany = vi.fn().mockResolvedValue(allocations)
     db.query.savingContributions.findFirst = vi.fn().mockResolvedValue(contribution)
+    db.query.savingContributions.findMany = vi.fn().mockResolvedValue(contribution ? [contribution] : [])
     db.query.savingContributionAllocations.findMany = vi.fn().mockResolvedValue(contributionAllocations)
+    db.query.investmentContributions.findFirst = vi.fn().mockResolvedValue(investmentContribution)
+    db.query.investmentContributions.findMany = vi.fn().mockResolvedValue(investmentContribution ? [investmentContribution] : [])
+    db.query.investmentContributionAllocations.findMany = vi.fn().mockResolvedValue(investmentAllocations)
 
     mockTx.query = db.query as any
 
@@ -250,11 +411,17 @@ describe('saving-contribution.repository.server', () => {
         if (table === savingContributions) {
           return { returning: vi.fn().mockResolvedValue([{ id: 'contrib_created_123' }]) }
         }
+        if (table === investmentContributions) {
+          return { returning: vi.fn().mockResolvedValue([{ id: 'inv_contrib_created_123' }]) }
+        }
         if (table === goalSavingsPositions) {
           return { returning: vi.fn().mockResolvedValue([{ id: 'pos_created_456' }]) }
         }
         if (table === savingContributionAllocations) {
           return { returning: vi.fn().mockResolvedValue([{ id: 'alloc_created_789' }]) }
+        }
+        if (table === investmentContributionAllocations) {
+          return { returning: vi.fn().mockResolvedValue([{ id: 'inv_alloc_created_789' }]) }
         }
         return { returning: vi.fn().mockResolvedValue([{ id: 'mock_id' }]) }
       }),
@@ -293,14 +460,20 @@ describe('saving-contribution.repository.server', () => {
 
       expect(state).not.toBeNull()
       expect(state?.source.profile?.userId).toBe(userId)
-      expect(state?.source.goals).toHaveLength(3) // only active goals
-      expect(state?.source.goals.map((g) => g.id)).toEqual(['g_ars_1', 'g_ars_2', 'g_usd_1'])
+      expect(state?.source.goals).toHaveLength(6) // active saving + investment goals
       expect(state?.eligibleGoals).toEqual([
         { id: 'g_ars_1', name: 'Vacaciones Bariloche', percentage: '60.00' },
         { id: 'g_ars_2', name: 'Auto Usado', percentage: '40.00' },
       ])
       expect(state?.eligibleGoalsUsd).toEqual([
         { id: 'g_usd_1', name: 'Fondo de Emergencia USD', percentage: '100.00' },
+      ])
+      expect(state?.eligibleInvestmentGoals).toEqual([
+        { id: 'g_inv_ars_1', name: 'Cedears Acciones', percentage: '60.00' },
+        { id: 'g_inv_ars_2', name: 'Bonos Soberanos', percentage: '40.00' },
+      ])
+      expect(state?.eligibleInvestmentGoalsUsd).toEqual([
+        { id: 'g_inv_usd_1', name: 'ETF SPY USD', percentage: '100.00' },
       ])
       expect(state?.monthlyTargetArs).toEqual({
         amount: '100000.00',
@@ -321,6 +494,8 @@ describe('saving-contribution.repository.server', () => {
       expect(state?.source.goals).toEqual([])
       expect(state?.eligibleGoals).toEqual([])
       expect(state?.eligibleGoalsUsd).toEqual([])
+      expect(state?.eligibleInvestmentGoals).toEqual([])
+      expect(state?.eligibleInvestmentGoalsUsd).toEqual([])
       expect(db.query.goalSavingsPositions.findMany).not.toHaveBeenCalled()
       expect(db.query.goalInvestmentPositions.findMany).not.toHaveBeenCalled()
       expect(db.query.allocationPlanEntries.findMany).not.toHaveBeenCalled()
@@ -416,6 +591,62 @@ describe('saving-contribution.repository.server', () => {
       expect(mockTx.insert).toHaveBeenCalledWith(savingContributionAllocations)
     })
 
+    it('persists ARS investment contribution split across active investment goals and updates position currentValue', async () => {
+      setupDbMocks()
+      const state = (await getSavingContributionState(userId, currentMonth))!
+      const draftInvestArs: SavingDraftInput = {
+        kind: 'investment',
+        currency: 'ARS',
+        amount: '20000.00',
+      }
+      const previewToken = createSavingContributionPreviewToken(state, currentMonth, draftInvestArs)
+
+      const result = await createSavingContributionInRepository({
+        userId,
+        currentMonth,
+        draft: draftInvestArs,
+        previewToken,
+      })
+
+      expect(result).toEqual({ contributionId: 'inv_contrib_created_123' })
+      expect(mockTx.insert).toHaveBeenCalledWith(investmentContributions)
+      expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
+      expect(mockTx.insert).toHaveBeenCalledWith(investmentContributionAllocations)
+
+      // Check investmentContributions insert values
+      const investContribCall = mockTx.insert.mock.calls.find((c) => c[0] === investmentContributions)
+      expect(investContribCall).toBeDefined()
+
+      // Check goalInvestmentPositions update calls
+      const posUpdateCalls = mockTx.update.mock.calls.filter((c) => c[0] === goalInvestmentPositions)
+      expect(posUpdateCalls).toHaveLength(2)
+    })
+
+    it('persists USD investment contribution with arsSpent and effectiveRate and increments position currentValue', async () => {
+      setupDbMocks()
+      const state = (await getSavingContributionState(userId, currentMonth))!
+      const draftInvestUsd: SavingDraftInput = {
+        kind: 'investment',
+        currency: 'USD',
+        amount: '100.00',
+        arsSpent: '150000.00',
+        effectiveRate: '1500.00',
+      }
+      const previewToken = createSavingContributionPreviewToken(state, currentMonth, draftInvestUsd)
+
+      const result = await createSavingContributionInRepository({
+        userId,
+        currentMonth,
+        draft: draftInvestUsd,
+        previewToken,
+      })
+
+      expect(result).toEqual({ contributionId: 'inv_contrib_created_123' })
+      expect(mockTx.insert).toHaveBeenCalledWith(investmentContributions)
+      expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
+      expect(mockTx.insert).toHaveBeenCalledWith(investmentContributionAllocations)
+    })
+
     it('throws StaleSavingContributionPreviewError when preview token does not match reloaded state', async () => {
       setupDbMocks()
       const oldToken = 'a'.repeat(64)
@@ -456,6 +687,26 @@ describe('saving-contribution.repository.server', () => {
           previewToken: token,
         }),
       ).rejects.toThrow('No hay objetivos activos para distribuir el ahorro en ARS.')
+    })
+
+    it('throws when user has no compatible active investment goals for investment currency', async () => {
+      setupDbMocks({ goals: [mockGoalArs1, mockGoalUsd1] }) // only saving goals
+      const state = (await getSavingContributionState(userId, currentMonth))!
+      const draftInvestArs: SavingDraftInput = {
+        kind: 'investment',
+        currency: 'ARS',
+        amount: '10000.00',
+      }
+      const token = createSavingContributionPreviewToken(state, currentMonth, draftInvestArs)
+
+      await expect(
+        createSavingContributionInRepository({
+          userId,
+          currentMonth,
+          draft: draftInvestArs,
+          previewToken: token,
+        }),
+      ).rejects.toThrow('No hay objetivos activos para distribuir la inversión en ARS.')
     })
   })
 
@@ -546,6 +797,77 @@ describe('saving-contribution.repository.server', () => {
         }),
       ).rejects.toThrow('Cannot change contribution currency on update.')
     })
+
+    it('corrects investment contribution, preserves stored percentages, and adjusts position currentValue by delta', async () => {
+      const existingInvestContrib = {
+        id: 'inv_contrib_1',
+        userId,
+        amount: '10000.00',
+        currency: 'ARS',
+        arsSpent: null,
+        effectiveRate: null,
+        createdAt: new Date('2026-08-01T00:00:00Z'),
+        updatedAt: new Date('2026-08-01T00:00:00Z'),
+      }
+
+      const existingInvestAllocs = [
+        {
+          id: 'ica_1',
+          contributionId: 'inv_contrib_1',
+          goalId: 'g_inv_ars_1',
+          amount: '6000.00',
+          percentage: '60.00',
+          investmentPositionId: 'ip_ars_1',
+          createdAt: new Date('2026-08-01T00:00:00Z'),
+        },
+        {
+          id: 'ica_2',
+          contributionId: 'inv_contrib_1',
+          goalId: 'g_inv_ars_2',
+          amount: '4000.00',
+          percentage: '40.00',
+          investmentPositionId: 'ip_ars_2',
+          createdAt: new Date('2026-08-01T00:00:00Z'),
+        },
+      ]
+
+      setupDbMocks({
+        investmentContribution: existingInvestContrib,
+        investmentContributionAllocations: existingInvestAllocs,
+        investmentPositions: [
+          { ...mockInvestPosArs1, currentValue: '20000.00' },
+          { ...mockInvestPosArs2, currentValue: '10000.00' },
+        ],
+      })
+
+      const updatedDraft: SavingDraftInput = {
+        kind: 'investment',
+        currency: 'ARS',
+        amount: '20000.00',
+      }
+
+      await updateSavingContributionInRepository({
+        userId,
+        contributionId: 'inv_contrib_1',
+        draft: updatedDraft,
+      })
+
+      expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
+      expect(mockTx.update).toHaveBeenCalledWith(investmentContributionAllocations)
+      expect(mockTx.update).toHaveBeenCalledWith(investmentContributions)
+    })
+
+    it('rejects investment correction for unauthorized user', async () => {
+      setupDbMocks({ investmentContribution: null })
+
+      await expect(
+        updateSavingContributionInRepository({
+          userId: 'other_user',
+          contributionId: 'inv_contrib_1',
+          draft: { kind: 'investment', currency: 'ARS', amount: '20000.00' },
+        }),
+      ).rejects.toThrow('Contribution not found or not owned by user.')
+    })
   })
 
   describe('deleteSavingContributionInRepository', () => {
@@ -600,8 +922,60 @@ describe('saving-contribution.repository.server', () => {
       expect(mockTx.delete).not.toHaveBeenCalledWith(allocationPlanEntries)
     })
 
+    it('deletes investment contribution and decrements goalInvestmentPositions currentValue without touching plan entries', async () => {
+      const existingInvestContrib = {
+        id: 'inv_contrib_1',
+        userId,
+        amount: '10000.00',
+        currency: 'ARS',
+        arsSpent: null,
+        effectiveRate: null,
+        createdAt: new Date('2026-08-01T00:00:00Z'),
+        updatedAt: new Date('2026-08-01T00:00:00Z'),
+      }
+
+      const existingInvestAllocs = [
+        {
+          id: 'ica_1',
+          contributionId: 'inv_contrib_1',
+          goalId: 'g_inv_ars_1',
+          amount: '6000.00',
+          percentage: '60.00',
+          investmentPositionId: 'ip_ars_1',
+          createdAt: new Date('2026-08-01T00:00:00Z'),
+        },
+        {
+          id: 'ica_2',
+          contributionId: 'inv_contrib_1',
+          goalId: 'g_inv_ars_2',
+          amount: '4000.00',
+          percentage: '40.00',
+          investmentPositionId: 'ip_ars_2',
+          createdAt: new Date('2026-08-01T00:00:00Z'),
+        },
+      ]
+
+      setupDbMocks({
+        investmentContribution: existingInvestContrib,
+        investmentContributionAllocations: existingInvestAllocs,
+        investmentPositions: [
+          { ...mockInvestPosArs1, currentValue: '26000.00' },
+          { ...mockInvestPosArs2, currentValue: '14000.00' },
+        ],
+      })
+
+      await deleteSavingContributionInRepository({
+        userId,
+        contributionId: 'inv_contrib_1',
+      })
+
+      expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
+      expect(mockTx.delete).toHaveBeenCalledWith(investmentContributions)
+      expect(mockTx.delete).not.toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
     it('throws error when contribution is not found or user ownership fails', async () => {
-      setupDbMocks({ contribution: null })
+      setupDbMocks({ contribution: null, investmentContribution: null })
 
       await expect(
         deleteSavingContributionInRepository({

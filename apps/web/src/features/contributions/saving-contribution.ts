@@ -38,6 +38,7 @@ export function selectEligibleGoals<T extends EligibleGoalSource = EligibleGoalS
 }
 
 export interface SavingDraftInput {
+  kind?: ContributionKind
   currency: CurrencyCode
   amount: string
   location?: string | null
@@ -46,6 +47,7 @@ export interface SavingDraftInput {
 }
 
 export interface SavingDraft {
+  kind?: ContributionKind
   currency: CurrencyCode
   amount: Money
   location?: string
@@ -84,6 +86,8 @@ export interface SavingContributionContext {
   currentMonth: string
   eligibleGoals: EligibleGoal[]
   eligibleGoalsUsd: EligibleGoal[]
+  eligibleInvestmentGoals?: EligibleGoal[]
+  eligibleInvestmentGoalsUsd?: EligibleGoal[]
   monthlyTargetArs?: Money | null
   monthlyTargetUsd?: Money | null
 }
@@ -261,18 +265,20 @@ export function parseSavingDraft(input: SavingDraftInput | SavingDraft): SavingD
     }
 
     return {
+      ...(input.kind ? { kind: input.kind } : {}),
       currency: 'USD',
       amount: amountMoney,
-      location,
+      ...(location ? { location } : {}),
       arsSpent: arsSpentMoney,
       effectiveRate: effectiveRateStr,
     }
   }
 
   return {
+    ...(input.kind ? { kind: input.kind } : {}),
     currency: 'ARS',
     amount: amountMoney,
-    location,
+    ...(location ? { location } : {}),
   }
 }
 
@@ -453,7 +459,13 @@ export interface SerializeContributionStateInput {
 export function serializeContributionState(input: SerializeContributionStateInput): string {
   const normalizedDraft = parseSavingDraft(input.draft)
   const normalized = {
-    kind: input.kind ?? 'saving',
+    kind:
+      input.kind ??
+      normalizedDraft.kind ??
+      (typeof input.draft === 'object' && input.draft && 'kind' in input.draft && input.draft.kind
+        ? input.draft.kind
+        : undefined) ??
+      'saving',
     currentMonth: input.currentMonth ?? null,
     draft: {
       currency: normalizedDraft.currency,

@@ -1,10 +1,14 @@
 import '@tanstack/react-start/server-only'
 import { createHash } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
+import BigNumber from 'bignumber.js'
 import { db } from '../../db/client'
 import {
   financialProfiles,
+  goalInvestmentPositions,
   goalSavingsPositions,
+  investmentContributionAllocations,
+  investmentContributions,
   savingContributionAllocations,
   savingContributions,
 } from '../../db/schema'
@@ -19,7 +23,7 @@ import {
   buildSavingPreview,
   deriveMonthlySavingTargets,
   parseSavingDraft,
-  serializeSavingContributionState,
+  serializeContributionState,
   type EligibleGoal,
   type SavingContributionPreviewResult,
   type SavingDraftInput,
@@ -29,6 +33,8 @@ export interface SavingContributionState {
   source: GoalsWorkspaceSource
   eligibleGoals: EligibleGoal[]
   eligibleGoalsUsd: EligibleGoal[]
+  eligibleInvestmentGoals: EligibleGoal[]
+  eligibleInvestmentGoalsUsd: EligibleGoal[]
   monthlyTargetArs?: Money | null
   monthlyTargetUsd?: Money | null
 }
@@ -42,19 +48,31 @@ export class StaleSavingContributionPreviewError extends Error {
   }
 }
 
-export function createSavingContributionPreviewToken(
+export function createContributionPreviewToken(
   state: SavingContributionState,
   currentMonth: string,
   draft: SavingDraftInput,
 ): string {
-  const eligible = draft.currency === 'USD' ? state.eligibleGoalsUsd : state.eligibleGoals
-  const serialized = serializeSavingContributionState({
+  const kind = draft.kind ?? 'saving'
+  const eligible =
+    kind === 'investment'
+      ? draft.currency === 'USD'
+        ? state.eligibleInvestmentGoalsUsd
+        : state.eligibleInvestmentGoals
+      : draft.currency === 'USD'
+        ? state.eligibleGoalsUsd
+        : state.eligibleGoals
+
+  const serialized = serializeContributionState({
+    kind,
     draft,
     eligibleGoals: eligible,
     currentMonth,
   })
   return createHash('sha256').update(serialized).digest('hex')
 }
+
+export const createSavingContributionPreviewToken = createContributionPreviewToken
 
 export async function getSavingContributionStateWithExecutor(
   executor: any,
@@ -119,7 +137,7 @@ export async function getSavingContributionStateWithExecutor(
   })
 
   const eligibleGoals: EligibleGoal[] = activeGoals
-    .filter((g: any) => g.currency === 'ARS')
+    .filter((g: any) => g.currency === 'ARS' && g.strategy === 'save')
     .map((g: any) => ({
       id: g.id,
       name: g.name,
@@ -127,7 +145,23 @@ export async function getSavingContributionStateWithExecutor(
     }))
 
   const eligibleGoalsUsd: EligibleGoal[] = activeGoals
-    .filter((g: any) => g.currency === 'USD')
+    .filter((g: any) => g.currency === 'USD' && g.strategy === 'save')
+    .map((g: any) => ({
+      id: g.id,
+      name: g.name,
+      percentage: allocMap.get(g.id) ?? '0.00',
+    }))
+
+  const eligibleInvestmentGoals: EligibleGoal[] = activeGoals
+    .filter((g: any) => g.currency === 'ARS' && g.strategy === 'invest')
+    .map((g: any) => ({
+      id: g.id,
+      name: g.name,
+      percentage: allocMap.get(g.id) ?? '0.00',
+    }))
+
+  const eligibleInvestmentGoalsUsd: EligibleGoal[] = activeGoals
+    .filter((g: any) => g.currency === 'USD' && g.strategy === 'invest')
     .map((g: any) => ({
       id: g.id,
       name: g.name,
@@ -154,6 +188,8 @@ export async function getSavingContributionStateWithExecutor(
     source,
     eligibleGoals,
     eligibleGoalsUsd,
+    eligibleInvestmentGoals,
+    eligibleInvestmentGoalsUsd,
     monthlyTargetArs: targets.monthlyTargetArs,
     monthlyTargetUsd: targets.monthlyTargetUsd,
   }
@@ -190,23 +226,42 @@ export async function createSavingContributionInRepository(input: {
       throw new Error('Financial profile not found.')
     }
 
-    const eligibleGoals = draft.currency === 'USD' ? state.eligibleGoalsUsd : state.eligibleGoals
-    if (!eligibleGoals || eligibleGoals.length === 0) {
-      throw new Error(
+    const kind = draft.kind ?? 'saving'
+    let eligibleGoals: EligibleGoal[]
+
+    if (kind === 'investment') {
+      eligibleGoals =
         draft.currency === 'USD'
-          ? 'No hay objetivos activos para distribuir el ahorro en USD.'
-          : 'No hay objetivos activos para distribuir el ahorro en ARS.',
-      )
+          ? state.eligibleInvestmentGoalsUsd
+          : state.eligibleInvestmentGoals
+      if (!eligibleGoals || eligibleGoals.length === 0) {
+        throw new Error(
+          draft.currency === 'USD'
+            ? 'No hay objetivos activos para distribuir la inversión en USD.'
+            : 'No hay objetivos activos para distribuir la inversión en ARS.',
+        )
+      }
+    } else {
+      eligibleGoals =
+        draft.currency === 'USD' ? state.eligibleGoalsUsd : state.eligibleGoals
+      if (!eligibleGoals || eligibleGoals.length === 0) {
+        throw new Error(
+          draft.currency === 'USD'
+            ? 'No hay objetivos activos para distribuir el ahorro en USD.'
+            : 'No hay objetivos activos para distribuir el ahorro en ARS.',
+        )
+      }
     }
 
     const preview = buildSavingPreview({
+      kind,
       draft,
       eligibleGoals,
       workspaceSource: state.source,
       currentMonth,
     })
 
-    const currentToken = createSavingContributionPreviewToken(state, currentMonth, draft)
+    const currentToken = createContributionPreviewToken(state, currentMonth, draft)
     if (currentToken !== previewToken) {
       throw new StaleSavingContributionPreviewError({
         preview,
@@ -215,6 +270,60 @@ export async function createSavingContributionInRepository(input: {
     }
 
     const normalizedDraft = preview.draft
+
+    if (kind === 'investment') {
+      const [contribution] = await tx
+        .insert(investmentContributions)
+        .values({
+          userId,
+          amount: normalizedDraft.amount.amount,
+          currency: normalizedDraft.currency,
+          arsSpent: normalizedDraft.arsSpent ? normalizedDraft.arsSpent.amount : null,
+          effectiveRate: normalizedDraft.effectiveRate ?? null,
+        })
+        .returning({ id: investmentContributions.id })
+
+      const existingPositions = state.source.investmentPositions ?? []
+
+      for (const allocation of preview.allocations) {
+        let pos: any = existingPositions.find((p) => p.goalId === allocation.goalId)
+        if (!pos) {
+          pos = await tx.query.goalInvestmentPositions.findFirst({
+            where: (pTable: any, { eq }: any) => eq(pTable.goalId, allocation.goalId),
+          })
+        }
+        if (!pos) {
+          throw new Error(`Investment position not found for goal ${allocation.goalId}`)
+        }
+
+        const newCurrentValue = new BigNumber(pos.currentValue)
+          .plus(new BigNumber(allocation.amount.amount))
+          .toFixed(2)
+
+        await tx
+          .update(goalInvestmentPositions)
+          .set({ currentValue: newCurrentValue })
+          .where(eq(goalInvestmentPositions.id, pos.id))
+      }
+
+      await tx.insert(investmentContributionAllocations).values(
+        preview.allocations.map((allocation) => {
+          const pos =
+            existingPositions.find((p) => p.goalId === allocation.goalId) ??
+            state.source.investmentPositions?.find((p) => p.goalId === allocation.goalId)!
+          return {
+            contributionId: contribution.id,
+            goalId: allocation.goalId,
+            amount: allocation.amount.amount,
+            percentage: allocation.percentage,
+            investmentPositionId: pos.id,
+          }
+        }),
+      )
+
+      return { contributionId: contribution.id }
+    }
+
     const [contribution] = await tx
       .insert(savingContributions)
       .values({
@@ -263,60 +372,121 @@ export async function updateSavingContributionInRepository(input: {
   const { userId, contributionId, draft } = input
 
   return db.transaction(async (tx) => {
-    const contribution = await tx.query.savingContributions.findFirst({
+    const savingContribution = await tx.query.savingContributions.findFirst({
       where: (contribTable: any, { and, eq }: any) =>
         and(eq(contribTable.id, contributionId), eq(contribTable.userId, userId)),
     })
 
-    if (!contribution) {
-      throw new Error('Contribution not found or not owned by user.')
+    if (savingContribution) {
+      const allocations = await tx.query.savingContributionAllocations.findMany({
+        where: (allocTable: any, { eq }: any) => eq(allocTable.contributionId, contributionId),
+      })
+
+      if (!allocations.length) {
+        throw new Error('No allocations found for contribution.')
+      }
+
+      const parsedDraft = parseSavingDraft(draft)
+      if (parsedDraft.currency !== savingContribution.currency) {
+        throw new Error('Cannot change contribution currency on update.')
+      }
+
+      const allocatedMoneyList = calculateAllocationAmounts(
+        parsedDraft.amount,
+        allocations.map((a: any) => ({ id: a.id, percentage: a.percentage })),
+      )
+
+      for (const alloc of allocations) {
+        const newAllocated = allocatedMoneyList.find((item) => item.id === alloc.id)!
+        await tx
+          .update(goalSavingsPositions)
+          .set({
+            amount: newAllocated.amount.amount,
+            location: parsedDraft.location || null,
+          })
+          .where(eq(goalSavingsPositions.id, alloc.savingPositionId))
+
+        await tx
+          .update(savingContributionAllocations)
+          .set({
+            amount: newAllocated.amount.amount,
+          })
+          .where(eq(savingContributionAllocations.id, alloc.id))
+      }
+
+      await tx
+        .update(savingContributions)
+        .set({
+          amount: parsedDraft.amount.amount,
+          location: parsedDraft.location || null,
+          arsSpent: parsedDraft.arsSpent ? parsedDraft.arsSpent.amount : null,
+          effectiveRate: parsedDraft.effectiveRate ?? null,
+        })
+        .where(eq(savingContributions.id, contributionId))
+
+      return
     }
 
-    const allocations = await tx.query.savingContributionAllocations.findMany({
-      where: (allocTable: any, { eq }: any) => eq(allocTable.contributionId, contributionId),
+    const investmentContribution = await tx.query.investmentContributions.findFirst({
+      where: (contribTable: any, { and, eq }: any) =>
+        and(eq(contribTable.id, contributionId), eq(contribTable.userId, userId)),
     })
 
-    if (!allocations.length) {
-      throw new Error('No allocations found for contribution.')
-    }
-
-    const parsedDraft = parseSavingDraft(draft)
-    if (parsedDraft.currency !== contribution.currency) {
-      throw new Error('Cannot change contribution currency on update.')
-    }
-
-    const allocatedMoneyList = calculateAllocationAmounts(
-      parsedDraft.amount,
-      allocations.map((a: any) => ({ id: a.id, percentage: a.percentage })),
-    )
-
-    for (const alloc of allocations) {
-      const newAllocated = allocatedMoneyList.find((item) => item.id === alloc.id)!
-      await tx
-        .update(goalSavingsPositions)
-        .set({
-          amount: newAllocated.amount.amount,
-          location: parsedDraft.location || null,
-        })
-        .where(eq(goalSavingsPositions.id, alloc.savingPositionId))
-
-      await tx
-        .update(savingContributionAllocations)
-        .set({
-          amount: newAllocated.amount.amount,
-        })
-        .where(eq(savingContributionAllocations.id, alloc.id))
-    }
-
-    await tx
-      .update(savingContributions)
-      .set({
-        amount: parsedDraft.amount.amount,
-        location: parsedDraft.location || null,
-        arsSpent: parsedDraft.arsSpent ? parsedDraft.arsSpent.amount : null,
-        effectiveRate: parsedDraft.effectiveRate ?? null,
+    if (investmentContribution) {
+      const allocations = await tx.query.investmentContributionAllocations.findMany({
+        where: (allocTable: any, { eq }: any) => eq(allocTable.contributionId, contributionId),
       })
-      .where(eq(savingContributions.id, contributionId))
+
+      if (!allocations.length) {
+        throw new Error('No allocations found for contribution.')
+      }
+
+      const parsedDraft = parseSavingDraft(draft)
+      if (parsedDraft.currency !== investmentContribution.currency) {
+        throw new Error('Cannot change contribution currency on update.')
+      }
+
+      const allocatedMoneyList = calculateAllocationAmounts(
+        parsedDraft.amount,
+        allocations.map((a: any) => ({ id: a.id, percentage: a.percentage })),
+      )
+
+      for (const alloc of allocations) {
+        const newAllocated = allocatedMoneyList.find((item) => item.id === alloc.id)!
+        const delta = new BigNumber(newAllocated.amount.amount).minus(new BigNumber(alloc.amount))
+
+        const position = await tx.query.goalInvestmentPositions.findFirst({
+          where: (posTable: any, { eq }: any) => eq(posTable.id, alloc.investmentPositionId),
+        })
+        const currentPosVal = position ? position.currentValue : '0.00'
+        const newPosVal = new BigNumber(currentPosVal).plus(delta).toFixed(2)
+
+        await tx
+          .update(goalInvestmentPositions)
+          .set({ currentValue: newPosVal })
+          .where(eq(goalInvestmentPositions.id, alloc.investmentPositionId))
+
+        await tx
+          .update(investmentContributionAllocations)
+          .set({
+            amount: newAllocated.amount.amount,
+          })
+          .where(eq(investmentContributionAllocations.id, alloc.id))
+      }
+
+      await tx
+        .update(investmentContributions)
+        .set({
+          amount: parsedDraft.amount.amount,
+          arsSpent: parsedDraft.arsSpent ? parsedDraft.arsSpent.amount : null,
+          effectiveRate: parsedDraft.effectiveRate ?? null,
+        })
+        .where(eq(investmentContributions.id, contributionId))
+
+      return
+    }
+
+    throw new Error('Contribution not found or not owned by user.')
   })
 }
 
@@ -327,25 +497,56 @@ export async function deleteSavingContributionInRepository(input: {
   const { userId, contributionId } = input
 
   return db.transaction(async (tx) => {
-    const contribution = await tx.query.savingContributions.findFirst({
+    const savingContribution = await tx.query.savingContributions.findFirst({
       where: (contribTable: any, { and, eq }: any) =>
         and(eq(contribTable.id, contributionId), eq(contribTable.userId, userId)),
     })
 
-    if (!contribution) {
-      throw new Error('Contribution not found or not owned by user.')
+    if (savingContribution) {
+      const allocations = await tx.query.savingContributionAllocations.findMany({
+        where: (allocTable: any, { eq }: any) => eq(allocTable.contributionId, contributionId),
+      })
+
+      const positionIds = allocations.map((a: any) => a.savingPositionId).filter(Boolean)
+
+      if (positionIds.length > 0) {
+        await tx.delete(goalSavingsPositions).where(inArray(goalSavingsPositions.id, positionIds))
+      }
+
+      await tx.delete(savingContributions).where(eq(savingContributions.id, contributionId))
+      return
     }
 
-    const allocations = await tx.query.savingContributionAllocations.findMany({
-      where: (allocTable: any, { eq }: any) => eq(allocTable.contributionId, contributionId),
+    const investmentContribution = await tx.query.investmentContributions.findFirst({
+      where: (contribTable: any, { and, eq }: any) =>
+        and(eq(contribTable.id, contributionId), eq(contribTable.userId, userId)),
     })
 
-    const positionIds = allocations.map((a: any) => a.savingPositionId).filter(Boolean)
+    if (investmentContribution) {
+      const allocations = await tx.query.investmentContributionAllocations.findMany({
+        where: (allocTable: any, { eq }: any) => eq(allocTable.contributionId, contributionId),
+      })
 
-    if (positionIds.length > 0) {
-      await tx.delete(goalSavingsPositions).where(inArray(goalSavingsPositions.id, positionIds))
+      for (const alloc of allocations) {
+        const position = await tx.query.goalInvestmentPositions.findFirst({
+          where: (posTable: any, { eq }: any) => eq(posTable.id, alloc.investmentPositionId),
+        })
+        if (position) {
+          const newPosVal = new BigNumber(position.currentValue)
+            .minus(new BigNumber(alloc.amount))
+            .toFixed(2)
+          await tx
+            .update(goalInvestmentPositions)
+            .set({ currentValue: newPosVal })
+            .where(eq(goalInvestmentPositions.id, alloc.investmentPositionId))
+        }
+      }
+
+      await tx.delete(investmentContributions).where(eq(investmentContributions.id, contributionId))
+      return
     }
 
-    await tx.delete(savingContributions).where(eq(savingContributions.id, contributionId))
+    throw new Error('Contribution not found or not owned by user.')
   })
 }
+

@@ -36,6 +36,8 @@ export async function getSavingContributionContextServer(): Promise<SavingContri
       currentMonth,
       eligibleGoals: state.eligibleGoals,
       eligibleGoalsUsd: state.eligibleGoalsUsd,
+      eligibleInvestmentGoals: state.eligibleInvestmentGoals,
+      eligibleInvestmentGoalsUsd: state.eligibleInvestmentGoalsUsd,
       monthlyTargetArs: state.monthlyTargetArs,
       monthlyTargetUsd: state.monthlyTargetUsd,
     },
@@ -54,16 +56,30 @@ export async function previewSavingContributionServer({
     throw new Error('Completá tu perfil financiero antes de registrar un ahorro.')
   }
 
-  const eligibleGoals = data.currency === 'USD' ? state.eligibleGoalsUsd : state.eligibleGoals
+  const kind = data.kind ?? 'saving'
+  let eligibleGoals =
+    kind === 'investment'
+      ? data.currency === 'USD'
+        ? state.eligibleInvestmentGoalsUsd
+        : state.eligibleInvestmentGoals
+      : data.currency === 'USD'
+        ? state.eligibleGoalsUsd
+        : state.eligibleGoals
+
   if (!eligibleGoals || eligibleGoals.length === 0) {
     throw new Error(
-      data.currency === 'USD'
-        ? 'No hay objetivos activos para distribuir el ahorro en USD.'
-        : 'No hay objetivos activos para distribuir el ahorro en ARS.',
+      kind === 'investment'
+        ? data.currency === 'USD'
+          ? 'No hay objetivos activos para distribuir la inversión en USD.'
+          : 'No hay objetivos activos para distribuir la inversión en ARS.'
+        : data.currency === 'USD'
+          ? 'No hay objetivos activos para distribuir el ahorro en USD.'
+          : 'No hay objetivos activos para distribuir el ahorro en ARS.',
     )
   }
 
   const preview = buildSavingPreview({
+    kind,
     draft: data,
     eligibleGoals,
     workspaceSource: state.source,
