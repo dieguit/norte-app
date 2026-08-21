@@ -6,6 +6,7 @@ import {
   isPositiveMoney,
   parseMoneyInput,
 } from '../../lib/money'
+import type { PreviousMonthShortfall } from '../contributions/saving-contribution'
 
 export type InitialGoalKind = 'emergency_fund' | 'fixed_savings' | 'car'
 
@@ -79,6 +80,7 @@ export interface InitialHomeState {
     emergencyFundMonths?: number
   }
   projection: CompletionProjection
+  previousMonthShortfalls: PreviousMonthShortfall[]
 }
 
 export function parseInitialPlan(input: InitialPlanInput): InitialPlan {
@@ -132,6 +134,13 @@ export function getNextCalendarMonth(now: Date): string {
   const month = now.getUTCMonth() + 1
   const next = new Date(Date.UTC(year, month, 1))
   return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+export function getPreviousCalendarMonth(now: Date = new Date()): string {
+  const year = now.getUTCFullYear()
+  const month = now.getUTCMonth() - 1
+  const prev = new Date(Date.UTC(year, month, 1))
+  return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
 export function deriveInitialGoal(plan: InitialPlan): DerivedInitialGoal {

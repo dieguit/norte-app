@@ -114,12 +114,21 @@ vi.mock('../../db/client', () => ({
       },
       financialGoals: {
         findFirst: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
       },
       allocationPlanSnapshots: {
         findFirst: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
       },
       allocationPlanEntries: {
         findFirst: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      savingContributions: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      investmentContributions: {
+        findMany: vi.fn().mockResolvedValue([]),
       },
     },
   },
@@ -291,6 +300,7 @@ describe('financial.server boundary', () => {
           emergencyFundMonths: 6,
         },
         projection: { status: 'available', completionMonth: '2029-03' },
+        previousMonthShortfalls: [],
       })
     })
 
@@ -344,6 +354,7 @@ describe('financial.server boundary', () => {
           emergencyFundMonths: 6,
         },
         projection: { status: 'unknown_expenses' },
+        previousMonthShortfalls: [],
       })
     })
 
@@ -397,6 +408,7 @@ describe('financial.server boundary', () => {
           emergencyFundMonths: undefined,
         },
         projection: { status: 'available', completionMonth: '2028-04' },
+        previousMonthShortfalls: [],
       })
     })
 
@@ -450,6 +462,7 @@ describe('financial.server boundary', () => {
           emergencyFundMonths: undefined,
         },
         projection: { status: 'outside_horizon' },
+        previousMonthShortfalls: [],
       })
     })
   })

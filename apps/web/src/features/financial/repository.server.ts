@@ -17,8 +17,13 @@ import type {
 import {
   convertCommitmentToDestination,
   deriveEmergencyFundTarget,
+  getPreviousCalendarMonth,
   projectCompletionMonth,
 } from './financial'
+import {
+  derivePreviousMonthShortfalls,
+  type PreviousMonthShortfall,
+} from '../contributions/saving-contribution'
 
 export async function persistInitialPlan(
   userId: string,
@@ -75,7 +80,10 @@ export async function persistInitialPlan(
   })
 }
 
-export async function getInitialHomeState(userId: string): Promise<InitialHomeState | null> {
+export async function getInitialHomeState(
+  userId: string,
+  now: Date = new Date(),
+): Promise<InitialHomeState | null> {
   const profile = await db.query.financialProfiles.findFirst({
     where: (profiles, { eq }) => eq(profiles.userId, userId),
   })
@@ -122,6 +130,50 @@ export async function getInitialHomeState(userId: string): Promise<InitialHomeSt
     ? projectCompletionMonth(targetAmount, destinationAmount, effectiveMonth)
     : { status: 'unknown_expenses' as const }
 
+  const closedMonth = getPreviousCalendarMonth(now)
+  const userSnapshots = await db.query.allocationPlanSnapshots.findMany({
+    where: (snapshots, { eq }) => eq(snapshots.userId, userId),
+    orderBy: (snapshots, { desc }) => [desc(snapshots.effectiveMonth)],
+  })
+  const applicableSnapshot = userSnapshots.find(
+    (s) => s.effectiveMonth.slice(0, 7) <= closedMonth,
+  )
+
+  let previousMonthShortfalls: PreviousMonthShortfall[] = []
+
+  if (applicableSnapshot && applicableSnapshot.plannedMonthlyContribution !== null) {
+    const [snapshotEntries, userGoals, savingContribs, investmentContribs] = await Promise.all([
+      db.query.allocationPlanEntries.findMany({
+        where: (entries, { eq }) => eq(entries.snapshotId, applicableSnapshot.id),
+      }),
+      db.query.financialGoals.findMany({
+        where: (goals, { eq }) => eq(goals.userId, userId),
+      }),
+      db.query.savingContributions.findMany({
+        where: (contribs, { eq }) => eq(contribs.userId, userId),
+      }),
+      db.query.investmentContributions.findMany({
+        where: (contribs, { eq }) => eq(contribs.userId, userId),
+      }),
+    ])
+
+    previousMonthShortfalls = derivePreviousMonthShortfalls({
+      closedMonth,
+      plannedMonthlyContribution: applicableSnapshot.plannedMonthlyContribution,
+      goals: userGoals.map((g) => ({
+        id: g.id,
+        strategy: g.strategy,
+        currency: g.currency as CurrencyCode,
+      })),
+      allocations: snapshotEntries.map((e) => ({
+        goalId: e.goalId,
+        percentage: e.percentage,
+      })),
+      savingContributions: savingContribs,
+      investmentContributions: investmentContribs,
+    })
+  }
+
   return {
     income: createMoney(profile.approximateMonthlyIncome, 'ARS'),
     expensesKnowledge,
@@ -142,5 +194,6 @@ export async function getInitialHomeState(userId: string): Promise<InitialHomeSt
       emergencyFundMonths: goal.emergencyFundMonths ?? undefined,
     },
     projection,
+    previousMonthShortfalls,
   }
 }

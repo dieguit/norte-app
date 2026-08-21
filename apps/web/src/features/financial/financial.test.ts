@@ -7,6 +7,7 @@ import {
   deriveInitialChannel,
   deriveInitialGoal,
   getNextCalendarMonth,
+  getPreviousCalendarMonth,
   parseInitialPlan,
   projectCompletionMonth,
 } from './financial'
@@ -275,6 +276,11 @@ describe('initial financial plan domain rules', () => {
 
     it('uses the first day of the next UTC calendar month', () => {
       expect(getNextCalendarMonth(new Date('2026-12-31T23:59:59Z'))).toBe('2027-01')
+    })
+
+    it('uses the previous UTC calendar month', () => {
+      expect(getPreviousCalendarMonth(new Date('2026-08-21T18:00:00Z'))).toBe('2026-07')
+      expect(getPreviousCalendarMonth(new Date('2026-01-01T00:00:00Z'))).toBe('2025-12')
     })
   })
 
