@@ -18,12 +18,12 @@ import {
 import { formatDate, formatMoney } from '../../../../lib/format'
 import { createMoney } from '../../../../lib/money'
 import { deleteSavingContribution } from '../../../../features/contributions/saving-contribution.functions'
-import type { SavingContributionSummary } from '../../../../features/goals/goals'
+import type { ContributionSummary } from '../../../../features/goals/goals'
 import { SavingContribution } from '../../-components/SavingContribution'
 
 export interface SavingContributionActionsProps {
   goalId: string
-  contributions: SavingContributionSummary[]
+  contributions: ContributionSummary[]
 }
 
 export function SavingContributionActions({
@@ -31,7 +31,7 @@ export function SavingContributionActions({
   contributions,
 }: SavingContributionActionsProps) {
   const router = useRouter()
-  const [editingContribution, setEditingContribution] = useState<SavingContributionSummary | null>(null)
+  const [editingContribution, setEditingContribution] = useState<ContributionSummary | null>(null)
   const [deletingContributionId, setDeletingContributionId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -39,19 +39,24 @@ export function SavingContributionActions({
     return null
   }
 
-  const handleDelete = async (contributionId: string) => {
+  const handleDelete = async (contribution: ContributionSummary) => {
     setIsDeleting(true)
     try {
       await deleteSavingContribution({
         data: {
-          contributionId,
+          contributionId: contribution.id,
         },
       })
       await router.invalidate()
-      toast.success('Ahorro eliminado.')
+      toast.success(contribution.kind === 'investment' ? 'Inversión eliminada.' : 'Ahorro eliminado.')
       setDeletingContributionId(null)
     } catch (err: any) {
-      toast.error(err?.message ?? 'Ocurrió un error al eliminar el ahorro.')
+      toast.error(
+        err?.message ??
+          (contribution.kind === 'investment'
+            ? 'Ocurrió un error al eliminar la inversión.'
+            : 'Ocurrió un error al eliminar el ahorro.'),
+      )
     } finally {
       setIsDeleting(false)
     }
@@ -70,6 +75,8 @@ export function SavingContributionActions({
             month: 'short',
             year: 'numeric',
           })
+          const isInvestment = item.kind === 'investment'
+          const kindLabel = isInvestment ? 'Inversión' : 'Ahorro'
 
           return (
             <li
@@ -80,6 +87,9 @@ export function SavingContributionActions({
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm text-[var(--sea-ink)]">
                     {formatMoney(money)}
+                  </span>
+                  <span className="rounded-md bg-[var(--foam)] px-2 py-0.5 text-xs font-semibold text-[var(--sea-ink)] border border-[var(--line)]">
+                    {kindLabel}
                   </span>
                   {item.location && (
                     <span className="text-xs text-[var(--sea-ink-soft)]">
@@ -97,7 +107,7 @@ export function SavingContributionActions({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  aria-label={`Corregir aporte del ${formattedDate}`}
+                  aria-label={`Corregir aporte de ${isInvestment ? 'inversión' : 'ahorro'} del ${formattedDate}`}
                   onClick={() => setEditingContribution(item)}
                 >
                   <Pencil data-icon="inline-start" className="size-3.5" aria-hidden="true" />
@@ -114,7 +124,7 @@ export function SavingContributionActions({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        aria-label={`Eliminar aporte del ${formattedDate}`}
+                        aria-label={`Eliminar aporte de ${isInvestment ? 'inversión' : 'ahorro'} del ${formattedDate}`}
                         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 data-icon="inline-start" className="size-3.5" aria-hidden="true" />
@@ -126,10 +136,12 @@ export function SavingContributionActions({
                     <div className="flex flex-col gap-3">
                       <div>
                         <h4 className="font-semibold text-sm text-[var(--sea-ink)]">
-                          ¿Estás seguro de que querés eliminar este aporte?
+                          {isInvestment
+                            ? '¿Estás seguro de que querés eliminar esta inversión?'
+                            : '¿Estás seguro de que querés eliminar este aporte?'}
                         </h4>
                         <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-                          Se descontará de los objetivos en los que fue asignado.
+                          Se descontará de los objetivos en los que fue {isInvestment ? 'asignada' : 'asignado'}.
                         </p>
                       </div>
                       <div className="flex items-center justify-end gap-2">
@@ -146,9 +158,13 @@ export function SavingContributionActions({
                           variant="destructive"
                           size="sm"
                           disabled={isDeleting}
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => handleDelete(item)}
                         >
-                          {isDeleting ? 'Eliminando...' : 'Eliminar aporte'}
+                          {isDeleting
+                            ? 'Eliminando...'
+                            : isInvestment
+                              ? 'Eliminar inversión'
+                              : 'Eliminar aporte'}
                         </Button>
                       </div>
                     </div>
@@ -173,10 +189,14 @@ export function SavingContributionActions({
           >
             <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
               <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-                Corregir ahorro
+                {editingContribution.kind === 'investment'
+                  ? 'Corregir inversión'
+                  : 'Corregir ahorro'}
               </SheetTitle>
               <SheetDescription className="text-sm text-[var(--sea-ink-soft)]">
-                Modificá los datos de este ahorro manteniendo la distribución original entre objetivos.
+                {editingContribution.kind === 'investment'
+                  ? 'Modificá los datos de esta inversión manteniendo la distribución original entre objetivos.'
+                  : 'Modificá los datos de este ahorro manteniendo la distribución original entre objetivos.'}
               </SheetDescription>
             </SheetHeader>
 
@@ -191,3 +211,4 @@ export function SavingContributionActions({
     </div>
   )
 }
+

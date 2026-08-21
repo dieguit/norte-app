@@ -94,7 +94,7 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
         </dl>
         <SavingContributionActions
           goalId={goal.id}
-          contributions={goal.savingContributions ?? []}
+          contributions={goal.contributions ?? goal.savingContributions ?? []}
         />
       </section>
     </div>

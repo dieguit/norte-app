@@ -721,6 +721,181 @@ describe('GoalsWorkspace component', () => {
       expect(toast.success).toHaveBeenCalled()
     })
   })
+
+  it('renders investment contribution in history with Inversión badge', async () => {
+    const user = userEvent.setup()
+    const activeGoal = makeGoal({
+      id: 'goal-1',
+      name: 'Fondo de Inversión',
+      strategy: 'invest',
+      status: 'active',
+      contributions: [
+        {
+          id: 'contrib-inv-1',
+          kind: 'investment',
+          amount: '100.00',
+          currency: 'USD',
+          arsSpent: '120000.00',
+          effectiveRate: '1200.00',
+          createdAt: '2026-08-16T14:00:00Z',
+          allocations: [
+            {
+              goalId: 'goal-1',
+              goalName: 'Fondo de Inversión',
+              amount: '100.00',
+              percentage: '100.00',
+            },
+          ],
+        },
+      ],
+    })
+
+    const workspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Fondo de Inversión' }))
+
+    const detailRegion = screen.getByRole('region', { name: 'Detalles de Fondo de Inversión' })
+    expect(within(detailRegion).getByText('US$ 100,00')).toBeInTheDocument()
+    expect(within(detailRegion).getByText('Inversión')).toBeVisible()
+    expect(within(detailRegion).getByRole('button', { name: /Corregir aporte.*inversión/i })).toBeInTheDocument()
+    expect(within(detailRegion).getByRole('button', { name: /Eliminar aporte.*inversión/i })).toBeInTheDocument()
+  })
+
+  it('opens edit form for investment and preserves USD fields on correction submit', async () => {
+    const user = userEvent.setup()
+    vi.mocked(updateSavingContribution).mockResolvedValue({ status: 'updated' })
+
+    const activeGoal = makeGoal({
+      id: 'goal-1',
+      name: 'Fondo de Inversión',
+      strategy: 'invest',
+      status: 'active',
+      contributions: [
+        {
+          id: 'contrib-inv-1',
+          kind: 'investment',
+          amount: '100.00',
+          currency: 'USD',
+          arsSpent: '120000.00',
+          effectiveRate: '1200.00',
+          createdAt: '2026-08-16T14:00:00Z',
+          allocations: [
+            {
+              goalId: 'goal-1',
+              goalName: 'Fondo de Inversión',
+              amount: '100.00',
+              percentage: '100.00',
+            },
+          ],
+        },
+      ],
+    })
+
+    const workspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Fondo de Inversión' }))
+    const editBtn = screen.getByRole('button', { name: /Corregir aporte.*inversión/i })
+    await user.click(editBtn)
+
+    // Edit sheet opens with title Corregir inversión and populated USD fields
+    expect(screen.getByText('Corregir inversión')).toBeInTheDocument()
+    const amountInput = screen.getByLabelText(/monto en dólares/i)
+    expect(amountInput).toHaveValue('100')
+
+    const rateInput = screen.getByLabelText(/tipo de cambio/i)
+    expect(rateInput).toHaveValue('1.200')
+
+    const arsSpentInput = screen.getByLabelText(/pesos gastados/i)
+    expect(arsSpentInput).toHaveValue('120.000')
+
+    await user.clear(amountInput)
+    await user.type(amountInput, '150')
+
+    const saveBtn = screen.getByRole('button', { name: /guardar cambios/i })
+    await waitFor(() => expect(saveBtn).toBeEnabled())
+    await user.click(saveBtn)
+
+    await waitFor(() => {
+      expect(updateSavingContribution).toHaveBeenCalledWith({
+        data: {
+          contributionId: 'contrib-inv-1',
+          draft: expect.objectContaining({
+            kind: 'investment',
+            currency: 'USD',
+            amount: '150',
+          }),
+        },
+      })
+      expect(mockInvalidate).toHaveBeenCalled()
+      expect(toast.success).toHaveBeenCalledWith('Inversión actualizada.')
+    })
+  })
+
+  it('requires explicit confirmation before deleting an investment contribution', async () => {
+    const user = userEvent.setup()
+    vi.mocked(deleteSavingContribution).mockResolvedValue({ status: 'deleted' })
+
+    const activeGoal = makeGoal({
+      id: 'goal-1',
+      name: 'Fondo de Inversión',
+      strategy: 'invest',
+      status: 'active',
+      contributions: [
+        {
+          id: 'contrib-inv-1',
+          kind: 'investment',
+          amount: '100.00',
+          currency: 'USD',
+          arsSpent: '120000.00',
+          effectiveRate: '1200.00',
+          createdAt: '2026-08-16T14:00:00Z',
+          allocations: [
+            {
+              goalId: 'goal-1',
+              goalName: 'Fondo de Inversión',
+              amount: '100.00',
+              percentage: '100.00',
+            },
+          ],
+        },
+      ],
+    })
+
+    const workspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Fondo de Inversión' }))
+    const deleteBtn = screen.getByRole('button', { name: /Eliminar aporte.*inversión/i })
+    await user.click(deleteBtn)
+
+    // Confirmation surface is visible
+    expect(await screen.findByText(/¿Estás seguro de que querés eliminar esta inversión\?/i)).toBeInTheDocument()
+    expect(deleteSavingContribution).not.toHaveBeenCalled()
+
+    const confirmDeleteBtn = within(screen.getByRole('dialog')).getByRole('button', { name: /eliminar inversión/i })
+    await user.click(confirmDeleteBtn)
+
+    await waitFor(() => {
+      expect(deleteSavingContribution).toHaveBeenCalledWith({
+        data: {
+          contributionId: 'contrib-inv-1',
+        },
+      })
+      expect(mockInvalidate).toHaveBeenCalled()
+      expect(toast.success).toHaveBeenCalledWith('Inversión eliminada.')
+    })
+  })
 })
 
 describe('GoalsRouteStates', () => {
