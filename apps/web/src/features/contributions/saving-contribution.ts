@@ -15,6 +15,28 @@ import {
 
 import { PLANNING_ARS_PER_USD } from '../financial/financial'
 
+export type ContributionKind = 'saving' | 'investment'
+
+export interface EligibleGoalSource {
+  id: string
+  name?: string
+  status?: string
+  currency: CurrencyCode | string
+  strategy: string
+  percentage?: string | number
+}
+
+export function selectEligibleGoals<T extends EligibleGoalSource = EligibleGoalSource>(
+  goals: T[],
+  kind: ContributionKind,
+  currency: CurrencyCode,
+): T[] {
+  const strategy = kind === 'saving' ? 'save' : 'invest'
+  return goals.filter(
+    (goal) => goal.status === 'active' && goal.currency === currency && goal.strategy === strategy,
+  )
+}
+
 export interface SavingDraftInput {
   currency: CurrencyCode
   amount: string
@@ -71,11 +93,14 @@ export type SavingContributionContextState =
   | { profile: 'present'; context: SavingContributionContext }
 
 export interface BuildSavingPreviewInput {
+  kind?: ContributionKind
   draft: SavingDraftInput | SavingDraft
   eligibleGoals: EligibleGoal[]
   workspaceSource?: GoalsWorkspaceSource
   currentMonth?: string
 }
+
+export type BuildContributionPreviewInput = BuildSavingPreviewInput
 
 export interface UsdPurchaseInput {
   usdAmount?: string | null
@@ -342,20 +367,50 @@ export function buildSavingPreview(input: BuildSavingPreviewInput): SavingPrevie
   if (input.workspaceSource && input.currentMonth) {
     const beforeWorkspace = buildGoalsWorkspace(input.workspaceSource, input.currentMonth)
 
-    const syntheticPositions = allocations.map((alloc) => ({
-      id: `synthetic-${alloc.goalId}`,
-      goalId: alloc.goalId,
-      amount: alloc.amount.amount,
-      currency: alloc.amount.currency,
-      location: draft.location ?? null,
-    }))
+    const kind = input.kind ?? 'saving'
+    let proposedSource: GoalsWorkspaceSource
 
-    const proposedSource: GoalsWorkspaceSource = {
-      ...input.workspaceSource,
-      savingsPositions: [
-        ...(input.workspaceSource.savingsPositions ?? []),
-        ...syntheticPositions,
-      ],
+    if (kind === 'investment') {
+      const existingInvestments = [...(input.workspaceSource.investmentPositions ?? [])]
+      for (const alloc of allocations) {
+        const existingIdx = existingInvestments.findIndex((p) => p.goalId === alloc.goalId)
+        if (existingIdx >= 0) {
+          const existing = existingInvestments[existingIdx]
+          const newCurrentValue = new BigNumber(existing.currentValue)
+            .plus(new BigNumber(alloc.amount.amount))
+            .toFixed(2)
+          existingInvestments[existingIdx] = {
+            ...existing,
+            currentValue: newCurrentValue,
+          }
+        } else {
+          existingInvestments.push({
+            id: `synthetic-${alloc.goalId}`,
+            goalId: alloc.goalId,
+            currentValue: alloc.amount.amount,
+            currency: alloc.amount.currency,
+          })
+        }
+      }
+      proposedSource = {
+        ...input.workspaceSource,
+        investmentPositions: existingInvestments,
+      }
+    } else {
+      const syntheticPositions = allocations.map((alloc) => ({
+        id: `synthetic-${alloc.goalId}`,
+        goalId: alloc.goalId,
+        amount: alloc.amount.amount,
+        currency: alloc.amount.currency,
+        location: draft.location ?? null,
+      }))
+      proposedSource = {
+        ...input.workspaceSource,
+        savingsPositions: [
+          ...(input.workspaceSource.savingsPositions ?? []),
+          ...syntheticPositions,
+        ],
+      }
     }
 
     const afterWorkspace = buildGoalsWorkspace(proposedSource, input.currentMonth)
@@ -384,13 +439,21 @@ export function buildSavingPreview(input: BuildSavingPreviewInput): SavingPrevie
   }
 }
 
-export function serializeSavingContributionState(input: {
+export function buildContributionPreview(input: BuildContributionPreviewInput): SavingPreviewResult {
+  return buildSavingPreview(input)
+}
+
+export interface SerializeContributionStateInput {
+  kind?: ContributionKind
   draft: SavingDraftInput | SavingDraft
   eligibleGoals: EligibleGoal[]
   currentMonth?: string
-}): string {
+}
+
+export function serializeContributionState(input: SerializeContributionStateInput): string {
   const normalizedDraft = parseSavingDraft(input.draft)
   const normalized = {
+    kind: input.kind ?? 'saving',
     currentMonth: input.currentMonth ?? null,
     draft: {
       currency: normalizedDraft.currency,
@@ -408,6 +471,14 @@ export function serializeSavingContributionState(input: {
       .sort((a, b) => a.id.localeCompare(b.id)),
   }
   return JSON.stringify(normalized)
+}
+
+export function serializeSavingContributionState(input: {
+  draft: SavingDraftInput | SavingDraft
+  eligibleGoals: EligibleGoal[]
+  currentMonth?: string
+}): string {
+  return serializeContributionState({ ...input, kind: 'saving' })
 }
 
 export function deriveMonthlySavingTargets(input: {

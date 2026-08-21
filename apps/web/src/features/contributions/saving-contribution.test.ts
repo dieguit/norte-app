@@ -4,7 +4,11 @@ import {
   deriveMonthlySavingTargets,
   deriveUsdPurchase,
   parseSavingDraft,
+  selectEligibleGoals,
+  serializeContributionState,
   serializeSavingContributionState,
+  type ContributionKind,
+  type EligibleGoalSource,
   type SavingDraftInput,
   type EligibleGoal,
 } from './saving-contribution'
@@ -380,6 +384,27 @@ describe('saving-contribution domain', () => {
     })
   })
 
+  describe('selectEligibleGoals', () => {
+    it('filters goals by strategy matching contribution kind and currency', () => {
+      const goals: EligibleGoalSource[] = [
+        { id: 'save-ars', name: 'Save ARS', currency: 'ARS', strategy: 'save', status: 'active' },
+        { id: 'invest-ars', name: 'Invest ARS', currency: 'ARS', strategy: 'invest', status: 'active' },
+        { id: 'save-usd', name: 'Save USD', currency: 'USD', strategy: 'save', status: 'active' },
+        { id: 'invest-usd', name: 'Invest USD', currency: 'USD', strategy: 'invest', status: 'active' },
+        { id: 'paused-save-ars', name: 'Paused Save', currency: 'ARS', strategy: 'save', status: 'paused' },
+        { id: 'archived-invest-ars', name: 'Archived Invest', currency: 'ARS', strategy: 'invest', status: 'archived' },
+      ]
+
+      const savingKind: ContributionKind = 'saving'
+      const investmentKind: ContributionKind = 'investment'
+
+      expect(selectEligibleGoals(goals, savingKind, 'ARS').map((goal) => goal.id)).toEqual(['save-ars'])
+      expect(selectEligibleGoals(goals, investmentKind, 'ARS').map((goal) => goal.id)).toEqual(['invest-ars'])
+      expect(selectEligibleGoals(goals, savingKind, 'USD').map((goal) => goal.id)).toEqual(['save-usd'])
+      expect(selectEligibleGoals(goals, investmentKind, 'USD').map((goal) => goal.id)).toEqual(['invest-usd'])
+    })
+  })
+
   describe('serializeSavingContributionState', () => {
     it('serializes state deterministically sorting eligible goals by ID', () => {
       const str1 = serializeSavingContributionState({
@@ -401,6 +426,135 @@ describe('saving-contribution domain', () => {
       })
 
       expect(str1).toBe(str2)
+    })
+  })
+
+  describe('serializeContributionState', () => {
+    it('produces distinct serialized representations for saving vs investment with identical inputs', () => {
+      const draft: SavingDraftInput = { currency: 'ARS', amount: '100.00' }
+      const eligibleGoals: EligibleGoal[] = [
+        { id: 'goal-1', name: 'Goal 1', percentage: '100.00' },
+      ]
+      const currentMonth = '2026-08'
+
+      expect(
+        serializeContributionState({ kind: 'investment', draft, eligibleGoals, currentMonth }),
+      ).not.toBe(
+        serializeContributionState({ kind: 'saving', draft, eligibleGoals, currentMonth }),
+      )
+    })
+
+    it('defaults kind to saving when kind is omitted', () => {
+      const draft: SavingDraftInput = { currency: 'ARS', amount: '100.00' }
+      const eligibleGoals: EligibleGoal[] = [
+        { id: 'goal-1', name: 'Goal 1', percentage: '100.00' },
+      ]
+      const currentMonth = '2026-08'
+
+      expect(serializeContributionState({ draft, eligibleGoals, currentMonth })).toBe(
+        serializeContributionState({ kind: 'saving', draft, eligibleGoals, currentMonth }),
+      )
+    })
+  })
+
+  describe('buildSavingPreview with investment kind', () => {
+    it('allocates total draft amount to investment goals and updates investment projection in workspaceSource', () => {
+      const draft: SavingDraftInput = { currency: 'USD', amount: '250.00' }
+      const eligibleGoals: EligibleGoal[] = [
+        { id: 'inv-1', name: 'Cedears', percentage: '60.00' },
+        { id: 'inv-2', name: 'SPY', percentage: '40.00' },
+      ]
+
+      const workspaceSource: GoalsWorkspaceSource = {
+        profile: {
+          userId: 'u1',
+          baseCurrency: 'USD',
+          approximateMonthlyIncome: '5000.00',
+          expensesKnowledge: 'known',
+          onboardingCompleted: true,
+        },
+        goals: [
+          {
+            id: 'inv-1',
+            userId: 'u1',
+            name: 'Cedears',
+            type: 'investment',
+            targetAmount: '1000.00',
+            currency: 'USD',
+            priority: 'high',
+            strategy: 'invest',
+            status: 'active',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'inv-2',
+            userId: 'u1',
+            name: 'SPY',
+            type: 'investment',
+            targetAmount: '1000.00',
+            currency: 'USD',
+            priority: 'high',
+            strategy: 'invest',
+            status: 'active',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        savingsPositions: [],
+        investmentPositions: [
+          {
+            id: 'pos-inv-1',
+            goalId: 'inv-1',
+            currentValue: '100.00',
+            currency: 'USD',
+          },
+          {
+            id: 'pos-inv-2',
+            goalId: 'inv-2',
+            currentValue: '200.00',
+            currency: 'USD',
+          },
+        ],
+        snapshots: [
+          {
+            id: 'snap-1',
+            userId: 'u1',
+            effectiveMonth: '2026-08-01',
+          },
+        ],
+        allocations: [
+          {
+            id: 'alloc-1',
+            snapshotId: 'snap-1',
+            goalId: 'inv-1',
+            percentage: '60.00',
+          },
+          {
+            id: 'alloc-2',
+            snapshotId: 'snap-1',
+            goalId: 'inv-2',
+            percentage: '40.00',
+          },
+        ],
+      }
+
+      const result = buildSavingPreview({
+        kind: 'investment',
+        draft,
+        eligibleGoals,
+        workspaceSource,
+        currentMonth: '2026-08',
+      })
+
+      expect(result.allocations).toHaveLength(2)
+      expect(result.allocations[0].amount).toEqual({ amount: '150.00', currency: 'USD' })
+      expect(result.allocations[1].amount).toEqual({ amount: '100.00', currency: 'USD' })
+
+      // Progress before: inv-1 = 100/1000 = 10%, inv-2 = 200/1000 = 20%
+      // Progress after: inv-1 = 250/1000 = 25%, inv-2 = 300/1000 = 30%
+      expect(result.allocations[0].progressBefore).toBe('10.00')
+      expect(result.allocations[0].progressAfter).toBe('25.00')
+      expect(result.allocations[1].progressBefore).toBe('20.00')
+      expect(result.allocations[1].progressAfter).toBe('30.00')
     })
   })
 })
