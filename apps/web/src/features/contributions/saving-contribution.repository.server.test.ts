@@ -483,6 +483,14 @@ describe('saving-contribution.repository.server', () => {
         amount: '66.67',
         currency: 'USD',
       })
+      expect(state?.monthlyInvestmentTargetArs).toEqual({
+        amount: '100000.00',
+        currency: 'ARS',
+      })
+      expect(state?.monthlyInvestmentTargetUsd).toEqual({
+        amount: '66.67',
+        currency: 'USD',
+      })
     })
 
     it('handles empty goals without issuing inArray queries with empty arrays', async () => {

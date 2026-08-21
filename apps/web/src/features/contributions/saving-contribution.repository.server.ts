@@ -21,7 +21,7 @@ import {
 import type { Money } from '../../lib/money'
 import {
   buildSavingPreview,
-  deriveMonthlySavingTargets,
+  deriveMonthlyContributionTargets,
   parseSavingDraft,
   selectEligibleGoals,
   serializeContributionState,
@@ -38,6 +38,8 @@ export interface SavingContributionState {
   eligibleInvestmentGoalsUsd: EligibleGoal[]
   monthlyTargetArs?: Money | null
   monthlyTargetUsd?: Money | null
+  monthlyInvestmentTargetArs?: Money | null
+  monthlyInvestmentTargetUsd?: Money | null
 }
 
 export class StaleSavingContributionPreviewError extends Error {
@@ -147,21 +149,34 @@ export async function getSavingContributionStateWithExecutor(
   const eligibleGoalsUsd = selectEligibleGoals(goals, 'saving', 'USD').map(mapToEligibleGoal)
   const eligibleInvestmentGoals = selectEligibleGoals(goals, 'investment', 'ARS').map(mapToEligibleGoal)
   const eligibleInvestmentGoalsUsd = selectEligibleGoals(goals, 'investment', 'USD').map(mapToEligibleGoal)
-
   const userContributions = await executor.query.savingContributions.findMany({
     where: (contributionsTable: any, { eq }: any) => eq(contributionsTable.userId, userId),
   })
+  const userInvestmentContributions = await executor.query.investmentContributions.findMany({
+    where: (contributionsTable: any, { eq }: any) => eq(contributionsTable.userId, userId),
+  })
 
-  const targets = deriveMonthlySavingTargets({
+  const goalAllocations = activeGoals.map((g: any) => ({
+    id: g.id,
+    currency: g.currency,
+    strategy: g.strategy,
+    percentage: allocMap.get(g.id) ?? '0.00',
+  }))
+
+  const savingTargets = deriveMonthlyContributionTargets({
     monthlyCommitmentArs: profile.plannedMonthlyContribution,
-    goals: activeGoals.map((g: any) => ({
-      id: g.id,
-      currency: g.currency,
-      strategy: g.strategy,
-      percentage: allocMap.get(g.id) ?? '0.00',
-    })),
+    goals: goalAllocations,
     existingContributions: userContributions,
     currentMonth,
+    kind: 'saving',
+  })
+
+  const investmentTargets = deriveMonthlyContributionTargets({
+    monthlyCommitmentArs: profile.plannedMonthlyContribution,
+    goals: goalAllocations,
+    existingContributions: userInvestmentContributions,
+    currentMonth,
+    kind: 'investment',
   })
 
   return {
@@ -170,8 +185,10 @@ export async function getSavingContributionStateWithExecutor(
     eligibleGoalsUsd,
     eligibleInvestmentGoals,
     eligibleInvestmentGoalsUsd,
-    monthlyTargetArs: targets.monthlyTargetArs,
-    monthlyTargetUsd: targets.monthlyTargetUsd,
+    monthlyTargetArs: savingTargets.monthlyTargetArs,
+    monthlyTargetUsd: savingTargets.monthlyTargetUsd,
+    monthlyInvestmentTargetArs: investmentTargets.monthlyTargetArs,
+    monthlyInvestmentTargetUsd: investmentTargets.monthlyTargetUsd,
   }
 }
 

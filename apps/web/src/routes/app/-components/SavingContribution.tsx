@@ -553,27 +553,35 @@ export function SavingContribution({
         )}
 
         {/* Monthly Target Headline */}
-        {!isEdit && kind === 'saving' && hasEligibleGoals && (currency === 'USD' ? context?.monthlyTargetUsd : context?.monthlyTargetArs) && (
-          <div className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/60 px-4 py-3 text-sm text-[var(--sea-ink)]">
-            {Number((currency === 'USD' ? context?.monthlyTargetUsd : context?.monthlyTargetArs)?.amount) > 0 ? (
-              <>
-                Necesitás ahorrar{' '}
-                <span className="font-bold">
-                  {formatMoney(
-                    (currency === 'USD'
-                      ? context?.monthlyTargetUsd
-                      : context?.monthlyTargetArs)!,
-                  )}
-                </span>{' '}
-                este mes para cumplir con tus objetivos.
-              </>
-            ) : (
-              <span className="font-semibold text-[var(--sea-ink)]">
-                ¡Ya cubriste tu meta de ahorro planificada para este mes!
-              </span>
-            )}
-          </div>
-        )}
+        {!isEdit && hasEligibleGoals && (() => {
+          const target =
+            kind === 'investment'
+              ? currency === 'USD'
+                ? context?.monthlyInvestmentTargetUsd
+                : context?.monthlyInvestmentTargetArs
+              : currency === 'USD'
+                ? context?.monthlyTargetUsd
+                : context?.monthlyTargetArs
+          if (!target) return null
+          const isPositive = Number(target.amount) > 0
+          const actionTargetVerb = kind === 'investment' ? 'invertir' : 'ahorrar'
+          const actionTargetNoun = kind === 'investment' ? 'inversión' : 'ahorro'
+          return (
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/60 px-4 py-3 text-sm text-[var(--sea-ink)]">
+              {isPositive ? (
+                <>
+                  Necesitás {actionTargetVerb}{' '}
+                  <span className="font-bold">{formatMoney(target)}</span>{' '}
+                  este mes para cumplir con tus objetivos.
+                </>
+              ) : (
+                <span className="font-semibold text-[var(--sea-ink)]">
+                  ¡Ya cubriste tu meta de {actionTargetNoun} planificada para este mes!
+                </span>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Server & Stale Alert Summaries */}
         {serverError && (

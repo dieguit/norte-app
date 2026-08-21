@@ -40,6 +40,8 @@ export async function getSavingContributionContextServer(): Promise<SavingContri
       eligibleInvestmentGoalsUsd: state.eligibleInvestmentGoalsUsd,
       monthlyTargetArs: state.monthlyTargetArs,
       monthlyTargetUsd: state.monthlyTargetUsd,
+      monthlyInvestmentTargetArs: state.monthlyInvestmentTargetArs,
+      monthlyInvestmentTargetUsd: state.monthlyInvestmentTargetUsd,
     },
   }
 }

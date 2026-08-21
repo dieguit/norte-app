@@ -90,6 +90,8 @@ export interface SavingContributionContext {
   eligibleInvestmentGoalsUsd?: EligibleGoal[]
   monthlyTargetArs?: Money | null
   monthlyTargetUsd?: Money | null
+  monthlyInvestmentTargetArs?: Money | null
+  monthlyInvestmentTargetUsd?: Money | null
 }
 
 export type SavingContributionContextState =
@@ -493,8 +495,8 @@ export function serializeSavingContributionState(input: {
   return serializeContributionState({ ...input, kind: 'saving' })
 }
 
-export function deriveMonthlySavingTargets(input: {
-  monthlyCommitmentArs?: Money | string | null
+export function deriveMonthlyContributionTargets(input: {
+  monthlyCommitmentArs?: string | Money | null
   goals: Array<{
     id: string
     currency: CurrencyCode
@@ -507,6 +509,7 @@ export function deriveMonthlySavingTargets(input: {
     createdAt: Date | string
   }>
   currentMonth?: string
+  kind?: ContributionKind
 }): {
   monthlyTargetArs: Money | null
   monthlyTargetUsd: Money | null
@@ -548,12 +551,14 @@ export function deriveMonthlySavingTargets(input: {
     }
   }
 
-  // ARS save goals
-  const arsSaveGoals = input.goals.filter(
-    (g) => g.currency === 'ARS' && g.strategy === 'save',
+  const targetStrategy = (input.kind ?? 'saving') === 'saving' ? 'save' : 'invest'
+
+  // ARS goals
+  const arsGoals = input.goals.filter(
+    (g) => g.currency === 'ARS' && g.strategy === targetStrategy,
   )
   let totalArsPercent = new BigNumber(0)
-  for (const g of arsSaveGoals) {
+  for (const g of arsGoals) {
     const pct = new BigNumber(String(g.percentage).replace(',', '.'))
     if (pct.isFinite() && pct.isGreaterThan(0)) {
       totalArsPercent = totalArsPercent.plus(pct)
@@ -561,7 +566,7 @@ export function deriveMonthlySavingTargets(input: {
   }
 
   let monthlyTargetArs: Money | null = null
-  if (arsSaveGoals.length > 0 && totalArsPercent.isGreaterThan(0)) {
+  if (arsGoals.length > 0 && totalArsPercent.isGreaterThan(0)) {
     const targetArsAmount = commitmentBn
       .multipliedBy(totalArsPercent)
       .dividedBy(100)
@@ -572,14 +577,14 @@ export function deriveMonthlySavingTargets(input: {
     monthlyTargetArs = createMoney(remainingArs, 'ARS')
   }
 
-  // USD save goals
-  const usdSaveGoals = input.goals.filter(
-    (g) => g.currency === 'USD' && g.strategy === 'save',
+  // USD goals
+  const usdGoals = input.goals.filter(
+    (g) => g.currency === 'USD' && g.strategy === targetStrategy,
   )
   let totalUsdAmount = new BigNumber(0)
   const planningRate = new BigNumber(PLANNING_ARS_PER_USD)
 
-  for (const g of usdSaveGoals) {
+  for (const g of usdGoals) {
     const pct = new BigNumber(String(g.percentage).replace(',', '.'))
     if (pct.isFinite() && pct.isGreaterThan(0)) {
       const arsShare = commitmentBn.multipliedBy(pct).dividedBy(100)
@@ -589,7 +594,7 @@ export function deriveMonthlySavingTargets(input: {
   }
 
   let monthlyTargetUsd: Money | null = null
-  if (usdSaveGoals.length > 0 && totalUsdAmount.isGreaterThan(0)) {
+  if (usdGoals.length > 0 && totalUsdAmount.isGreaterThan(0)) {
     const remainingUsd = BigNumber.max(
       0,
       totalUsdAmount.minus(currentMonthContributedUsd),
@@ -600,3 +605,8 @@ export function deriveMonthlySavingTargets(input: {
   return { monthlyTargetArs, monthlyTargetUsd }
 }
 
+export function deriveMonthlySavingTargets(
+  input: Parameters<typeof deriveMonthlyContributionTargets>[0],
+) {
+  return deriveMonthlyContributionTargets({ ...input, kind: input.kind ?? 'saving' })
+}

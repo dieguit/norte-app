@@ -506,6 +506,56 @@ describe('SavingContribution component', () => {
         screen.getByText('¡Ya cubriste tu meta de ahorro planificada para este mes!'),
       ).toBeInTheDocument()
     })
+
+    it('renders monthly investment target headline when kind is investment', () => {
+      const contextWithInvestmentTargets: SavingContributionContext = {
+        ...defaultContext,
+        eligibleInvestmentGoals: [
+          { id: 'inv-1', name: 'Cedears', percentage: '100.00' },
+        ],
+        monthlyInvestmentTargetArs: { amount: '120000.00', currency: 'ARS' },
+        monthlyInvestmentTargetUsd: { amount: '80.00', currency: 'USD' },
+      }
+
+      render(
+        <SavingContribution
+          context={contextWithInvestmentTargets}
+          kind="investment"
+          currency="ARS"
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      expect(
+        screen.getByText(/Necesitás invertir/i),
+      ).toBeInTheDocument()
+      expect(screen.getByText('$ 120.000,00')).toBeInTheDocument()
+    })
+
+    it('renders fulfilled investment message when monthly investment target is 0.00', () => {
+      const contextFulfilled: SavingContributionContext = {
+        ...defaultContext,
+        eligibleInvestmentGoals: [
+          { id: 'inv-1', name: 'Cedears', percentage: '100.00' },
+        ],
+        monthlyInvestmentTargetArs: { amount: '0.00', currency: 'ARS' },
+      }
+
+      render(
+        <SavingContribution
+          context={contextFulfilled}
+          kind="investment"
+          currency="ARS"
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      expect(
+        screen.getByText('¡Ya cubriste tu meta de inversión planificada para este mes!'),
+      ).toBeInTheDocument()
+    })
   })
 
   describe('Fixed kind and currency mode (Four-action UI)', () => {

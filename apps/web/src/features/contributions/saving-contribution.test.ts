@@ -78,6 +78,33 @@ describe('saving-contribution domain', () => {
       expect(result.monthlyTargetArs).toBeNull()
       expect(result.monthlyTargetUsd).toBeNull()
     })
+
+    it('derives ARS and USD monthly investment targets when kind is investment', () => {
+      const result = deriveMonthlySavingTargets({
+        monthlyCommitmentArs: '300000.00',
+        goals: [
+          { id: 'g1', currency: 'ARS', strategy: 'invest', percentage: '50.00' },
+          { id: 'g2', currency: 'USD', strategy: 'invest', percentage: '50.00' },
+          { id: 'g3', currency: 'ARS', strategy: 'save', percentage: '0.00' },
+        ],
+        existingContributions: [
+          { amount: '50000.00', currency: 'ARS', createdAt: '2026-08-01T12:00:00Z' },
+        ],
+        currentMonth: '2026-08',
+        kind: 'investment',
+      })
+
+      // ARS investment target: 300000 * 50% = 150000 - 50000 = 100000.00
+      expect(result.monthlyTargetArs).toEqual({
+        amount: '100000.00',
+        currency: 'ARS',
+      })
+      // USD investment target: (300000 * 50%) / 1500 = 100.00 USD
+      expect(result.monthlyTargetUsd).toEqual({
+        amount: '100.00',
+        currency: 'USD',
+      })
+    })
   })
   describe('buildSavingPreview', () => {
     it('allocates ARS amount proportionally among eligible goals matching brief example', () => {
