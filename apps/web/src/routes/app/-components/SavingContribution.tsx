@@ -11,7 +11,7 @@ import {
   FieldSet,
 } from '../../../components/ui/field'
 import { Input } from '../../../components/ui/input'
-import { formatMoney, formatPercentage } from '../../../lib/format'
+import { formatCalendarMonth, formatMoney, formatPercentage } from '../../../lib/format'
 import { formatMoneyInput, parseMoneyInput } from '../../../lib/money'
 import { PLANNING_ARS_PER_USD } from '../../../features/financial/financial'
 import {
@@ -32,6 +32,8 @@ import { formatGoalProjection } from '../goals/-components/AllocationImpactCompa
 export interface SavingContributionProps {
   kind?: ContributionKind
   currency?: 'ARS' | 'USD'
+  initialAmount?: string
+  catchUpMonth?: string
   context?: SavingContributionContext
   initialContribution?: SavingContributionSummary | null
   onCancel: () => void
@@ -55,6 +57,8 @@ function formatDerivedMoney(val: string): string {
 export function SavingContribution({
   kind: propsKind,
   currency: propsCurrency,
+  initialAmount,
+  catchUpMonth,
   context,
   initialContribution,
   onCancel,
@@ -75,7 +79,11 @@ export function SavingContribution({
 
   const [currency, setCurrency] = useState<'ARS' | 'USD'>(initialCurrency)
   const [amount, setAmount] = useState(
-    initialContribution ? formatDerivedMoney(initialContribution.amount) : '',
+    initialContribution
+      ? formatDerivedMoney(initialContribution.amount)
+      : initialAmount
+        ? formatDerivedMoney(initialAmount)
+        : '',
   )
   const [location, setLocation] = useState(
     initialContribution?.location ?? '',
@@ -480,6 +488,7 @@ export function SavingContribution({
         data: {
           draft: draftPayload,
           previewToken: preview.previewToken,
+          catchUpMonth,
         },
       })
 
@@ -604,6 +613,12 @@ export function SavingContribution({
           >
             {staleMessage}
           </div>
+        )}
+
+        {catchUpMonth && (
+          <p className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/60 px-4 py-3 text-sm text-[var(--sea-ink)]">
+            Este aporte se registrará para {formatCalendarMonth(catchUpMonth)}.
+          </p>
         )}
 
         {/* Input Fields */}

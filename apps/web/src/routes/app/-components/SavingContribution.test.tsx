@@ -724,4 +724,60 @@ describe('SavingContribution component', () => {
       expect(screen.getByRole('button', { name: 'Confirmar ahorro' })).toBeDisabled()
     })
   })
+
+  describe('Contextual contribution flow (catchUpMonth & initialAmount)', () => {
+    it('initializes amount, shows catch-up notice, keeps fixed currency, and sends catchUpMonth on confirm', async () => {
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      vi.mocked(previewSavingContribution).mockResolvedValue(mockArsPreview)
+      vi.mocked(confirmSavingContribution).mockResolvedValue({
+        status: 'created',
+        contributionId: 'contribution-catchup-1',
+      })
+
+      render(
+        <SavingContribution
+          kind="saving"
+          currency="ARS"
+          initialAmount="25000.00"
+          catchUpMonth="2026-07"
+          context={defaultContext}
+          onCancel={vi.fn()}
+          onSuccess={onSuccess}
+        />,
+      )
+
+      expect(screen.getByText('Este aporte se registrará para julio de 2026.')).toBeVisible()
+      expect(screen.getByLabelText(/monto en pesos/i)).toHaveValue('25.000')
+      expect(screen.queryByRole('button', { name: 'Ahorré USD' })).not.toBeInTheDocument()
+
+      const amountInput = screen.getByLabelText(/monto en pesos/i)
+      await user.clear(amountInput)
+      await user.type(amountInput, '30000')
+
+      expect(await screen.findByText('Así se distribuye tu ahorro')).toBeVisible()
+
+      const confirmBtn = screen.getByRole('button', { name: /confirmar ahorro/i })
+      expect(confirmBtn).toBeEnabled()
+
+      await user.click(confirmBtn)
+
+      await waitFor(() => {
+        expect(confirmSavingContribution).toHaveBeenCalledWith({
+          data: {
+            draft: expect.objectContaining({
+              kind: 'saving',
+              currency: 'ARS',
+              amount: '30.000',
+            }),
+            previewToken: mockArsPreview.previewToken,
+            catchUpMonth: '2026-07',
+          },
+        })
+        expect(mockInvalidate).toHaveBeenCalledTimes(1)
+        expect(toast.success).toHaveBeenCalledWith('Ahorro registrado.')
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+      })
+    })
+  })
 })
