@@ -16,6 +16,7 @@ import {
   type GoalSavingsPosition,
 } from '../../db/schema'
 import type {
+  ContributionKind,
   GoalPriority,
   GoalStatus,
   GoalStrategy,
@@ -73,8 +74,26 @@ export interface GoalsWorkspaceRows {
   investmentPositions: GoalInvestmentPosition[]
   snapshots: AllocationPlanSnapshot[]
   allocations: AllocationPlanEntry[]
+  contributions?: Array<{
+    id: string
+    kind: ContributionKind
+    userId?: string
+    amount: string
+    currency: string
+    location?: string | null
+    arsSpent?: string | null
+    effectiveRate?: string | null
+    createdAt: Date | string
+    allocations: Array<{
+      goalId: string
+      goalName: string
+      amount: string
+      percentage: string
+    }>
+  }>
   savingContributions?: Array<{
     id: string
+    kind?: ContributionKind
     userId?: string
     amount: string
     currency: string
@@ -176,18 +195,31 @@ export async function getGoalsWorkspaceRows(
     where: (contribTable: any, { eq }: any) => eq(contribTable.userId, userId),
   })
 
-  const contributionIds = userSavingContributions.map((c: any) => c.id)
+  const savingContributionIds = userSavingContributions.map((c: any) => c.id)
   const savingAllocations =
-    contributionIds.length > 0
+    savingContributionIds.length > 0
       ? await db.query.savingContributionAllocations.findMany({
-          where: (allocTable: any, { inArray }: any) => inArray(allocTable.contributionId, contributionIds),
+          where: (allocTable: any, { inArray }: any) => inArray(allocTable.contributionId, savingContributionIds),
+        })
+      : []
+
+  const userInvestmentContributions = await db.query.investmentContributions.findMany({
+    where: (contribTable: any, { eq }: any) => eq(contribTable.userId, userId),
+  })
+
+  const investmentContributionIds = userInvestmentContributions.map((c: any) => c.id)
+  const investmentAllocations =
+    investmentContributionIds.length > 0
+      ? await db.query.investmentContributionAllocations.findMany({
+          where: (allocTable: any, { inArray }: any) => inArray(allocTable.contributionId, investmentContributionIds),
         })
       : []
 
   const goalNameMap = new Map<string, string>(base.goals.map((g: any) => [g.id, g.name]))
 
-  const savingContributionsWithAllocations = userSavingContributions.map((contrib: any) => ({
+  const mappedSavingContributions = userSavingContributions.map((contrib: any) => ({
     id: contrib.id,
+    kind: 'saving' as const,
     userId: contrib.userId,
     amount: contrib.amount,
     currency: contrib.currency,
@@ -205,11 +237,37 @@ export async function getGoalsWorkspaceRows(
       })),
   }))
 
+  const mappedInvestmentContributions = userInvestmentContributions.map((contrib: any) => ({
+    id: contrib.id,
+    kind: 'investment' as const,
+    userId: contrib.userId,
+    amount: contrib.amount,
+    currency: contrib.currency,
+    location: null,
+    arsSpent: contrib.arsSpent,
+    effectiveRate: contrib.effectiveRate,
+    createdAt: contrib.createdAt,
+    allocations: investmentAllocations
+      .filter((a: any) => a.contributionId === contrib.id)
+      .map((a: any) => ({
+        goalId: String(a.goalId),
+        goalName: String(goalNameMap.get(a.goalId) ?? ''),
+        amount: String(a.amount),
+        percentage: String(a.percentage),
+      })),
+  }))
+
+  const getTime = (d: Date | string) => (d instanceof Date ? d.getTime() : new Date(d).getTime())
+  const allContributions = [...mappedSavingContributions, ...mappedInvestmentContributions].sort(
+    (a, b) => getTime(b.createdAt) - getTime(a.createdAt),
+  )
+
   return {
     ...base,
     snapshots,
     allocations,
-    savingContributions: savingContributionsWithAllocations,
+    contributions: allContributions,
+    savingContributions: allContributions,
   }
 }
 
@@ -619,8 +677,26 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
     })),
     snapshots: rows.snapshots.map(mapSnapshot),
     allocations: rows.allocations.map(mapAllocation),
-    savingContributions: (rows.savingContributions ?? []).map((c) => ({
+    contributions: (rows.contributions ?? rows.savingContributions ?? []).map((c) => ({
       id: c.id,
+      kind: (c.kind ?? 'saving') as ContributionKind,
+      userId: c.userId,
+      amount: c.amount,
+      currency: c.currency as CurrencyCode,
+      location: c.location,
+      arsSpent: c.arsSpent,
+      effectiveRate: c.effectiveRate,
+      createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),
+      allocations: (c.allocations ?? []).map((a) => ({
+        goalId: a.goalId,
+        goalName: a.goalName,
+        amount: a.amount,
+        percentage: a.percentage,
+      })),
+    })),
+    savingContributions: (rows.contributions ?? rows.savingContributions ?? []).map((c) => ({
+      id: c.id,
+      kind: (c.kind ?? 'saving') as ContributionKind,
       userId: c.userId,
       amount: c.amount,
       currency: c.currency as CurrencyCode,

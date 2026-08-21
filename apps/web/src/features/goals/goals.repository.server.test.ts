@@ -57,6 +57,14 @@ const mockTx = {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    investmentContributions: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    investmentContributionAllocations: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
   },
 }
 
@@ -91,6 +99,14 @@ vi.mock('../../db/client', () => ({
         findMany: vi.fn(),
         findFirst: vi.fn(),
       },
+      investmentContributions: {
+        findMany: vi.fn(),
+        findFirst: vi.fn(),
+      },
+      investmentContributionAllocations: {
+        findMany: vi.fn(),
+        findFirst: vi.fn(),
+      },
     },
   },
 }))
@@ -100,6 +116,8 @@ describe('goals.repository.server', () => {
     vi.clearAllMocks()
     vi.mocked(db.query.savingContributions.findMany).mockResolvedValue([] as never)
     vi.mocked(db.query.savingContributionAllocations.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.investmentContributions.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.investmentContributionAllocations.findMany).mockResolvedValue([] as never)
   })
 
   it('returns null when financial profile is absent', async () => {
@@ -356,6 +374,7 @@ describe('goals.repository.server', () => {
       investmentPositions: [],
       snapshots: [],
       allocations: [],
+      contributions: [],
       savingContributions: [],
     })
 
@@ -426,6 +445,7 @@ describe('goals.repository.server', () => {
     expect(result?.savingContributions).toEqual([
       {
         id: 'sc1',
+        kind: 'saving',
         userId: 'user_1',
         amount: '100.00',
         currency: 'USD',
@@ -443,6 +463,189 @@ describe('goals.repository.server', () => {
         ],
       },
     ])
+  })
+
+  it('loads unified saving and investment contributions, associates allocations, maps goal names, and sorts newest first', async () => {
+    const mockProfile = {
+      userId: 'user_1',
+      baseCurrency: 'ARS',
+      approximateMonthlyIncome: '1000000.00',
+      approximateMonthlyExpenses: '500000.00',
+      expensesKnowledge: 'known',
+      plannedMonthlyContribution: '60000.00',
+      onboardingCompleted: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    const mockGoal1 = {
+      id: 'g1',
+      userId: 'user_1',
+      name: 'Colchón financiero',
+      type: 'emergency_fund',
+      targetAmount: '3000.00',
+      currency: 'USD',
+      priority: 'high',
+      strategy: 'save',
+      status: 'active',
+      desiredDate: '2027-01-01',
+      completedAt: null,
+      emergencyFundMonths: 6,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }
+    const mockGoal2 = {
+      id: 'g2',
+      userId: 'user_1',
+      name: 'Portafolio CEDEARs',
+      type: 'purchase',
+      targetAmount: '10000.00',
+      currency: 'USD',
+      priority: 'medium',
+      strategy: 'invest',
+      status: 'active',
+      desiredDate: '2028-01-01',
+      completedAt: null,
+      emergencyFundMonths: null,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }
+
+    const mockSavingContrib = {
+      id: 'sc1',
+      userId: 'user_1',
+      amount: '50000.00',
+      currency: 'ARS',
+      location: 'Banco Santander',
+      arsSpent: null,
+      effectiveRate: null,
+      createdAt: new Date('2026-08-10T12:00:00Z'),
+      updatedAt: new Date('2026-08-10T12:00:00Z'),
+    }
+    const mockSavingAlloc = {
+      id: 'sca1',
+      contributionId: 'sc1',
+      goalId: 'g1',
+      amount: '50000.00',
+      percentage: '100.00',
+      savingPositionId: 'sp1',
+      createdAt: new Date('2026-08-10T12:00:00Z'),
+    }
+
+    const mockInvestmentContrib = {
+      id: 'ic1',
+      userId: 'user_1',
+      amount: '100.00',
+      currency: 'USD',
+      arsSpent: '150000.00',
+      effectiveRate: '1500.00',
+      createdAt: new Date('2026-08-15T12:00:00Z'),
+      updatedAt: new Date('2026-08-15T12:00:00Z'),
+    }
+    const mockInvestAlloc1 = {
+      id: 'ica1',
+      contributionId: 'ic1',
+      goalId: 'g1',
+      amount: '60.00',
+      percentage: '60.00',
+      investmentPositionId: 'ip1',
+      createdAt: new Date('2026-08-15T12:00:00Z'),
+    }
+    const mockInvestAlloc2 = {
+      id: 'ica2',
+      contributionId: 'ic1',
+      goalId: 'g2',
+      amount: '40.00',
+      percentage: '40.00',
+      investmentPositionId: 'ip2',
+      createdAt: new Date('2026-08-15T12:00:00Z'),
+    }
+
+    vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
+    vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([mockGoal1, mockGoal2] as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.savingContributions.findMany).mockResolvedValue([mockSavingContrib] as never)
+    vi.mocked(db.query.savingContributionAllocations.findMany).mockResolvedValue([mockSavingAlloc] as never)
+    vi.mocked(db.query.investmentContributions.findMany).mockResolvedValue([mockInvestmentContrib] as never)
+    vi.mocked(db.query.investmentContributionAllocations.findMany).mockResolvedValue([
+      mockInvestAlloc1,
+      mockInvestAlloc2,
+    ] as never)
+
+    const result = await getGoalsWorkspaceRows('user_1', '2026-08')
+
+    expect(result?.contributions).toHaveLength(2)
+    // Sorted newest first: ic1 (2026-08-15) then sc1 (2026-08-10)
+    expect(result?.contributions).toEqual([
+      {
+        id: 'ic1',
+        kind: 'investment',
+        userId: 'user_1',
+        amount: '100.00',
+        currency: 'USD',
+        location: null,
+        arsSpent: '150000.00',
+        effectiveRate: '1500.00',
+        createdAt: mockInvestmentContrib.createdAt,
+        allocations: [
+          {
+            goalId: 'g1',
+            goalName: 'Colchón financiero',
+            amount: '60.00',
+            percentage: '60.00',
+          },
+          {
+            goalId: 'g2',
+            goalName: 'Portafolio CEDEARs',
+            amount: '40.00',
+            percentage: '40.00',
+          },
+        ],
+      },
+      {
+        id: 'sc1',
+        kind: 'saving',
+        userId: 'user_1',
+        amount: '50000.00',
+        currency: 'ARS',
+        location: 'Banco Santander',
+        arsSpent: null,
+        effectiveRate: null,
+        createdAt: mockSavingContrib.createdAt,
+        allocations: [
+          {
+            goalId: 'g1',
+            goalName: 'Colchón financiero',
+            amount: '50000.00',
+            percentage: '100.00',
+          },
+        ],
+      },
+    ])
+
+    const eqMock = vi.fn((col, val) => ({ col, val, op: 'eq' }))
+    const inArrayMock = vi.fn((col, val) => ({ col, val, op: 'inArray' }))
+
+    const investContribWhereArg = vi.mocked(db.query.investmentContributions.findMany).mock.calls[0][0]?.where
+    expect(
+      typeof investContribWhereArg === 'function' &&
+        (investContribWhereArg as any)({ userId: 'userId' }, { eq: eqMock }),
+    ).toEqual({
+      col: 'userId',
+      val: 'user_1',
+      op: 'eq',
+    })
+
+    const investAllocsWhereArg = vi.mocked(db.query.investmentContributionAllocations.findMany).mock.calls[0][0]?.where
+    expect(
+      typeof investAllocsWhereArg === 'function' &&
+        (investAllocsWhereArg as any)({ contributionId: 'contributionId' }, { inArray: inArrayMock }),
+    ).toEqual({
+      col: 'contributionId',
+      val: ['ic1'],
+      op: 'inArray',
+    })
   })
 
   describe('getGoalCreationState', () => {

@@ -40,15 +40,18 @@ export interface GoalFundingRow {
   effectiveMonth: string
 }
 
-export interface SavingContributionAllocationSummary {
+export type ContributionKind = 'saving' | 'investment'
+
+export interface ContributionAllocationSummary {
   goalId: string
   goalName: string
   amount: string
   percentage: string
 }
 
-export interface SavingContributionSummary {
+export interface ContributionSummary {
   id: string
+  kind: ContributionKind
   userId?: string
   amount: string
   currency: CurrencyCode
@@ -56,8 +59,11 @@ export interface SavingContributionSummary {
   arsSpent?: string | null
   effectiveRate?: string | null
   createdAt: string
-  allocations: SavingContributionAllocationSummary[]
+  allocations: ContributionAllocationSummary[]
 }
+
+export type SavingContributionAllocationSummary = ContributionAllocationSummary
+export type SavingContributionSummary = ContributionSummary
 
 export interface GoalWorkspaceItem {
   id: string
@@ -82,7 +88,8 @@ export interface GoalWorkspaceItem {
   availability?: InvestmentAvailability
   availableFrom?: string
   usesPlanningRate: boolean
-  savingContributions?: SavingContributionSummary[]
+  contributions?: ContributionSummary[]
+  savingContributions?: ContributionSummary[]
 }
 
 export interface GoalsWorkspace {
@@ -145,6 +152,7 @@ export interface GoalsWorkspaceSource {
     goalId: string
     percentage: string
   }>
+  contributions?: ContributionSummary[]
   savingContributions?: SavingContributionSummary[]
 }
 
@@ -425,8 +433,9 @@ export function buildGoalsWorkspace(
       desiredDateDeltaMonths = compYear * 12 + compMonth - (desiredYear * 12 + desiredMonth)
     }
 
-    // 8. Saving contributions for this goal
-    const goalSavingContributions = (rows.savingContributions ?? [])
+    // 8. Contributions for this goal
+    const allSourceContributions = rows.contributions ?? rows.savingContributions ?? []
+    const goalContributions = allSourceContributions
       .filter((contrib) => contrib.allocations.some((a) => a.goalId === goal.id))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
@@ -453,7 +462,8 @@ export function buildGoalsWorkspace(
       availability,
       availableFrom,
       usesPlanningRate,
-      savingContributions: goalSavingContributions,
+      contributions: goalContributions,
+      savingContributions: goalContributions,
     }
   })
 

@@ -1013,3 +1013,152 @@ describe('projectGoalCompletion', () => {
     expect(projectWithFutureRow({ monthlyContribution: undefined })).toEqual({ status: 'commitment_absent' })
   })
 })
+
+describe('buildGoalsWorkspace - contributions history', () => {
+  const currentMonth = '2026-08'
+
+  it('exposes unified contribution history with savings and investment actions mapped per receiving goal', () => {
+    const source = createMockWorkspaceSource({
+      goals: [
+        {
+          id: 'goal-1',
+          name: 'Meta Ahorro',
+          type: 'purchase',
+          targetAmount: '100000.00',
+          currency: 'ARS',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          createdAt: '2026-08-01T00:00:00.000Z',
+        },
+        {
+          id: 'goal-2',
+          name: 'Meta Inversión',
+          type: 'purchase',
+          targetAmount: '200000.00',
+          currency: 'USD',
+          priority: 'medium',
+          strategy: 'invest',
+          status: 'active',
+          createdAt: '2026-08-01T00:00:00.000Z',
+        },
+        {
+          id: 'goal-3',
+          name: 'Meta Tercera',
+          type: 'purchase',
+          targetAmount: '50000.00',
+          currency: 'ARS',
+          priority: 'low',
+          strategy: 'save',
+          status: 'active',
+          createdAt: '2026-08-01T00:00:00.000Z',
+        },
+      ],
+      contributions: [
+        {
+          id: 'saving-1',
+          kind: 'saving',
+          amount: '10000.00',
+          currency: 'ARS',
+          location: 'Banco',
+          createdAt: '2026-08-10T12:00:00.000Z',
+          allocations: [
+            {
+              goalId: 'goal-1',
+              goalName: 'Meta Ahorro',
+              amount: '10000.00',
+              percentage: '100.00',
+            },
+          ],
+        },
+        {
+          id: 'investment-1',
+          kind: 'investment',
+          amount: '100.00',
+          currency: 'USD',
+          arsSpent: '150000.00',
+          effectiveRate: '1500.00',
+          createdAt: '2026-08-15T12:00:00.000Z',
+          allocations: [
+            {
+              goalId: 'goal-1',
+              goalName: 'Meta Ahorro',
+              amount: '60.00',
+              percentage: '60.00',
+            },
+            {
+              goalId: 'goal-2',
+              goalName: 'Meta Inversión',
+              amount: '40.00',
+              percentage: '40.00',
+            },
+          ],
+        },
+        {
+          id: 'saving-2',
+          kind: 'saving',
+          amount: '5000.00',
+          currency: 'ARS',
+          createdAt: '2026-08-12T12:00:00.000Z',
+          allocations: [
+            {
+              goalId: 'goal-3',
+              goalName: 'Meta Tercera',
+              amount: '5000.00',
+              percentage: '100.00',
+            },
+          ],
+        },
+      ] as any,
+    })
+
+    const workspace = buildGoalsWorkspace(source, currentMonth)
+    const goal1 = workspace.groups[0].goals.find((g) => g.id === 'goal-1')!
+    const goal2 = workspace.groups[0].goals.find((g) => g.id === 'goal-2')!
+    const goal3 = workspace.groups[0].goals.find((g) => g.id === 'goal-3')!
+
+    expect(goal1.contributions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'investment-1', kind: 'investment', currency: 'USD' }),
+      ]),
+    )
+    expect(goal1.contributions).toHaveLength(2)
+    expect(goal1.contributions).toEqual([
+      expect.objectContaining({
+        id: 'investment-1',
+        kind: 'investment',
+        amount: '100.00',
+        currency: 'USD',
+        arsSpent: '150000.00',
+        effectiveRate: '1500.00',
+        createdAt: '2026-08-15T12:00:00.000Z',
+        allocations: expect.arrayContaining([
+          { goalId: 'goal-1', goalName: 'Meta Ahorro', amount: '60.00', percentage: '60.00' },
+          { goalId: 'goal-2', goalName: 'Meta Inversión', amount: '40.00', percentage: '40.00' },
+        ]),
+      }),
+      expect.objectContaining({
+        id: 'saving-1',
+        kind: 'saving',
+        amount: '10000.00',
+        currency: 'ARS',
+        location: 'Banco',
+        createdAt: '2026-08-10T12:00:00.000Z',
+      }),
+    ])
+    expect(goal1.savingContributions).toEqual(goal1.contributions)
+
+    expect(goal2.contributions).toHaveLength(1)
+    expect(goal2.contributions).toEqual([
+      expect.objectContaining({
+        id: 'investment-1',
+        kind: 'investment',
+        currency: 'USD',
+      }),
+    ])
+
+    expect(goal3.contributions).toHaveLength(1)
+    expect(goal3.contributions![0].id).toBe('saving-2')
+  })
+})
+
