@@ -84,7 +84,9 @@ export function GoalImpact({
     }
   })
 
-  let displayedEntries = [...entries]
+  let displayedEntries = isPausedTransition
+    ? entries.filter((e) => e.goalId !== transition?.goalId)
+    : [...entries]
   if (transition?.goalId && !isPausedTransition) {
     const targetIdx = displayedEntries.findIndex((e) => e.goalId === transition.goalId)
     if (targetIdx > 0) {
@@ -136,7 +138,7 @@ export function GoalImpact({
 
   const pausedGoalName =
     preview?.proposal.impacts.find((i) => i.goalId === transition?.goalId)?.goalName ??
-    preview?.proposal.normalizedGoal.name ??
+    (preview?.proposal as any)?.normalizedGoal?.name ??
     values.name ??
     'Objetivo'
 
