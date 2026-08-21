@@ -118,8 +118,27 @@ describe('Home initial-plan component', () => {
     previousMonthShortfalls: [],
   }
 
-  it('renders one prior-month alert with every shortfall', () => {
+  it('renders one prior-month alert with every shortfall', async () => {
+    const user = userEvent.setup()
     vi.setSystemTime(new Date('2026-05-15T12:00:00Z'))
+    vi.mocked(getSavingContributionContext).mockResolvedValue({
+      profile: 'present',
+      context: {
+        currentMonth: '2026-05',
+        eligibleGoals: [
+          { id: 'goal-ars-1', name: 'Viaje a Bariloche', percentage: '100.00' },
+        ],
+        eligibleGoalsUsd: [
+          { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
+        ],
+        eligibleInvestmentGoals: [
+          { id: 'goal-inv-ars', name: 'CEDEARs ARS', percentage: '100.00' },
+        ],
+        eligibleInvestmentGoalsUsd: [
+          { id: 'goal-inv-usd', name: 'S&P 500 USD', percentage: '100.00' },
+        ],
+      },
+    })
     const shortfalls: PreviousMonthShortfall[] = [
       {
         kind: 'saving',
@@ -149,7 +168,17 @@ describe('Home initial-plan component', () => {
     const items = screen.getAllByRole('listitem')
     expect(items).toHaveLength(2)
 
-    expect(section.querySelector('button')).toBeNull()
+    const buttons = screen.getAllByRole('button', { name: 'Ponerse al día' })
+    expect(buttons).toHaveLength(2)
+
+    await user.click(buttons[1])
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Registrar inversión' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Ahorré ARS' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Invertí USD' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Monto en pesos')).toHaveValue('25.000')
+    expect(screen.getByText('Este aporte se registrará para abril de 2026.')).toBeVisible()
   })
 
   it('renders nothing when previousMonthShortfalls is empty', () => {

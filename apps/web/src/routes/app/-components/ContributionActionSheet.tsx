@@ -15,9 +15,17 @@ import type {
 } from '../../../features/contributions/saving-contribution'
 import { SavingContribution } from './SavingContribution'
 
+export interface CatchUpContribution {
+  kind: ContributionKind
+  currency: 'ARS' | 'USD'
+  amount: string
+  month: string
+}
+
 export interface ContributionActionSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  catchUpContribution?: CatchUpContribution | null
 }
 
 interface SelectedAction {
@@ -28,6 +36,7 @@ interface SelectedAction {
 export function ContributionActionSheet({
   open,
   onOpenChange,
+  catchUpContribution,
 }: ContributionActionSheetProps) {
   const [selectedAction, setSelectedAction] = useState<SelectedAction | null>(null)
   const [context, setContext] = useState<SavingContributionContext | null>(null)
@@ -66,9 +75,17 @@ export function ContributionActionSheet({
       setSelectedAction(null)
       return
     }
+    if (catchUpContribution) {
+      setSelectedAction({
+        kind: catchUpContribution.kind,
+        currency: catchUpContribution.currency,
+      })
+    } else {
+      setSelectedAction(null)
+    }
     const cleanup = fetchContext()
     return cleanup
-  }, [open, fetchContext])
+  }, [open, catchUpContribution, fetchContext])
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -89,6 +106,11 @@ export function ContributionActionSheet({
     const actionLabel = selectedAction.kind === 'investment' ? 'inversión' : 'ahorro'
     return `Registrá tu ${actionLabel} en ${selectedAction.currency} y mirá cómo se distribuye en tus objetivos.`
   }
+
+  const isContextual =
+    catchUpContribution != null &&
+    selectedAction?.kind === catchUpContribution.kind &&
+    selectedAction?.currency === catchUpContribution.currency
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -227,6 +249,8 @@ export function ContributionActionSheet({
           <SavingContribution
             kind={selectedAction.kind}
             currency={selectedAction.currency}
+            initialAmount={isContextual ? catchUpContribution.amount : undefined}
+            catchUpMonth={isContextual ? catchUpContribution.month : undefined}
             context={context}
             onCancel={() => handleOpenChange(false)}
             onSuccess={() => handleOpenChange(false)}

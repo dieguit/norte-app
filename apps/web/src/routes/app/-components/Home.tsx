@@ -6,7 +6,7 @@ import {
   getPreviousCalendarMonth,
   type InitialHomeState,
 } from '../../../features/financial/financial'
-import { ContributionActionSheet } from './ContributionActionSheet'
+import { ContributionActionSheet, type CatchUpContribution } from './ContributionActionSheet'
 
 export interface HomeProps {
   home: InitialHomeState
@@ -15,6 +15,7 @@ export interface HomeProps {
 
 export function Home({ home, now }: HomeProps) {
   const [isContributionOpen, setIsContributionOpen] = useState(false)
+  const [catchUpContribution, setCatchUpContribution] = useState<CatchUpContribution | null>(null)
 
   const isUnknownExpensesEmergency =
     home.goal.type === 'emergency_fund' && home.projection.status === 'unknown_expenses'
@@ -53,12 +54,33 @@ export function Home({ home, now }: HomeProps) {
           >
             No cumpliste todos tus objetivos de {previousMonthName}.
           </h2>
-          <ul className="mt-2 flex flex-col gap-1 text-sm text-[var(--sea-ink-soft)]">
+          <ul className="mt-2 flex flex-col gap-2 text-sm text-[var(--sea-ink-soft)]">
             {home.previousMonthShortfalls.map((shortfall, index) => (
-              <li key={`${shortfall.kind}-${shortfall.currency}-${index}`}>
-                En {previousMonthName} te faltaron{' '}
-                {shortfall.kind === 'investment' ? 'invertir' : 'ahorrar'} {shortfall.currency}{' '}
-                {formatMoney(shortfall.amount)}.
+              <li
+                key={`${shortfall.kind}-${shortfall.currency}-${index}`}
+                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span>
+                  En {previousMonthName} te faltaron{' '}
+                  {shortfall.kind === 'investment' ? 'invertir' : 'ahorrar'} {shortfall.currency}{' '}
+                  {formatMoney(shortfall.amount)}.
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setCatchUpContribution({
+                      kind: shortfall.kind,
+                      currency: shortfall.currency,
+                      amount: shortfall.amount.amount,
+                      month: closedMonth,
+                    })
+                    setIsContributionOpen(true)
+                  }}
+                >
+                  Ponerse al día
+                </Button>
               </li>
             ))}
           </ul>
@@ -66,11 +88,26 @@ export function Home({ home, now }: HomeProps) {
       )}
 
       <div className="flex items-center">
-        <Button type="button" onClick={() => setIsContributionOpen(true)}>
+        <Button
+          type="button"
+          onClick={() => {
+            setCatchUpContribution(null)
+            setIsContributionOpen(true)
+          }}
+        >
           + Registrar
         </Button>
       </div>
-      <ContributionActionSheet open={isContributionOpen} onOpenChange={setIsContributionOpen} />
+      <ContributionActionSheet
+        open={isContributionOpen}
+        onOpenChange={(open) => {
+          setIsContributionOpen(open)
+          if (!open) {
+            setCatchUpContribution(null)
+          }
+        }}
+        catchUpContribution={catchUpContribution}
+      />
 
       {/* Tu Plan Section (Trajectory First) */}
       <section
