@@ -610,3 +610,120 @@ export function deriveMonthlySavingTargets(
 ) {
   return deriveMonthlyContributionTargets({ ...input, kind: input.kind ?? 'saving' })
 }
+
+export interface PreviousMonthShortfall {
+  kind: ContributionKind
+  currency: CurrencyCode
+  amount: Money
+}
+
+export function derivePreviousMonthShortfalls(input: {
+  closedMonth: string
+  plannedMonthlyContribution: string | null
+  goals: Array<{ id: string; strategy: string; currency: CurrencyCode }>
+  allocations: Array<{ goalId: string; percentage: string }>
+  savingContributions: Array<{ amount: string; currency: string; createdAt: Date | string }>
+  investmentContributions: Array<{ amount: string; currency: string; createdAt: Date | string }>
+}): PreviousMonthShortfall[] {
+  if (!input.plannedMonthlyContribution || !input.allocations || input.allocations.length === 0) {
+    return []
+  }
+
+  const commitmentBn = new BigNumber(input.plannedMonthlyContribution)
+  if (!commitmentBn.isFinite() || commitmentBn.isLessThanOrEqualTo(0)) {
+    return []
+  }
+
+  const categories: Array<{
+    kind: ContributionKind
+    currency: CurrencyCode
+    strategy: 'save' | 'invest'
+  }> = [
+    { kind: 'saving', currency: 'ARS', strategy: 'save' },
+    { kind: 'saving', currency: 'USD', strategy: 'save' },
+    { kind: 'investment', currency: 'ARS', strategy: 'invest' },
+    { kind: 'investment', currency: 'USD', strategy: 'invest' },
+  ]
+
+  const allocationByGoalId = new Map<string, BigNumber>()
+  for (const a of input.allocations) {
+    const pct = new BigNumber(String(a.percentage).replace(',', '.'))
+    if (pct.isFinite() && pct.isGreaterThan(0)) {
+      allocationByGoalId.set(a.goalId, pct)
+    }
+  }
+
+  const planningRate = new BigNumber(PLANNING_ARS_PER_USD)
+  const shortfalls: PreviousMonthShortfall[] = []
+
+  for (const cat of categories) {
+    const matchingGoals = input.goals.filter(
+      (g) => g.currency === cat.currency && g.strategy === cat.strategy,
+    )
+
+    if (matchingGoals.length === 0) {
+      continue
+    }
+
+    let expectedAmount = new BigNumber(0)
+    for (const g of matchingGoals) {
+      const pct = allocationByGoalId.get(g.id)
+      if (pct && pct.isGreaterThan(0)) {
+        const arsShare = commitmentBn.multipliedBy(pct).dividedBy(100)
+        if (cat.currency === 'USD') {
+          expectedAmount = expectedAmount.plus(arsShare.dividedBy(planningRate))
+        } else {
+          expectedAmount = expectedAmount.plus(arsShare)
+        }
+      }
+    }
+
+    if (expectedAmount.isLessThanOrEqualTo(0)) {
+      continue
+    }
+
+    const contribList =
+      cat.kind === 'saving' ? input.savingContributions : input.investmentContributions
+
+    let actualAmount = new BigNumber(0)
+    for (const c of contribList) {
+      if (c.currency !== cat.currency) continue
+      let createdIso: string | null = null
+      try {
+        createdIso =
+          c.createdAt instanceof Date
+            ? c.createdAt.toISOString()
+            : new Date(c.createdAt).toISOString()
+      } catch {
+        createdIso = null
+      }
+
+      if (!createdIso || createdIso.slice(0, 7) !== input.closedMonth) {
+        continue
+      }
+
+      try {
+        const amt = new BigNumber(c.amount)
+        if (amt.isFinite() && amt.isGreaterThan(0)) {
+          actualAmount = actualAmount.plus(amt)
+        }
+      } catch {
+        // ignore invalid contribution amount
+      }
+    }
+
+    if (actualAmount.isLessThan(expectedAmount)) {
+      const diffBn = expectedAmount.minus(actualAmount)
+      const formattedDiff = diffBn.toFixed(2, BigNumber.ROUND_HALF_UP)
+      if (new BigNumber(formattedDiff).isGreaterThan(0)) {
+        shortfalls.push({
+          kind: cat.kind,
+          currency: cat.currency,
+          amount: createMoney(formattedDiff, cat.currency),
+        })
+      }
+    }
+  }
+
+  return shortfalls
+}
