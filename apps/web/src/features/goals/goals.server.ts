@@ -8,17 +8,21 @@ import {
   confirmAllocationChangeInRepository,
   confirmGoalCreationInRepository,
   confirmGoalEditInRepository,
+  confirmGoalLifecycleInRepository,
   createAllocationChangePreviewToken,
   createGoalCreationPreviewToken,
   createGoalEditPreviewToken,
+  createGoalLifecyclePreviewToken,
   getAllocationChangeState,
   getGoalCreationState,
   getGoalEditState,
+  getGoalLifecycleState,
   getGoalsWorkspaceRows,
   mapRowsToGoalsWorkspaceSource,
   StaleAllocationChangePreviewError,
   StaleGoalCreationPreviewError,
   StaleGoalEditPreviewError,
+  StaleGoalLifecyclePreviewError,
 } from './goals.repository.server'
 import {
   buildGoalCreationProposal,
@@ -45,12 +49,25 @@ import type {
   AllocationChangeDraft,
   ConfirmAllocationChangeInput,
 } from './allocation-change.schema'
+import {
+  buildGoalLifecycleProposal,
+  type GoalLifecycleContext,
+  type GoalLifecyclePreviewResult,
+  type GoalLifecycleState,
+} from './goal-lifecycle'
+import type {
+  ConfirmGoalLifecycleInput,
+  GoalLifecycle,
+  GoalLifecyclePreviewInput,
+  GoalLifecycleRequestInput,
+} from './goal-lifecycle.schema'
 
 export type {
   GoalsAppState,
   GoalCreationContextState,
   GoalEditContextState,
   AllocationChangeContextState,
+  GoalLifecycleContextState,
 }
 
 type GoalCreationContextState =
@@ -64,6 +81,10 @@ type GoalEditContextState =
 type AllocationChangeContextState =
   | { profile: 'missing' }
   | { profile: 'present'; context: AllocationChangeContext }
+
+type GoalLifecycleContextState =
+  | { profile: 'missing' }
+  | ({ profile: 'present' } & GoalLifecycleContext)
 
 export function mapGoalCreationContext(
   state: GoalCreationState,
@@ -446,6 +467,156 @@ export async function confirmAllocationChangeServer({
     return { status: 'updated' as const }
   } catch (error) {
     if (error instanceof StaleAllocationChangePreviewError) {
+      return { status: 'stale' as const, preview: error.refreshedPreview }
+    }
+    throw error
+  }
+}
+
+export function mapGoalLifecycleContext(
+  state: GoalLifecycleState,
+  currentMonth: string,
+  goalId: string,
+  lifecycle: GoalLifecycle,
+): GoalLifecycleContext {
+  const goal = state.source.goals.find((g) => g.id === goalId)
+  if (!goal) {
+    throw new Error('Goal not found.')
+  }
+  if (lifecycle === 'pause' && goal.status !== 'active') {
+    throw new Error('Only active goals can be paused.')
+  }
+  if (lifecycle === 'resume' && goal.status !== 'paused') {
+    throw new Error('Only paused goals can be resumed.')
+  }
+
+  const profile = state.source.profile
+  const plannedMonthlyContribution =
+    profile?.plannedMonthlyContribution !== null && profile?.plannedMonthlyContribution !== undefined
+      ? createMoney(profile.plannedMonthlyContribution, profile.baseCurrency ?? 'ARS')
+      : undefined
+
+  const activeGoals = (state.source.goals ?? [])
+    .filter((g) => g.status === 'active')
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      currency: g.currency,
+    }))
+
+  const winningSnapshot = state.source.snapshots?.[0]
+  let currentAllocation: GoalLifecycleContext['currentAllocation'] = undefined
+
+  if (winningSnapshot) {
+    const entries = (state.source.allocations ?? [])
+      .filter((a) => a.snapshotId === winningSnapshot.id)
+      .map((a) => ({
+        goalId: a.goalId,
+        percentage: a.percentage,
+      }))
+    currentAllocation = {
+      effectiveMonth: winningSnapshot.effectiveMonth,
+      entries,
+    }
+  }
+
+  const pendingSnapshot = state.pendingSnapshots?.[0]
+  let pendingAllocation: GoalLifecycleContext['pendingAllocation'] = undefined
+
+  if (pendingSnapshot) {
+    const entries = (state.pendingAllocations ?? [])
+      .filter((a) => a.snapshotId === pendingSnapshot.id)
+      .map((a) => ({
+        goalId: a.goalId,
+        percentage: a.percentage,
+      }))
+    pendingAllocation = {
+      effectiveMonth: pendingSnapshot.effectiveMonth,
+      entries,
+    }
+  }
+
+  return {
+    goalId,
+    lifecycle,
+    goalName: goal.name,
+    currentMonth,
+    plannedMonthlyContribution,
+    activeGoals,
+    currentAllocation,
+    pendingAllocation,
+  }
+}
+
+export async function getGoalLifecycleContextServer({
+  data,
+}: {
+  data: GoalLifecycleRequestInput
+}): Promise<GoalLifecycleContextState> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const state = await getGoalLifecycleState(userId, currentMonth)
+  if (!state) {
+    return { profile: 'missing' }
+  }
+  const context = mapGoalLifecycleContext(state, currentMonth, data.goalId, data.lifecycle)
+  return {
+    profile: 'present',
+    ...context,
+  }
+}
+
+export async function previewGoalLifecycleServer({
+  data,
+}: {
+  data: GoalLifecyclePreviewInput
+}): Promise<GoalLifecyclePreviewResult> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const state = await getGoalLifecycleState(userId, currentMonth)
+  if (!state) {
+    throw new Error('Completá tu perfil financiero antes de pausar o reanudar un objetivo.')
+  }
+  const draft = data.allocations !== undefined ? { allocations: data.allocations } : undefined
+  const proposal = buildGoalLifecycleProposal({
+    lifecycle: data.lifecycle,
+    goalId: data.goalId,
+    state,
+    currentMonth,
+    draft,
+  })
+  return {
+    proposal,
+    previewToken: createGoalLifecyclePreviewToken(
+      data.lifecycle,
+      data.goalId,
+      state,
+      currentMonth,
+      draft,
+    ),
+  }
+}
+
+export async function confirmGoalLifecycleServer({
+  data,
+}: {
+  data: ConfirmGoalLifecycleInput
+}): Promise<{ status: 'updated' } | { status: 'stale'; preview: GoalLifecyclePreviewResult }> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const draft = data.allocations !== undefined ? { allocations: data.allocations } : undefined
+  try {
+    await confirmGoalLifecycleInRepository({
+      userId,
+      goalId: data.goalId,
+      lifecycle: data.lifecycle,
+      currentMonth,
+      draft,
+      previewToken: data.previewToken,
+    })
+    return { status: 'updated' as const }
+  } catch (error) {
+    if (error instanceof StaleGoalLifecyclePreviewError) {
       return { status: 'stale' as const, preview: error.refreshedPreview }
     }
     throw error

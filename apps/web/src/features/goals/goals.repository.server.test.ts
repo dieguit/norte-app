@@ -4,22 +4,27 @@ import {
   allocationPlanEntries,
   allocationPlanSnapshots,
   financialGoals,
+  financialProfiles,
   goalInvestmentPositions,
 } from '../../db/schema'
 import {
   confirmAllocationChangeInRepository,
   confirmGoalCreationInRepository,
   confirmGoalEditInRepository,
+  confirmGoalLifecycleInRepository,
   createAllocationChangePreviewToken,
   createGoalCreationPreviewToken,
   createGoalEditPreviewToken,
+  createGoalLifecyclePreviewToken,
   getAllocationChangeState,
   getGoalCreationState,
   getGoalEditState,
+  getGoalLifecycleState,
   getGoalsWorkspaceRows,
   StaleAllocationChangePreviewError,
   StaleGoalCreationPreviewError,
   StaleGoalEditPreviewError,
+  StaleGoalLifecyclePreviewError,
 } from './goals.repository.server'
 import type { AllocationChangeDraft } from './allocation-change.schema'
 import type { GoalCreationDraft } from './goal-creation.schema'
@@ -2232,6 +2237,521 @@ describe('goals.repository.server', () => {
         goalId: 'g2',
         currentMonth,
         draft: validEditDraft,
+        previewToken: token,
+      })
+
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+    })
+  })
+
+  describe('getGoalLifecycleState', () => {
+    it('returns null when profile is absent', async () => {
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(undefined as never)
+
+      const result = await getGoalLifecycleState('user_1', '2026-08')
+
+      expect(result).toBeNull()
+      expect(db.query.financialGoals.findMany).not.toHaveBeenCalled()
+      expect(db.query.allocationPlanSnapshots.findMany).not.toHaveBeenCalled()
+    })
+
+    it('filters profile, goals, and snapshots by userId, retains active, paused, and completed goals in source.goals, loads positions, returns winning and next-month pending snapshots, and loads entries for both', async () => {
+      const mockProfile = {
+        userId: 'user_1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
+        onboardingCompleted: true,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      const mockGoalActive = {
+        id: 'g1',
+        userId: 'user_1',
+        name: 'Fondo de Emergencia',
+        type: 'emergency_fund',
+        targetAmount: '3000.00',
+        currency: 'USD',
+        priority: 'high',
+        strategy: 'save',
+        status: 'active',
+        desiredDate: '2027-01-01',
+        completedAt: null,
+        emergencyFundMonths: 6,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+      const mockGoalPaused = {
+        id: 'g2',
+        userId: 'user_1',
+        name: 'Viaje a Japón',
+        type: 'purchase',
+        targetAmount: '5000.00',
+        currency: 'USD',
+        priority: 'medium',
+        strategy: 'invest',
+        status: 'paused',
+        desiredDate: '2028-06-01',
+        completedAt: null,
+        emergencyFundMonths: null,
+        createdAt: new Date('2026-02-01T00:00:00Z'),
+        updatedAt: new Date('2026-02-01T00:00:00Z'),
+      }
+      const mockGoalCompleted = {
+        id: 'g3',
+        userId: 'user_1',
+        name: 'Notebook',
+        type: 'purchase',
+        targetAmount: '1500.00',
+        currency: 'USD',
+        priority: 'low',
+        strategy: 'save',
+        status: 'completed',
+        desiredDate: null,
+        completedAt: new Date('2026-05-01T00:00:00Z'),
+        emergencyFundMonths: null,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-05-01T00:00:00Z'),
+      }
+
+      const mockSavingsPos1 = {
+        id: 'sp1',
+        goalId: 'g1',
+        amount: '1000.00',
+        currency: 'USD',
+        location: 'Banco',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      const currentSnapshot = {
+        id: 's2',
+        userId: 'user_1',
+        effectiveMonth: '2026-08-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+      const septemberSnapshot = {
+        id: 's3',
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      const currentAllocations = [
+        { id: 'a1', snapshotId: 's2', goalId: 'g1', percentage: '100.00' },
+      ]
+      const septemberAllocations = [
+        { id: 'a2', snapshotId: 's3', goalId: 'g1', percentage: '100.00' },
+      ]
+
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
+      vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([
+        mockGoalActive,
+        mockGoalPaused,
+        mockGoalCompleted,
+      ] as never)
+      vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([mockSavingsPos1] as never)
+      vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([] as never)
+      vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([
+        currentSnapshot,
+        septemberSnapshot,
+      ] as never)
+      vi.mocked(db.query.allocationPlanEntries.findMany).mockResolvedValue([
+        ...currentAllocations,
+        ...septemberAllocations,
+      ] as never)
+
+      const state = await getGoalLifecycleState('user_1', '2026-08')
+
+      expect(state).not.toBeNull()
+      expect(state?.source.goals.map((g) => g.id)).toEqual(['g1', 'g2', 'g3'])
+      expect(state?.source.goals.map((g) => g.status)).toEqual(['active', 'paused', 'completed'])
+      expect(state?.source.snapshots).toEqual([
+        { id: 's2', userId: 'user_1', effectiveMonth: '2026-08-01' },
+      ])
+      expect(state?.source.allocations).toEqual(currentAllocations)
+      expect(state?.pendingSnapshots).toEqual([
+        { id: 's3', userId: 'user_1', effectiveMonth: '2026-09-01' },
+      ])
+      expect(state?.pendingAllocations).toEqual(septemberAllocations)
+    })
+  })
+
+  describe('createGoalLifecyclePreviewToken', () => {
+    it('generates a 64-character sha256 hex string deterministic for lifecycle, goalId, state, currentMonth, and draft', () => {
+      const state = {
+        source: {
+          profile: {
+            userId: 'user_1',
+            baseCurrency: 'ARS' as const,
+            approximateMonthlyIncome: '1000000.00',
+            approximateMonthlyExpenses: '500000.00',
+            expensesKnowledge: 'known',
+            plannedMonthlyContribution: '60000.00',
+            onboardingCompleted: true,
+          },
+          goals: [],
+          savingsPositions: [],
+          investmentPositions: [],
+          snapshots: [],
+          allocations: [],
+        },
+        pendingSnapshots: [],
+        pendingAllocations: [],
+      }
+
+      const draft = {
+        allocations: [{ goalId: 'g1', percentage: '100.00' }],
+      }
+
+      const token1 = createGoalLifecyclePreviewToken('pause', 'g1', state, '2026-08', draft)
+      const token2 = createGoalLifecyclePreviewToken('pause', 'g1', state, '2026-08', draft)
+      const tokenDiffLifecycle = createGoalLifecyclePreviewToken('resume', 'g1', state, '2026-08', draft)
+      const tokenDiffGoal = createGoalLifecyclePreviewToken('pause', 'g2', state, '2026-08', draft)
+      const tokenDiffMonth = createGoalLifecyclePreviewToken('pause', 'g1', state, '2026-09', draft)
+      const tokenDiffDraft = createGoalLifecyclePreviewToken('pause', 'g1', state, '2026-08', {
+        allocations: [{ goalId: 'g1', percentage: '50.00' }],
+      })
+
+      expect(token1).toMatch(/^[a-f0-9]{64}$/)
+      expect(token1).toBe(token2)
+      expect(token1).not.toBe(tokenDiffLifecycle)
+      expect(token1).not.toBe(tokenDiffGoal)
+      expect(token1).not.toBe(tokenDiffMonth)
+      expect(token1).not.toBe(tokenDiffDraft)
+    })
+  })
+
+  describe('confirmGoalLifecycleInRepository', () => {
+    const currentMonth = '2026-08'
+
+    const mockProfile = {
+      userId: 'user_1',
+      baseCurrency: 'ARS',
+      approximateMonthlyIncome: '1000000.00',
+      approximateMonthlyExpenses: '500000.00',
+      expensesKnowledge: 'known',
+      plannedMonthlyContribution: '60000.00',
+      onboardingCompleted: true,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }
+
+    const mockGoal1Active = {
+      id: 'g1',
+      userId: 'user_1',
+      name: 'Fondo de Emergencia',
+      type: 'emergency_fund',
+      targetAmount: '3000.00',
+      currency: 'USD',
+      priority: 'high',
+      strategy: 'save',
+      status: 'active',
+      desiredDate: '2027-01-01',
+      completedAt: null,
+      emergencyFundMonths: 6,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }
+
+    const mockGoal2Active = {
+      id: 'g2',
+      userId: 'user_1',
+      name: 'Viaje a Japón',
+      type: 'purchase',
+      targetAmount: '5000.00',
+      currency: 'USD',
+      priority: 'medium',
+      strategy: 'invest',
+      status: 'active',
+      desiredDate: '2028-06-01',
+      completedAt: null,
+      emergencyFundMonths: null,
+      createdAt: new Date('2026-02-01T00:00:00Z'),
+      updatedAt: new Date('2026-02-01T00:00:00Z'),
+    }
+
+    const mockGoal3Paused = {
+      id: 'g3',
+      userId: 'user_1',
+      name: 'Auto nuevo',
+      type: 'purchase',
+      targetAmount: '10000.00',
+      currency: 'USD',
+      priority: 'low',
+      strategy: 'save',
+      status: 'paused',
+      desiredDate: '2028-01-01',
+      completedAt: null,
+      emergencyFundMonths: null,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }
+
+    const mockSnapshotCurrent = {
+      id: 's_current',
+      userId: 'user_1',
+      effectiveMonth: '2026-08-01',
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+    }
+
+    const mockAlloc1 = {
+      id: 'a1',
+      snapshotId: 's_current',
+      goalId: 'g1',
+      percentage: '60.00',
+    }
+    const mockAlloc2 = {
+      id: 'a2',
+      snapshotId: 's_current',
+      goalId: 'g2',
+      percentage: '40.00',
+    }
+
+    function setupLifecycleMocks(overrides?: {
+      profile?: any
+      goals?: any[]
+      savingsPositions?: any[]
+      investmentPositions?: any[]
+      snapshots?: any[]
+      allocations?: any[]
+    }) {
+      const profile = overrides && 'profile' in overrides ? overrides.profile : mockProfile
+      const goals = overrides?.goals ?? [mockGoal1Active, mockGoal2Active, mockGoal3Paused]
+      const savingsPositions = overrides?.savingsPositions ?? []
+      const investmentPositions = overrides?.investmentPositions ?? []
+      const snapshots = overrides?.snapshots ?? [mockSnapshotCurrent]
+      const allocations = overrides?.allocations ?? [mockAlloc1, mockAlloc2]
+
+      db.query.financialProfiles.findFirst = vi.fn().mockResolvedValue(profile)
+      db.query.financialGoals.findMany = vi.fn().mockResolvedValue(goals)
+      db.query.goalSavingsPositions.findMany = vi.fn().mockResolvedValue(savingsPositions)
+      db.query.goalInvestmentPositions.findMany = vi.fn().mockResolvedValue(investmentPositions)
+      db.query.allocationPlanSnapshots.findMany = vi.fn().mockResolvedValue(snapshots)
+      db.query.allocationPlanSnapshots.findFirst = vi.fn().mockImplementation(({ where }) => {
+        const dummyEq = vi.fn((col, val) => ({ col, val }))
+        const dummyAnd = vi.fn((...conditions) => conditions)
+        if (typeof where === 'function') {
+          const conds = where(
+            { userId: 'userId', effectiveMonth: 'effectiveMonth' },
+            { eq: dummyEq, and: dummyAnd },
+          )
+          const userCond = conds.find((c: any) => c.col === 'userId')
+          const monthCond = conds.find((c: any) => c.col === 'effectiveMonth')
+          return snapshots.find(
+            (s) => s.userId === userCond?.val && s.effectiveMonth === monthCond?.val,
+          )
+        }
+        return undefined
+      })
+      db.query.allocationPlanEntries.findMany = vi.fn().mockResolvedValue(allocations)
+
+      mockTx.query = db.query as any
+
+      mockTx.select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            for: vi.fn().mockResolvedValue([{ userId: 'user_1' }]),
+          }),
+        }),
+      })
+
+      mockTx.insert.mockImplementation((table: any) => ({
+        values: vi.fn().mockImplementation((_val: any) => {
+          if (table === allocationPlanSnapshots) {
+            return { returning: vi.fn().mockResolvedValue([{ id: 'snapshot_created_id' }]) }
+          }
+          return { returning: vi.fn().mockResolvedValue([{ id: 'mock_id' }]) }
+        }),
+      }))
+
+      mockTx.update.mockImplementation((_table: any) => ({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ id: 'updated_id' }]),
+        }),
+      }))
+
+      mockTx.delete.mockImplementation((_table: any) => ({
+        where: vi.fn().mockResolvedValue(undefined),
+      }))
+    }
+
+    it('atomically pauses the goal and replaces next-month allocations', async () => {
+      setupLifecycleMocks()
+      const state = await getGoalLifecycleState('user_1', currentMonth)
+      const draft = {
+        allocations: [{ goalId: 'g2', percentage: '100.00' }],
+      }
+      const token = createGoalLifecyclePreviewToken('pause', 'g1', state!, currentMonth, draft)
+
+      await confirmGoalLifecycleInRepository({
+        userId: 'user_1',
+        goalId: 'g1',
+        lifecycle: 'pause',
+        currentMonth,
+        draft,
+        previewToken: token,
+      })
+
+      expect(mockTx.select).toHaveBeenCalled()
+      expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.update).not.toHaveBeenCalledWith(financialProfiles)
+    })
+
+    it('atomically resumes a paused goal and replaces next-month allocations', async () => {
+      setupLifecycleMocks()
+      const state = await getGoalLifecycleState('user_1', currentMonth)
+      const draft = {
+        allocations: [
+          { goalId: 'g3', percentage: '20.00' },
+          { goalId: 'g1', percentage: '50.00' },
+          { goalId: 'g2', percentage: '30.00' },
+        ],
+      }
+      const token = createGoalLifecyclePreviewToken('resume', 'g3', state!, currentMonth, draft)
+
+      await confirmGoalLifecycleInRepository({
+        userId: 'user_1',
+        goalId: 'g3',
+        lifecycle: 'resume',
+        currentMonth,
+        draft,
+        previewToken: token,
+      })
+
+      expect(mockTx.select).toHaveBeenCalled()
+      expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
+    it('clears the profile commitment only when the final active goal is paused', async () => {
+      setupLifecycleMocks({
+        goals: [mockGoal1Active],
+        allocations: [{ id: 'a1', snapshotId: 's_current', goalId: 'g1', percentage: '100.00' }],
+      })
+      const state = await getGoalLifecycleState('user_1', currentMonth)
+      const draft = { allocations: [] }
+      const token = createGoalLifecyclePreviewToken('pause', 'g1', state!, currentMonth, draft)
+
+      await confirmGoalLifecycleInRepository({
+        userId: 'user_1',
+        goalId: 'g1',
+        lifecycle: 'pause',
+        currentMonth,
+        draft,
+        previewToken: token,
+      })
+
+      expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
+      expect(mockTx.update).toHaveBeenCalledWith(financialProfiles)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      // When 0 entries remain, insert for allocationPlanEntries is not called
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
+    it('returns a refreshed lifecycle preview and performs no writes for a stale token', async () => {
+      setupLifecycleMocks()
+      const staleToken = 'f'.repeat(64)
+      const draft = {
+        allocations: [{ goalId: 'g2', percentage: '100.00' }],
+      }
+
+      let error: StaleGoalLifecyclePreviewError | null = null
+      try {
+        await confirmGoalLifecycleInRepository({
+          userId: 'user_1',
+          goalId: 'g1',
+          lifecycle: 'pause',
+          currentMonth,
+          draft,
+          previewToken: staleToken,
+        })
+      } catch (err: any) {
+        error = err
+      }
+
+      expect(error).toBeInstanceOf(StaleGoalLifecyclePreviewError)
+      expect(error?.code).toBe('STALE_GOAL_LIFECYCLE_PREVIEW')
+      expect(error?.refreshedPreview.previewToken).not.toBe(staleToken)
+      expect(mockTx.update).not.toHaveBeenCalled()
+      expect(mockTx.delete).not.toHaveBeenCalled()
+      expect(mockTx.insert).not.toHaveBeenCalled()
+    })
+
+    it('rejects when goal is absent or invalid transition and runs no writes', async () => {
+      setupLifecycleMocks()
+      await expect(
+        confirmGoalLifecycleInRepository({
+          userId: 'user_1',
+          goalId: 'non-existent-goal',
+          lifecycle: 'pause',
+          currentMonth,
+          draft: { allocations: [] },
+          previewToken: 'some-token',
+        }),
+      ).rejects.toThrow('Goal not found.')
+
+      expect(mockTx.update).not.toHaveBeenCalled()
+      expect(mockTx.delete).not.toHaveBeenCalled()
+      expect(mockTx.insert).not.toHaveBeenCalled()
+    })
+
+    it('does not report success when allocation persistence throws after the status update', async () => {
+      setupLifecycleMocks()
+      const state = await getGoalLifecycleState('user_1', currentMonth)
+      const draft = {
+        allocations: [{ goalId: 'g2', percentage: '100.00' }],
+      }
+      const token = createGoalLifecyclePreviewToken('pause', 'g1', state!, currentMonth, draft)
+
+      mockTx.insert.mockImplementationOnce(() => {
+        throw new Error('database failure')
+      })
+
+      await expect(
+        confirmGoalLifecycleInRepository({
+          userId: 'user_1',
+          goalId: 'g1',
+          lifecycle: 'pause',
+          currentMonth,
+          draft,
+          previewToken: token,
+        }),
+      ).rejects.toThrow('database failure')
+    })
+
+    it('reuses existing next-month snapshot without inserting new snapshot', async () => {
+      const pendingSnapshot = {
+        id: 's_pending',
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
+      setupLifecycleMocks({
+        snapshots: [mockSnapshotCurrent, pendingSnapshot],
+      })
+
+      const state = await getGoalLifecycleState('user_1', currentMonth)
+      const draft = {
+        allocations: [{ goalId: 'g2', percentage: '100.00' }],
+      }
+      const token = createGoalLifecyclePreviewToken('pause', 'g1', state!, currentMonth, draft)
+
+      await confirmGoalLifecycleInRepository({
+        userId: 'user_1',
+        goalId: 'g1',
+        lifecycle: 'pause',
+        currentMonth,
+        draft,
         previewToken: token,
       })
 

@@ -37,7 +37,7 @@ export const financialProfiles = pgTable('financial_profiles', {
   approximateMonthlyIncome: numeric('approximate_monthly_income', { precision: 12, scale: 2 }).notNull(),
   approximateMonthlyExpenses: numeric('approximate_monthly_expenses', { precision: 12, scale: 2 }),
   expensesKnowledge: varchar('expenses_knowledge', { length: 16 }).notNull(),
-  plannedMonthlyContribution: numeric('planned_monthly_contribution', { precision: 12, scale: 2 }).notNull(),
+  plannedMonthlyContribution: numeric('planned_monthly_contribution', { precision: 12, scale: 2 }),
   onboardingCompleted: boolean('onboarding_completed').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })

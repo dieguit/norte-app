@@ -4,28 +4,35 @@ import {
   confirmAllocationChange,
   confirmGoalCreation,
   confirmGoalEdit,
+  confirmGoalLifecycle,
   getAllocationChangeContext,
   getGoalCreationContext,
   getGoalEditContext,
+  getGoalLifecycleContext,
   getGoalsWorkspace,
   previewAllocationChange,
   previewGoalCreation,
   previewGoalEdit,
+  previewGoalLifecycle,
 } from './goals.functions'
 import {
   confirmAllocationChangeInRepository,
   confirmGoalCreationInRepository,
   confirmGoalEditInRepository,
+  confirmGoalLifecycleInRepository,
   createAllocationChangePreviewToken,
   createGoalCreationPreviewToken,
   createGoalEditPreviewToken,
+  createGoalLifecyclePreviewToken,
   getAllocationChangeState,
   getGoalCreationState,
   getGoalEditState,
+  getGoalLifecycleState,
   getGoalsWorkspaceRows,
   StaleAllocationChangePreviewError,
   StaleGoalCreationPreviewError,
   StaleGoalEditPreviewError,
+  StaleGoalLifecyclePreviewError,
 } from './goals.repository.server'
 import { buildGoalCreationProposal, type GoalCreationState } from './goal-creation'
 import type { GoalCreationDraft } from './goal-creation.schema'
@@ -34,6 +41,10 @@ import {
   type AllocationChangeState,
 } from './allocation-change'
 import type { AllocationChangeDraft } from './allocation-change.schema'
+import {
+  buildGoalLifecycleProposal,
+  type GoalLifecycleState,
+} from './goal-lifecycle'
 
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: vi.fn().mockImplementation(() => {
@@ -69,6 +80,8 @@ vi.mock('./goals.repository.server', async (importOriginal) => {
     confirmGoalEditInRepository: vi.fn(),
     getAllocationChangeState: vi.fn(),
     confirmAllocationChangeInRepository: vi.fn(),
+    getGoalLifecycleState: vi.fn(),
+    confirmGoalLifecycleInRepository: vi.fn(),
     mapRowsToGoalsWorkspaceSource: vi.fn().mockImplementation((rows) => ({
       profile: {
         userId: rows.profile.userId,
@@ -1601,5 +1614,390 @@ describe('confirmGoalEdit', () => {
     vi.useRealTimers()
   })
 })
+
+describe('getGoalLifecycleContext', () => {
+  const validGoalId = '11111111-1111-4111-8111-111111111111'
+
+  const mockState: GoalLifecycleState = {
+    source: {
+      profile: {
+        userId: 'user_456',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: validGoalId,
+          userId: 'user_456',
+          name: 'Reserva',
+          type: 'emergency_fund',
+          targetAmount: '2000.00',
+          currency: 'USD',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [],
+      investmentPositions: [],
+      snapshots: [
+        {
+          id: 's1',
+          userId: 'user_456',
+          effectiveMonth: '2026-08-01',
+        },
+      ],
+      allocations: [
+        {
+          id: 'a1',
+          snapshotId: 's1',
+          goalId: validGoalId,
+          percentage: '100.00',
+        },
+      ],
+    },
+    pendingSnapshots: [],
+    pendingAllocations: [],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(
+      getGoalLifecycleContext({ data: { goalId: validGoalId, lifecycle: 'pause' } }),
+    ).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('passes authenticated userId and UTC YYYY-MM to repository and returns missing profile state', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalLifecycleState).mockResolvedValue(null)
+
+    const result = await getGoalLifecycleContext({
+      data: { goalId: validGoalId, lifecycle: 'pause' },
+    })
+
+    expect(getGoalLifecycleState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result).toEqual({ profile: 'missing' })
+
+    vi.useRealTimers()
+  })
+
+  it('returns present profile state with route-safe lifecycle context', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalLifecycleState).mockResolvedValue(mockState)
+
+    const result = await getGoalLifecycleContext({
+      data: { goalId: validGoalId, lifecycle: 'pause' },
+    })
+
+    expect(getGoalLifecycleState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result).toEqual({
+      profile: 'present',
+      goalId: validGoalId,
+      lifecycle: 'pause',
+      goalName: 'Reserva',
+      currentMonth: '2026-08',
+      plannedMonthlyContribution: { amount: '60000.00', currency: 'ARS' },
+      activeGoals: [{ id: validGoalId, name: 'Reserva', currency: 'USD' }],
+      currentAllocation: {
+        effectiveMonth: '2026-08-01',
+        entries: [{ goalId: validGoalId, percentage: '100.00' }],
+      },
+      pendingAllocation: undefined,
+    })
+
+    vi.useRealTimers()
+  })
+})
+
+describe('previewGoalLifecycle', () => {
+  const validGoalId = '11111111-1111-4111-8111-111111111111'
+
+  const mockState: GoalLifecycleState = {
+    source: {
+      profile: {
+        userId: 'user_456',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: validGoalId,
+          userId: 'user_456',
+          name: 'Reserva',
+          type: 'emergency_fund',
+          targetAmount: '2000.00',
+          currency: 'USD',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [],
+      investmentPositions: [],
+      snapshots: [
+        {
+          id: 's1',
+          userId: 'user_456',
+          effectiveMonth: '2026-08-01',
+        },
+      ],
+      allocations: [
+        {
+          id: 'a1',
+          snapshotId: 's1',
+          goalId: validGoalId,
+          percentage: '100.00',
+        },
+      ],
+    },
+    pendingSnapshots: [],
+    pendingAllocations: [],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(
+      previewGoalLifecycle({ data: { goalId: validGoalId, lifecycle: 'pause' } }),
+    ).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('throws when financial profile is missing', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalLifecycleState).mockResolvedValue(null)
+
+    await expect(
+      previewGoalLifecycle({ data: { goalId: validGoalId, lifecycle: 'pause' } }),
+    ).rejects.toThrow('Completá tu perfil financiero antes de pausar o reanudar un objetivo.')
+
+    vi.useRealTimers()
+  })
+
+  it('returns read-only proposal and a 64-character preview token without persisting data', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalLifecycleState).mockResolvedValue(mockState)
+
+    const result = await previewGoalLifecycle({
+      data: { goalId: validGoalId, lifecycle: 'pause' },
+    })
+
+    expect(getGoalLifecycleState).toHaveBeenCalledWith('user_456', '2026-08')
+    expect(result.previewToken).toMatch(/^[a-f0-9]{64}$/)
+    expect(result.proposal.lifecycle).toBe('pause')
+    expect(result.proposal.goalId).toBe(validGoalId)
+    expect(result.proposal.nextStatus).toBe('paused')
+    expect(result.proposal.pauseMonthlyCommitment).toBe(true)
+
+    vi.useRealTimers()
+  })
+})
+
+describe('confirmGoalLifecycle', () => {
+  const currentMonth = '2026-08'
+  const validGoalId = '11111111-1111-4111-8111-111111111111'
+  const validToken = 'a'.repeat(64)
+  const staleToken = 'b'.repeat(64)
+
+  const mockState: GoalLifecycleState = {
+    source: {
+      profile: {
+        userId: 'user_456',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: validGoalId,
+          userId: 'user_456',
+          name: 'Reserva',
+          type: 'emergency_fund',
+          targetAmount: '2000.00',
+          currency: 'USD',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [],
+      investmentPositions: [],
+      snapshots: [
+        {
+          id: 's1',
+          userId: 'user_456',
+          effectiveMonth: '2026-08-01',
+        },
+      ],
+      allocations: [
+        {
+          id: 'a1',
+          snapshotId: 's1',
+          goalId: validGoalId,
+          percentage: '100.00',
+        },
+      ],
+    },
+    pendingSnapshots: [],
+    pendingAllocations: [],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('redirects to /sign-in/$ when user is not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(
+      confirmGoalLifecycle({
+        data: {
+          goalId: validGoalId,
+          lifecycle: 'pause',
+          allocations: [],
+          previewToken: validToken,
+        },
+      }),
+    ).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+  })
+
+  it('rejects invalid payload or malformed previewToken through validator schema', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    await expect(
+      confirmGoalLifecycle({
+        data: {
+          goalId: 'not-a-uuid',
+          lifecycle: 'pause',
+          allocations: [],
+          previewToken: 'short_token',
+        },
+      }),
+    ).rejects.toThrow()
+
+    vi.useRealTimers()
+  })
+
+  it('returns updated status on successful confirmation in repository', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(confirmGoalLifecycleInRepository).mockResolvedValue(undefined)
+
+    const result = await confirmGoalLifecycle({
+      data: {
+        goalId: validGoalId,
+        lifecycle: 'pause',
+        allocations: [],
+        previewToken: validToken,
+      },
+    })
+
+    expect(confirmGoalLifecycleInRepository).toHaveBeenCalledWith({
+      userId: 'user_456',
+      goalId: validGoalId,
+      lifecycle: 'pause',
+      currentMonth: '2026-08',
+      draft: { allocations: [] },
+      previewToken: validToken,
+    })
+    expect(result).toEqual({
+      status: 'updated',
+    })
+
+    vi.useRealTimers()
+  })
+
+  it('returns stale status with refreshed preview when repository throws StaleGoalLifecyclePreviewError', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    const refreshedProposal = buildGoalLifecycleProposal({
+      lifecycle: 'pause',
+      goalId: validGoalId,
+      state: mockState,
+      currentMonth,
+      draft: { allocations: [] },
+    })
+    const refreshedToken = createGoalLifecyclePreviewToken(
+      'pause',
+      validGoalId,
+      mockState,
+      currentMonth,
+      { allocations: [] },
+    )
+    const staleError = new StaleGoalLifecyclePreviewError({
+      proposal: refreshedProposal,
+      previewToken: refreshedToken,
+    })
+
+    vi.mocked(confirmGoalLifecycleInRepository).mockRejectedValue(staleError)
+
+    const result = await confirmGoalLifecycle({
+      data: {
+        goalId: validGoalId,
+        lifecycle: 'pause',
+        allocations: [],
+        previewToken: staleToken,
+      },
+    })
+
+    expect(result).toEqual({
+      status: 'stale',
+      preview: {
+        proposal: refreshedProposal,
+        previewToken: refreshedToken,
+      },
+    })
+
+    vi.useRealTimers()
+  })
+})
+
 
 

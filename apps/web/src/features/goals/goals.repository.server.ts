@@ -1,7 +1,7 @@
 import '@tanstack/react-start/server-only'
 import { createHash } from 'node:crypto'
 import { db } from '../../db/client'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import {
   allocationPlanEntries,
   allocationPlanSnapshots,
@@ -42,6 +42,13 @@ import {
   type AllocationChangeState,
 } from './allocation-change'
 import type { AllocationChangeDraft } from './allocation-change.schema'
+import {
+  buildGoalLifecycleProposal,
+  serializeGoalLifecycleState,
+  type GoalLifecyclePreviewResult,
+  type GoalLifecycleState,
+} from './goal-lifecycle'
+import type { GoalLifecycle } from './goal-lifecycle.schema'
 
 export class StaleGoalCreationPreviewError extends Error {
   readonly code = 'STALE_GOAL_CREATION_PREVIEW'
@@ -63,6 +70,14 @@ export class StaleAllocationChangePreviewError extends Error {
   readonly code = 'STALE_ALLOCATION_CHANGE_PREVIEW'
 
   constructor(readonly refreshedPreview: AllocationChangePreviewResult) {
+    super('Tu Plan cambió mientras revisabas el impacto.')
+  }
+}
+
+export class StaleGoalLifecyclePreviewError extends Error {
+  readonly code = 'STALE_GOAL_LIFECYCLE_PREVIEW'
+
+  constructor(readonly refreshedPreview: GoalLifecyclePreviewResult) {
     super('Tu Plan cambió mientras revisabas el impacto.')
   }
 }
@@ -385,10 +400,64 @@ export async function getAllocationChangeState(
   return getAllocationChangeStateWithExecutor(db, userId, currentMonth)
 }
 
+export async function getGoalLifecycleStateWithExecutor(
+  executor: any,
+  userId: string,
+  currentMonth: string,
+): Promise<GoalLifecycleState | null> {
+  const base = await getOwnedGoalPlanBase(executor, userId)
+  if (!base) {
+    return null
+  }
+
+  const nextMonth = `${getNextCalendarMonth(new Date(`${currentMonth.slice(0, 7)}-01T00:00:00Z`))}-01`
+  const currentSnapshots = selectWinningSnapshots(base.snapshots, currentMonth)
+  const pendingSnapshots = base.snapshots.filter(
+    (snapshot: any) => snapshot.effectiveMonth.slice(0, 7) === nextMonth.slice(0, 7),
+  )
+  const selectedIds = new Set([...currentSnapshots, ...pendingSnapshots].map((snapshot: any) => snapshot.id))
+  const selectedSnapshotIds = Array.from(selectedIds)
+
+  const allocations =
+    selectedSnapshotIds.length > 0
+      ? await executor.query.allocationPlanEntries.findMany({
+          where: (allocsTable: any, { inArray }: any) =>
+            inArray(allocsTable.snapshotId, selectedSnapshotIds),
+        })
+      : []
+
+  const currentSnapshotIds = new Set(currentSnapshots.map((s: any) => s.id))
+  const pendingSnapshotIds = new Set(pendingSnapshots.map((s: any) => s.id))
+
+  return {
+    source: mapRowsToGoalsWorkspaceSource({
+      profile: base.profile,
+      goals: base.goals,
+      savingsPositions: base.savingsPositions,
+      investmentPositions: base.investmentPositions,
+      snapshots: currentSnapshots,
+      allocations: allocations.filter((allocation: any) =>
+        currentSnapshotIds.has(allocation.snapshotId),
+      ),
+    }),
+    pendingSnapshots: pendingSnapshots.map(mapSnapshot),
+    pendingAllocations: allocations
+      .filter((allocation: any) => pendingSnapshotIds.has(allocation.snapshotId))
+      .map(mapAllocation),
+  }
+}
+
+export async function getGoalLifecycleState(
+  userId: string,
+  currentMonth: string,
+): Promise<GoalLifecycleState | null> {
+  return getGoalLifecycleStateWithExecutor(db, userId, currentMonth)
+}
+
 export async function replacePendingAllocationSnapshot(
   tx: any,
   userId: string,
-  allocation: GoalCreationAllocation,
+  allocation: GoalCreationAllocation | { effectiveMonth: string; entries?: any[] },
 ): Promise<string> {
   const existingSnapshot = await tx.query.allocationPlanSnapshots.findFirst({
     where: (snapshots: any, { and, eq }: any) =>
@@ -602,6 +671,84 @@ export async function confirmGoalEditInRepository(input: {
   })
 }
 
+export async function confirmGoalLifecycleInRepository(input: {
+  userId: string
+  goalId: string
+  lifecycle: GoalLifecycle
+  currentMonth: string
+  draft?: {
+    allocations?: Array<{
+      goalId: string
+      percentage: string
+    }>
+  }
+  previewToken: string
+}): Promise<void> {
+  const { userId, goalId, lifecycle, currentMonth, draft, previewToken } = input
+
+  return db.transaction(async (tx) => {
+    const lockedProfile = await tx
+      .select({ userId: financialProfiles.userId })
+      .from(financialProfiles)
+      .where(eq(financialProfiles.userId, userId))
+      .for('update')
+
+    if (!lockedProfile.length) {
+      throw new Error('Financial profile not found.')
+    }
+
+    const state = await getGoalLifecycleStateWithExecutor(tx, userId, currentMonth)
+    if (!state) throw new Error('Financial profile not found.')
+
+    const currentToken = createGoalLifecyclePreviewToken(
+      lifecycle,
+      goalId,
+      state,
+      currentMonth,
+      draft,
+    )
+    const proposal = buildGoalLifecycleProposal({
+      lifecycle,
+      goalId,
+      state,
+      currentMonth,
+      draft,
+    })
+
+    if (currentToken !== previewToken) {
+      throw new StaleGoalLifecyclePreviewError({ proposal, previewToken: currentToken })
+    }
+
+    await tx
+      .update(financialGoals)
+      .set({ status: proposal.nextStatus })
+      .where(and(eq(financialGoals.id, goalId), eq(financialGoals.userId, userId)))
+
+    if (proposal.pauseMonthlyCommitment) {
+      await tx
+        .update(financialProfiles)
+        .set({ plannedMonthlyContribution: null })
+        .where(eq(financialProfiles.userId, userId))
+    }
+
+    const snapshotId = await replacePendingAllocationSnapshot(
+      tx,
+      userId,
+      proposal.persistedAllocation,
+    )
+    await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
+    if (proposal.persistedAllocation.entries.length > 0) {
+      await tx.insert(allocationPlanEntries).values(
+        proposal.persistedAllocation.entries.map(({ goalId: entryGoalId, percentage }) => ({
+          snapshotId,
+          goalId: entryGoalId,
+          percentage,
+        })),
+      )
+    }
+  })
+}
+
 export function createGoalCreationPreviewToken(
   state: GoalCreationState,
   currentMonth: string,
@@ -630,6 +777,23 @@ export function createAllocationChangePreviewToken(
 ): string {
   return createHash('sha256')
     .update(serializeAllocationChangeState(state, currentMonth, draft))
+    .digest('hex')
+}
+
+export function createGoalLifecyclePreviewToken(
+  lifecycle: GoalLifecycle,
+  goalId: string,
+  state: GoalLifecycleState,
+  currentMonth: string,
+  draft?: {
+    allocations?: Array<{
+      goalId: string
+      percentage: string
+    }>
+  },
+): string {
+  return createHash('sha256')
+    .update(serializeGoalLifecycleState(lifecycle, goalId, state, currentMonth, draft))
     .digest('hex')
 }
 

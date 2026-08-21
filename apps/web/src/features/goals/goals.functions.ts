@@ -3,13 +3,16 @@ import {
   confirmAllocationChangeServer,
   confirmGoalCreationServer,
   confirmGoalEditServer,
+  confirmGoalLifecycleServer,
   getAllocationChangeContextServer,
   getGoalCreationContextServer,
   getGoalEditContextServer,
+  getGoalLifecycleContextServer,
   getGoalsWorkspaceServer,
   previewAllocationChangeServer,
   previewGoalCreationServer,
   previewGoalEditServer,
+  previewGoalLifecycleServer,
 } from './goals.server'
 import {
   confirmGoalCreationSchema,
@@ -22,6 +25,11 @@ import {
   allocationChangeDraftSchema,
   confirmAllocationChangeSchema,
 } from './allocation-change.schema'
+import {
+  confirmGoalLifecycleSchema,
+  goalLifecyclePreviewSchema,
+  goalLifecycleRequestSchema,
+} from './goal-lifecycle.schema'
 
 export const getGoalsWorkspace = createServerFn({ method: 'GET' })
   .handler(getGoalsWorkspaceServer)
@@ -59,5 +67,18 @@ export const previewAllocationChange = createServerFn({ method: 'POST' })
 export const confirmAllocationChange = createServerFn({ method: 'POST' })
   .validator((data) => confirmAllocationChangeSchema.parse(data))
   .handler(confirmAllocationChangeServer)
+
+export const getGoalLifecycleContext = createServerFn({ method: 'GET' })
+  .validator((data) => goalLifecycleRequestSchema.parse(data))
+  .handler(getGoalLifecycleContextServer)
+
+export const previewGoalLifecycle = createServerFn({ method: 'POST' })
+  .validator((data) => goalLifecyclePreviewSchema.parse(data))
+  .handler(previewGoalLifecycleServer)
+
+export const confirmGoalLifecycle = createServerFn({ method: 'POST' })
+  .validator((data) => confirmGoalLifecycleSchema.parse(data))
+  .handler(confirmGoalLifecycleServer)
+
 
 

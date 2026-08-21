@@ -38,7 +38,7 @@ describe('onboarding database schema', () => {
     expect(financialProfiles.approximateMonthlyExpenses.name).toBe('approximate_monthly_expenses')
     expect(financialProfiles.expensesKnowledge.name).toBe('expenses_knowledge')
     expect(financialProfiles.plannedMonthlyContribution.name).toBe('planned_monthly_contribution')
-    expect(financialProfiles.plannedMonthlyContribution.notNull).toBe(true)
+    expect(financialProfiles.plannedMonthlyContribution.notNull).toBe(false)
     expect(financialProfiles.onboardingCompleted.name).toBe('onboarding_completed')
   })
 

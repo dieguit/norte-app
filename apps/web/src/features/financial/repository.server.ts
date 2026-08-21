@@ -111,7 +111,7 @@ export async function getInitialHomeState(userId: string): Promise<InitialHomeSt
     : goal.targetAmount
       ? createMoney(goal.targetAmount, goal.currency as CurrencyCode)
       : undefined
-  const monthlyCommitment = createMoney(profile.plannedMonthlyContribution, profile.baseCurrency as CurrencyCode)
+  const monthlyCommitment = createMoney(profile.plannedMonthlyContribution ?? '0.00', profile.baseCurrency as CurrencyCode)
   const destinationAmount = convertCommitmentToDestination(
     monthlyCommitment,
     goal.currency as CurrencyCode,
