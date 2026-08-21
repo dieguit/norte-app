@@ -334,6 +334,9 @@ describe('saving-contribution.repository.server', () => {
     percentage: '100.00',
   }
 
+  let savingContributionValues: any = null
+  let investmentContributionValues: any = null
+
   function setupDbMocks(overrides?: {
     profile?: any
     goals?: any[]
@@ -407,11 +410,13 @@ describe('saving-contribution.repository.server', () => {
     })
 
     mockTx.insert.mockImplementation((table: any) => ({
-      values: vi.fn().mockImplementation((_val: any) => {
+      values: vi.fn().mockImplementation((val: any) => {
         if (table === savingContributions) {
+          savingContributionValues = val
           return { returning: vi.fn().mockResolvedValue([{ id: 'contrib_created_123' }]) }
         }
         if (table === investmentContributions) {
+          investmentContributionValues = val
           return { returning: vi.fn().mockResolvedValue([{ id: 'inv_contrib_created_123' }]) }
         }
         if (table === goalSavingsPositions) {
@@ -440,6 +445,8 @@ describe('saving-contribution.repository.server', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    savingContributionValues = null
+    investmentContributionValues = null
   })
 
   describe('getSavingContributionState', () => {
@@ -653,6 +660,45 @@ describe('saving-contribution.repository.server', () => {
       expect(mockTx.insert).toHaveBeenCalledWith(investmentContributions)
       expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
       expect(mockTx.insert).toHaveBeenCalledWith(investmentContributionAllocations)
+    })
+
+    it('persists explicit createdAt when provided for saving contribution', async () => {
+      setupDbMocks()
+      const state = (await getSavingContributionState(userId, currentMonth))!
+      const previewToken = createSavingContributionPreviewToken(state, currentMonth, draftArs)
+      const createdAt = new Date('2026-07-31T12:00:00.000Z')
+
+      await createSavingContributionInRepository({
+        userId,
+        currentMonth,
+        draft: draftArs,
+        previewToken,
+        createdAt,
+      })
+
+      expect(savingContributionValues).toEqual(expect.objectContaining({ createdAt }))
+    })
+
+    it('persists explicit createdAt when provided for investment contribution', async () => {
+      setupDbMocks()
+      const state = (await getSavingContributionState(userId, currentMonth))!
+      const draftInvestArs: SavingDraftInput = {
+        kind: 'investment',
+        currency: 'ARS',
+        amount: '20000.00',
+      }
+      const previewToken = createSavingContributionPreviewToken(state, currentMonth, draftInvestArs)
+      const createdAt = new Date('2026-07-31T12:00:00.000Z')
+
+      await createSavingContributionInRepository({
+        userId,
+        currentMonth,
+        draft: draftInvestArs,
+        previewToken,
+        createdAt,
+      })
+
+      expect(investmentContributionValues).toEqual(expect.objectContaining({ createdAt }))
     })
 
     it('resolves investment position via fallback query when state.source.investmentPositions does not contain it upfront', async () => {

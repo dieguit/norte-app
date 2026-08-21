@@ -204,8 +204,9 @@ export async function createSavingContributionInRepository(input: {
   currentMonth: string
   draft: SavingDraftInput
   previewToken: string
+  createdAt?: Date
 }): Promise<{ contributionId: string }> {
-  const { userId, currentMonth, draft, previewToken } = input
+  const { userId, currentMonth, draft, previewToken, createdAt } = input
 
   return db.transaction(async (tx) => {
     const lockedProfile = await tx
@@ -277,6 +278,7 @@ export async function createSavingContributionInRepository(input: {
           currency: normalizedDraft.currency,
           arsSpent: normalizedDraft.arsSpent ? normalizedDraft.arsSpent.amount : null,
           effectiveRate: normalizedDraft.effectiveRate ?? null,
+          ...(createdAt ? { createdAt } : {}),
         })
         .returning({ id: investmentContributions.id })
 
@@ -334,6 +336,7 @@ export async function createSavingContributionInRepository(input: {
         location: normalizedDraft.location || null,
         arsSpent: normalizedDraft.arsSpent ? normalizedDraft.arsSpent.amount : null,
         effectiveRate: normalizedDraft.effectiveRate ?? null,
+        ...(createdAt ? { createdAt } : {}),
       })
       .returning({ id: savingContributions.id })
 

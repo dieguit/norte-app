@@ -15,9 +15,14 @@ export const previewTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, 'Token de v
 
 export const contributionIdSchema = z.string().uuid('ID de aporte inválido.')
 
+const catchUpMonthSchema = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mes de regularización inválido.')
+
 export const confirmContributionSchema = z.object({
   draft: contributionDraftInputSchema,
   previewToken: previewTokenSchema,
+  catchUpMonth: catchUpMonthSchema.optional(),
 })
 
 export const confirmSavingContributionSchema = confirmContributionSchema

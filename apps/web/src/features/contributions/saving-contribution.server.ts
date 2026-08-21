@@ -1,5 +1,6 @@
 import '@tanstack/react-start/server-only'
 import { requireFinancialUser } from '../financial/auth.server'
+import { getPreviousCalendarMonth } from '../financial/financial'
 import {
   buildSavingPreview,
   type SavingContributionContext,
@@ -22,6 +23,16 @@ import type {
 } from './saving-contribution.schema'
 
 export type { SavingContributionContext, SavingContributionContextState }
+
+function getCatchUpCreatedAt(catchUpMonth: string | undefined, now: Date): Date | undefined {
+  if (!catchUpMonth) return undefined
+  if (catchUpMonth !== getPreviousCalendarMonth(now)) {
+    throw new Error('Solo podés regularizar el mes anterior.')
+  }
+
+  const [year, month] = catchUpMonth.split('-').map(Number)
+  return new Date(Date.UTC(year, month, 0, 12))
+}
 
 export async function getSavingContributionContextServer(): Promise<SavingContributionContextState> {
   const userId = await requireFinancialUser()
@@ -105,7 +116,9 @@ export async function confirmSavingContributionServer({
   | { status: 'stale'; preview: SavingContributionPreviewResult }
 > {
   const userId = await requireFinancialUser()
-  const currentMonth = new Date().toISOString().slice(0, 7)
+  const now = new Date()
+  const currentMonth = now.toISOString().slice(0, 7)
+  const createdAt = getCatchUpCreatedAt(data.catchUpMonth, now)
 
   try {
     const result = await createSavingContributionInRepository({
@@ -113,6 +126,7 @@ export async function confirmSavingContributionServer({
       currentMonth,
       draft: data.draft,
       previewToken: data.previewToken,
+      ...(createdAt ? { createdAt } : {}),
     })
     return { status: 'created' as const, contributionId: result.contributionId }
   } catch (error) {

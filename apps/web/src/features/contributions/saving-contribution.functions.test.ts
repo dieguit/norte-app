@@ -564,6 +564,93 @@ describe('confirmSavingContribution', () => {
 
     vi.useRealTimers()
   })
+
+  it('forwards derived createdAt to repository when catchUpMonth is the previous calendar month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(createSavingContributionInRepository).mockResolvedValue({
+      contributionId: '550e8400-e29b-41d4-a716-446655440000',
+    })
+
+    const payload: ConfirmSavingContributionInput = {
+      draft: validDraft,
+      previewToken: validToken,
+      catchUpMonth: '2026-07',
+    }
+
+    const result = await confirmSavingContribution({ data: payload })
+
+    expect(createSavingContributionInRepository).toHaveBeenCalledWith({
+      userId: 'user_456',
+      currentMonth: '2026-08',
+      draft: expect.objectContaining({ currency: 'ARS', amount: '10000.00' }),
+      previewToken: validToken,
+      createdAt: new Date('2026-07-31T12:00:00.000Z'),
+    })
+    expect(result).toEqual({
+      status: 'created',
+      contributionId: '550e8400-e29b-41d4-a716-446655440000',
+    })
+
+    vi.useRealTimers()
+  })
+
+  it('rejects malformed catchUpMonth through validator schema', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    await expect(
+      confirmSavingContribution({
+        data: {
+          draft: validDraft,
+          previewToken: validToken,
+          catchUpMonth: '2026-7',
+        } as any,
+      }),
+    ).rejects.toThrow()
+
+    await expect(
+      confirmSavingContribution({
+        data: {
+          draft: validDraft,
+          previewToken: validToken,
+          catchUpMonth: '2026-13',
+        } as any,
+      }),
+    ).rejects.toThrow()
+
+    vi.useRealTimers()
+  })
+
+  it('rejects catchUpMonth that is not strictly the previous calendar month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    await expect(
+      confirmSavingContribution({
+        data: {
+          draft: validDraft,
+          previewToken: validToken,
+          catchUpMonth: '2026-06',
+        } as any,
+      }),
+    ).rejects.toThrow('Solo podés regularizar el mes anterior.')
+
+    await expect(
+      confirmSavingContribution({
+        data: {
+          draft: validDraft,
+          previewToken: validToken,
+          catchUpMonth: '2026-08',
+        } as any,
+      }),
+    ).rejects.toThrow('Solo podés regularizar el mes anterior.')
+
+    vi.useRealTimers()
+  })
 })
 
 describe('updateSavingContribution', () => {
