@@ -135,7 +135,7 @@ export async function getSavingContributionStateWithExecutor(
     }))
 
   const targets = deriveMonthlySavingTargets({
-    monthlyCommitmentArs: profile.monthlyCommitmentAmount,
+    monthlyCommitmentArs: profile.plannedMonthlyContribution,
     goals: activeGoals.map((g: any) => ({
       id: g.id,
       currency: g.currency,

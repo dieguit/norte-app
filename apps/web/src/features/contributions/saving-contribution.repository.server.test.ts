@@ -302,6 +302,14 @@ describe('saving-contribution.repository.server', () => {
       expect(state?.eligibleGoalsUsd).toEqual([
         { id: 'g_usd_1', name: 'Fondo de Emergencia USD', percentage: '100.00' },
       ])
+      expect(state?.monthlyTargetArs).toEqual({
+        amount: '100000.00',
+        currency: 'ARS',
+      })
+      expect(state?.monthlyTargetUsd).toEqual({
+        amount: '66.67',
+        currency: 'USD',
+      })
     })
 
     it('handles empty goals without issuing inArray queries with empty arrays', async () => {
