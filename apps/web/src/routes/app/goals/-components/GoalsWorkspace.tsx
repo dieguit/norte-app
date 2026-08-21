@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Pause, Pencil, Play } from "lucide-react";
+import { ChevronDown, ChevronRight, Pause, Pencil, Play } from "lucide-react";
 import {
   formatCalendarMonth,
   formatMoney,
@@ -331,19 +331,17 @@ export function GoalsWorkspace({
                     [group.status]: !current[group.status],
                   }));
                 }}
-                className="flex w-full items-center justify-between py-2 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--lagoon)] cursor-pointer"
+                className="inline-flex w-fit items-center gap-2 py-2 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--lagoon)] cursor-pointer"
               >
-                <div className="flex items-center gap-2">
-                  <span className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-                    {groupTitle}
-                  </span>
-                  <span className="text-sm font-medium text-[var(--sea-ink-soft)]">
-                    ({group.goals.length})
-                  </span>
-                </div>
-                <ChevronDown
+                <span className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
+                  {groupTitle}
+                </span>
+                <span className="text-sm font-medium text-[var(--sea-ink-soft)]">
+                  ({group.goals.length})
+                </span>
+                <ChevronRight
                   className={`size-5 text-[var(--sea-ink-soft)] transition-transform motion-reduce:transition-none ${
-                    isOpen ? "rotate-180" : ""
+                    isOpen ? "rotate-90" : ""
                   }`}
                   aria-hidden="true"
                 />
