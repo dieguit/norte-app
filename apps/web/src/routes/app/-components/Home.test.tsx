@@ -136,8 +136,8 @@ describe('Home initial-plan component', () => {
     render(<Home home={{ ...fixedSavingsHome, previousMonthShortfalls: shortfalls }} />)
 
     expect(screen.getByText('No cumpliste todos tus objetivos de abril.')).toBeVisible()
-    expect(screen.getByText('En abril te faltaron US$ 20,00 para ahorro.')).toBeVisible()
-    expect(screen.getByText('En abril te faltaron $ 25.000,00 para inversión.')).toBeVisible()
+    expect(screen.getByText('En abril te faltaron ahorrar USD US$ 20,00.')).toBeVisible()
+    expect(screen.getByText('En abril te faltaron invertir ARS $ 25.000,00.')).toBeVisible()
 
     const section = screen.getByRole('region', { name: 'No cumpliste todos tus objetivos de abril.' })
     expect(section).toBeVisible()

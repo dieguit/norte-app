@@ -56,8 +56,9 @@ export function Home({ home, now }: HomeProps) {
           <ul className="mt-2 flex flex-col gap-1 text-sm text-[var(--sea-ink-soft)]">
             {home.previousMonthShortfalls.map((shortfall, index) => (
               <li key={`${shortfall.kind}-${shortfall.currency}-${index}`}>
-                En {previousMonthName} te faltaron {formatMoney(shortfall.amount)} para{' '}
-                {shortfall.kind === 'investment' ? 'inversión' : 'ahorro'}.
+                En {previousMonthName} te faltaron{' '}
+                {shortfall.kind === 'investment' ? 'invertir' : 'ahorrar'} {shortfall.currency}{' '}
+                {formatMoney(shortfall.amount)}.
               </li>
             ))}
           </ul>
