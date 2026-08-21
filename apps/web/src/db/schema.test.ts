@@ -8,6 +8,8 @@ import {
   financialProfiles,
   goalInvestmentPositions,
   goalSavingsPositions,
+  investmentContributionAllocations,
+  investmentContributions,
   onboardingDrafts,
   savingContributionAllocations,
   savingContributions,
@@ -93,6 +95,19 @@ describe('onboarding database schema', () => {
     expect(savingContributions.effectiveRate.name).toBe('effective_rate')
     expect(getTableName(savingContributionAllocations)).toBe('saving_contribution_allocations')
     expect(savingContributionAllocations.savingPositionId.name).toBe('saving_position_id')
+  })
+
+  it('stores investment contributions and goal allocations', () => {
+    expect(investmentContributions).toBeDefined()
+    expect(investmentContributionAllocations).toBeDefined()
+    expect(getTableName(investmentContributions)).toBe('investment_contributions')
+    expect(investmentContributions.userId.name).toBe('user_id')
+    expect(investmentContributions.amount.name).toBe('amount')
+    expect(investmentContributions.currency.name).toBe('currency')
+    expect(investmentContributions.arsSpent.name).toBe('ars_spent')
+    expect(investmentContributions.effectiveRate.name).toBe('effective_rate')
+    expect(getTableName(investmentContributionAllocations)).toBe('investment_contribution_allocations')
+    expect(investmentContributionAllocations.investmentPositionId.name).toBe('investment_position_id')
   })
 })
 

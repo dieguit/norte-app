@@ -219,6 +219,63 @@ export const savingContributionAllocations = pgTable(
   ],
 )
 
+export const investmentContributions = pgTable(
+  'investment_contributions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
+    amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull(),
+    arsSpent: numeric('ars_spent', { precision: 12, scale: 2 }),
+    effectiveRate: numeric('effective_rate', { precision: 12, scale: 2 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => sql`now()`)
+      .notNull(),
+  },
+  (table) => [
+    index('investment_contributions_user_id_idx').on(table.userId),
+    check('investment_contributions_amount_check', sql`${table.amount} > 0`),
+    check('investment_contributions_currency_check', sql`${table.currency} in ('ARS', 'USD')`),
+    check(
+      'investment_contributions_usd_fields_check',
+      sql`(${table.currency} = 'USD' and ${table.arsSpent} is not null and ${table.effectiveRate} is not null) or (${table.currency} = 'ARS' and ${table.arsSpent} is null and ${table.effectiveRate} is null)`,
+    ),
+  ],
+)
+
+export const investmentContributionAllocations = pgTable(
+  'investment_contribution_allocations',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    contributionId: uuid('contribution_id')
+      .notNull()
+      .references(() => investmentContributions.id, { onDelete: 'cascade' }),
+    goalId: uuid('goal_id')
+      .notNull()
+      .references(() => financialGoals.id, { onDelete: 'cascade' }),
+    amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+    percentage: numeric('percentage', { precision: 5, scale: 2 }).notNull(),
+    investmentPositionId: uuid('investment_position_id')
+      .notNull()
+      .references(() => goalInvestmentPositions.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('investment_contribution_allocations_contribution_id_idx').on(table.contributionId),
+    index('investment_contribution_allocations_goal_id_idx').on(table.goalId),
+    uniqueIndex('investment_contribution_allocations_contribution_position_uidx').on(
+      table.contributionId,
+      table.investmentPositionId,
+    ),
+    check('investment_contribution_allocations_amount_check', sql`${table.amount} >= 0`),
+    check('investment_contribution_allocations_percentage_check', sql`${table.percentage} between 0 and 100`),
+  ],
+)
+
 export type OnboardingDraft = typeof onboardingDrafts.$inferSelect
 export type FinancialProfile = typeof financialProfiles.$inferSelect
 export type FinancialGoal = typeof financialGoals.$inferSelect
@@ -228,3 +285,6 @@ export type GoalSavingsPosition = typeof goalSavingsPositions.$inferSelect
 export type GoalInvestmentPosition = typeof goalInvestmentPositions.$inferSelect
 export type SavingContribution = typeof savingContributions.$inferSelect
 export type SavingContributionAllocation = typeof savingContributionAllocations.$inferSelect
+export type InvestmentContribution = typeof investmentContributions.$inferSelect
+export type InvestmentContributionAllocation = typeof investmentContributionAllocations.$inferSelect
+
