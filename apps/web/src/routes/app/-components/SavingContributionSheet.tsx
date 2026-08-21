@@ -8,17 +8,24 @@ import {
 } from '../../../components/ui/sheet'
 import { Button } from '../../../components/ui/button'
 import { getSavingContributionContext } from '../../../features/contributions/saving-contribution.functions'
-import type { SavingContributionContext } from '../../../features/contributions/saving-contribution'
+import type {
+  ContributionKind,
+  SavingContributionContext,
+} from '../../../features/contributions/saving-contribution'
 import { SavingContribution } from './SavingContribution'
 
 export interface SavingContributionSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  kind?: ContributionKind
+  currency?: 'ARS' | 'USD'
 }
 
 export function SavingContributionSheet({
   open,
   onOpenChange,
+  kind,
+  currency,
 }: SavingContributionSheetProps) {
   const [context, setContext] = useState<SavingContributionContext | null>(null)
   const [loading, setLoading] = useState(false)
@@ -33,7 +40,11 @@ export function SavingContributionSheet({
       .then((res) => {
         if (!active) return
         if (res.profile === 'missing') {
-          setError('Completá tu perfil financiero antes de registrar un ahorro.')
+          setError(
+            kind === 'investment'
+              ? 'Completá tu perfil financiero antes de registrar una inversión.'
+              : 'Completá tu perfil financiero antes de registrar un ahorro.',
+          )
         } else {
           setContext(res.context)
         }
@@ -49,7 +60,7 @@ export function SavingContributionSheet({
     return () => {
       active = false
     }
-  }, [])
+  }, [kind])
 
   useEffect(() => {
     if (!open) return
@@ -65,10 +76,12 @@ export function SavingContributionSheet({
       >
         <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
           <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-            Registrar ahorro
+            {kind === 'investment' ? 'Registrar inversión' : 'Registrar ahorro'}
           </SheetTitle>
           <SheetDescription className="text-sm text-[var(--sea-ink-soft)]">
-            Registrá un ahorro en ARS o USD y mirá cómo se distribuye en tus objetivos.
+            {kind === 'investment'
+              ? 'Registrá una inversión en ARS o USD y mirá cómo se distribuye en tus objetivos.'
+              : 'Registrá un ahorro en ARS o USD y mirá cómo se distribuye en tus objetivos.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -89,6 +102,9 @@ export function SavingContributionSheet({
           </div>
         ) : context ? (
           <SavingContribution
+            kind={kind}
+            currency={currency}
+            fixedCurrency={currency}
             context={context}
             onCancel={() => onOpenChange(false)}
             onSuccess={() => onOpenChange(false)}

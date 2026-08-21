@@ -507,4 +507,171 @@ describe('SavingContribution component', () => {
       ).toBeInTheDocument()
     })
   })
+
+  describe('Fixed kind and currency mode (Four-action UI)', () => {
+    const investmentContext: SavingContributionContext = {
+      currentMonth: '2026-08',
+      eligibleGoals: [
+        { id: 'goal-ars-1', name: 'Viaje a Bariloche', percentage: '100.00' },
+      ],
+      eligibleGoalsUsd: [
+        { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
+      ],
+      eligibleInvestmentGoals: [
+        { id: 'goal-inv-ars', name: 'CEDEARs ARS', percentage: '100.00' },
+      ],
+      eligibleInvestmentGoalsUsd: [
+        { id: 'goal-inv-usd', name: 'S&P 500 USD', percentage: '100.00' },
+      ],
+    }
+
+    const mockInvUsdPreview: SavingContributionPreviewResult = {
+      previewToken: 'd'.repeat(64),
+      preview: {
+        draft: {
+          kind: 'investment',
+          currency: 'USD',
+          amount: { amount: '200.00', currency: 'USD' },
+          arsSpent: { amount: '300000.00', currency: 'ARS' },
+          effectiveRate: '1500.00',
+        },
+        allocations: [
+          {
+            goalId: 'goal-inv-usd',
+            goalName: 'S&P 500 USD',
+            percentage: '100.00',
+            amount: { amount: '200.00', currency: 'USD' },
+            progressBefore: '10.00',
+            progressAfter: '25.00',
+            projectionBefore: { status: 'available', completionMonth: '2030-01' },
+            projectionAfter: { status: 'available', completionMonth: '2029-06' },
+          },
+        ],
+      },
+    }
+
+    it('renders investment USD fixed mode without currency switcher and without location input', async () => {
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      vi.mocked(previewSavingContribution).mockResolvedValue(mockInvUsdPreview)
+      vi.mocked(confirmSavingContribution).mockResolvedValue({
+        status: 'created',
+        contributionId: 'contrib-inv-1',
+      })
+
+      render(
+        <SavingContribution
+          kind="investment"
+          currency="USD"
+          context={investmentContext}
+          onCancel={vi.fn()}
+          onSuccess={onSuccess}
+        />,
+      )
+
+      expect(screen.queryByRole('button', { name: 'Ahorré ARS' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Ahorré USD' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Invertí ARS' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Invertí USD' })).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/dónde está guardado/i)).not.toBeInTheDocument()
+
+      const usdInput = screen.getByLabelText(/monto en dólares/i)
+      const arsSpentInput = screen.getByLabelText(/pesos gastados/i)
+      const rateInput = screen.getByLabelText(/tipo de cambio/i)
+
+      expect(rateInput).toHaveValue('1.500')
+
+      await user.type(usdInput, '200')
+      await waitFor(() => {
+        expect(arsSpentInput).toHaveValue('300.000')
+      })
+
+      await waitFor(() => {
+        expect(previewSavingContribution).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            kind: 'investment',
+            currency: 'USD',
+            amount: '200',
+          }),
+        })
+      })
+
+      expect(await screen.findByText('Así se distribuye tu inversión')).toBeVisible()
+      expect(screen.getAllByText('S&P 500 USD')[0]).toBeVisible()
+
+      const confirmBtn = screen.getByRole('button', { name: 'Confirmar inversión' })
+      expect(confirmBtn).toBeEnabled()
+
+      await user.click(confirmBtn)
+
+      await waitFor(() => {
+        expect(confirmSavingContribution).toHaveBeenCalledWith({
+          data: {
+            draft: expect.objectContaining({
+              kind: 'investment',
+              currency: 'USD',
+              amount: '200',
+            }),
+            previewToken: mockInvUsdPreview.previewToken,
+          },
+        })
+        expect(toast.success).toHaveBeenCalledWith('Inversión registrada.')
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('disables confirmation and shows empty message when no eligible investment goals exist in USD', () => {
+      const contextNoInvUsd: SavingContributionContext = {
+        ...investmentContext,
+        eligibleInvestmentGoalsUsd: [],
+      }
+
+      render(
+        <SavingContribution
+          kind="investment"
+          currency="USD"
+          context={contextNoInvUsd}
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      expect(
+        screen.getByText('No hay objetivos activos para distribuir la inversión en USD.'),
+      ).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Confirmar inversión' })).toBeDisabled()
+    })
+
+    it('renders investment ARS fixed mode without location input and shows Confirmar inversión', async () => {
+      render(
+        <SavingContribution
+          kind="investment"
+          currency="ARS"
+          context={investmentContext}
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      expect(screen.queryByLabelText(/dónde está guardado/i)).not.toBeInTheDocument()
+      expect(screen.getByLabelText(/monto en pesos/i)).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Confirmar inversión' })).toBeDisabled()
+    })
+
+    it('renders saving ARS fixed mode with location input and shows Confirmar ahorro', async () => {
+      render(
+        <SavingContribution
+          kind="saving"
+          currency="ARS"
+          context={investmentContext}
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByLabelText(/dónde está guardado/i)).toBeVisible()
+      expect(screen.getByLabelText(/monto en pesos/i)).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Confirmar ahorro' })).toBeDisabled()
+    })
+  })
 })

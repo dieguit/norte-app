@@ -17,6 +17,7 @@ import { PLANNING_ARS_PER_USD } from '../../../features/financial/financial'
 import {
   buildSavingPreview,
   deriveUsdPurchase,
+  type ContributionKind,
   type SavingContributionContext,
   type SavingContributionPreviewResult,
 } from '../../../features/contributions/saving-contribution'
@@ -29,6 +30,9 @@ import type { SavingContributionSummary } from '../../../features/goals/goals'
 import { formatGoalProjection } from '../goals/-components/AllocationImpactComparison'
 
 export interface SavingContributionProps {
+  kind?: ContributionKind
+  currency?: 'ARS' | 'USD'
+  fixedCurrency?: 'ARS' | 'USD'
   context?: SavingContributionContext
   initialContribution?: SavingContributionSummary | null
   onCancel: () => void
@@ -50,6 +54,9 @@ function formatDerivedMoney(val: string): string {
 }
 
 export function SavingContribution({
+  kind: propsKind,
+  currency: propsCurrency,
+  fixedCurrency: propsFixedCurrency,
   context,
   initialContribution,
   onCancel,
@@ -58,9 +65,17 @@ export function SavingContribution({
   const router = useRouter()
   const isEdit = Boolean(initialContribution)
 
-  const [currency, setCurrency] = useState<'ARS' | 'USD'>(
-    initialContribution ? (initialContribution.currency as 'ARS' | 'USD') : 'ARS',
-  )
+  const kind: ContributionKind =
+    initialContribution && 'kind' in initialContribution && (initialContribution as any).kind
+      ? ((initialContribution as any).kind as ContributionKind)
+      : propsKind ?? 'saving'
+
+  const isFixedCurrency = Boolean(propsFixedCurrency || propsCurrency)
+  const initialCurrency = initialContribution
+    ? (initialContribution.currency as 'ARS' | 'USD')
+    : propsCurrency || propsFixedCurrency || 'ARS'
+
+  const [currency, setCurrency] = useState<'ARS' | 'USD'>(initialCurrency)
   const [amount, setAmount] = useState(
     initialContribution ? formatDerivedMoney(initialContribution.amount) : '',
   )
@@ -73,13 +88,13 @@ export function SavingContribution({
   const [effectiveRate, setEffectiveRate] = useState(
     initialContribution?.effectiveRate
       ? formatDerivedMoney(initialContribution.effectiveRate)
-      : currency === 'USD'
+      : initialCurrency === 'USD'
         ? formatDerivedMoney(PLANNING_ARS_PER_USD)
         : '',
   )
   const [derivedField, setDerivedField] = useState<
     'arsSpent' | 'effectiveRate' | 'amount' | null
-  >(currency === 'USD' ? 'arsSpent' : null)
+  >(initialCurrency === 'USD' ? 'arsSpent' : null)
 
   const [preview, setPreview] = useState<SavingContributionPreviewResult | null>(null)
   const [isPreviewPending, setIsPreviewPending] = useState(false)
@@ -98,10 +113,15 @@ export function SavingContribution({
         percentage: a.percentage,
       }))
     }
+    if (kind === 'investment') {
+      return currency === 'USD'
+        ? context?.eligibleInvestmentGoalsUsd ?? []
+        : context?.eligibleInvestmentGoals ?? []
+    }
     return currency === 'USD'
       ? context?.eligibleGoalsUsd ?? []
       : context?.eligibleGoals ?? []
-  }, [isEdit, initialContribution, currency, context])
+  }, [isEdit, initialContribution, kind, currency, context])
   const hasEligibleGoals = Boolean(eligibleGoals && eligibleGoals.length > 0)
 
   const handleCurrencyChange = (newCurrency: 'ARS' | 'USD') => {
@@ -279,10 +299,12 @@ export function SavingContribution({
       if (isEdit && initialContribution) {
         try {
           const previewResult = buildSavingPreview({
+            kind,
             draft: {
+              kind,
               currency: 'ARS',
               amount,
-              location: location.trim() || null,
+              location: kind === 'saving' ? location.trim() || null : null,
             },
             eligibleGoals,
           })
@@ -303,9 +325,10 @@ export function SavingContribution({
       const timer = setTimeout(() => {
         previewSavingContribution({
           data: {
+            kind,
             currency: 'ARS',
             amount,
-            location: location.trim() || null,
+            location: kind === 'saving' ? location.trim() || null : null,
           },
         })
           .then((res) => {
@@ -356,10 +379,12 @@ export function SavingContribution({
       if (isEdit && initialContribution) {
         try {
           const previewResult = buildSavingPreview({
+            kind,
             draft: {
+              kind,
               currency: 'USD',
               amount,
-              location: location.trim() || null,
+              location: kind === 'saving' ? location.trim() || null : null,
               arsSpent: derivation?.arsSpent ?? (arsSpent || null),
               effectiveRate: derivation?.effectiveRate ?? (effectiveRate || null),
             },
@@ -382,9 +407,10 @@ export function SavingContribution({
       const timer = setTimeout(() => {
         previewSavingContribution({
           data: {
+            kind,
             currency: 'USD',
             amount,
-            location: location.trim() || null,
+            location: kind === 'saving' ? location.trim() || null : null,
             arsSpent: derivation?.arsSpent ?? (arsSpent || null),
             effectiveRate: derivation?.effectiveRate ?? (effectiveRate || null),
           },
@@ -409,6 +435,7 @@ export function SavingContribution({
       }
     }
   }, [
+    kind,
     currency,
     amount,
     location,
@@ -429,9 +456,10 @@ export function SavingContribution({
 
     try {
       const draftPayload = {
+        kind,
         currency,
         amount,
-        location: location.trim() || null,
+        location: kind === 'saving' ? location.trim() || null : null,
         arsSpent: currency === 'USD' ? (arsSpent || null) : null,
         effectiveRate: currency === 'USD' ? (effectiveRate || null) : null,
       }
@@ -445,7 +473,7 @@ export function SavingContribution({
         })
 
         await router.invalidate()
-        toast.success('Ahorro actualizado.')
+        toast.success(kind === 'investment' ? 'Inversión actualizada.' : 'Ahorro actualizado.')
         onSuccess()
         return
       }
@@ -467,7 +495,7 @@ export function SavingContribution({
       }
 
       await router.invalidate()
-      toast.success('Ahorro registrado.')
+      toast.success(kind === 'investment' ? 'Inversión registrada.' : 'Ahorro registrado.')
       onSuccess()
     } catch (err: any) {
       setServerError(err?.message ?? 'Ocurrió un error al guardar.')
@@ -485,44 +513,49 @@ export function SavingContribution({
       !validationError,
   )
 
+  const actionNoun = kind === 'investment' ? 'inversión' : 'ahorro'
+  const actionVerb = kind === 'investment' ? 'Invertí' : 'Ahorré'
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Scrollable Body */}
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
         {/* Currency Choice Segmented Control */}
-        <div
-          role="group"
-          aria-label="Moneda del ahorro"
-          className="flex items-center gap-2 rounded-xl bg-[var(--surface-strong)] p-1 border border-[var(--line)]"
-        >
-          <button
-            type="button"
-            disabled={isEdit}
-            onClick={() => handleCurrencyChange('ARS')}
-            className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
-              currency === 'ARS'
-                ? 'bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm'
-                : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
-            } ${isEdit ? 'cursor-not-allowed opacity-75' : ''}`}
+        {!isFixedCurrency && (
+          <div
+            role="group"
+            aria-label={`Moneda del ${actionNoun}`}
+            className="flex items-center gap-2 rounded-xl bg-[var(--surface-strong)] p-1 border border-[var(--line)]"
           >
-            Ahorré ARS
-          </button>
-          <button
-            type="button"
-            disabled={isEdit}
-            onClick={() => handleCurrencyChange('USD')}
-            className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
-              currency === 'USD'
-                ? 'bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm'
-                : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
-            } ${isEdit ? 'cursor-not-allowed opacity-75' : ''}`}
-          >
-            Ahorré USD
-          </button>
-        </div>
+            <button
+              type="button"
+              disabled={isEdit}
+              onClick={() => handleCurrencyChange('ARS')}
+              className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
+                currency === 'ARS'
+                  ? 'bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm'
+                  : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
+              } ${isEdit ? 'cursor-not-allowed opacity-75' : ''}`}
+            >
+              {actionVerb} ARS
+            </button>
+            <button
+              type="button"
+              disabled={isEdit}
+              onClick={() => handleCurrencyChange('USD')}
+              className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
+                currency === 'USD'
+                  ? 'bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm'
+                  : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
+              } ${isEdit ? 'cursor-not-allowed opacity-75' : ''}`}
+            >
+              {actionVerb} USD
+            </button>
+          </div>
+        )}
 
         {/* Monthly Target Headline */}
-        {!isEdit && hasEligibleGoals && (currency === 'USD' ? context?.monthlyTargetUsd : context?.monthlyTargetArs) && (
+        {!isEdit && kind === 'saving' && hasEligibleGoals && (currency === 'USD' ? context?.monthlyTargetUsd : context?.monthlyTargetArs) && (
           <div className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/60 px-4 py-3 text-sm text-[var(--sea-ink)]">
             {Number((currency === 'USD' ? context?.monthlyTargetUsd : context?.monthlyTargetArs)?.amount) > 0 ? (
               <>
@@ -636,18 +669,20 @@ export function SavingContribution({
               </div>
             )}
 
-            <Field>
-              <FieldLabel htmlFor="saving-location-input">
-                ¿Dónde está guardado? (opcional)
-              </FieldLabel>
-              <Input
-                id="saving-location-input"
-                aria-label="¿Dónde está guardado? (opcional)"
-                placeholder="Ej: Banco Santander, En efectivo..."
-                value={location}
-                onChange={(e) => handleLocationChange(e.target.value)}
-              />
-            </Field>
+            {kind === 'saving' && (
+              <Field>
+                <FieldLabel htmlFor="saving-location-input">
+                  ¿Dónde está guardado? (opcional)
+                </FieldLabel>
+                <Input
+                  id="saving-location-input"
+                  aria-label="¿Dónde está guardado? (opcional)"
+                  placeholder="Ej: Banco Santander, En efectivo..."
+                  value={location}
+                  onChange={(e) => handleLocationChange(e.target.value)}
+                />
+              </Field>
+            )}
           </FieldSet>
         </FieldGroup>
 
@@ -655,9 +690,13 @@ export function SavingContribution({
         {!hasEligibleGoals && (
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-strong)]/50 p-4 text-center">
             <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
-              {currency === 'USD'
-                ? 'No hay objetivos activos para distribuir el ahorro en USD.'
-                : 'No tenés objetivos activos en ARS para asignar este ahorro.'}
+              {kind === 'investment'
+                ? currency === 'USD'
+                  ? 'No hay objetivos activos para distribuir la inversión en USD.'
+                  : 'No hay objetivos activos para distribuir la inversión en ARS.'
+                : currency === 'USD'
+                  ? 'No hay objetivos activos para distribuir el ahorro en USD.'
+                  : 'No tenés objetivos activos en ARS para asignar este ahorro.'}
             </p>
           </div>
         )}
@@ -666,9 +705,9 @@ export function SavingContribution({
         {preview && preview.preview.allocations.length > 0 && (
           <div className="flex flex-col gap-6">
             {/* Allocation Breakdown */}
-            <section aria-label="Distribución del ahorro" className="flex flex-col gap-3">
+            <section aria-label={`Distribución de la ${actionNoun}`} className="flex flex-col gap-3">
               <h3 className="text-base font-semibold text-[var(--sea-ink)]">
-                Así se distribuye tu ahorro
+                Así se distribuye tu {actionNoun}
               </h3>
               <div className="flex flex-col divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-2 shadow-sm">
                 {preview.preview.allocations.map((alloc) => (
@@ -774,7 +813,7 @@ export function SavingContribution({
             ? 'Guardando...'
             : isEdit
               ? 'Guardar cambios'
-              : 'Confirmar ahorro'}
+              : `Confirmar ${actionNoun}`}
         </Button>
       </div>
     </div>

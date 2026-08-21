@@ -5,14 +5,14 @@ import {
   PLANNING_ARS_PER_USD,
   type InitialHomeState,
 } from '../../../features/financial/financial'
-import { SavingContributionSheet } from './SavingContributionSheet'
+import { ContributionActionSheet } from './ContributionActionSheet'
 
 export interface HomeProps {
   home: InitialHomeState
 }
 
 export function Home({ home }: HomeProps) {
-  const [isSavingOpen, setIsSavingOpen] = useState(false)
+  const [isContributionOpen, setIsContributionOpen] = useState(false)
 
   const isUnknownExpensesEmergency =
     home.goal.type === 'emergency_fund' && home.projection.status === 'unknown_expenses'
@@ -38,11 +38,11 @@ export function Home({ home }: HomeProps) {
       </div>
 
       <div className="flex items-center">
-        <Button type="button" onClick={() => setIsSavingOpen(true)}>
-          Registrar ahorro
+        <Button type="button" onClick={() => setIsContributionOpen(true)}>
+          + Registrar
         </Button>
       </div>
-      <SavingContributionSheet open={isSavingOpen} onOpenChange={setIsSavingOpen} />
+      <ContributionActionSheet open={isContributionOpen} onOpenChange={setIsContributionOpen} />
 
       {/* Tu Plan Section (Trajectory First) */}
       <section

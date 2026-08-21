@@ -175,7 +175,7 @@ describe('Home initial-plan component', () => {
     expect(screen.getByText('Todavía no registraste aportes')).toBeVisible()
   })
 
-  it('renders Registrar ahorro button directly after introduction and opens SavingContributionSheet', async () => {
+  it('renders + Registrar button directly after introduction and opens four-action chooser', async () => {
     const user = userEvent.setup()
     vi.mocked(getSavingContributionContext).mockResolvedValue({
       profile: 'present',
@@ -187,18 +187,32 @@ describe('Home initial-plan component', () => {
         eligibleGoalsUsd: [
           { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
         ],
+        eligibleInvestmentGoals: [
+          { id: 'goal-inv-ars', name: 'CEDEARs ARS', percentage: '100.00' },
+        ],
+        eligibleInvestmentGoalsUsd: [
+          { id: 'goal-inv-usd', name: 'S&P 500 USD', percentage: '100.00' },
+        ],
       },
     })
 
     render(<Home home={knownExpenseEmergencyFund} />)
 
-    const launchButton = screen.getByRole('button', { name: 'Registrar ahorro' })
+    const launchButton = screen.getByRole('button', { name: '+ Registrar' })
     expect(launchButton).toBeInTheDocument()
     expect(launchButton).toBeVisible()
 
     await user.click(launchButton)
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(await screen.findByText('Ahorré ARS')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Ahorré ARS' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Ahorré USD' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Invertí ARS' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Invertí USD' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Invertí USD' }))
+
+    expect(await screen.findByRole('button', { name: 'Confirmar inversión' })).toBeDisabled()
+    expect(screen.queryByLabelText(/dónde está guardado/i)).not.toBeInTheDocument()
   })
 })

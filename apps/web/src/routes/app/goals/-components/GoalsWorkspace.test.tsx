@@ -569,6 +569,7 @@ describe('GoalsWorkspace component', () => {
       savingContributions: [
         {
           id: 'contrib-1',
+          kind: 'saving',
           amount: '50000.00',
           currency: 'ARS',
           location: 'Banco Santander',
@@ -611,6 +612,7 @@ describe('GoalsWorkspace component', () => {
       savingContributions: [
         {
           id: 'contrib-1',
+          kind: 'saving',
           amount: '50000.00',
           currency: 'ARS',
           location: 'Banco Santander',
@@ -674,6 +676,7 @@ describe('GoalsWorkspace component', () => {
       savingContributions: [
         {
           id: 'contrib-1',
+          kind: 'saving',
           amount: '50000.00',
           currency: 'ARS',
           location: 'Banco Santander',
