@@ -72,6 +72,12 @@ describe('onboarding database schema', () => {
     expect('channelPlanAllocations' in schema).toBe(false)
   })
 
+  it('stores the monthly commitment on an allocation snapshot', () => {
+    expect(allocationPlanSnapshots.plannedMonthlyContribution.name).toBe(
+      'planned_monthly_contribution',
+    )
+  })
+
   it('stores Goal workspace lifecycle and actual positions', () => {
     expect(financialGoals.priority.name).toBe('priority')
     expect(financialGoals.status.name).toBe('status')

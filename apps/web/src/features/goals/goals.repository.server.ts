@@ -500,6 +500,7 @@ export async function replacePendingAllocationSnapshot(
   tx: any,
   userId: string,
   allocation: GoalCreationAllocation | { effectiveMonth: string; entries?: any[] },
+  plannedMonthlyContribution?: string | null,
 ): Promise<string> {
   const existingSnapshot = await tx.query.allocationPlanSnapshots.findFirst({
     where: (snapshots: any, { and, eq }: any) =>
@@ -510,6 +511,12 @@ export async function replacePendingAllocationSnapshot(
   })
 
   if (existingSnapshot) {
+    if (plannedMonthlyContribution !== undefined) {
+      await tx
+        .update(allocationPlanSnapshots)
+        .set({ plannedMonthlyContribution: plannedMonthlyContribution ?? null })
+        .where(eq(allocationPlanSnapshots.id, existingSnapshot.id))
+    }
     return existingSnapshot.id
   }
 
@@ -518,6 +525,7 @@ export async function replacePendingAllocationSnapshot(
     .values({
       userId,
       effectiveMonth: allocation.effectiveMonth,
+      plannedMonthlyContribution: plannedMonthlyContribution ?? null,
     })
     .returning({ id: allocationPlanSnapshots.id })
 
@@ -534,7 +542,10 @@ export async function confirmGoalCreationInRepository(input: {
 
   return db.transaction(async (tx) => {
     const lockedProfile = await tx
-      .select({ userId: financialProfiles.userId })
+      .select({
+        userId: financialProfiles.userId,
+        plannedMonthlyContribution: financialProfiles.plannedMonthlyContribution,
+      })
       .from(financialProfiles)
       .where(eq(financialProfiles.userId, userId))
       .for('update')
@@ -579,7 +590,12 @@ export async function confirmGoalCreationInRepository(input: {
       })
     }
 
-    const snapshotId = await replacePendingAllocationSnapshot(tx, userId, proposal.allocation)
+    const snapshotId = await replacePendingAllocationSnapshot(
+      tx,
+      userId,
+      proposal.allocation,
+      lockedProfile[0]?.plannedMonthlyContribution ?? state.source.profile?.plannedMonthlyContribution ?? null,
+    )
     await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
     await tx.insert(allocationPlanEntries).values(
       proposal.allocation.entries.map((entry) => ({
@@ -603,7 +619,10 @@ export async function confirmAllocationChangeInRepository(input: {
 
   return db.transaction(async (tx) => {
     const lockedProfile = await tx
-      .select({ userId: financialProfiles.userId })
+      .select({
+        userId: financialProfiles.userId,
+        plannedMonthlyContribution: financialProfiles.plannedMonthlyContribution,
+      })
       .from(financialProfiles)
       .where(eq(financialProfiles.userId, userId))
       .for('update')
@@ -621,7 +640,12 @@ export async function confirmAllocationChangeInRepository(input: {
       throw new StaleAllocationChangePreviewError({ proposal, previewToken: currentToken })
     }
 
-    const snapshotId = await replacePendingAllocationSnapshot(tx, userId, proposal.allocation)
+    const snapshotId = await replacePendingAllocationSnapshot(
+      tx,
+      userId,
+      proposal.allocation,
+      lockedProfile[0]?.plannedMonthlyContribution ?? state.source.profile?.plannedMonthlyContribution ?? null,
+    )
     await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
     await tx.insert(allocationPlanEntries).values(
       proposal.allocation.entries.map((entry) => ({
@@ -644,7 +668,10 @@ export async function confirmGoalEditInRepository(input: {
 
   return db.transaction(async (tx) => {
     const lockedProfile = await tx
-      .select({ userId: financialProfiles.userId })
+      .select({
+        userId: financialProfiles.userId,
+        plannedMonthlyContribution: financialProfiles.plannedMonthlyContribution,
+      })
       .from(financialProfiles)
       .where(eq(financialProfiles.userId, userId))
       .for('update')
@@ -703,7 +730,12 @@ export async function confirmGoalEditInRepository(input: {
         .where(eq(goalInvestmentPositions.goalId, goalId))
     }
 
-    const snapshotId = await replacePendingAllocationSnapshot(tx, userId, proposal.allocation)
+    const snapshotId = await replacePendingAllocationSnapshot(
+      tx,
+      userId,
+      proposal.allocation,
+      lockedProfile[0]?.plannedMonthlyContribution ?? state.source.profile?.plannedMonthlyContribution ?? null,
+    )
     await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
     if (proposal.allocation.entries.length > 0) {
       await tx.insert(allocationPlanEntries).values(
@@ -734,7 +766,10 @@ export async function confirmGoalLifecycleInRepository(input: {
 
   return db.transaction(async (tx) => {
     const lockedProfile = await tx
-      .select({ userId: financialProfiles.userId })
+      .select({
+        userId: financialProfiles.userId,
+        plannedMonthlyContribution: financialProfiles.plannedMonthlyContribution,
+      })
       .from(financialProfiles)
       .where(eq(financialProfiles.userId, userId))
       .for('update')
@@ -781,6 +816,9 @@ export async function confirmGoalLifecycleInRepository(input: {
       tx,
       userId,
       proposal.persistedAllocation,
+      proposal.pauseMonthlyCommitment
+        ? null
+        : (lockedProfile[0]?.plannedMonthlyContribution ?? state.source.profile?.plannedMonthlyContribution ?? null),
     )
     await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
     if (proposal.persistedAllocation.entries.length > 0) {

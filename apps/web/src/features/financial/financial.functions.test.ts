@@ -192,6 +192,7 @@ describe('financial.server boundary', () => {
       expect(mockSnapshotValues).toHaveBeenCalledWith({
         userId: 'user_1',
         effectiveMonth: '2026-09-01',
+        plannedMonthlyContribution: '50000.00',
       })
       expect(mockAllocationValues).toHaveBeenCalledWith({
         snapshotId: 'snapshot_1',

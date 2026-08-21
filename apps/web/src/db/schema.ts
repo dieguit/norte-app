@@ -83,6 +83,10 @@ export const allocationPlanSnapshots = pgTable(
       .notNull()
       .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
     effectiveMonth: date('effective_month', { mode: 'string' }).notNull(),
+    plannedMonthlyContribution: numeric('planned_monthly_contribution', {
+      precision: 12,
+      scale: 2,
+    }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

@@ -61,6 +61,7 @@ export async function persistInitialPlan(
       .values({
         userId,
         effectiveMonth: `${channel.effectiveMonth}-01`,
+        plannedMonthlyContribution: plan.plannedContribution.amount,
       })
       .returning({ id: allocationPlanSnapshots.id })
 

@@ -883,6 +883,7 @@ describe('goals.repository.server', () => {
 
   describe('confirmGoalCreationInRepository', () => {
     const currentMonth = '2026-08'
+    let insertedSnapshotValues: any = null
 
     const mockProfile = {
       userId: 'user_1',
@@ -1017,11 +1018,12 @@ describe('goals.repository.server', () => {
       })
 
       mockTx.insert.mockImplementation((table: any) => ({
-        values: vi.fn().mockImplementation((_val: any) => {
+        values: vi.fn().mockImplementation((val: any) => {
           if (table === financialGoals) {
             return { returning: vi.fn().mockResolvedValue([{ id: 'goal_created_id' }]) }
           }
           if (table === allocationPlanSnapshots) {
+            insertedSnapshotValues = val
             return { returning: vi.fn().mockResolvedValue([{ id: 'snapshot_created_id' }]) }
           }
           return { returning: vi.fn().mockResolvedValue([{ id: 'mock_id' }]) }
@@ -1056,6 +1058,11 @@ describe('goals.repository.server', () => {
       expect(mockTx.insert).toHaveBeenCalledWith(financialGoals)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        plannedMonthlyContribution: '60000.00',
+      })
 
       const goalInsertCall = mockTx.insert.mock.calls.find((call) => call[0] === financialGoals)
       expect(goalInsertCall).toBeDefined()
@@ -1423,6 +1430,7 @@ describe('goals.repository.server', () => {
 
   describe('confirmAllocationChangeInRepository', () => {
     const currentMonth = '2026-08'
+    let insertedSnapshotValues: any = null
 
     const mockProfile = {
       userId: 'user_1',
@@ -1546,8 +1554,9 @@ describe('goals.repository.server', () => {
       })
 
       mockTx.insert.mockImplementation((table: any) => ({
-        values: vi.fn().mockImplementation((_val: any) => {
+        values: vi.fn().mockImplementation((val: any) => {
           if (table === allocationPlanSnapshots) {
+            insertedSnapshotValues = val
             return { returning: vi.fn().mockResolvedValue([{ id: 'snapshot_created_id' }]) }
           }
           return { returning: vi.fn().mockResolvedValue([{ id: 'mock_id' }]) }
@@ -1578,6 +1587,12 @@ describe('goals.repository.server', () => {
       })
 
       expect(mockTx.select).toHaveBeenCalled()
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        plannedMonthlyContribution: '60000.00',
+      })
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).not.toHaveBeenCalledWith(financialGoals)
@@ -1899,6 +1914,7 @@ describe('goals.repository.server', () => {
 
   describe('confirmGoalEditInRepository', () => {
     const currentMonth = '2026-08'
+    let insertedSnapshotValues: any = null
 
     const mockProfile = {
       userId: 'user_1',
@@ -2044,8 +2060,9 @@ describe('goals.repository.server', () => {
       })
 
       mockTx.insert.mockImplementation((table: any) => ({
-        values: vi.fn().mockImplementation((_val: any) => {
+        values: vi.fn().mockImplementation((val: any) => {
           if (table === allocationPlanSnapshots) {
+            insertedSnapshotValues = val
             return { returning: vi.fn().mockResolvedValue([{ id: 'snapshot_created_id' }]) }
           }
           return { returning: vi.fn().mockResolvedValue([{ id: 'mock_id' }]) }
@@ -2079,6 +2096,12 @@ describe('goals.repository.server', () => {
       expect(mockTx.select).toHaveBeenCalled()
       expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
       expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        plannedMonthlyContribution: '60000.00',
+      })
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).not.toHaveBeenCalledWith(financialGoals)
@@ -2489,6 +2512,7 @@ describe('goals.repository.server', () => {
 
   describe('confirmGoalLifecycleInRepository', () => {
     const currentMonth = '2026-08'
+    let insertedSnapshotValues: any = null
 
     const mockProfile = {
       userId: 'user_1',
@@ -2622,8 +2646,9 @@ describe('goals.repository.server', () => {
       })
 
       mockTx.insert.mockImplementation((table: any) => ({
-        values: vi.fn().mockImplementation((_val: any) => {
+        values: vi.fn().mockImplementation((val: any) => {
           if (table === allocationPlanSnapshots) {
+            insertedSnapshotValues = val
             return { returning: vi.fn().mockResolvedValue([{ id: 'snapshot_created_id' }]) }
           }
           return { returning: vi.fn().mockResolvedValue([{ id: 'mock_id' }]) }
@@ -2660,6 +2685,12 @@ describe('goals.repository.server', () => {
 
       expect(mockTx.select).toHaveBeenCalled()
       expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        plannedMonthlyContribution: '60000.00',
+      })
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.update).not.toHaveBeenCalledWith(financialProfiles)
@@ -2688,6 +2719,12 @@ describe('goals.repository.server', () => {
 
       expect(mockTx.select).toHaveBeenCalled()
       expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        plannedMonthlyContribution: '60000.00',
+      })
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
     })
@@ -2712,6 +2749,12 @@ describe('goals.repository.server', () => {
 
       expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
       expect(mockTx.update).toHaveBeenCalledWith(financialProfiles)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        plannedMonthlyContribution: null,
+      })
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       // When 0 entries remain, insert for allocationPlanEntries is not called
       expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanEntries)

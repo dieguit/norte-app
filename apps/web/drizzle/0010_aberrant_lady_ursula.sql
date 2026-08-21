@@ -1,0 +1,2 @@
+ALTER TABLE "financial_profiles" ALTER COLUMN "planned_monthly_contribution" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "allocation_plan_snapshots" ADD COLUMN "planned_monthly_contribution" numeric(12, 2);
