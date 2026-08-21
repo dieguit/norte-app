@@ -56,6 +56,16 @@ export interface SavingContributionPreviewResult {
   previewToken: string
 }
 
+export interface SavingContributionContext {
+  currentMonth: string
+  eligibleGoals: EligibleGoal[]
+  eligibleGoalsUsd: EligibleGoal[]
+}
+
+export type SavingContributionContextState =
+  | { profile: 'missing' }
+  | { profile: 'present'; context: SavingContributionContext }
+
 export interface BuildSavingPreviewInput {
   draft: SavingDraftInput | SavingDraft
   eligibleGoals: EligibleGoal[]

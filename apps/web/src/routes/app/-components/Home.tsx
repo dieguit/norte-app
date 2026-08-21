@@ -1,14 +1,19 @@
+import { useState } from 'react'
+import { Button } from '../../../components/ui/button'
 import { formatCalendarMonth, formatMoney } from '../../../lib/format'
 import {
   PLANNING_ARS_PER_USD,
   type InitialHomeState,
 } from '../../../features/financial/financial'
+import { SavingContributionSheet } from './SavingContributionSheet'
 
 export interface HomeProps {
   home: InitialHomeState
 }
 
 export function Home({ home }: HomeProps) {
+  const [isSavingOpen, setIsSavingOpen] = useState(false)
+
   const isUnknownExpensesEmergency =
     home.goal.type === 'emergency_fund' && home.projection.status === 'unknown_expenses'
 
@@ -31,6 +36,13 @@ export function Home({ home }: HomeProps) {
           Acá vas a ver el resumen de tu planificación inicial y los próximos pasos para tu patrimonio.
         </p>
       </div>
+
+      <div className="flex items-center">
+        <Button type="button" onClick={() => setIsSavingOpen(true)}>
+          Registrar ahorro
+        </Button>
+      </div>
+      <SavingContributionSheet open={isSavingOpen} onOpenChange={setIsSavingOpen} />
 
       {/* Tu Plan Section (Trajectory First) */}
       <section

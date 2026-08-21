@@ -1,11 +1,28 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Home } from './Home'
 import type { InitialHomeState } from '../../../features/financial/financial'
+import { getSavingContributionContext } from '../../../features/contributions/saving-contribution.functions'
 
-afterEach(cleanup)
+vi.mock('../../../features/contributions/saving-contribution.functions', () => ({
+  getSavingContributionContext: vi.fn(),
+  previewSavingContribution: vi.fn(),
+  confirmSavingContribution: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-router', () => ({
+  useRouter: () => ({
+    invalidate: vi.fn(),
+  }),
+}))
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
 
 describe('Home initial-plan component', () => {
   const knownExpenseEmergencyFund: InitialHomeState = {
@@ -156,5 +173,32 @@ describe('Home initial-plan component', () => {
     expect(screen.getByRole('heading', { name: 'Tus avances' })).toBeVisible()
     expect(screen.getByText('$ 0,00')).toBeVisible()
     expect(screen.getByText('Todavía no registraste aportes')).toBeVisible()
+  })
+
+  it('renders Registrar ahorro button directly after introduction and opens SavingContributionSheet', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getSavingContributionContext).mockResolvedValue({
+      profile: 'present',
+      context: {
+        currentMonth: '2026-08',
+        eligibleGoals: [
+          { id: 'goal-ars-1', name: 'Viaje a Bariloche', percentage: '100.00' },
+        ],
+        eligibleGoalsUsd: [
+          { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
+        ],
+      },
+    })
+
+    render(<Home home={knownExpenseEmergencyFund} />)
+
+    const launchButton = screen.getByRole('button', { name: 'Registrar ahorro' })
+    expect(launchButton).toBeInTheDocument()
+    expect(launchButton).toBeVisible()
+
+    await user.click(launchButton)
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByText('Ahorré ARS')).toBeInTheDocument()
   })
 })

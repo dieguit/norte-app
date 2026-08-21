@@ -2,7 +2,8 @@ import '@tanstack/react-start/server-only'
 import { requireFinancialUser } from '../financial/auth.server'
 import {
   buildSavingPreview,
-  type EligibleGoal,
+  type SavingContributionContext,
+  type SavingContributionContextState,
   type SavingContributionPreviewResult,
 } from './saving-contribution'
 import {
@@ -20,15 +21,7 @@ import type {
   UpdateSavingContributionInput,
 } from './saving-contribution.schema'
 
-export interface SavingContributionContext {
-  currentMonth: string
-  eligibleGoals: EligibleGoal[]
-  eligibleGoalsUsd: EligibleGoal[]
-}
-
-export type SavingContributionContextState =
-  | { profile: 'missing' }
-  | { profile: 'present'; context: SavingContributionContext }
+export type { SavingContributionContext, SavingContributionContextState }
 
 export async function getSavingContributionContextServer(): Promise<SavingContributionContextState> {
   const userId = await requireFinancialUser()
