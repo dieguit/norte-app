@@ -36,6 +36,8 @@ export async function getSavingContributionContextServer(): Promise<SavingContri
       currentMonth,
       eligibleGoals: state.eligibleGoals,
       eligibleGoalsUsd: state.eligibleGoalsUsd,
+      monthlyTargetArs: state.monthlyTargetArs,
+      monthlyTargetUsd: state.monthlyTargetUsd,
     },
   }
 }

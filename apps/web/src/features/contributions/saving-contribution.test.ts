@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildSavingPreview,
+  deriveMonthlySavingTargets,
   deriveUsdPurchase,
   parseSavingDraft,
   serializeSavingContributionState,
@@ -10,6 +11,42 @@ import {
 import type { GoalsWorkspaceSource } from '../goals/goals'
 
 describe('saving-contribution domain', () => {
+  describe('deriveMonthlySavingTargets', () => {
+    it('derives ARS and USD monthly saving targets from global commitment and save-strategy allocations', () => {
+      const result = deriveMonthlySavingTargets({
+        monthlyCommitmentArs: '150000.00',
+        goals: [
+          { id: 'g1', currency: 'ARS', strategy: 'save', percentage: '40.00' },
+          { id: 'g2', currency: 'USD', strategy: 'save', percentage: '30.00' },
+          { id: 'g3', currency: 'USD', strategy: 'invest', percentage: '30.00' },
+        ],
+      })
+
+      // ARS target: 150000 * 40% = 60000.00 ARS
+      expect(result.monthlyTargetArs).toEqual({
+        amount: '60000.00',
+        currency: 'ARS',
+      })
+
+      // USD target: (150000 * 30%) / 1500 = 45000 / 1500 = 30.00 USD
+      expect(result.monthlyTargetUsd).toEqual({
+        amount: '30.00',
+        currency: 'USD',
+      })
+    })
+
+    it('returns null when no save strategy goals exist for that currency', () => {
+      const result = deriveMonthlySavingTargets({
+        monthlyCommitmentArs: '100000.00',
+        goals: [
+          { id: 'g1', currency: 'USD', strategy: 'invest', percentage: '100.00' },
+        ],
+      })
+
+      expect(result.monthlyTargetArs).toBeNull()
+      expect(result.monthlyTargetUsd).toBeNull()
+    })
+  })
   describe('buildSavingPreview', () => {
     it('allocates ARS amount proportionally among eligible goals matching brief example', () => {
       const draft: SavingDraftInput = { currency: 'ARS', amount: '100.00', location: '' }

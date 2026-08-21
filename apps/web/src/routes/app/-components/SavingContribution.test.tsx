@@ -461,5 +461,31 @@ describe('SavingContribution component', () => {
         expect(onSuccess).toHaveBeenCalledTimes(1)
       })
     })
+
+    it('renders monthly saving target headline when present in context', async () => {
+      const contextWithTargets: SavingContributionContext = {
+        ...defaultContext,
+        monthlyTargetArs: { amount: '60000.00', currency: 'ARS' },
+        monthlyTargetUsd: { amount: '30.00', currency: 'USD' },
+      }
+
+      render(
+        <SavingContribution
+          context={contextWithTargets}
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      expect(
+        screen.getByText(/Necesitás ahorrar/i),
+      ).toBeInTheDocument()
+      expect(screen.getByText('$ 60.000,00')).toBeInTheDocument()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: /ahorré usd/i }))
+
+      expect(screen.getByText('US$ 30,00')).toBeInTheDocument()
+    })
   })
 })

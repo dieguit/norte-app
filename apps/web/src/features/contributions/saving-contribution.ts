@@ -13,6 +13,8 @@ import {
   buildGoalsWorkspace,
 } from '../goals/goals'
 
+import { PLANNING_ARS_PER_USD } from '../financial/financial'
+
 export interface SavingDraftInput {
   currency: CurrencyCode
   amount: string
@@ -60,6 +62,8 @@ export interface SavingContributionContext {
   currentMonth: string
   eligibleGoals: EligibleGoal[]
   eligibleGoalsUsd: EligibleGoal[]
+  monthlyTargetArs?: Money | null
+  monthlyTargetUsd?: Money | null
 }
 
 export type SavingContributionContextState =
@@ -405,3 +409,77 @@ export function serializeSavingContributionState(input: {
   }
   return JSON.stringify(normalized)
 }
+
+export function deriveMonthlySavingTargets(input: {
+  monthlyCommitmentArs?: Money | string | null
+  goals: Array<{
+    id: string
+    currency: CurrencyCode
+    strategy: string
+    percentage: string | number
+  }>
+}): {
+  monthlyTargetArs: Money | null
+  monthlyTargetUsd: Money | null
+} {
+  const commitmentStr =
+    typeof input.monthlyCommitmentArs === 'object' && input.monthlyCommitmentArs
+      ? input.monthlyCommitmentArs.amount
+      : input.monthlyCommitmentArs
+  if (!commitmentStr) {
+    return { monthlyTargetArs: null, monthlyTargetUsd: null }
+  }
+
+  const commitmentBn = new BigNumber(commitmentStr)
+  if (!commitmentBn.isFinite() || commitmentBn.isLessThanOrEqualTo(0)) {
+    return { monthlyTargetArs: null, monthlyTargetUsd: null }
+  }
+
+  // ARS save goals
+  const arsSaveGoals = input.goals.filter(
+    (g) => g.currency === 'ARS' && g.strategy === 'save',
+  )
+  let totalArsPercent = new BigNumber(0)
+  for (const g of arsSaveGoals) {
+    const pct = new BigNumber(String(g.percentage).replace(',', '.'))
+    if (pct.isFinite() && pct.isGreaterThan(0)) {
+      totalArsPercent = totalArsPercent.plus(pct)
+    }
+  }
+
+  let monthlyTargetArs: Money | null = null
+  if (arsSaveGoals.length > 0 && totalArsPercent.isGreaterThan(0)) {
+    const targetArsAmount = commitmentBn
+      .multipliedBy(totalArsPercent)
+      .dividedBy(100)
+      .toFixed(2, BigNumber.ROUND_HALF_UP)
+    monthlyTargetArs = createMoney(targetArsAmount, 'ARS')
+  }
+
+  // USD save goals
+  const usdSaveGoals = input.goals.filter(
+    (g) => g.currency === 'USD' && g.strategy === 'save',
+  )
+  let totalUsdAmount = new BigNumber(0)
+  const planningRate = new BigNumber(PLANNING_ARS_PER_USD)
+
+  for (const g of usdSaveGoals) {
+    const pct = new BigNumber(String(g.percentage).replace(',', '.'))
+    if (pct.isFinite() && pct.isGreaterThan(0)) {
+      const arsShare = commitmentBn.multipliedBy(pct).dividedBy(100)
+      const usdShare = arsShare.dividedBy(planningRate)
+      totalUsdAmount = totalUsdAmount.plus(usdShare)
+    }
+  }
+
+  let monthlyTargetUsd: Money | null = null
+  if (usdSaveGoals.length > 0 && totalUsdAmount.isGreaterThan(0)) {
+    monthlyTargetUsd = createMoney(
+      totalUsdAmount.toFixed(2, BigNumber.ROUND_HALF_UP),
+      'USD',
+    )
+  }
+
+  return { monthlyTargetArs, monthlyTargetUsd }
+}
+

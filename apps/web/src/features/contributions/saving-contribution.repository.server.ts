@@ -14,8 +14,10 @@ import {
   mapRowsToGoalsWorkspaceSource,
   selectWinningSnapshots,
 } from '../goals/goals.repository.server'
+import type { Money } from '../../lib/money'
 import {
   buildSavingPreview,
+  deriveMonthlySavingTargets,
   parseSavingDraft,
   serializeSavingContributionState,
   type EligibleGoal,
@@ -27,6 +29,8 @@ export interface SavingContributionState {
   source: GoalsWorkspaceSource
   eligibleGoals: EligibleGoal[]
   eligibleGoalsUsd: EligibleGoal[]
+  monthlyTargetArs?: Money | null
+  monthlyTargetUsd?: Money | null
 }
 
 export class StaleSavingContributionPreviewError extends Error {
@@ -130,10 +134,22 @@ export async function getSavingContributionStateWithExecutor(
       percentage: allocMap.get(g.id) ?? '0.00',
     }))
 
+  const targets = deriveMonthlySavingTargets({
+    monthlyCommitmentArs: profile.monthlyCommitmentAmount,
+    goals: activeGoals.map((g: any) => ({
+      id: g.id,
+      currency: g.currency,
+      strategy: g.strategy,
+      percentage: allocMap.get(g.id) ?? '0.00',
+    })),
+  })
+
   return {
     source,
     eligibleGoals,
     eligibleGoalsUsd,
+    monthlyTargetArs: targets.monthlyTargetArs,
+    monthlyTargetUsd: targets.monthlyTargetUsd,
   }
 }
 
