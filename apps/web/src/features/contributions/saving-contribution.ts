@@ -51,6 +51,11 @@ export interface SavingPreviewResult {
   allocations: SavingAllocationPreview[]
 }
 
+export interface SavingContributionPreviewResult {
+  preview: SavingPreviewResult
+  previewToken: string
+}
+
 export interface BuildSavingPreviewInput {
   draft: SavingDraftInput | SavingDraft
   eligibleGoals: EligibleGoal[]
