@@ -49,6 +49,14 @@ const mockTx = {
     allocationPlanEntries: {
       findMany: vi.fn(),
     },
+    savingContributions: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    savingContributionAllocations: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
   },
 }
 
@@ -75,6 +83,14 @@ vi.mock('../../db/client', () => ({
       allocationPlanEntries: {
         findMany: vi.fn(),
       },
+      savingContributions: {
+        findMany: vi.fn(),
+        findFirst: vi.fn(),
+      },
+      savingContributionAllocations: {
+        findMany: vi.fn(),
+        findFirst: vi.fn(),
+      },
     },
   },
 }))
@@ -82,6 +98,8 @@ vi.mock('../../db/client', () => ({
 describe('goals.repository.server', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(db.query.savingContributions.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.savingContributionAllocations.findMany).mockResolvedValue([] as never)
   })
 
   it('returns null when financial profile is absent', async () => {
@@ -338,11 +356,93 @@ describe('goals.repository.server', () => {
       investmentPositions: [],
       snapshots: [],
       allocations: [],
+      savingContributions: [],
     })
 
     expect(db.query.goalSavingsPositions.findMany).not.toHaveBeenCalled()
     expect(db.query.goalInvestmentPositions.findMany).not.toHaveBeenCalled()
     expect(db.query.allocationPlanEntries.findMany).not.toHaveBeenCalled()
+  })
+
+  it('loads user-scoped saving contributions and allocations and maps goal names', async () => {
+    const mockProfile = {
+      userId: 'user_1',
+      baseCurrency: 'ARS',
+      approximateMonthlyIncome: '1000000.00',
+      approximateMonthlyExpenses: '500000.00',
+      expensesKnowledge: 'known',
+      plannedMonthlyContribution: '60000.00',
+      onboardingCompleted: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    const mockGoal = {
+      id: 'g1',
+      userId: 'user_1',
+      name: 'Colchón financiero',
+      type: 'emergency_fund',
+      targetAmount: '3000.00',
+      currency: 'USD',
+      priority: 'high',
+      strategy: 'save',
+      status: 'active',
+      desiredDate: '2027-01-01',
+      completedAt: null,
+      emergencyFundMonths: 6,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }
+    const mockContribution = {
+      id: 'sc1',
+      userId: 'user_1',
+      amount: '100.00',
+      currency: 'USD',
+      location: 'Banco Santander',
+      arsSpent: '150000.00',
+      effectiveRate: '1500.00',
+      createdAt: new Date('2026-08-15T12:00:00Z'),
+      updatedAt: new Date('2026-08-15T12:00:00Z'),
+    }
+    const mockAllocation = {
+      id: 'sca1',
+      contributionId: 'sc1',
+      goalId: 'g1',
+      amount: '100.00',
+      percentage: '100.00',
+      savingPositionId: 'sp1',
+      createdAt: new Date('2026-08-15T12:00:00Z'),
+    }
+
+    vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
+    vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([mockGoal] as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.savingContributions.findMany).mockResolvedValue([mockContribution] as never)
+    vi.mocked(db.query.savingContributionAllocations.findMany).mockResolvedValue([mockAllocation] as never)
+
+    const result = await getGoalsWorkspaceRows('user_1', '2026-08')
+
+    expect(result?.savingContributions).toEqual([
+      {
+        id: 'sc1',
+        userId: 'user_1',
+        amount: '100.00',
+        currency: 'USD',
+        location: 'Banco Santander',
+        arsSpent: '150000.00',
+        effectiveRate: '1500.00',
+        createdAt: mockContribution.createdAt,
+        allocations: [
+          {
+            goalId: 'g1',
+            goalName: 'Colchón financiero',
+            amount: '100.00',
+            percentage: '100.00',
+          },
+        ],
+      },
+    ])
   })
 
   describe('getGoalCreationState', () => {

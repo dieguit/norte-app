@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import BigNumber from 'bignumber.js'
@@ -15,6 +15,7 @@ import { formatMoney, formatPercentage } from '../../../lib/format'
 import { formatMoneyInput, parseMoneyInput } from '../../../lib/money'
 import { PLANNING_ARS_PER_USD } from '../../../features/financial/financial'
 import {
+  buildSavingPreview,
   deriveUsdPurchase,
   type SavingContributionContext,
   type SavingContributionPreviewResult,
@@ -22,11 +23,14 @@ import {
 import {
   confirmSavingContribution,
   previewSavingContribution,
+  updateSavingContribution,
 } from '../../../features/contributions/saving-contribution.functions'
+import type { SavingContributionSummary } from '../../../features/goals/goals'
 import { formatGoalProjection } from '../goals/-components/AllocationImpactComparison'
 
 export interface SavingContributionProps {
-  context: SavingContributionContext
+  context?: SavingContributionContext
+  initialContribution?: SavingContributionSummary | null
   onCancel: () => void
   onSuccess: () => void
 }
@@ -47,21 +51,35 @@ function formatDerivedMoney(val: string): string {
 
 export function SavingContribution({
   context,
+  initialContribution,
   onCancel,
   onSuccess,
 }: SavingContributionProps) {
   const router = useRouter()
+  const isEdit = Boolean(initialContribution)
 
-  const [currency, setCurrency] = useState<'ARS' | 'USD'>('ARS')
-  const [amount, setAmount] = useState('')
-  const [location, setLocation] = useState('')
-  const [arsSpent, setArsSpent] = useState('')
+  const [currency, setCurrency] = useState<'ARS' | 'USD'>(
+    initialContribution ? (initialContribution.currency as 'ARS' | 'USD') : 'ARS',
+  )
+  const [amount, setAmount] = useState(
+    initialContribution ? formatDerivedMoney(initialContribution.amount) : '',
+  )
+  const [location, setLocation] = useState(
+    initialContribution?.location ?? '',
+  )
+  const [arsSpent, setArsSpent] = useState(
+    initialContribution?.arsSpent ? formatDerivedMoney(initialContribution.arsSpent) : '',
+  )
   const [effectiveRate, setEffectiveRate] = useState(
-    formatDerivedMoney(PLANNING_ARS_PER_USD),
+    initialContribution?.effectiveRate
+      ? formatDerivedMoney(initialContribution.effectiveRate)
+      : currency === 'USD'
+        ? formatDerivedMoney(PLANNING_ARS_PER_USD)
+        : '',
   )
   const [derivedField, setDerivedField] = useState<
     'arsSpent' | 'effectiveRate' | 'amount' | null
-  >('arsSpent')
+  >(currency === 'USD' ? 'arsSpent' : null)
 
   const [preview, setPreview] = useState<SavingContributionPreviewResult | null>(null)
   const [isPreviewPending, setIsPreviewPending] = useState(false)
@@ -72,8 +90,18 @@ export function SavingContribution({
 
   const alertRef = useRef<HTMLDivElement>(null)
 
-  const eligibleGoals =
-    currency === 'USD' ? context.eligibleGoalsUsd : context.eligibleGoals
+  const eligibleGoals = useMemo(() => {
+    if (isEdit && initialContribution) {
+      return initialContribution.allocations.map((a) => ({
+        id: a.goalId,
+        name: a.goalName,
+        percentage: a.percentage,
+      }))
+    }
+    return currency === 'USD'
+      ? context?.eligibleGoalsUsd ?? []
+      : context?.eligibleGoals ?? []
+  }, [isEdit, initialContribution, currency, context])
   const hasEligibleGoals = Boolean(eligibleGoals && eligibleGoals.length > 0)
 
   const handleCurrencyChange = (newCurrency: 'ARS' | 'USD') => {
@@ -248,6 +276,28 @@ export function SavingContribution({
         return
       }
 
+      if (isEdit && initialContribution) {
+        try {
+          const previewResult = buildSavingPreview({
+            draft: {
+              currency: 'ARS',
+              amount,
+              location: location.trim() || null,
+            },
+            eligibleGoals,
+          })
+          setPreview({
+            preview: previewResult,
+            previewToken: '',
+          })
+          setValidationError(null)
+          setServerError(null)
+        } catch {
+          setPreview(null)
+        }
+        return
+      }
+
       let active = true
       setIsPreviewPending(true)
       const timer = setTimeout(() => {
@@ -303,6 +353,30 @@ export function SavingContribution({
         return
       }
 
+      if (isEdit && initialContribution) {
+        try {
+          const previewResult = buildSavingPreview({
+            draft: {
+              currency: 'USD',
+              amount,
+              location: location.trim() || null,
+              arsSpent: derivation?.arsSpent ?? (arsSpent || null),
+              effectiveRate: derivation?.effectiveRate ?? (effectiveRate || null),
+            },
+            eligibleGoals,
+          })
+          setPreview({
+            preview: previewResult,
+            previewToken: '',
+          })
+          setValidationError(null)
+          setServerError(null)
+        } catch {
+          setPreview(null)
+        }
+        return
+      }
+
       let active = true
       setIsPreviewPending(true)
       const timer = setTimeout(() => {
@@ -342,6 +416,9 @@ export function SavingContribution({
     effectiveRate,
     hasEligibleGoals,
     context,
+    isEdit,
+    initialContribution,
+    eligibleGoals,
   ])
 
   const handleConfirm = async () => {
@@ -355,8 +432,22 @@ export function SavingContribution({
         currency,
         amount,
         location: location.trim() || null,
-        arsSpent: currency === 'USD' ? arsSpent || null : null,
-        effectiveRate: currency === 'USD' ? effectiveRate || null : null,
+        arsSpent: currency === 'USD' ? (arsSpent || null) : null,
+        effectiveRate: currency === 'USD' ? (effectiveRate || null) : null,
+      }
+
+      if (isEdit && initialContribution) {
+        await updateSavingContribution({
+          data: {
+            contributionId: initialContribution.id,
+            draft: draftPayload,
+          },
+        })
+
+        await router.invalidate()
+        toast.success('Ahorro actualizado.')
+        onSuccess()
+        return
       }
 
       const res = await confirmSavingContribution({
@@ -406,23 +497,25 @@ export function SavingContribution({
         >
           <button
             type="button"
+            disabled={isEdit}
             onClick={() => handleCurrencyChange('ARS')}
             className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
               currency === 'ARS'
                 ? 'bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm'
                 : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
-            }`}
+            } ${isEdit ? 'cursor-not-allowed opacity-75' : ''}`}
           >
             Ahorré ARS
           </button>
           <button
             type="button"
+            disabled={isEdit}
             onClick={() => handleCurrencyChange('USD')}
             className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
               currency === 'USD'
                 ? 'bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm'
                 : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
-            }`}
+            } ${isEdit ? 'cursor-not-allowed opacity-75' : ''}`}
           >
             Ahorré USD
           </button>
@@ -654,7 +747,11 @@ export function SavingContribution({
           disabled={!isFormValid}
           onClick={handleConfirm}
         >
-          {isSubmitting ? 'Guardando...' : 'Confirmar ahorro'}
+          {isSubmitting
+            ? 'Guardando...'
+            : isEdit
+              ? 'Guardar cambios'
+              : 'Confirmar ahorro'}
         </Button>
       </div>
     </div>

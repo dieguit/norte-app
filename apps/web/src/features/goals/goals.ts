@@ -40,6 +40,25 @@ export interface GoalFundingRow {
   effectiveMonth: string
 }
 
+export interface SavingContributionAllocationSummary {
+  goalId: string
+  goalName: string
+  amount: string
+  percentage: string
+}
+
+export interface SavingContributionSummary {
+  id: string
+  userId?: string
+  amount: string
+  currency: CurrencyCode
+  location?: string | null
+  arsSpent?: string | null
+  effectiveRate?: string | null
+  createdAt: string
+  allocations: SavingContributionAllocationSummary[]
+}
+
 export interface GoalWorkspaceItem {
   id: string
   name: string
@@ -63,6 +82,7 @@ export interface GoalWorkspaceItem {
   availability?: InvestmentAvailability
   availableFrom?: string
   usesPlanningRate: boolean
+  savingContributions?: SavingContributionSummary[]
 }
 
 export interface GoalsWorkspace {
@@ -125,6 +145,7 @@ export interface GoalsWorkspaceSource {
     goalId: string
     percentage: string
   }>
+  savingContributions?: SavingContributionSummary[]
 }
 
 const PRIORITY_ORDER: Record<GoalPriority, number> = { high: 0, medium: 1, low: 2 }
@@ -404,6 +425,11 @@ export function buildGoalsWorkspace(
       desiredDateDeltaMonths = compYear * 12 + compMonth - (desiredYear * 12 + desiredMonth)
     }
 
+    // 8. Saving contributions for this goal
+    const goalSavingContributions = (rows.savingContributions ?? [])
+      .filter((contrib) => contrib.allocations.some((a) => a.goalId === goal.id))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+
     return {
       id: goal.id,
       name: goal.name,
@@ -427,6 +453,7 @@ export function buildGoalsWorkspace(
       availability,
       availableFrom,
       usesPlanningRate,
+      savingContributions: goalSavingContributions,
     }
   })
 

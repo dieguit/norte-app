@@ -10,6 +10,7 @@ import {
   type GoalWorkspaceItem,
 } from "../../../../features/goals/goals";
 import { getGoalProjectionDisplay } from "./goal-display";
+import { SavingContributionActions } from "./SavingContributionActions";
 
 import { Button } from "../../../../components/ui/button";
 
@@ -91,6 +92,10 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
             </dd>
           </div>
         </dl>
+        <SavingContributionActions
+          goalId={goal.id}
+          contributions={goal.savingContributions ?? []}
+        />
       </section>
     </div>
   );

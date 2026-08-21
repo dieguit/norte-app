@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
 import type { GoalsWorkspace as GoalsWorkspaceType, GoalWorkspaceItem } from '../../../../features/goals/goals'
+import {
+  updateSavingContribution,
+  deleteSavingContribution,
+} from '../../../../features/contributions/saving-contribution.functions'
 import { GoalsWorkspace } from './GoalsWorkspace'
 import { GoalsEmpty, GoalsError, GoalsLoading } from './GoalsRouteStates'
+
+const mockInvalidate = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: { to: string; children: React.ReactNode } & React.ComponentProps<'a'>) => (
@@ -13,9 +20,29 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
+  useRouter: () => ({
+    invalidate: mockInvalidate,
+  }),
 }))
 
-afterEach(cleanup)
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}))
+
+vi.mock('../../../../features/contributions/saving-contribution.functions', () => ({
+  updateSavingContribution: vi.fn(),
+  deleteSavingContribution: vi.fn(),
+  previewSavingContribution: vi.fn(),
+  getSavingContributionContext: vi.fn(),
+}))
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
 
 
 function makeGoal(overrides: Partial<GoalWorkspaceItem>): GoalWorkspaceItem {
@@ -531,6 +558,165 @@ describe('GoalsWorkspace component', () => {
     await user.click(editBtn)
     expect(onEditGoal).toHaveBeenCalledTimes(1)
     expect(onEditGoal).toHaveBeenCalledWith('goal-1')
+  })
+
+  it('renders saving contribution action history with amount, location, and keyboard-accessible controls under goal detail', async () => {
+    const user = userEvent.setup()
+    const activeGoal = makeGoal({
+      id: 'goal-1',
+      name: 'Colchón financiero',
+      status: 'active',
+      savingContributions: [
+        {
+          id: 'contrib-1',
+          amount: '50000.00',
+          currency: 'ARS',
+          location: 'Banco Santander',
+          createdAt: '2026-08-15T10:00:00Z',
+          allocations: [
+            {
+              goalId: 'goal-1',
+              goalName: 'Colchón financiero',
+              amount: '50000.00',
+              percentage: '100.00',
+            },
+          ],
+        },
+      ],
+    })
+
+    const workspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
+
+    const detailRegion = screen.getByRole('region', { name: 'Detalles de Colchón financiero' })
+    expect(within(detailRegion).getByText('$ 50.000,00')).toBeInTheDocument()
+    expect(within(detailRegion).getByText('Banco Santander')).toBeInTheDocument()
+    expect(within(detailRegion).getByRole('button', { name: /Corregir aporte/i })).toBeInTheDocument()
+    expect(within(detailRegion).getByRole('button', { name: /Eliminar aporte/i })).toBeInTheDocument()
+  })
+
+  it('opens edit form on Corregir aporte and calls updateSavingContribution on submit', async () => {
+    const user = userEvent.setup()
+    vi.mocked(updateSavingContribution).mockResolvedValue({ status: 'updated' })
+
+    const activeGoal = makeGoal({
+      id: 'goal-1',
+      name: 'Colchón financiero',
+      status: 'active',
+      savingContributions: [
+        {
+          id: 'contrib-1',
+          amount: '50000.00',
+          currency: 'ARS',
+          location: 'Banco Santander',
+          createdAt: '2026-08-15T10:00:00Z',
+          allocations: [
+            {
+              goalId: 'goal-1',
+              goalName: 'Colchón financiero',
+              amount: '50000.00',
+              percentage: '100.00',
+            },
+          ],
+        },
+      ],
+    })
+
+    const workspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
+    const editBtn = screen.getByRole('button', { name: /Corregir aporte/i })
+    await user.click(editBtn)
+
+    // Edit sheet opens with populated amount
+    const amountInput = screen.getByLabelText(/monto en pesos/i)
+    expect(amountInput).toHaveValue('50.000')
+
+    await user.clear(amountInput)
+    await user.type(amountInput, '75000')
+
+    const saveBtn = screen.getByRole('button', { name: /guardar cambios|confirmar|actualizar/i })
+    await waitFor(() => expect(saveBtn).toBeEnabled())
+    await user.click(saveBtn)
+
+    await waitFor(() => {
+      expect(updateSavingContribution).toHaveBeenCalledWith({
+        data: {
+          contributionId: 'contrib-1',
+          draft: expect.objectContaining({
+            currency: 'ARS',
+            amount: '75.000',
+          }),
+        },
+      })
+      expect(mockInvalidate).toHaveBeenCalled()
+      expect(toast.success).toHaveBeenCalled()
+    })
+  })
+
+  it('requires explicit confirmation before calling deleteSavingContribution', async () => {
+    const user = userEvent.setup()
+    vi.mocked(deleteSavingContribution).mockResolvedValue({ status: 'deleted' })
+
+    const activeGoal = makeGoal({
+      id: 'goal-1',
+      name: 'Colchón financiero',
+      status: 'active',
+      savingContributions: [
+        {
+          id: 'contrib-1',
+          amount: '50000.00',
+          currency: 'ARS',
+          location: 'Banco Santander',
+          createdAt: '2026-08-15T10:00:00Z',
+          allocations: [
+            {
+              goalId: 'goal-1',
+              goalName: 'Colchón financiero',
+              amount: '50000.00',
+              percentage: '100.00',
+            },
+          ],
+        },
+      ],
+    })
+
+    const workspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    }
+
+    render(<GoalsWorkspace workspace={workspace} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
+    const deleteBtn = screen.getByRole('button', { name: /Eliminar aporte/i })
+    await user.click(deleteBtn)
+
+    // Confirmation surface is visible
+    expect(await screen.findByText(/¿Estás seguro/i)).toBeInTheDocument()
+    expect(deleteSavingContribution).not.toHaveBeenCalled()
+
+    // Confirm button inside confirmation dialog
+    const confirmDeleteBtn = within(screen.getByRole('dialog')).getByRole('button', { name: /eliminar aporte/i })
+    await user.click(confirmDeleteBtn)
+
+    await waitFor(() => {
+      expect(deleteSavingContribution).toHaveBeenCalledWith({
+        data: {
+          contributionId: 'contrib-1',
+        },
+      })
+      expect(mockInvalidate).toHaveBeenCalled()
+      expect(toast.success).toHaveBeenCalled()
+    })
   })
 })
 

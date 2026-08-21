@@ -73,6 +73,22 @@ export interface GoalsWorkspaceRows {
   investmentPositions: GoalInvestmentPosition[]
   snapshots: AllocationPlanSnapshot[]
   allocations: AllocationPlanEntry[]
+  savingContributions?: Array<{
+    id: string
+    userId?: string
+    amount: string
+    currency: string
+    location?: string | null
+    arsSpent?: string | null
+    effectiveRate?: string | null
+    createdAt: Date | string
+    allocations: Array<{
+      goalId: string
+      goalName: string
+      amount: string
+      percentage: string
+    }>
+  }>
 }
 
 export function selectWinningSnapshots(
@@ -156,10 +172,44 @@ export async function getGoalsWorkspaceRows(
         })
       : []
 
+  const userSavingContributions = await db.query.savingContributions.findMany({
+    where: (contribTable: any, { eq }: any) => eq(contribTable.userId, userId),
+  })
+
+  const contributionIds = userSavingContributions.map((c: any) => c.id)
+  const savingAllocations =
+    contributionIds.length > 0
+      ? await db.query.savingContributionAllocations.findMany({
+          where: (allocTable: any, { inArray }: any) => inArray(allocTable.contributionId, contributionIds),
+        })
+      : []
+
+  const goalNameMap = new Map<string, string>(base.goals.map((g: any) => [g.id, g.name]))
+
+  const savingContributionsWithAllocations = userSavingContributions.map((contrib: any) => ({
+    id: contrib.id,
+    userId: contrib.userId,
+    amount: contrib.amount,
+    currency: contrib.currency,
+    location: contrib.location,
+    arsSpent: contrib.arsSpent,
+    effectiveRate: contrib.effectiveRate,
+    createdAt: contrib.createdAt,
+    allocations: savingAllocations
+      .filter((a: any) => a.contributionId === contrib.id)
+      .map((a: any) => ({
+        goalId: String(a.goalId),
+        goalName: String(goalNameMap.get(a.goalId) ?? ''),
+        amount: String(a.amount),
+        percentage: String(a.percentage),
+      })),
+  }))
+
   return {
     ...base,
     snapshots,
     allocations,
+    savingContributions: savingContributionsWithAllocations,
   }
 }
 
@@ -569,5 +619,21 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
     })),
     snapshots: rows.snapshots.map(mapSnapshot),
     allocations: rows.allocations.map(mapAllocation),
+    savingContributions: (rows.savingContributions ?? []).map((c) => ({
+      id: c.id,
+      userId: c.userId,
+      amount: c.amount,
+      currency: c.currency as CurrencyCode,
+      location: c.location,
+      arsSpent: c.arsSpent,
+      effectiveRate: c.effectiveRate,
+      createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),
+      allocations: (c.allocations ?? []).map((a) => ({
+        goalId: a.goalId,
+        goalName: a.goalName,
+        amount: a.amount,
+        percentage: a.percentage,
+      })),
+    })),
   }
 }
