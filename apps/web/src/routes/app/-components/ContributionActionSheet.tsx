@@ -227,7 +227,6 @@ export function ContributionActionSheet({
           <SavingContribution
             kind={selectedAction.kind}
             currency={selectedAction.currency}
-            fixedCurrency={selectedAction.currency}
             context={context}
             onCancel={() => handleOpenChange(false)}
             onSuccess={() => handleOpenChange(false)}

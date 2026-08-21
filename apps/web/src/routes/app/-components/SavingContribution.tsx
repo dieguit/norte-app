@@ -32,7 +32,6 @@ import { formatGoalProjection } from '../goals/-components/AllocationImpactCompa
 export interface SavingContributionProps {
   kind?: ContributionKind
   currency?: 'ARS' | 'USD'
-  fixedCurrency?: 'ARS' | 'USD'
   context?: SavingContributionContext
   initialContribution?: SavingContributionSummary | null
   onCancel: () => void
@@ -56,7 +55,6 @@ function formatDerivedMoney(val: string): string {
 export function SavingContribution({
   kind: propsKind,
   currency: propsCurrency,
-  fixedCurrency: propsFixedCurrency,
   context,
   initialContribution,
   onCancel,
@@ -70,10 +68,10 @@ export function SavingContribution({
       ? ((initialContribution as any).kind as ContributionKind)
       : propsKind ?? 'saving'
 
-  const isFixedCurrency = Boolean(propsFixedCurrency || propsCurrency)
+  const isFixedCurrency = Boolean(propsCurrency)
   const initialCurrency = initialContribution
     ? (initialContribution.currency as 'ARS' | 'USD')
-    : propsCurrency || propsFixedCurrency || 'ARS'
+    : propsCurrency || 'ARS'
 
   const [currency, setCurrency] = useState<'ARS' | 'USD'>(initialCurrency)
   const [amount, setAmount] = useState(

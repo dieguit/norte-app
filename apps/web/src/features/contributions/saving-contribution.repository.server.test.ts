@@ -647,6 +647,44 @@ describe('saving-contribution.repository.server', () => {
       expect(mockTx.insert).toHaveBeenCalledWith(investmentContributionAllocations)
     })
 
+    it('resolves investment position via fallback query when state.source.investmentPositions does not contain it upfront', async () => {
+      setupDbMocks({
+        investmentPositions: [],
+      })
+      const state = (await getSavingContributionState(userId, currentMonth))!
+      const draftInvestArs: SavingDraftInput = {
+        kind: 'investment',
+        currency: 'ARS',
+        amount: '20000.00',
+      }
+      const previewToken = createSavingContributionPreviewToken(state, currentMonth, draftInvestArs)
+
+      mockTx.query.goalInvestmentPositions.findFirst = vi.fn().mockImplementation((args: any) => {
+        const dummyEq = (field: any, val: any) => ({ field, val })
+        const condition = args.where({ goalId: 'goalId', id: 'id' }, { eq: dummyEq })
+        if (condition?.val === 'g_inv_ars_1') {
+          return mockInvestPosArs1
+        }
+        if (condition?.val === 'g_inv_ars_2') {
+          return mockInvestPosArs2
+        }
+        return null
+      })
+
+      const result = await createSavingContributionInRepository({
+        userId,
+        currentMonth,
+        draft: draftInvestArs,
+        previewToken,
+      })
+
+      expect(result).toEqual({ contributionId: 'inv_contrib_created_123' })
+      expect(mockTx.query.goalInvestmentPositions.findFirst).toHaveBeenCalled()
+      expect(mockTx.insert).toHaveBeenCalledWith(investmentContributions)
+      expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
+      expect(mockTx.insert).toHaveBeenCalledWith(investmentContributionAllocations)
+    })
+
     it('throws StaleSavingContributionPreviewError when preview token does not match reloaded state', async () => {
       setupDbMocks()
       const oldToken = 'a'.repeat(64)

@@ -23,6 +23,7 @@ import {
   buildSavingPreview,
   deriveMonthlySavingTargets,
   parseSavingDraft,
+  selectEligibleGoals,
   serializeContributionState,
   type EligibleGoal,
   type SavingContributionPreviewResult,
@@ -136,37 +137,16 @@ export async function getSavingContributionStateWithExecutor(
     allocations,
   })
 
-  const eligibleGoals: EligibleGoal[] = activeGoals
-    .filter((g: any) => g.currency === 'ARS' && g.strategy === 'save')
-    .map((g: any) => ({
-      id: g.id,
-      name: g.name,
-      percentage: allocMap.get(g.id) ?? '0.00',
-    }))
+  const mapToEligibleGoal = (g: any): EligibleGoal => ({
+    id: g.id,
+    name: g.name,
+    percentage: allocMap.get(g.id) ?? '0.00',
+  })
 
-  const eligibleGoalsUsd: EligibleGoal[] = activeGoals
-    .filter((g: any) => g.currency === 'USD' && g.strategy === 'save')
-    .map((g: any) => ({
-      id: g.id,
-      name: g.name,
-      percentage: allocMap.get(g.id) ?? '0.00',
-    }))
-
-  const eligibleInvestmentGoals: EligibleGoal[] = activeGoals
-    .filter((g: any) => g.currency === 'ARS' && g.strategy === 'invest')
-    .map((g: any) => ({
-      id: g.id,
-      name: g.name,
-      percentage: allocMap.get(g.id) ?? '0.00',
-    }))
-
-  const eligibleInvestmentGoalsUsd: EligibleGoal[] = activeGoals
-    .filter((g: any) => g.currency === 'USD' && g.strategy === 'invest')
-    .map((g: any) => ({
-      id: g.id,
-      name: g.name,
-      percentage: allocMap.get(g.id) ?? '0.00',
-    }))
+  const eligibleGoals = selectEligibleGoals(goals, 'saving', 'ARS').map(mapToEligibleGoal)
+  const eligibleGoalsUsd = selectEligibleGoals(goals, 'saving', 'USD').map(mapToEligibleGoal)
+  const eligibleInvestmentGoals = selectEligibleGoals(goals, 'investment', 'ARS').map(mapToEligibleGoal)
+  const eligibleInvestmentGoalsUsd = selectEligibleGoals(goals, 'investment', 'USD').map(mapToEligibleGoal)
 
   const userContributions = await executor.query.savingContributions.findMany({
     where: (contributionsTable: any, { eq }: any) => eq(contributionsTable.userId, userId),
@@ -284,6 +264,7 @@ export async function createSavingContributionInRepository(input: {
         .returning({ id: investmentContributions.id })
 
       const existingPositions = state.source.investmentPositions ?? []
+      const resolvedPositions = new Map<string, any>()
 
       for (const allocation of preview.allocations) {
         let pos: any = existingPositions.find((p) => p.goalId === allocation.goalId)
@@ -295,6 +276,8 @@ export async function createSavingContributionInRepository(input: {
         if (!pos) {
           throw new Error(`Investment position not found for goal ${allocation.goalId}`)
         }
+
+        resolvedPositions.set(allocation.goalId, pos)
 
         const newCurrentValue = new BigNumber(pos.currentValue)
           .plus(new BigNumber(allocation.amount.amount))
@@ -308,9 +291,10 @@ export async function createSavingContributionInRepository(input: {
 
       await tx.insert(investmentContributionAllocations).values(
         preview.allocations.map((allocation) => {
-          const pos =
-            existingPositions.find((p) => p.goalId === allocation.goalId) ??
-            state.source.investmentPositions?.find((p) => p.goalId === allocation.goalId)!
+          const pos = resolvedPositions.get(allocation.goalId)
+          if (!pos) {
+            throw new Error(`Investment position not found for goal ${allocation.goalId}`)
+          }
           return {
             contributionId: contribution.id,
             goalId: allocation.goalId,
