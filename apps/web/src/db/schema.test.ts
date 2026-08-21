@@ -9,6 +9,8 @@ import {
   goalInvestmentPositions,
   goalSavingsPositions,
   onboardingDrafts,
+  savingContributionAllocations,
+  savingContributions,
 } from './schema'
 
 describe('onboarding database schema', () => {
@@ -80,6 +82,17 @@ describe('onboarding database schema', () => {
     expect(goalInvestmentPositions.annualReturnRate.name).toBe('annual_return_rate')
     expect(goalInvestmentPositions.availability.name).toBe('availability')
     expect(goalInvestmentPositions.availableFrom.name).toBe('available_from')
+  })
+
+  it('stores reversible saving contributions and goal allocations', () => {
+    expect(getTableName(savingContributions)).toBe('saving_contributions')
+    expect(savingContributions.userId.name).toBe('user_id')
+    expect(savingContributions.amount.name).toBe('amount')
+    expect(savingContributions.currency.name).toBe('currency')
+    expect(savingContributions.arsSpent.name).toBe('ars_spent')
+    expect(savingContributions.effectiveRate.name).toBe('effective_rate')
+    expect(getTableName(savingContributionAllocations)).toBe('saving_contribution_allocations')
+    expect(savingContributionAllocations.savingPositionId.name).toBe('saving_position_id')
   })
 })
 
