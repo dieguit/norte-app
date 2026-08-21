@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Pencil } from "lucide-react";
+import { ChevronDown, Pause, Pencil, Play } from "lucide-react";
 import {
   formatCalendarMonth,
   formatMoney,
@@ -19,6 +19,10 @@ export interface GoalsWorkspaceProps {
   onNewGoal?: () => void;
   onChangePlanning?: () => void;
   onEditGoal?: (goalId: string) => void;
+  onChangeGoalLifecycle?: (
+    goalId: string,
+    lifecycle: "pause" | "resume",
+  ) => void;
 }
 
 interface GoalCardProps {
@@ -26,6 +30,10 @@ interface GoalCardProps {
   expanded: boolean;
   onToggle: () => void;
   onEditGoal?: (goalId: string) => void;
+  onChangeGoalLifecycle?: (
+    goalId: string,
+    lifecycle: "pause" | "resume",
+  ) => void;
 }
 
 function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
@@ -101,7 +109,13 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
   );
 }
 
-function GoalCard({ goal, expanded, onToggle, onEditGoal }: GoalCardProps) {
+function GoalCard({
+  goal,
+  expanded,
+  onToggle,
+  onEditGoal,
+  onChangeGoalLifecycle,
+}: GoalCardProps) {
   const projectionText = getGoalProjectionDisplay(goal);
   const projectionLabel =
     goal.status === "completed"
@@ -136,6 +150,30 @@ function GoalCard({ goal, expanded, onToggle, onEditGoal }: GoalCardProps) {
                 Editar objetivo
               </Button>
             )}
+            {onChangeGoalLifecycle &&
+              (goal.status === "active" || goal.status === "paused") && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`${goal.status === "active" ? "Pausar" : "Reanudar"} objetivo ${goal.name}`}
+                  onClick={() =>
+                    onChangeGoalLifecycle(
+                      goal.id,
+                      goal.status === "active" ? "pause" : "resume",
+                    )
+                  }
+                >
+                  {goal.status === "active" ? (
+                    <Pause data-icon="inline-start" aria-hidden="true" />
+                  ) : (
+                    <Play data-icon="inline-start" aria-hidden="true" />
+                  )}
+                  {goal.status === "active"
+                    ? "Pausar objetivo"
+                    : "Reanudar objetivo"}
+                </Button>
+              )}
           </div>
           <p className="text-xs text-[var(--sea-ink-soft)] sm:text-right">
             {projectionLabel}
@@ -203,6 +241,7 @@ export function GoalsWorkspace({
   onNewGoal,
   onChangePlanning,
   onEditGoal,
+  onChangeGoalLifecycle,
 }: GoalsWorkspaceProps) {
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<
@@ -264,6 +303,7 @@ export function GoalsWorkspace({
                   );
                 }}
                 onEditGoal={onEditGoal}
+                onChangeGoalLifecycle={onChangeGoalLifecycle}
               />
             ))}
           </div>
@@ -322,6 +362,7 @@ export function GoalsWorkspace({
                         );
                       }}
                       onEditGoal={onEditGoal}
+                      onChangeGoalLifecycle={onChangeGoalLifecycle}
                     />
                   ))}
                 </div>

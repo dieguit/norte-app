@@ -7,6 +7,7 @@ import { GoalsWorkspace } from './-components/GoalsWorkspace'
 import { GoalCreationSheet } from './-components/GoalCreationSheet'
 import { AllocationChangeSheet } from './-components/AllocationChangeSheet'
 import { GoalEditSheet } from './-components/GoalEditSheet'
+import { GoalLifecycleSheet } from './-components/GoalLifecycleSheet'
 
 export const Route = createFileRoute('/app/goals')({
   loader: () => getGoalsWorkspace(),
@@ -33,6 +34,10 @@ function GoalsLayout() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isAllocationChangeOpen, setIsAllocationChangeOpen] = useState(false)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
+  const [lifecycleGoal, setLifecycleGoal] = useState<{
+    goalId: string
+    lifecycle: 'pause' | 'resume'
+  } | null>(null)
 
   if (data.profile === 'missing') return <FinancialOnboarding />
 
@@ -45,6 +50,9 @@ function GoalsLayout() {
           onNewGoal={() => setIsCreateOpen(true)}
           onChangePlanning={() => setIsAllocationChangeOpen(true)}
           onEditGoal={setEditingGoalId}
+          onChangeGoalLifecycle={(goalId, lifecycle) =>
+            setLifecycleGoal({ goalId, lifecycle })
+          }
         />
       ) : (
         <GoalsEmpty onNewGoal={() => setIsCreateOpen(true)} />
@@ -59,6 +67,14 @@ function GoalsLayout() {
         goalId={editingGoalId}
         onOpenChange={(open) => {
           if (!open) setEditingGoalId(null)
+        }}
+      />
+      <GoalLifecycleSheet
+        open={lifecycleGoal !== null}
+        goalId={lifecycleGoal?.goalId ?? null}
+        lifecycle={lifecycleGoal?.lifecycle ?? null}
+        onOpenChange={(open) => {
+          if (!open) setLifecycleGoal(null)
         }}
       />
     </>

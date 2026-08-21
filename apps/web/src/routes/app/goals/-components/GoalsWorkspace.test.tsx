@@ -560,6 +560,82 @@ describe('GoalsWorkspace component', () => {
     expect(onEditGoal).toHaveBeenCalledWith('goal-1')
   })
 
+  it('places Pausar objetivo immediately after Editar objetivo for active goals', () => {
+    const onEditGoal = vi.fn()
+    const onChangeGoalLifecycle = vi.fn()
+    const activeWorkspace: GoalsWorkspaceType = {
+      groups: [{ status: 'active', goals: [makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })] }],
+    }
+
+    render(
+      <GoalsWorkspace
+        workspace={activeWorkspace}
+        onEditGoal={onEditGoal}
+        onChangeGoalLifecycle={onChangeGoalLifecycle}
+      />,
+    )
+
+    const controls = within(screen.getByRole('article', { name: 'Colchón financiero' })).getAllByRole('button')
+    expect(controls.map((button) => button.getAttribute('aria-label'))).toContain('Pausar objetivo Colchón financiero')
+    expect(
+      controls.indexOf(screen.getByRole('button', { name: 'Pausar objetivo Colchón financiero' })),
+    ).toBeGreaterThan(controls.indexOf(screen.getByRole('button', { name: 'Editar objetivo Colchón financiero' })))
+  })
+
+  it('offers Reanudar objetivo for paused goals and no lifecycle action for completed goals', async () => {
+    const user = userEvent.setup()
+    const onEditGoal = vi.fn()
+    const onChangeGoalLifecycle = vi.fn()
+    const workspaceWithAllStatuses: GoalsWorkspaceType = {
+      groups: [
+        { status: 'active', goals: [makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })] },
+        { status: 'paused', goals: [makeGoal({ id: 'goal-2', name: 'Viaje', status: 'paused' })] },
+        { status: 'completed', goals: [makeGoal({ id: 'goal-3', name: 'Laptop', status: 'completed' })] },
+      ],
+    }
+
+    render(
+      <GoalsWorkspace
+        workspace={workspaceWithAllStatuses}
+        onEditGoal={onEditGoal}
+        onChangeGoalLifecycle={onChangeGoalLifecycle}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Pausados/i }))
+    await user.click(screen.getByRole('button', { name: /Completados/i }))
+    expect(screen.getByRole('button', { name: 'Reanudar objetivo Viaje' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Pausar objetivo Laptop' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reanudar objetivo Laptop' })).not.toBeInTheDocument()
+  })
+
+  it('calls onChangeGoalLifecycle with correct lifecycle action when clicking pause or resume', async () => {
+    const user = userEvent.setup()
+    const onChangeGoalLifecycle = vi.fn()
+    const workspace: GoalsWorkspaceType = {
+      groups: [
+        { status: 'active', goals: [makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })] },
+        { status: 'paused', goals: [makeGoal({ id: 'goal-2', name: 'Viaje', status: 'paused' })] },
+      ],
+    }
+
+    render(
+      <GoalsWorkspace
+        workspace={workspace}
+        onChangeGoalLifecycle={onChangeGoalLifecycle}
+      />,
+    )
+
+    const pauseBtn = screen.getByRole('button', { name: 'Pausar objetivo Colchón financiero' })
+    await user.click(pauseBtn)
+    expect(onChangeGoalLifecycle).toHaveBeenCalledWith('goal-1', 'pause')
+
+    await user.click(screen.getByRole('button', { name: /Pausados/i }))
+    const resumeBtn = screen.getByRole('button', { name: 'Reanudar objetivo Viaje' })
+    await user.click(resumeBtn)
+    expect(onChangeGoalLifecycle).toHaveBeenCalledWith('goal-2', 'resume')
+  })
+
   it('renders saving contribution action history with amount, location, and keyboard-accessible controls under goal detail', async () => {
     const user = userEvent.setup()
     const activeGoal = makeGoal({

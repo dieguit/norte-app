@@ -10,7 +10,12 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getGoalsWorkspace, getGoalEditContext } from '../../../features/goals/goals.functions'
+import {
+  getGoalsWorkspace,
+  getGoalEditContext,
+  getGoalLifecycleContext,
+  previewGoalLifecycle,
+} from '../../../features/goals/goals.functions'
 import type { GoalsWorkspace, GoalWorkspaceItem } from '../../../features/goals/goals'
 import { Route as rootRoute } from '../../__root'
 import { Route as AppRoute } from '../route'
@@ -41,6 +46,9 @@ vi.mock('../../../features/goals/goals.functions', () => ({
   getGoalEditContext: vi.fn(),
   previewGoalEdit: vi.fn(),
   confirmGoalEdit: vi.fn(),
+  getGoalLifecycleContext: vi.fn(),
+  previewGoalLifecycle: vi.fn(),
+  confirmGoalLifecycle: vi.fn(),
 }))
 
 vi.mock('../../../features/financial/financial.functions', () => ({
@@ -273,6 +281,172 @@ describe('Goals routes and workspace', () => {
 
       expect(await screen.findByRole('heading', { level: 2, name: 'Editar objetivo' })).toBeInTheDocument()
       expect(await screen.findByLabelText('Nombre del objetivo')).toHaveValue('Colchón financiero')
+    })
+
+    it('opens GoalLifecycleSheet when clicking Pausar objetivo on active goal', async () => {
+      vi.mocked(getGoalsWorkspace).mockResolvedValue({
+        profile: 'present',
+        workspace: sampleWorkspace,
+      })
+      vi.mocked(getGoalLifecycleContext).mockResolvedValue({
+        profile: 'present',
+        goalId: 'goal-1',
+        lifecycle: 'pause',
+        goalName: 'Colchón financiero',
+        currentMonth: '2026-08',
+        plannedMonthlyContribution: { amount: '50000.00', currency: 'ARS' },
+        activeGoals: [{ id: 'goal-1', name: 'Colchón financiero', currency: 'USD' }],
+        currentAllocation: {
+          effectiveMonth: '2026-08-01',
+          entries: [{ goalId: 'goal-1', percentage: '100.00' }],
+        },
+      })
+      vi.mocked(previewGoalLifecycle).mockResolvedValue({
+        previewToken: '1'.repeat(64),
+        proposal: {
+          lifecycle: 'pause',
+          goalId: 'goal-1',
+          nextStatus: 'paused',
+          transition: { goalId: 'goal-1', status: 'paused' },
+          pauseMonthlyCommitment: true,
+          allocation: {
+            monthlyContribution: undefined,
+            effectiveMonth: '2026-09-01',
+            totalPercentage: '0.00',
+            entries: [],
+          },
+          persistedAllocation: {
+            effectiveMonth: '2026-09-01',
+            entries: [],
+          },
+          impacts: [],
+          proposedSource: {
+            profile: null,
+            goals: [],
+            savingsPositions: [],
+            investmentPositions: [],
+            snapshots: [],
+            allocations: [],
+          },
+        },
+      })
+
+      const router = createTestRouter()
+      render(<RouterProvider router={router} />)
+
+      const pauseBtn = await screen.findByRole('button', { name: 'Pausar objetivo Colchón financiero' })
+      fireEvent.click(pauseBtn)
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Pausar objetivo' })).toBeInTheDocument()
+      expect(getGoalLifecycleContext).toHaveBeenCalledWith({
+        data: { goalId: 'goal-1', lifecycle: 'pause' },
+      })
+    })
+
+    it('opens GoalLifecycleSheet when clicking Reanudar objetivo on paused goal', async () => {
+      const pausedGoal: GoalWorkspaceItem = {
+        ...sampleGoal,
+        id: 'goal-2',
+        name: 'Viaje',
+        status: 'paused',
+      }
+      const workspaceWithPaused: GoalsWorkspace = {
+        groups: [
+          { status: 'active', goals: [] },
+          { status: 'paused', goals: [pausedGoal] },
+          { status: 'completed', goals: [] },
+        ],
+      }
+
+      vi.mocked(getGoalsWorkspace).mockResolvedValue({
+        profile: 'present',
+        workspace: workspaceWithPaused,
+      })
+      vi.mocked(getGoalLifecycleContext).mockResolvedValue({
+        profile: 'present',
+        goalId: 'goal-2',
+        lifecycle: 'resume',
+        goalName: 'Viaje',
+        currentMonth: '2026-08',
+        plannedMonthlyContribution: { amount: '50000.00', currency: 'ARS' },
+        activeGoals: [],
+        currentAllocation: {
+          effectiveMonth: '2026-08-01',
+          entries: [],
+        },
+      })
+      vi.mocked(previewGoalLifecycle).mockResolvedValue({
+        previewToken: '2'.repeat(64),
+        proposal: {
+          lifecycle: 'resume',
+          goalId: 'goal-2',
+          nextStatus: 'active',
+          transition: { goalId: 'goal-2', status: 'active' },
+          pauseMonthlyCommitment: false,
+          allocation: {
+            monthlyContribution: { amount: '50000.00', currency: 'ARS' },
+            effectiveMonth: '2026-09-01',
+            totalPercentage: '0.00',
+            entries: [],
+          },
+          persistedAllocation: {
+            effectiveMonth: '2026-09-01',
+            entries: [],
+          },
+          impacts: [],
+          proposedSource: {
+            profile: null,
+            goals: [],
+            savingsPositions: [],
+            investmentPositions: [],
+            snapshots: [],
+            allocations: [],
+          },
+        },
+      })
+
+      const router = createTestRouter()
+      render(<RouterProvider router={router} />)
+
+      const pausedGroupBtn = await screen.findByRole('button', { name: /Pausados/i })
+      fireEvent.click(pausedGroupBtn)
+
+      const resumeBtn = await screen.findByRole('button', { name: 'Reanudar objetivo Viaje' })
+      fireEvent.click(resumeBtn)
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Reanudar objetivo' })).toBeInTheDocument()
+      expect(getGoalLifecycleContext).toHaveBeenCalledWith({
+        data: { goalId: 'goal-2', lifecycle: 'resume' },
+      })
+    })
+
+    it('keeps Edit and Lifecycle sheets completely separate without cross-opening', async () => {
+      vi.mocked(getGoalsWorkspace).mockResolvedValue({
+        profile: 'present',
+        workspace: sampleWorkspace,
+      })
+      vi.mocked(getGoalLifecycleContext).mockResolvedValue({
+        profile: 'present',
+        goalId: 'goal-1',
+        lifecycle: 'pause',
+        goalName: 'Colchón financiero',
+        currentMonth: '2026-08',
+        plannedMonthlyContribution: { amount: '50000.00', currency: 'ARS' },
+        activeGoals: [{ id: 'goal-1', name: 'Colchón financiero', currency: 'USD' }],
+        currentAllocation: {
+          effectiveMonth: '2026-08-01',
+          entries: [{ goalId: 'goal-1', percentage: '100.00' }],
+        },
+      })
+
+      const router = createTestRouter()
+      render(<RouterProvider router={router} />)
+
+      const pauseBtn = await screen.findByRole('button', { name: 'Pausar objetivo Colchón financiero' })
+      fireEvent.click(pauseBtn)
+
+      expect(await screen.findByRole('heading', { level: 2, name: 'Pausar objetivo' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { level: 2, name: 'Editar objetivo' })).not.toBeInTheDocument()
     })
   })
 })
