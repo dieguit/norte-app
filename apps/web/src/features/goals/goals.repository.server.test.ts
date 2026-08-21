@@ -1763,8 +1763,25 @@ describe('goals.repository.server', () => {
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }
 
+      const mockGoalCompleted = {
+        id: 'g_completed',
+        userId: 'user_1',
+        name: 'Auto viejo',
+        type: 'purchase',
+        targetAmount: '10000.00',
+        currency: 'USD',
+        priority: 'low',
+        strategy: 'save',
+        status: 'completed',
+        desiredDate: '2028-01-01',
+        completedAt: new Date('2026-05-01T00:00:00Z'),
+        emergencyFundMonths: null,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        updatedAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
-      vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([mockGoalPaused] as never)
+      vi.mocked(db.query.financialGoals.findMany).mockResolvedValue([mockGoalPaused, mockGoalCompleted] as never)
       vi.mocked(db.query.goalSavingsPositions.findMany).mockResolvedValue([] as never)
       vi.mocked(db.query.goalInvestmentPositions.findMany).mockResolvedValue([] as never)
       vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([] as never)
@@ -1773,9 +1790,12 @@ describe('goals.repository.server', () => {
       await expect(getGoalEditState('user_1', '2026-08', 'non-existent')).rejects.toThrow(
         'Goal not found or is not active.',
       )
-      await expect(getGoalEditState('user_1', '2026-08', 'g_paused')).rejects.toThrow(
-        'Goal not found or is not active.',
+      await expect(getGoalEditState('user_1', '2026-08', 'g_completed')).rejects.toThrow(
+        'Cannot edit a completed goal.',
       )
+
+      const pausedState = await getGoalEditState('user_1', '2026-08', 'g_paused')
+      expect(pausedState).not.toBeNull()
     })
 
     it('returns state when profile and active goal exist', async () => {
@@ -2242,6 +2262,46 @@ describe('goals.repository.server', () => {
 
       expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
+    it('8. updates paused goal without inserting it into allocationPlanEntries', async () => {
+      const pausedGoal = {
+        ...mockGoal2,
+        status: 'paused' as const,
+      }
+
+      setupMocks({
+        goals: [mockGoal1, pausedGoal],
+        allocations: [
+          {
+            id: 'a1',
+            snapshotId: 's_current',
+            goalId: 'g1',
+            percentage: '100.00',
+            createdAt: new Date('2026-01-01T00:00:00Z'),
+          },
+        ],
+      })
+
+      const pausedDraft = {
+        ...validEditDraft,
+        name: 'Viaje pospuesto',
+        allocations: [{ goalId: 'g1', percentage: '100.00' }],
+      }
+
+      const state = await getGoalEditState('user_1', currentMonth, 'g2')
+      const token = createGoalEditPreviewToken(state!, currentMonth, 'g2', pausedDraft)
+
+      await confirmGoalEditInRepository({
+        userId: 'user_1',
+        goalId: 'g2',
+        currentMonth,
+        draft: pausedDraft,
+        previewToken: token,
+      })
+
+      expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
     })
   })

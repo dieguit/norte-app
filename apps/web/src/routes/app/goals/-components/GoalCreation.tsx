@@ -20,6 +20,7 @@ import type {
   GoalCreationContext,
   GoalCreationPreviewResult,
 } from '../../../../features/goals/goal-creation'
+import type { GoalStatus } from '../../../../features/goals/goals'
 import { useStore } from '@tanstack/react-form'
 import { useGoalCreationForm } from './useGoalCreationForm'
 import { GoalObjectiveFields } from './GoalObjectiveFields'
@@ -33,6 +34,7 @@ export interface GoalCreationProps {
   onCreated: () => void
   edit?: {
     goalId: string
+    status?: GoalStatus
     initialDraft: GoalCreationDraft
   }
 }
@@ -102,7 +104,9 @@ export function GoalCreation({
 
   const isAllocationsValid = useMemo(() => {
     const allocations = values.allocations || []
-    if (allocations.length === 0) return false
+    if (allocations.length === 0) {
+      return edit?.status === 'paused'
+    }
     const totalBn = allocations.reduce((sum, e) => {
       const cleaned = (e.percentage ?? '').trim().replace(',', '.')
       if (!cleaned) return sum
@@ -114,7 +118,7 @@ export function GoalCreation({
       }
     }, new BigNumber(0))
     return totalBn.isEqualTo(100)
-  }, [values.allocations])
+  }, [values.allocations, edit?.status])
 
   const continueFromObjective = async () => {
     setServerError(null)
@@ -288,6 +292,16 @@ export function GoalCreation({
             preview={preview}
             isPreviewPending={isPreviewPending}
             onPercentageCommit={handlePercentageCommit}
+            transition={
+              edit
+                ? {
+                    goalId: edit.goalId,
+                    status: edit.status === 'paused' ? 'paused' : 'editing',
+                    label: edit.status === 'paused' ? 'Pausado' : 'Edición',
+                    editable: edit.status !== 'paused',
+                  }
+                : undefined
+            }
           />
         )}
       </div>

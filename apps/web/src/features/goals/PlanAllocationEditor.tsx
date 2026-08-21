@@ -54,7 +54,7 @@ export function PlanAllocationEditor({
         : null;
 
     return (
-      <Field key={entry.goalId} data-invalid={!isValid}>
+      <Field key={entry.goalId} data-invalid={!isValid} data-testid="allocation-row">
         <div className="flex items-center justify-between gap-4">
           <FieldLabel
             id={`allocation-${entry.goalId}-label`}

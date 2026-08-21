@@ -200,9 +200,15 @@ export function mapGoalEditContext(
   currentMonth: string,
   goalId: string,
 ): GoalEditContext {
-  const goal = state.source.goals.find((g) => g.id === goalId && g.status === 'active')
+  const goal = state.source.goals.find(
+    (g) => g.id === goalId && (g.status === 'active' || g.status === 'paused'),
+  )
   if (!goal) {
-    throw new Error('Goal not found or is not active.')
+    const anyGoal = state.source.goals.find((g) => g.id === goalId)
+    if (anyGoal?.status === 'completed') {
+      throw new Error('Cannot edit a completed goal.')
+    }
+    throw new Error('Goal not found or is not active or paused.')
   }
   const activeGoals = state.source.goals.filter((g) => g.status === 'active')
   const nextMonthStr = `${getNextCalendarMonth(new Date(`${currentMonth.slice(0, 7)}-01T00:00:00Z`))}`
@@ -249,7 +255,7 @@ export function mapGoalEditContext(
         })
       }
     }
-  } else {
+  } else if (activeGoals.length > 0) {
     selectedAllocationEntries = activeGoals.map((g) => ({
       goalId: g.id,
       percentage: activeGoals.length === 1 ? '100.00' : '0.00',
@@ -274,6 +280,7 @@ export function mapGoalEditContext(
 
   return {
     goalId,
+    status: goal.status,
     draft,
     context: mapGoalCreationContext(state, currentMonth),
   }
@@ -308,9 +315,15 @@ export async function previewGoalEditServer({
   if (!state) {
     throw new Error('Completá tu perfil financiero antes de editar un objetivo.')
   }
-  const selectedGoal = state.source.goals.find((g) => g.id === data.goalId && g.status === 'active')
+  const selectedGoal = state.source.goals.find(
+    (g) => g.id === data.goalId && (g.status === 'active' || g.status === 'paused'),
+  )
   if (!selectedGoal) {
-    throw new Error('Goal not found or is not active.')
+    const anyGoal = state.source.goals.find((g) => g.id === data.goalId)
+    if (anyGoal?.status === 'completed') {
+      throw new Error('Cannot edit a completed goal.')
+    }
+    throw new Error('Goal not found or is not active or paused.')
   }
   const draft = parseGoalCreationSubmission(data.draft, currentMonth)
   if (

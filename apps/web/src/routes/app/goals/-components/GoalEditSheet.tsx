@@ -9,6 +9,7 @@ import {
 import { getGoalEditContext } from '../../../../features/goals/goals.functions'
 import type { GoalCreationDraft } from '../../../../features/goals/goal-creation.schema'
 import type { GoalCreationContext } from '../../../../features/goals/goal-creation'
+import type { GoalStatus } from '../../../../features/goals/goals'
 import { GoalCreation } from './GoalCreation'
 
 export interface GoalEditSheetProps {
@@ -19,6 +20,7 @@ export interface GoalEditSheetProps {
 
 interface GoalEditContextData {
   goalId: string
+  status?: GoalStatus
   draft: GoalCreationDraft
   context: GoalCreationContext
 }
@@ -44,6 +46,7 @@ export function GoalEditSheet({ open, goalId, onOpenChange }: GoalEditSheetProps
         } else {
           setContext({
             goalId: res.goalId,
+            status: res.status,
             draft: res.draft,
             context: res.context,
           })
@@ -92,7 +95,7 @@ export function GoalEditSheet({ open, goalId, onOpenChange }: GoalEditSheetProps
         ) : context ? (
           <GoalCreation
             context={context.context}
-            edit={{ goalId: context.goalId, initialDraft: context.draft }}
+            edit={{ goalId: context.goalId, status: context.status, initialDraft: context.draft }}
             onCancel={() => onOpenChange(false)}
             onCreated={() => onOpenChange(false)}
           />

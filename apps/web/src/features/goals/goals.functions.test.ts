@@ -1240,6 +1240,7 @@ describe('getGoalEditContext', () => {
     expect(result).toEqual({
       profile: 'present',
       goalId: validGoalId,
+      status: 'active',
       draft: {
         type: 'purchase',
         name: 'Viaje a Japón',

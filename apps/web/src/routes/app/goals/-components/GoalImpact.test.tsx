@@ -93,6 +93,12 @@ describe('GoalImpact component', () => {
     isPreviewPending?: boolean
     onPercentageCommit?: () => void
     initialDraft?: Parameters<typeof useGoalCreationForm>[0]
+    transition?: {
+      goalId: string
+      label?: string
+      status?: 'active' | 'paused' | 'editing'
+      editable?: boolean
+    }
   }) {
     const form = useGoalCreationForm(props.initialDraft)
     return (
@@ -102,9 +108,115 @@ describe('GoalImpact component', () => {
         preview={props.preview !== undefined ? props.preview : makeMockPreview()}
         isPreviewPending={props.isPreviewPending ?? false}
         onPercentageCommit={props.onPercentageCommit ?? vi.fn()}
+        transition={props.transition}
       />
     )
   }
+
+  it('places the edited goal before every other allocation entry', async () => {
+    const preview = makeMockPreview({
+      proposal: {
+        ...makeMockPreview().proposal,
+        allocation: {
+          monthlyContribution: { amount: '120000.00', currency: 'ARS' },
+          effectiveMonth: '2026-09-01',
+          totalPercentage: '100.00',
+          entries: [
+            {
+              goalId: 'emergency',
+              goalName: 'Fondo de emergencia',
+              percentage: '50.00',
+              allocatedBaseAmount: { amount: '60000.00', currency: 'ARS' },
+              allocatedDestinationAmount: { amount: '60000.00', currency: 'ARS' },
+              pending: false,
+            },
+            {
+              goalId: 'travel',
+              goalName: 'Viaje',
+              percentage: '50.00',
+              allocatedBaseAmount: { amount: '60000.00', currency: 'ARS' },
+              allocatedDestinationAmount: { amount: '60000.00', currency: 'ARS' },
+              pending: false,
+            },
+          ],
+        },
+        impacts: [
+          {
+            goalId: 'emergency',
+            goalName: 'Fondo de emergencia',
+            before: {
+              status: 'existing',
+              projection: { status: 'available', completionMonth: '2027-01' },
+              allocatedMonthlyAmounts: [{ amount: '60000.00', currency: 'ARS' }],
+            },
+            after: { status: 'available', completionMonth: '2027-01' },
+          },
+          {
+            goalId: 'travel',
+            goalName: 'Viaje',
+            before: {
+              status: 'existing',
+              projection: { status: 'available', completionMonth: '2027-04' },
+              allocatedMonthlyAmounts: [{ amount: '60000.00', currency: 'ARS' }],
+            },
+            after: { status: 'available', completionMonth: '2027-04' },
+          },
+        ],
+      },
+    })
+
+    render(<TestHarness preview={preview} transition={{ goalId: 'travel', status: 'editing' }} />)
+    expect(screen.getAllByTestId('allocation-row')[0]).toHaveTextContent('Viaje')
+  })
+
+  it('renders a paused lifecycle row without a percentage input', () => {
+    const preview = makeMockPreview({
+      proposal: {
+        ...makeMockPreview().proposal,
+        allocation: {
+          monthlyContribution: { amount: '120000.00', currency: 'ARS' },
+          effectiveMonth: '2026-09-01',
+          totalPercentage: '100.00',
+          entries: [
+            {
+              goalId: 'emergency',
+              goalName: 'Fondo de emergencia',
+              percentage: '100.00',
+              allocatedBaseAmount: { amount: '120000.00', currency: 'ARS' },
+              allocatedDestinationAmount: { amount: '120000.00', currency: 'ARS' },
+              pending: false,
+            },
+          ],
+        },
+        impacts: [
+          {
+            goalId: 'travel',
+            goalName: 'Viaje',
+            before: {
+              status: 'existing',
+              projection: { status: 'target_unavailable' },
+              allocatedMonthlyAmounts: [],
+            },
+            after: { status: 'target_unavailable' },
+          },
+          {
+            goalId: 'emergency',
+            goalName: 'Fondo de emergencia',
+            before: {
+              status: 'existing',
+              projection: { status: 'available', completionMonth: '2027-01' },
+              allocatedMonthlyAmounts: [{ amount: '120000.00', currency: 'ARS' }],
+            },
+            after: { status: 'available', completionMonth: '2027-01' },
+          },
+        ],
+      },
+    })
+
+    render(<TestHarness preview={preview} transition={{ goalId: 'travel', status: 'paused' }} />)
+    expect(screen.getByText('Pausado')).toBeVisible()
+    expect(screen.queryByLabelText('Porcentaje para Viaje')).not.toBeInTheDocument()
+  })
 
   it('renders allocation editor and impact comparison rows', () => {
     render(<TestHarness />)

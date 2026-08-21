@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   mapAllocationChangeContext,
   mapGoalCreationContext,
+  mapGoalEditContext,
   mapGoalLifecycleContext,
 } from './goals.server'
 import type { GoalCreationState } from './goal-creation'
@@ -264,6 +265,99 @@ describe('mapGoalLifecycleContext', () => {
   it('throws error when attempting to resume a non-paused goal', () => {
     expect(() => mapGoalLifecycleContext(baseLifecycleState, '2026-08', 'g1', 'resume')).toThrow(
       'Only paused goals can be resumed.',
+    )
+  })
+})
+
+describe('mapGoalEditContext', () => {
+  const baseEditState: GoalCreationState = {
+    source: {
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '500000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '80000.00',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: 'g1',
+          userId: 'user-1',
+          name: 'Reserva',
+          type: 'emergency_fund',
+          targetAmount: '2000.00',
+          currency: 'USD',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'g2',
+          userId: 'user-1',
+          name: 'Viaje',
+          type: 'purchase',
+          targetAmount: '3000.00',
+          currency: 'USD',
+          priority: 'medium',
+          strategy: 'invest',
+          status: 'paused',
+          desiredDate: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'g3',
+          userId: 'user-1',
+          name: 'Auto',
+          type: 'purchase',
+          targetAmount: '10000.00',
+          currency: 'USD',
+          priority: 'low',
+          strategy: 'save',
+          status: 'completed',
+          desiredDate: null,
+          completedAt: '2026-05-01T00:00:00.000Z',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [],
+      investmentPositions: [],
+      snapshots: [
+        { id: 'snap-1', userId: 'user-1', effectiveMonth: '2026-08-01' },
+      ],
+      allocations: [
+        { id: 'alloc-1', snapshotId: 'snap-1', goalId: 'g1', percentage: '100.00' },
+      ],
+    },
+    pendingSnapshots: [],
+    pendingAllocations: [],
+  }
+
+  it('maps active goal for editing and includes it in allocations', () => {
+    const editContext = mapGoalEditContext(baseEditState, '2026-08', 'g1')
+    expect(editContext.goalId).toBe('g1')
+    expect(editContext.status).toBe('active')
+    expect(editContext.draft.name).toBe('Reserva')
+    expect(editContext.draft.allocations).toEqual([{ goalId: 'g1', percentage: '100.00' }])
+  })
+
+  it('maps paused goal for editing and constructs allocation only from active goals', () => {
+    const editContext = mapGoalEditContext(baseEditState, '2026-08', 'g2')
+    expect(editContext.goalId).toBe('g2')
+    expect(editContext.status).toBe('paused')
+    expect(editContext.draft.name).toBe('Viaje')
+    // Paused goal g2 should NOT be in allocations; only active goal g1 should be
+    expect(editContext.draft.allocations).toEqual([{ goalId: 'g1', percentage: '100.00' }])
+  })
+
+  it('throws error when attempting to edit a completed goal', () => {
+    expect(() => mapGoalEditContext(baseEditState, '2026-08', 'g3')).toThrow(
+      /completed|not active or paused/i,
     )
   })
 })

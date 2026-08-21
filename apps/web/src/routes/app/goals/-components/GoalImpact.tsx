@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import { useStore } from '@tanstack/react-form'
 import BigNumber from 'bignumber.js'
+import { Badge } from '../../../../components/ui/badge'
 import { PlanAllocationEditor } from '../../../../features/goals/PlanAllocationEditor'
 import {
   calculatePercentageSum,
@@ -24,12 +26,20 @@ export const impactLabels = {
   invalid: 'Completá la distribución para calcular el impacto',
 }
 
+export interface GoalImpactTransition {
+  goalId: string
+  label?: string
+  status?: 'active' | 'paused' | 'editing'
+  editable?: boolean
+}
+
 export interface GoalImpactProps {
   form: GoalCreationFormApi
   context: GoalCreationContext
   preview: GoalCreationPreviewResult | null
   isPreviewPending: boolean
   onPercentageCommit: () => void
+  transition?: GoalImpactTransition
 }
 
 export function GoalImpact({
@@ -37,9 +47,12 @@ export function GoalImpact({
   preview,
   isPreviewPending,
   onPercentageCommit,
+  transition,
 }: GoalImpactProps) {
   const values = useStore(form.store, (state) => state.values)
   const draftAllocations = values.allocations ?? []
+
+  const isPausedTransition = transition?.status === 'paused' || transition?.editable === false
 
   const baseEntries = (preview?.proposal.allocation.entries ?? []).map((entry) => {
     const draftEntry = draftAllocations.find((e) => e.goalId === entry.goalId)
@@ -71,12 +84,21 @@ export function GoalImpact({
     }
   })
 
-  const totalBn = calculatePercentageSum(entries)
+  let displayedEntries = [...entries]
+  if (transition?.goalId && !isPausedTransition) {
+    const targetIdx = displayedEntries.findIndex((e) => e.goalId === transition.goalId)
+    if (targetIdx > 0) {
+      const [targetEntry] = displayedEntries.splice(targetIdx, 1)
+      displayedEntries.unshift(targetEntry)
+    }
+  }
+
+  const totalBn = calculatePercentageSum(displayedEntries)
 
   const allocationToDisplay: GoalCreationAllocation = {
     monthlyContribution: preview?.proposal.allocation.monthlyContribution,
     effectiveMonth: preview?.proposal.allocation.effectiveMonth ?? '',
-    entries,
+    entries: displayedEntries,
     totalPercentage: totalBn.toFixed(2),
   }
 
@@ -93,8 +115,9 @@ export function GoalImpact({
   }
 
   const isAllocationsValid =
-    allocationToDisplay.entries.length > 0 &&
-    calculatePercentageSum(allocationToDisplay.entries).isEqualTo(100)
+    allocationToDisplay.entries.length === 0
+      ? Boolean(isPausedTransition)
+      : calculatePercentageSum(allocationToDisplay.entries).isEqualTo(100)
 
   const isPreviewOutdated =
     !preview ||
@@ -111,10 +134,47 @@ export function GoalImpact({
       }
     })
 
+  const pausedGoalName =
+    preview?.proposal.impacts.find((i) => i.goalId === transition?.goalId)?.goalName ??
+    preview?.proposal.normalizedGoal.name ??
+    values.name ??
+    'Objetivo'
+
+  const impactsToDisplay = useMemo(() => {
+    if (!preview?.proposal.impacts) return []
+    const impacts = [...preview.proposal.impacts]
+    if (transition?.goalId) {
+      const targetIdx = impacts.findIndex((i) => i.goalId === transition.goalId)
+      if (targetIdx > 0) {
+        const [targetImpact] = impacts.splice(targetIdx, 1)
+        impacts.unshift(targetImpact)
+      }
+    }
+    return impacts
+  }, [preview?.proposal.impacts, transition?.goalId])
+
   return (
     <div className="flex flex-col gap-6">
       {/* Allocation Editor */}
       <section aria-label="Distribución del Plan" className="flex flex-col gap-3">
+        {isPausedTransition && (
+          <div
+            data-testid="allocation-row"
+            className="flex items-center justify-between gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5"
+          >
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-sm font-medium text-[var(--sea-ink)]">
+                {pausedGoalName}
+              </span>
+              <span className="text-xs text-[var(--sea-ink-soft)] font-normal">
+                Sin asignación de aporte mensual
+              </span>
+            </div>
+            <Badge variant="secondary">
+              {transition.label ?? 'Pausado'}
+            </Badge>
+          </div>
+        )}
         <PlanAllocationEditor
           allocation={allocationToDisplay}
           disabled={isPreviewPending}
@@ -144,14 +204,14 @@ export function GoalImpact({
               {impactLabels.invalid}
             </p>
           </div>
-        ) : preview?.proposal.impacts && preview.proposal.impacts.length > 0 ? (
+        ) : impactsToDisplay.length > 0 ? (
           <div
             className={`transition-opacity ${
               isPreviewPending ? 'opacity-50' : 'opacity-100'
             }`}
           >
             <AllocationImpactComparison
-              impacts={preview.proposal.impacts}
+              impacts={impactsToDisplay}
               beforeNotCreatedLabel={impactLabels.pendingGoalBefore}
             />
           </div>

@@ -366,15 +366,57 @@ export async function getGoalEditStateWithExecutor(
   currentMonth: string,
   goalId: string,
 ): Promise<GoalCreationState | null> {
-  const state = await getActiveGoalPlanStateWithExecutor(executor, userId, currentMonth)
-  if (!state) {
+  const base = await getOwnedGoalPlanBase(executor, userId)
+  if (!base) {
     return null
   }
-  const goal = state.source.goals.find((g) => g.id === goalId && g.status === 'active')
+
+  const goal = base.goals.find((g: any) => g.id === goalId)
   if (!goal) {
     throw new Error('Goal not found or is not active.')
   }
-  return state
+  if (goal.status === 'completed') {
+    throw new Error('Cannot edit a completed goal.')
+  }
+  if (goal.status !== 'active' && goal.status !== 'paused') {
+    throw new Error('Goal not found or is not active.')
+  }
+
+  const nextMonth = `${getNextCalendarMonth(new Date(`${currentMonth.slice(0, 7)}-01T00:00:00Z`))}-01`
+  const currentSnapshots = selectWinningSnapshots(base.snapshots, currentMonth)
+  const pendingSnapshots = base.snapshots.filter(
+    (snapshot: any) => snapshot.effectiveMonth.slice(0, 7) === nextMonth.slice(0, 7),
+  )
+  const selectedIds = new Set([...currentSnapshots, ...pendingSnapshots].map((snapshot: any) => snapshot.id))
+  const selectedSnapshotIds = Array.from(selectedIds)
+
+  const allocations =
+    selectedSnapshotIds.length > 0
+      ? await executor.query.allocationPlanEntries.findMany({
+          where: (allocsTable: any, { inArray }: any) =>
+            inArray(allocsTable.snapshotId, selectedSnapshotIds),
+        })
+      : []
+
+  const currentSnapshotIds = new Set(currentSnapshots.map((s: any) => s.id))
+  const pendingSnapshotIds = new Set(pendingSnapshots.map((s: any) => s.id))
+
+  return {
+    source: mapRowsToGoalsWorkspaceSource({
+      profile: base.profile,
+      goals: base.goals,
+      savingsPositions: base.savingsPositions,
+      investmentPositions: base.investmentPositions,
+      snapshots: currentSnapshots,
+      allocations: allocations.filter((allocation: any) =>
+        currentSnapshotIds.has(allocation.snapshotId),
+      ),
+    }),
+    pendingSnapshots: pendingSnapshots.map(mapSnapshot),
+    pendingAllocations: allocations
+      .filter((allocation: any) => pendingSnapshotIds.has(allocation.snapshotId))
+      .map(mapAllocation),
+  }
 }
 
 export async function getGoalEditState(
@@ -614,7 +656,9 @@ export async function confirmGoalEditInRepository(input: {
     const state = await getGoalEditStateWithExecutor(tx, userId, currentMonth, goalId)
     if (!state) throw new Error('Financial profile not found.')
 
-    const selectedGoal = state.source.goals.find((g) => g.id === goalId && g.status === 'active')
+    const selectedGoal = state.source.goals.find(
+      (g) => g.id === goalId && (g.status === 'active' || g.status === 'paused'),
+    )
     if (!selectedGoal) {
       throw new Error('Goal not found or is not active.')
     }
@@ -661,13 +705,15 @@ export async function confirmGoalEditInRepository(input: {
 
     const snapshotId = await replacePendingAllocationSnapshot(tx, userId, proposal.allocation)
     await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
-    await tx.insert(allocationPlanEntries).values(
-      proposal.allocation.entries.map((entry) => ({
-        snapshotId,
-        goalId: entry.goalId,
-        percentage: entry.percentage,
-      })),
-    )
+    if (proposal.allocation.entries.length > 0) {
+      await tx.insert(allocationPlanEntries).values(
+        proposal.allocation.entries.map((entry) => ({
+          snapshotId,
+          goalId: entry.goalId,
+          percentage: entry.percentage,
+        })),
+      )
+    }
   })
 }
 

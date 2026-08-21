@@ -14,6 +14,7 @@ import {
 import {
   type GoalPriority,
   type GoalProjection,
+  type GoalStatus,
   type GoalStrategy,
   type GoalsWorkspaceSource,
   type InvestmentAvailability,
@@ -39,6 +40,7 @@ export interface GoalCreationContext {
 
 export interface GoalEditContext {
   goalId: string
+  status?: GoalStatus
   draft: GoalCreationDraft
   context: GoalCreationContext
 }
@@ -285,7 +287,9 @@ export function buildGoalCreationProposal(input: {
   const isEditing = input.subjectGoalId !== undefined
   const subjectGoalId = input.subjectGoalId ?? PENDING_GOAL_ID
   const subjectGoal = isEditing
-    ? state.source.goals.find((goal) => goal.id === subjectGoalId && goal.status === 'active')
+    ? state.source.goals.find(
+        (goal) => goal.id === subjectGoalId && (goal.status === 'active' || goal.status === 'paused'),
+      )
     : undefined
 
   if (isEditing && !subjectGoal) {
@@ -575,7 +579,7 @@ export function buildGoalCreationProposal(input: {
 
   // 8. Verify total percentage equals 100%
   const totalBn = calculatePercentageSum(entries)
-  if (!totalBn.isEqualTo(100)) {
+  if (entries.length > 0 && !totalBn.isEqualTo(100)) {
     throw new Error(`Allocation percentages must sum to 100%, got ${totalBn.toFixed(2)}%`)
   }
 

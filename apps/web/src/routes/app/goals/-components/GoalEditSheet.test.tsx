@@ -107,4 +107,22 @@ describe('GoalEditSheet', () => {
 
     expect(handleOpenChange).toHaveBeenCalledWith(false)
   })
+
+  it('renders GoalCreation for a paused goal', async () => {
+    vi.mocked(getGoalEditContext).mockResolvedValue({
+      profile: 'present',
+      goalId: 'goal-2',
+      status: 'paused',
+      draft: {
+        ...sampleDraft,
+        name: 'Auto usado',
+      },
+      context: sampleContext,
+    })
+
+    render(<GoalEditSheet open={true} goalId="goal-2" onOpenChange={vi.fn()} />)
+
+    expect(await screen.findByLabelText('Nombre del objetivo')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nombre del objetivo')).toHaveValue('Auto usado')
+  })
 })
