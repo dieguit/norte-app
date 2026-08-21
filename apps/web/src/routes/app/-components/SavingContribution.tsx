@@ -1,57 +1,61 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import BigNumber from 'bignumber.js'
-import { Button } from '../../../components/ui/button'
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "@tanstack/react-router";
+import { toast } from "sonner";
+import BigNumber from "bignumber.js";
+import { Button } from "../../../components/ui/button";
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
   FieldSet,
-} from '../../../components/ui/field'
-import { Input } from '../../../components/ui/input'
-import { formatCalendarMonth, formatMoney, formatPercentage } from '../../../lib/format'
-import { formatMoneyInput, parseMoneyInput } from '../../../lib/money'
-import { PLANNING_ARS_PER_USD } from '../../../features/financial/financial'
+} from "../../../components/ui/field";
+import { Input } from "../../../components/ui/input";
+import {
+  formatCalendarMonth,
+  formatMoney,
+  formatPercentage,
+} from "../../../lib/format";
+import { formatMoneyInput, parseMoneyInput } from "../../../lib/money";
+import { PLANNING_ARS_PER_USD } from "../../../features/financial/financial";
 import {
   buildSavingPreview,
   deriveUsdPurchase,
   type ContributionKind,
   type SavingContributionContext,
   type SavingContributionPreviewResult,
-} from '../../../features/contributions/saving-contribution'
+} from "../../../features/contributions/saving-contribution";
 import {
   confirmSavingContribution,
   previewSavingContribution,
   updateSavingContribution,
-} from '../../../features/contributions/saving-contribution.functions'
-import type { SavingContributionSummary } from '../../../features/goals/goals'
-import { formatGoalProjection } from '../goals/-components/AllocationImpactComparison'
+} from "../../../features/contributions/saving-contribution.functions";
+import type { SavingContributionSummary } from "../../../features/goals/goals";
+import { formatGoalProjection } from "../goals/-components/AllocationImpactComparison";
 
 export interface SavingContributionProps {
-  kind?: ContributionKind
-  currency?: 'ARS' | 'USD'
-  initialAmount?: string
-  catchUpMonth?: string
-  context?: SavingContributionContext
-  initialContribution?: SavingContributionSummary | null
-  onCancel: () => void
-  onSuccess: () => void
+  kind?: ContributionKind;
+  currency?: "ARS" | "USD";
+  initialAmount?: string;
+  catchUpMonth?: string;
+  context?: SavingContributionContext;
+  initialContribution?: SavingContributionSummary | null;
+  onCancel: () => void;
+  onSuccess: () => void;
 }
 
 function formatDerivedMoney(val: string): string {
-  const bn = new BigNumber(val)
-  if (!bn.isFinite() || bn.isNaN()) return ''
-  const str = bn.toFixed(2, BigNumber.ROUND_HALF_UP)
-  const [intPart, decPart] = str.split('.')
-  const formattedInt = new Intl.NumberFormat('es-AR', {
+  const bn = new BigNumber(val);
+  if (!bn.isFinite() || bn.isNaN()) return "";
+  const str = bn.toFixed(2, BigNumber.ROUND_HALF_UP);
+  const [intPart, decPart] = str.split(".");
+  const formattedInt = new Intl.NumberFormat("es-AR", {
     maximumFractionDigits: 0,
-  }).format(BigInt(intPart))
-  if (decPart && decPart !== '00') {
-    return `${formattedInt},${decPart.replace(/0+$/, '')}`
+  }).format(BigInt(intPart));
+  if (decPart && decPart !== "00") {
+    return `${formattedInt},${decPart.replace(/0+$/, "")}`;
   }
-  return formattedInt
+  return formattedInt;
 }
 
 export function SavingContribution({
@@ -64,52 +68,55 @@ export function SavingContribution({
   onCancel,
   onSuccess,
 }: SavingContributionProps) {
-  const router = useRouter()
-  const isEdit = Boolean(initialContribution)
+  const router = useRouter();
+  const isEdit = Boolean(initialContribution);
 
   const kind: ContributionKind =
-    initialContribution && 'kind' in initialContribution && (initialContribution as any).kind
+    initialContribution &&
+    "kind" in initialContribution &&
+    (initialContribution as any).kind
       ? ((initialContribution as any).kind as ContributionKind)
-      : propsKind ?? 'saving'
+      : (propsKind ?? "saving");
 
-  const isFixedCurrency = Boolean(propsCurrency)
+  const isFixedCurrency = Boolean(propsCurrency);
   const initialCurrency = initialContribution
-    ? (initialContribution.currency as 'ARS' | 'USD')
-    : propsCurrency || 'ARS'
+    ? (initialContribution.currency as "ARS" | "USD")
+    : propsCurrency || "ARS";
 
-  const [currency, setCurrency] = useState<'ARS' | 'USD'>(initialCurrency)
+  const [currency, setCurrency] = useState<"ARS" | "USD">(initialCurrency);
   const [amount, setAmount] = useState(
     initialContribution
       ? formatDerivedMoney(initialContribution.amount)
       : initialAmount
         ? formatDerivedMoney(initialAmount)
-        : '',
-  )
-  const [location, setLocation] = useState(
-    initialContribution?.location ?? '',
-  )
+        : "",
+  );
+  const [location, setLocation] = useState(initialContribution?.location ?? "");
   const [arsSpent, setArsSpent] = useState(
-    initialContribution?.arsSpent ? formatDerivedMoney(initialContribution.arsSpent) : '',
-  )
+    initialContribution?.arsSpent
+      ? formatDerivedMoney(initialContribution.arsSpent)
+      : "",
+  );
   const [effectiveRate, setEffectiveRate] = useState(
     initialContribution?.effectiveRate
       ? formatDerivedMoney(initialContribution.effectiveRate)
-      : initialCurrency === 'USD'
+      : initialCurrency === "USD"
         ? formatDerivedMoney(PLANNING_ARS_PER_USD)
-        : '',
-  )
+        : "",
+  );
   const [derivedField, setDerivedField] = useState<
-    'arsSpent' | 'effectiveRate' | 'amount' | null
-  >(initialCurrency === 'USD' ? 'arsSpent' : null)
+    "arsSpent" | "effectiveRate" | "amount" | null
+  >(initialCurrency === "USD" ? "arsSpent" : null);
 
-  const [preview, setPreview] = useState<SavingContributionPreviewResult | null>(null)
-  const [isPreviewPending, setIsPreviewPending] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [staleMessage, setStaleMessage] = useState<string | null>(null)
-  const [validationError, setValidationError] = useState<string | null>(null)
+  const [preview, setPreview] =
+    useState<SavingContributionPreviewResult | null>(null);
+  const [isPreviewPending, setIsPreviewPending] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [staleMessage, setStaleMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const alertRef = useRef<HTMLDivElement>(null)
+  const alertRef = useRef<HTMLDivElement>(null);
 
   const eligibleGoals = useMemo(() => {
     if (isEdit && initialContribution) {
@@ -117,69 +124,69 @@ export function SavingContribution({
         id: a.goalId,
         name: a.goalName,
         percentage: a.percentage,
-      }))
+      }));
     }
-    if (kind === 'investment') {
-      return currency === 'USD'
-        ? context?.eligibleInvestmentGoalsUsd ?? []
-        : context?.eligibleInvestmentGoals ?? []
+    if (kind === "investment") {
+      return currency === "USD"
+        ? (context?.eligibleInvestmentGoalsUsd ?? [])
+        : (context?.eligibleInvestmentGoals ?? []);
     }
-    return currency === 'USD'
-      ? context?.eligibleGoalsUsd ?? []
-      : context?.eligibleGoals ?? []
-  }, [isEdit, initialContribution, kind, currency, context])
-  const hasEligibleGoals = Boolean(eligibleGoals && eligibleGoals.length > 0)
+    return currency === "USD"
+      ? (context?.eligibleGoalsUsd ?? [])
+      : (context?.eligibleGoals ?? []);
+  }, [isEdit, initialContribution, kind, currency, context]);
+  const hasEligibleGoals = Boolean(eligibleGoals && eligibleGoals.length > 0);
 
-  const handleCurrencyChange = (newCurrency: 'ARS' | 'USD') => {
-    if (newCurrency === currency) return
-    setCurrency(newCurrency)
-    setAmount('')
-    setLocation('')
-    setArsSpent('')
+  const handleCurrencyChange = (newCurrency: "ARS" | "USD") => {
+    if (newCurrency === currency) return;
+    setCurrency(newCurrency);
+    setAmount("");
+    setLocation("");
+    setArsSpent("");
     setEffectiveRate(
-      newCurrency === 'USD' ? formatDerivedMoney(PLANNING_ARS_PER_USD) : '',
-    )
-    setDerivedField(newCurrency === 'USD' ? 'arsSpent' : null)
-    setPreview(null)
-    setServerError(null)
-    setStaleMessage(null)
-    setValidationError(null)
-  }
+      newCurrency === "USD" ? formatDerivedMoney(PLANNING_ARS_PER_USD) : "",
+    );
+    setDerivedField(newCurrency === "USD" ? "arsSpent" : null);
+    setPreview(null);
+    setServerError(null);
+    setStaleMessage(null);
+    setValidationError(null);
+  };
 
   const handleAmountChange = (raw: string) => {
-    const formatted = formatMoneyInput(raw)
-    setAmount(formatted)
-    setPreview(null)
-    setServerError(null)
-    setStaleMessage(null)
-    setValidationError(null)
+    const formatted = formatMoneyInput(raw);
+    setAmount(formatted);
+    setPreview(null);
+    setServerError(null);
+    setStaleMessage(null);
+    setValidationError(null);
 
-    if (currency === 'USD') {
-      if (derivedField === 'arsSpent' || !arsSpent) {
+    if (currency === "USD") {
+      if (derivedField === "arsSpent" || !arsSpent) {
         if (formatted && effectiveRate) {
           try {
             const derivation = deriveUsdPurchase({
               usdAmount: formatted,
               effectiveRate: effectiveRate,
-            })
+            });
             if (derivation.arsSpent) {
-              setArsSpent(formatDerivedMoney(derivation.arsSpent))
-              setDerivedField('arsSpent')
+              setArsSpent(formatDerivedMoney(derivation.arsSpent));
+              setDerivedField("arsSpent");
             }
           } catch {
             // Ignored during intermediate typing
           }
         }
-      } else if (derivedField === 'effectiveRate' || !effectiveRate) {
+      } else if (derivedField === "effectiveRate" || !effectiveRate) {
         if (formatted && arsSpent) {
           try {
             const derivation = deriveUsdPurchase({
               usdAmount: formatted,
               arsSpent: arsSpent,
-            })
+            });
             if (derivation.effectiveRate) {
-              setEffectiveRate(formatDerivedMoney(derivation.effectiveRate))
-              setDerivedField('effectiveRate')
+              setEffectiveRate(formatDerivedMoney(derivation.effectiveRate));
+              setDerivedField("effectiveRate");
             }
           } catch {
             // Ignored during intermediate typing
@@ -187,119 +194,119 @@ export function SavingContribution({
         }
       }
     }
-  }
+  };
 
   const handleArsSpentChange = (raw: string) => {
-    const formatted = formatMoneyInput(raw)
-    setArsSpent(formatted)
-    setPreview(null)
-    setServerError(null)
-    setStaleMessage(null)
-    setValidationError(null)
+    const formatted = formatMoneyInput(raw);
+    setArsSpent(formatted);
+    setPreview(null);
+    setServerError(null);
+    setStaleMessage(null);
+    setValidationError(null);
 
-    if (currency === 'USD') {
+    if (currency === "USD") {
       if (!formatted) {
-        setDerivedField(null)
-      } else if (!effectiveRate || derivedField === 'effectiveRate') {
+        setDerivedField(null);
+      } else if (!effectiveRate || derivedField === "effectiveRate") {
         if (amount && formatted) {
           try {
             const derivation = deriveUsdPurchase({
               usdAmount: amount,
               arsSpent: formatted,
-            })
+            });
             if (derivation.effectiveRate) {
-              setEffectiveRate(formatDerivedMoney(derivation.effectiveRate))
-              setDerivedField('effectiveRate')
+              setEffectiveRate(formatDerivedMoney(derivation.effectiveRate));
+              setDerivedField("effectiveRate");
             }
           } catch {
             // Ignored during intermediate typing
           }
         }
-      } else if (!amount || derivedField === 'amount') {
+      } else if (!amount || derivedField === "amount") {
         if (effectiveRate && formatted) {
           try {
             const derivation = deriveUsdPurchase({
               arsSpent: formatted,
               effectiveRate: effectiveRate,
-            })
+            });
             if (derivation.usdAmount) {
-              setAmount(formatDerivedMoney(derivation.usdAmount))
-              setDerivedField('amount')
+              setAmount(formatDerivedMoney(derivation.usdAmount));
+              setDerivedField("amount");
             }
           } catch {
             // Ignored during intermediate typing
           }
         }
       } else {
-        setDerivedField(null)
+        setDerivedField(null);
       }
     }
-  }
+  };
 
   const handleRateChange = (raw: string) => {
-    const formatted = formatMoneyInput(raw)
-    setEffectiveRate(formatted)
-    setPreview(null)
-    setServerError(null)
-    setStaleMessage(null)
-    setValidationError(null)
+    const formatted = formatMoneyInput(raw);
+    setEffectiveRate(formatted);
+    setPreview(null);
+    setServerError(null);
+    setStaleMessage(null);
+    setValidationError(null);
 
-    if (currency === 'USD') {
+    if (currency === "USD") {
       if (!formatted) {
-        setDerivedField('effectiveRate')
-      } else if (derivedField === 'arsSpent' || !arsSpent) {
+        setDerivedField("effectiveRate");
+      } else if (derivedField === "arsSpent" || !arsSpent) {
         if (amount && formatted) {
           try {
             const derivation = deriveUsdPurchase({
               usdAmount: amount,
               effectiveRate: formatted,
-            })
+            });
             if (derivation.arsSpent) {
-              setArsSpent(formatDerivedMoney(derivation.arsSpent))
-              setDerivedField('arsSpent')
+              setArsSpent(formatDerivedMoney(derivation.arsSpent));
+              setDerivedField("arsSpent");
             }
           } catch {
             // Ignored during intermediate typing
           }
         }
-      } else if (derivedField === 'amount' || !amount) {
+      } else if (derivedField === "amount" || !amount) {
         if (arsSpent && formatted) {
           try {
             const derivation = deriveUsdPurchase({
               arsSpent: arsSpent,
               effectiveRate: formatted,
-            })
+            });
             if (derivation.usdAmount) {
-              setAmount(formatDerivedMoney(derivation.usdAmount))
-              setDerivedField('amount')
+              setAmount(formatDerivedMoney(derivation.usdAmount));
+              setDerivedField("amount");
             }
           } catch {
             // Ignored during intermediate typing
           }
         }
       } else {
-        setDerivedField(null)
+        setDerivedField(null);
       }
     }
-  }
+  };
 
   const handleLocationChange = (raw: string) => {
-    setLocation(raw)
-    setPreview(null)
-  }
+    setLocation(raw);
+    setPreview(null);
+  };
 
   // Debounced preview calculation
   useEffect(() => {
     if (!hasEligibleGoals) {
-      setPreview(null)
-      return
+      setPreview(null);
+      return;
     }
 
-    if (currency === 'ARS') {
-      const parsed = parseMoneyInput(amount, 'ARS')
+    if (currency === "ARS") {
+      const parsed = parseMoneyInput(amount, "ARS");
       if (!parsed) {
-        setPreview(null)
-        return
+        setPreview(null);
+        return;
       }
 
       if (isEdit && initialContribution) {
@@ -308,78 +315,80 @@ export function SavingContribution({
             kind,
             draft: {
               kind,
-              currency: 'ARS',
+              currency: "ARS",
               amount,
-              location: kind === 'saving' ? location.trim() || null : null,
+              location: kind === "saving" ? location.trim() || null : null,
             },
             eligibleGoals,
-          })
+          });
           setPreview({
             preview: previewResult,
-            previewToken: '',
-          })
-          setValidationError(null)
-          setServerError(null)
+            previewToken: "",
+          });
+          setValidationError(null);
+          setServerError(null);
         } catch {
-          setPreview(null)
+          setPreview(null);
         }
-        return
+        return;
       }
 
-      let active = true
-      setIsPreviewPending(true)
+      let active = true;
+      setIsPreviewPending(true);
       const timer = setTimeout(() => {
         previewSavingContribution({
           data: {
             kind,
-            currency: 'ARS',
+            currency: "ARS",
             amount,
-            location: kind === 'saving' ? location.trim() || null : null,
+            location: kind === "saving" ? location.trim() || null : null,
           },
         })
           .then((res) => {
-            if (active) setPreview(res)
+            if (active) setPreview(res);
           })
           .catch((err) => {
             if (active) {
-              setPreview(null)
-              setServerError(err?.message ?? 'Error al calcular la vista previa.')
+              setPreview(null);
+              setServerError(
+                err?.message ?? "Error al calcular la vista previa.",
+              );
             }
           })
           .finally(() => {
-            if (active) setIsPreviewPending(false)
-          })
-      }, 250)
+            if (active) setIsPreviewPending(false);
+          });
+      }, 250);
 
       return () => {
-        active = false
-        clearTimeout(timer)
-      }
+        active = false;
+        clearTimeout(timer);
+      };
     }
 
-    if (currency === 'USD') {
-      const parsedUsd = parseMoneyInput(amount, 'USD')
+    if (currency === "USD") {
+      const parsedUsd = parseMoneyInput(amount, "USD");
       if (!parsedUsd) {
-        setPreview(null)
-        return
+        setPreview(null);
+        return;
       }
 
-      let derivation: ReturnType<typeof deriveUsdPurchase> | null = null
+      let derivation: ReturnType<typeof deriveUsdPurchase> | null = null;
       try {
         derivation = deriveUsdPurchase({
           usdAmount: amount,
           arsSpent: arsSpent || null,
           effectiveRate: effectiveRate || null,
-        })
-        setValidationError(null)
+        });
+        setValidationError(null);
       } catch (err: any) {
         if (amount && arsSpent && effectiveRate) {
           setValidationError(
-            'Los valores en USD, ARS gastados y tipo de cambio no coinciden.',
-          )
+            "Los valores en USD, ARS gastados y tipo de cambio no coinciden.",
+          );
         }
-        setPreview(null)
-        return
+        setPreview(null);
+        return;
       }
 
       if (isEdit && initialContribution) {
@@ -388,57 +397,60 @@ export function SavingContribution({
             kind,
             draft: {
               kind,
-              currency: 'USD',
+              currency: "USD",
               amount,
-              location: kind === 'saving' ? location.trim() || null : null,
+              location: kind === "saving" ? location.trim() || null : null,
               arsSpent: derivation?.arsSpent ?? (arsSpent || null),
-              effectiveRate: derivation?.effectiveRate ?? (effectiveRate || null),
+              effectiveRate:
+                derivation?.effectiveRate ?? (effectiveRate || null),
             },
             eligibleGoals,
-          })
+          });
           setPreview({
             preview: previewResult,
-            previewToken: '',
-          })
-          setValidationError(null)
-          setServerError(null)
+            previewToken: "",
+          });
+          setValidationError(null);
+          setServerError(null);
         } catch {
-          setPreview(null)
+          setPreview(null);
         }
-        return
+        return;
       }
 
-      let active = true
-      setIsPreviewPending(true)
+      let active = true;
+      setIsPreviewPending(true);
       const timer = setTimeout(() => {
         previewSavingContribution({
           data: {
             kind,
-            currency: 'USD',
+            currency: "USD",
             amount,
-            location: kind === 'saving' ? location.trim() || null : null,
+            location: kind === "saving" ? location.trim() || null : null,
             arsSpent: derivation?.arsSpent ?? (arsSpent || null),
             effectiveRate: derivation?.effectiveRate ?? (effectiveRate || null),
           },
         })
           .then((res) => {
-            if (active) setPreview(res)
+            if (active) setPreview(res);
           })
           .catch((err) => {
             if (active) {
-              setPreview(null)
-              setServerError(err?.message ?? 'Error al calcular la vista previa.')
+              setPreview(null);
+              setServerError(
+                err?.message ?? "Error al calcular la vista previa.",
+              );
             }
           })
           .finally(() => {
-            if (active) setIsPreviewPending(false)
-          })
-      }, 250)
+            if (active) setIsPreviewPending(false);
+          });
+      }, 250);
 
       return () => {
-        active = false
-        clearTimeout(timer)
-      }
+        active = false;
+        clearTimeout(timer);
+      };
     }
   }, [
     kind,
@@ -452,23 +464,23 @@ export function SavingContribution({
     isEdit,
     initialContribution,
     eligibleGoals,
-  ])
+  ]);
 
   const handleConfirm = async () => {
-    if (!preview || !hasEligibleGoals) return
-    setIsSubmitting(true)
-    setServerError(null)
-    setStaleMessage(null)
+    if (!preview || !hasEligibleGoals) return;
+    setIsSubmitting(true);
+    setServerError(null);
+    setStaleMessage(null);
 
     try {
       const draftPayload = {
         kind,
         currency,
         amount,
-        location: kind === 'saving' ? location.trim() || null : null,
-        arsSpent: currency === 'USD' ? (arsSpent || null) : null,
-        effectiveRate: currency === 'USD' ? (effectiveRate || null) : null,
-      }
+        location: kind === "saving" ? location.trim() || null : null,
+        arsSpent: currency === "USD" ? arsSpent || null : null,
+        effectiveRate: currency === "USD" ? effectiveRate || null : null,
+      };
 
       if (isEdit && initialContribution) {
         await updateSavingContribution({
@@ -476,12 +488,16 @@ export function SavingContribution({
             contributionId: initialContribution.id,
             draft: draftPayload,
           },
-        })
+        });
 
-        await router.invalidate()
-        toast.success(kind === 'investment' ? 'Inversión actualizada.' : 'Ahorro actualizado.')
-        onSuccess()
-        return
+        await router.invalidate();
+        toast.success(
+          kind === "investment"
+            ? "Inversión actualizada."
+            : "Ahorro actualizado.",
+        );
+        onSuccess();
+        return;
       }
 
       const res = await confirmSavingContribution({
@@ -490,38 +506,40 @@ export function SavingContribution({
           previewToken: preview.previewToken,
           catchUpMonth,
         },
-      })
+      });
 
-      if (res.status === 'stale') {
-        setPreview(res.preview)
+      if (res.status === "stale") {
+        setPreview(res.preview);
         setStaleMessage(
-          'Tu Plan cambió. Revisá la distribución actualizada antes de confirmar.',
-        )
-        setTimeout(() => alertRef.current?.focus(), 0)
-        return
+          "Tu Plan cambió. Revisá la distribución actualizada antes de confirmar.",
+        );
+        setTimeout(() => alertRef.current?.focus(), 0);
+        return;
       }
 
-      await router.invalidate()
-      toast.success(kind === 'investment' ? 'Inversión registrada.' : 'Ahorro registrado.')
-      onSuccess()
+      await router.invalidate();
+      toast.success(
+        kind === "investment" ? "Inversión registrada." : "Ahorro registrado.",
+      );
+      onSuccess();
     } catch (err: any) {
-      setServerError(err?.message ?? 'Ocurrió un error al guardar.')
-      setTimeout(() => alertRef.current?.focus(), 0)
+      setServerError(err?.message ?? "Ocurrió un error al guardar.");
+      setTimeout(() => alertRef.current?.focus(), 0);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const isFormValid = Boolean(
     preview &&
-      !isPreviewPending &&
-      !isSubmitting &&
-      hasEligibleGoals &&
-      !validationError,
-  )
+    !isPreviewPending &&
+    !isSubmitting &&
+    hasEligibleGoals &&
+    !validationError,
+  );
 
-  const actionNoun = kind === 'investment' ? 'inversión' : 'ahorro'
-  const actionVerb = kind === 'investment' ? 'Invertí' : 'Ahorré'
+  const actionNoun = kind === "investment" ? "inversión" : "ahorro";
+  const actionVerb = kind === "investment" ? "Invertí" : "Ahorré";
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -537,24 +555,24 @@ export function SavingContribution({
             <button
               type="button"
               disabled={isEdit}
-              onClick={() => handleCurrencyChange('ARS')}
+              onClick={() => handleCurrencyChange("ARS")}
               className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
-                currency === 'ARS'
-                  ? 'bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm'
-                  : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
-              } ${isEdit ? 'cursor-not-allowed opacity-75' : ''}`}
+                currency === "ARS"
+                  ? "bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm"
+                  : "text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]"
+              } ${isEdit ? "cursor-not-allowed opacity-75" : ""}`}
             >
               {actionVerb} ARS
             </button>
             <button
               type="button"
               disabled={isEdit}
-              onClick={() => handleCurrencyChange('USD')}
+              onClick={() => handleCurrencyChange("USD")}
               className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${
-                currency === 'USD'
-                  ? 'bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm'
-                  : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
-              } ${isEdit ? 'cursor-not-allowed opacity-75' : ''}`}
+                currency === "USD"
+                  ? "bg-[var(--surface)] text-[var(--sea-ink)] shadow-sm"
+                  : "text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]"
+              } ${isEdit ? "cursor-not-allowed opacity-75" : ""}`}
             >
               {actionVerb} USD
             </button>
@@ -562,35 +580,41 @@ export function SavingContribution({
         )}
 
         {/* Monthly Target Headline */}
-        {!isEdit && hasEligibleGoals && (() => {
-          const target =
-            kind === 'investment'
-              ? currency === 'USD'
-                ? context?.monthlyInvestmentTargetUsd
-                : context?.monthlyInvestmentTargetArs
-              : currency === 'USD'
-                ? context?.monthlyTargetUsd
-                : context?.monthlyTargetArs
-          if (!target) return null
-          const isPositive = Number(target.amount) > 0
-          const actionTargetVerb = kind === 'investment' ? 'invertir' : 'ahorrar'
-          const actionTargetNoun = kind === 'investment' ? 'inversión' : 'ahorro'
-          return (
-            <div className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/60 px-4 py-3 text-sm text-[var(--sea-ink)]">
-              {isPositive ? (
-                <>
-                  Necesitás {actionTargetVerb}{' '}
-                  <span className="font-bold">{formatMoney(target)}</span>{' '}
-                  este mes para cumplir con tus objetivos.
-                </>
-              ) : (
-                <span className="font-semibold text-[var(--sea-ink)]">
-                  ¡Ya cubriste tu meta de {actionTargetNoun} planificada para este mes!
-                </span>
-              )}
-            </div>
-          )
-        })()}
+        {!isEdit &&
+          !catchUpMonth &&
+          hasEligibleGoals &&
+          (() => {
+            const target =
+              kind === "investment"
+                ? currency === "USD"
+                  ? context?.monthlyInvestmentTargetUsd
+                  : context?.monthlyInvestmentTargetArs
+                : currency === "USD"
+                  ? context?.monthlyTargetUsd
+                  : context?.monthlyTargetArs;
+            if (!target) return null;
+            const isPositive = Number(target.amount) > 0;
+            const actionTargetVerb =
+              kind === "investment" ? "invertir" : "ahorrar";
+            const actionTargetNoun =
+              kind === "investment" ? "inversión" : "ahorro";
+            return (
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/60 px-4 py-3 text-sm text-[var(--sea-ink)]">
+                {isPositive ? (
+                  <>
+                    Necesitás {actionTargetVerb}{" "}
+                    <span className="font-bold">{formatMoney(target)}</span>{" "}
+                    este mes para cumplir con tus objetivos.
+                  </>
+                ) : (
+                  <span className="font-semibold text-[var(--sea-ink)]">
+                    ¡Ya cubriste tu meta de {actionTargetNoun} planificada para
+                    este mes!
+                  </span>
+                )}
+              </div>
+            );
+          })()}
 
         {/* Server & Stale Alert Summaries */}
         {serverError && (
@@ -624,9 +648,11 @@ export function SavingContribution({
         {/* Input Fields */}
         <FieldGroup className="flex flex-col gap-4">
           <FieldSet className="flex flex-col gap-4">
-            {currency === 'ARS' ? (
+            {currency === "ARS" ? (
               <Field>
-                <FieldLabel htmlFor="saving-amount-input">Monto en pesos</FieldLabel>
+                <FieldLabel htmlFor="saving-amount-input">
+                  Monto en pesos
+                </FieldLabel>
                 <Input
                   id="saving-amount-input"
                   aria-label="Monto en pesos"
@@ -690,7 +716,7 @@ export function SavingContribution({
               </div>
             )}
 
-            {kind === 'saving' && (
+            {kind === "saving" && (
               <Field>
                 <FieldLabel htmlFor="saving-location-input">
                   ¿Dónde está guardado? (opcional)
@@ -711,13 +737,13 @@ export function SavingContribution({
         {!hasEligibleGoals && (
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-strong)]/50 p-4 text-center">
             <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
-              {kind === 'investment'
-                ? currency === 'USD'
-                  ? 'No hay objetivos activos para distribuir la inversión en USD.'
-                  : 'No hay objetivos activos para distribuir la inversión en ARS.'
-                : currency === 'USD'
-                  ? 'No hay objetivos activos para distribuir el ahorro en USD.'
-                  : 'No tenés objetivos activos en ARS para asignar este ahorro.'}
+              {kind === "investment"
+                ? currency === "USD"
+                  ? "No hay objetivos activos para distribuir la inversión en USD."
+                  : "No hay objetivos activos para distribuir la inversión en ARS."
+                : currency === "USD"
+                  ? "No hay objetivos activos para distribuir el ahorro en USD."
+                  : "No tenés objetivos activos en ARS para asignar este ahorro."}
             </p>
           </div>
         )}
@@ -726,7 +752,10 @@ export function SavingContribution({
         {preview && preview.preview.allocations.length > 0 && (
           <div className="flex flex-col gap-6">
             {/* Allocation Breakdown */}
-            <section aria-label={`Distribución de la ${actionNoun}`} className="flex flex-col gap-3">
+            <section
+              aria-label={`Distribución de la ${actionNoun}`}
+              className="flex flex-col gap-3"
+            >
               <h3 className="text-base font-semibold text-[var(--sea-ink)]">
                 Así se distribuye tu {actionNoun}
               </h3>
@@ -753,7 +782,10 @@ export function SavingContribution({
             </section>
 
             {/* Trajectory and Progress Impact */}
-            <section aria-label="Impacto en objetivos" className="flex flex-col gap-3">
+            <section
+              aria-label="Impacto en objetivos"
+              className="flex flex-col gap-3"
+            >
               <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
                 Impacto en tus objetivos
               </h4>
@@ -761,10 +793,10 @@ export function SavingContribution({
                 {preview.preview.allocations.map((alloc) => {
                   const beforeDate = alloc.projectionBefore
                     ? formatGoalProjection(alloc.projectionBefore)
-                    : null
+                    : null;
                   const afterDate = alloc.projectionAfter
                     ? formatGoalProjection(alloc.projectionAfter)
-                    : null
+                    : null;
 
                   return (
                     <div
@@ -811,7 +843,7 @@ export function SavingContribution({
                         </div>
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </section>
@@ -825,18 +857,14 @@ export function SavingContribution({
           Cancelar
         </Button>
 
-        <Button
-          type="button"
-          disabled={!isFormValid}
-          onClick={handleConfirm}
-        >
+        <Button type="button" disabled={!isFormValid} onClick={handleConfirm}>
           {isSubmitting
-            ? 'Guardando...'
+            ? "Guardando..."
             : isEdit
-              ? 'Guardar cambios'
+              ? "Guardar cambios"
               : `Confirmar ${actionNoun}`}
         </Button>
       </div>
     </div>
-  )
+  );
 }

@@ -179,6 +179,7 @@ describe('Home initial-plan component', () => {
     expect(screen.queryByRole('button', { name: 'Invertí USD' })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Monto en pesos')).toHaveValue('25.000')
     expect(screen.getByText('Este aporte se registrará para abril de 2026.')).toBeVisible()
+    expect(screen.queryByText(/Necesitás/i)).not.toBeInTheDocument()
   })
 
   it('renders nothing when previousMonthShortfalls is empty', () => {

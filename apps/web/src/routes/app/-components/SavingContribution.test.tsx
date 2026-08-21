@@ -741,13 +741,17 @@ describe('SavingContribution component', () => {
           currency="ARS"
           initialAmount="25000.00"
           catchUpMonth="2026-07"
-          context={defaultContext}
+          context={{
+            ...defaultContext,
+            monthlyTargetArs: { amount: '72000.00', currency: 'ARS' },
+          }}
           onCancel={vi.fn()}
           onSuccess={onSuccess}
         />,
       )
 
       expect(screen.getByText('Este aporte se registrará para julio de 2026.')).toBeVisible()
+      expect(screen.queryByText(/Necesitás ahorrar/i)).not.toBeInTheDocument()
       expect(screen.getByLabelText(/monto en pesos/i)).toHaveValue('25.000')
       expect(screen.queryByRole('button', { name: 'Ahorré USD' })).not.toBeInTheDocument()
 
