@@ -34,9 +34,9 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
       id={`goal-detail-${goal.id}`}
       role="region"
       aria-label={`Detalles de ${goal.name}`}
-      className="grid grid-cols-1 gap-5 border-t border-[var(--line)] bg-[var(--foam)]/55 px-4 py-4 sm:grid-cols-2 sm:gap-0 sm:px-5"
+      className="grid grid-cols-1 gap-5 border-t border-[var(--line)] bg-[var(--foam)]/55 px-4 py-4 sm:grid-cols-3 sm:gap-0 sm:px-5"
     >
-      <section className="sm:pr-5">
+      <section className="sm:col-span-1 sm:pr-5">
         <h4 className="text-sm font-semibold text-[var(--sea-ink)]">Plan</h4>
         {goal.funding.length === 0 ? (
           <p className="py-2 text-sm text-[var(--sea-ink-soft)]">
@@ -74,7 +74,7 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
         )}
       </section>
 
-      <section className="border-t border-[var(--line)] pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+      <section className="border-t border-[var(--line)] pt-4 sm:col-span-2 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
         <h4 className="text-sm font-semibold text-[var(--sea-ink)]">
           Tus avances hasta hoy
         </h4>

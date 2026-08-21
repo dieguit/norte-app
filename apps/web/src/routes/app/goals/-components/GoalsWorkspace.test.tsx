@@ -287,7 +287,7 @@ describe('GoalsWorkspace component', () => {
     await user.click(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' }))
 
     const details = screen.getByRole('region', { name: 'Detalles de Colchón financiero' })
-    expect(details).toHaveClass('grid-cols-1', 'sm:grid-cols-2')
+    expect(details).toHaveClass('grid-cols-1', 'sm:grid-cols-3')
     expect(within(details).getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent))
       .toEqual(['Plan', 'Tus avances hasta hoy'])
     expect(within(details).getByText('US$ 125,00')).toBeInTheDocument()
