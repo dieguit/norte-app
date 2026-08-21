@@ -35,6 +35,34 @@ describe('saving-contribution domain', () => {
       })
     })
 
+    it('deducts contributions made in the current month from the target and clamps to zero when exceeded', () => {
+      const result = deriveMonthlySavingTargets({
+        monthlyCommitmentArs: '200000.00',
+        goals: [
+          { id: 'g1', currency: 'ARS', strategy: 'save', percentage: '100.00' },
+          { id: 'g2', currency: 'USD', strategy: 'save', percentage: '50.00' },
+        ],
+        existingContributions: [
+          // Current month ARS contribution of 100.000 -> remaining 100.000
+          { amount: '100000.00', currency: 'ARS', createdAt: '2026-08-10T12:00:00Z' },
+          // Prior month contribution (ignored)
+          { amount: '50000.00', currency: 'ARS', createdAt: '2026-07-15T12:00:00Z' },
+          // USD contribution of 70 USD (when target was 200.000 * 50% / 1500 = 66.67 USD -> remaining 0.00)
+          { amount: '70.00', currency: 'USD', createdAt: '2026-08-12T12:00:00Z' },
+        ],
+        currentMonth: '2026-08',
+      })
+
+      expect(result.monthlyTargetArs).toEqual({
+        amount: '100000.00',
+        currency: 'ARS',
+      })
+      expect(result.monthlyTargetUsd).toEqual({
+        amount: '0.00',
+        currency: 'USD',
+      })
+    })
+
     it('returns null when no save strategy goals exist for that currency', () => {
       const result = deriveMonthlySavingTargets({
         monthlyCommitmentArs: '100000.00',

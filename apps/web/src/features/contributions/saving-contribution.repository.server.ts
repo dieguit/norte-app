@@ -134,6 +134,10 @@ export async function getSavingContributionStateWithExecutor(
       percentage: allocMap.get(g.id) ?? '0.00',
     }))
 
+  const userContributions = await executor.query.savingContributions.findMany({
+    where: (contributionsTable: any, { eq }: any) => eq(contributionsTable.userId, userId),
+  })
+
   const targets = deriveMonthlySavingTargets({
     monthlyCommitmentArs: profile.plannedMonthlyContribution,
     goals: activeGoals.map((g: any) => ({
@@ -142,6 +146,8 @@ export async function getSavingContributionStateWithExecutor(
       strategy: g.strategy,
       percentage: allocMap.get(g.id) ?? '0.00',
     })),
+    existingContributions: userContributions,
+    currentMonth,
   })
 
   return {

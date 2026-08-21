@@ -524,15 +524,23 @@ export function SavingContribution({
         {/* Monthly Target Headline */}
         {!isEdit && hasEligibleGoals && (currency === 'USD' ? context?.monthlyTargetUsd : context?.monthlyTargetArs) && (
           <div className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/60 px-4 py-3 text-sm text-[var(--sea-ink)]">
-            Necesitás ahorrar{' '}
-            <span className="font-bold">
-              {formatMoney(
-                (currency === 'USD'
-                  ? context?.monthlyTargetUsd
-                  : context?.monthlyTargetArs)!,
-              )}
-            </span>{' '}
-            este mes para cumplir con tus objetivos.
+            {Number((currency === 'USD' ? context?.monthlyTargetUsd : context?.monthlyTargetArs)?.amount) > 0 ? (
+              <>
+                Necesitás ahorrar{' '}
+                <span className="font-bold">
+                  {formatMoney(
+                    (currency === 'USD'
+                      ? context?.monthlyTargetUsd
+                      : context?.monthlyTargetArs)!,
+                  )}
+                </span>{' '}
+                este mes para cumplir con tus objetivos.
+              </>
+            ) : (
+              <span className="font-semibold text-[var(--sea-ink)]">
+                ¡Ya cubriste tu meta de ahorro planificada para este mes!
+              </span>
+            )}
           </div>
         )}
 

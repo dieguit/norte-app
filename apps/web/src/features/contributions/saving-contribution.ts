@@ -418,6 +418,12 @@ export function deriveMonthlySavingTargets(input: {
     strategy: string
     percentage: string | number
   }>
+  existingContributions?: Array<{
+    amount: string | Money
+    currency: string
+    createdAt: Date | string
+  }>
+  currentMonth?: string
 }): {
   monthlyTargetArs: Money | null
   monthlyTargetUsd: Money | null
@@ -433,6 +439,30 @@ export function deriveMonthlySavingTargets(input: {
   const commitmentBn = new BigNumber(commitmentStr)
   if (!commitmentBn.isFinite() || commitmentBn.isLessThanOrEqualTo(0)) {
     return { monthlyTargetArs: null, monthlyTargetUsd: null }
+  }
+
+  let currentMonthContributedArs = new BigNumber(0)
+  let currentMonthContributedUsd = new BigNumber(0)
+
+  if (input.existingContributions && input.currentMonth) {
+    for (const c of input.existingContributions) {
+      const createdStr =
+        c.createdAt instanceof Date
+          ? c.createdAt.toISOString().slice(0, 7)
+          : String(c.createdAt).slice(0, 7)
+      if (createdStr === input.currentMonth) {
+        const amtStr =
+          typeof c.amount === 'object' && c.amount ? c.amount.amount : String(c.amount)
+        const amtBn = new BigNumber(amtStr)
+        if (amtBn.isFinite() && amtBn.isGreaterThan(0)) {
+          if (c.currency === 'ARS') {
+            currentMonthContributedArs = currentMonthContributedArs.plus(amtBn)
+          } else if (c.currency === 'USD') {
+            currentMonthContributedUsd = currentMonthContributedUsd.plus(amtBn)
+          }
+        }
+      }
+    }
   }
 
   // ARS save goals
@@ -452,8 +482,11 @@ export function deriveMonthlySavingTargets(input: {
     const targetArsAmount = commitmentBn
       .multipliedBy(totalArsPercent)
       .dividedBy(100)
-      .toFixed(2, BigNumber.ROUND_HALF_UP)
-    monthlyTargetArs = createMoney(targetArsAmount, 'ARS')
+    const remainingArs = BigNumber.max(
+      0,
+      targetArsAmount.minus(currentMonthContributedArs),
+    ).toFixed(2, BigNumber.ROUND_HALF_UP)
+    monthlyTargetArs = createMoney(remainingArs, 'ARS')
   }
 
   // USD save goals
@@ -474,10 +507,11 @@ export function deriveMonthlySavingTargets(input: {
 
   let monthlyTargetUsd: Money | null = null
   if (usdSaveGoals.length > 0 && totalUsdAmount.isGreaterThan(0)) {
-    monthlyTargetUsd = createMoney(
-      totalUsdAmount.toFixed(2, BigNumber.ROUND_HALF_UP),
-      'USD',
-    )
+    const remainingUsd = BigNumber.max(
+      0,
+      totalUsdAmount.minus(currentMonthContributedUsd),
+    ).toFixed(2, BigNumber.ROUND_HALF_UP)
+    monthlyTargetUsd = createMoney(remainingUsd, 'USD')
   }
 
   return { monthlyTargetArs, monthlyTargetUsd }

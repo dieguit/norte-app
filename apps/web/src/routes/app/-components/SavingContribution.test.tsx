@@ -487,5 +487,24 @@ describe('SavingContribution component', () => {
 
       expect(screen.getByText('US$ 30,00')).toBeInTheDocument()
     })
+
+    it('renders fulfilled message when monthly saving target is 0.00', () => {
+      const contextFulfilled: SavingContributionContext = {
+        ...defaultContext,
+        monthlyTargetArs: { amount: '0.00', currency: 'ARS' },
+      }
+
+      render(
+        <SavingContribution
+          context={contextFulfilled}
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      expect(
+        screen.getByText('¡Ya cubriste tu meta de ahorro planificada para este mes!'),
+      ).toBeInTheDocument()
+    })
   })
 })
