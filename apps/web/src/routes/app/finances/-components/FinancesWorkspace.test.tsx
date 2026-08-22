@@ -8,6 +8,22 @@ import { FinancesWorkspace } from './FinancesWorkspace'
 afterEach(cleanup)
 
 describe('FinancesWorkspace', () => {
+  it('shares its month selector across income and expense tabs', async () => {
+    const user = userEvent.setup()
+    render(<FinancesWorkspace workspace={{ sources: [], incomes: [] }} initialMonth="2026-08" />)
+
+    expect(screen.getByRole('heading', { name: 'Tus Finanzas' })).toHaveClass('whitespace-nowrap')
+    expect(screen.getByLabelText('Mes de finanzas')).toHaveClass('sm:w-auto')
+    expect(screen.getByRole('heading', { name: 'Ingresos de agosto de 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Agregar nuevo' })).toHaveClass('sm:ml-auto')
+
+    await user.click(screen.getByRole('tab', { name: 'Gastos' }))
+
+    expect(screen.getByLabelText('Mes de finanzas')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Ingresos de agosto de 2026' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tabpanel')).toBeEmptyDOMElement()
+  })
+
   it('shows the selected month total and only its applicable income', () => {
     render(
       <FinancesWorkspace

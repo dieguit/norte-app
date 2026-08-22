@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIncome, updateIncome } from '../../../../features/financial/financial.functions'
 import { IncomeSheet } from './IncomeSheet'
 
@@ -18,14 +18,18 @@ vi.mock('../../../../features/financial/financial.functions', () => ({
 
 describe('IncomeSheet', () => {
   afterEach(cleanup)
+  beforeEach(() => vi.clearAllMocks())
 
-  function renderSheet(income?: Parameters<typeof IncomeSheet>[0]['income']) {
+  function renderSheet(
+    income?: Parameters<typeof IncomeSheet>[0]['income'],
+    sources: Array<{ id: string; name: string }> = [],
+  ) {
     return render(
       <IncomeSheet
         open
         onOpenChange={vi.fn()}
         month="2026-08"
-        sources={[]}
+        sources={sources}
         income={income}
       />,
     )
@@ -86,11 +90,12 @@ describe('IncomeSheet', () => {
     })
   })
 
-  it('shows the correct ARS equivalent for a formatted USD amount', async () => {
+  it('uses a currency Select and shows the USD equivalent', async () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.click(screen.getByRole('button', { name: 'USD' }))
+    await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
+    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
 
     expect(screen.getByText('Equivale a ARS 187.500.000')).toBeInTheDocument()
@@ -100,7 +105,8 @@ describe('IncomeSheet', () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.click(screen.getByRole('button', { name: 'USD' }))
+    await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
+    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125,50')
 
     expect(screen.getByText('Equivale a ARS 188.250')).toBeInTheDocument()
@@ -121,27 +127,77 @@ describe('IncomeSheet', () => {
     expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
   })
 
-  it('marks the selected currency button as pressed', async () => {
+  it('uses the recurrence Switch to show the one-time month picker', async () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.click(screen.getByRole('button', { name: 'USD' }))
+    await user.click(screen.getByRole('switch', { name: 'Es ingreso recurrente' }))
 
-    expect(screen.getByRole('button', { name: 'USD' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'ARS' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Mes del ingreso' })).toBeInTheDocument()
   })
 
-  it('renames the recurring checkbox and switches to the one-time month picker', async () => {
+  it('submits a named custom source', async () => {
     const user = userEvent.setup()
     renderSheet()
 
-    const checkbox = screen.getByRole('checkbox', { name: 'Es ingreso recurrente' })
-    expect(checkbox).toBeChecked()
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' }), 'Consultoría')
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    await user.click(checkbox)
+    expect(createIncome).toHaveBeenCalledWith({
+      data: { draft: expect.objectContaining({ source: { kind: 'custom', name: 'Consultoría' }, amount: '125000.00' }) },
+    })
+  })
 
-    expect(screen.getByRole('button', { name: 'Mes del ingreso' })).toHaveTextContent('agosto de 2026')
-    expect(screen.getByRole('checkbox', { name: 'Es ingreso recurrente' })).not.toBeChecked()
+  it('rejects an empty new custom source without creating an income', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const sourceField = screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }).closest('[data-slot="field"]')
+    expect(sourceField).toHaveAttribute('data-invalid', 'true')
+    expect(sourceField).toHaveTextContent('Ingresá una fuente.')
+    expect(createIncome).not.toHaveBeenCalled()
+  })
+
+  it('shows schema errors in their invalid fields', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const amountField = screen.getByRole('textbox', { name: 'Monto' }).closest('[data-slot="field"]')
+    expect(amountField).toHaveAttribute('data-invalid', 'true')
+    expect(amountField).toHaveTextContent('Ingresá un monto mayor a cero.')
+  })
+
+  it('updates a persisted custom source without showing the new-source input', async () => {
+    const user = userEvent.setup()
+    const sourceId = '00000000-0000-4000-8000-000000000001'
+    renderSheet({
+      id: 'income_1',
+      sourceKind: 'custom',
+      sourceId,
+      sourceName: 'Consultoría',
+      amount: '100.00',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-08-01',
+    }, [{ id: sourceId, name: 'Consultoría' }])
+
+    expect(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })).toHaveTextContent('Consultoría')
+    expect(screen.queryByRole('textbox', { name: 'Nombre del ingreso nuevo' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(updateIncome).toHaveBeenCalledWith({
+      data: { incomeId: 'income_1', draft: expect.objectContaining({ source: { kind: 'custom', sourceId } }) },
+    })
   })
 
   it('does not render native monthly inputs', () => {

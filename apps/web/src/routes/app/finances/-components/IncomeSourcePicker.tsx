@@ -1,79 +1,82 @@
-import { useId, useState } from 'react'
-import { Button } from '../../../../components/ui/button'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../../../../components/ui/field'
 import { Input } from '../../../../components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '../../../../components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../../../components/ui/select'
 import { FIXED_INCOME_SOURCES } from '../../../../features/financial/incomes'
 import type { IncomeDraft } from '../../../../features/financial/incomes.schema'
+
+const OTHER_SOURCE_VALUE = 'other'
 
 export function IncomeSourcePicker({
   sources,
   value,
+  error,
   onChange,
 }: {
   sources: Array<{ id: string; name: string }>
   value: IncomeDraft['source']
+  error?: string
   onChange: (source: IncomeDraft['source']) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const triggerId = useId()
   const options = [
-    ...Object.entries(FIXED_INCOME_SOURCES).map(([kind, label]) => ({ kind, label })),
-    ...sources.map((source) => ({ kind: 'custom', label: source.name, sourceId: source.id })),
+    ...Object.entries(FIXED_INCOME_SOURCES).map(([kind, label]) => ({ value: `fixed:${kind}`, label })),
+    ...sources.map((source) => ({ value: `custom:${source.id}`, label: source.name })),
   ]
-  const [adding, setAdding] = useState(false)
-  const selectedLabel = value.kind === 'custom'
-    ? ('name' in value ? value.name : sources.find((source) => source.id === value.sourceId)?.name)
-    : FIXED_INCOME_SOURCES[value.kind]
+  const selectItems = [...options, { value: OTHER_SOURCE_VALUE, label: 'Otro (agregar nuevo)' }]
+  const isOtherSource = value.kind === 'custom' && 'name' in value
+  const selectedValue = isOtherSource
+    ? OTHER_SOURCE_VALUE
+    : value.kind === 'custom'
+      ? `custom:${value.sourceId}`
+      : `fixed:${value.kind}`
+  function handleSourceChange(nextValue: string | null) {
+    if (!nextValue) return
+
+    if (nextValue === OTHER_SOURCE_VALUE) {
+      onChange({ kind: 'custom', name: '' })
+      return
+    }
+
+    if (nextValue.startsWith('fixed:')) {
+      onChange({ kind: nextValue.slice('fixed:'.length) as keyof typeof FIXED_INCOME_SOURCES })
+      return
+    }
+
+    onChange({ kind: 'custom', sourceId: nextValue.slice('custom:'.length) })
+  }
 
   return (
-    <div className="grid gap-2">
-      <label htmlFor={triggerId} className="text-sm font-medium text-[var(--sea-ink)]">¿De dónde viene este ingreso?</label>
-      <Popover open={open} onOpenChange={(nextOpen) => {
-        setOpen(nextOpen)
-        if (!nextOpen) setAdding(false)
-      }}>
-        <PopoverTrigger render={<Button id={triggerId} type="button" variant="outline" className="justify-between" />}>
-          {selectedLabel || 'Seleccionar fuente'}
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-[var(--anchor-width)]">
-          <div className="max-h-52 overflow-y-auto">
-            <button
-              type="button"
-              className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--lagoon-deep)] hover:bg-[var(--link-bg-hover)]"
-              onClick={() => {
-                setAdding(true)
-              }}
-            >
-              + Agregar nuevo
-            </button>
-            {adding && (
-              <Input
-                aria-label="Nueva fuente"
-                autoFocus
-                onChange={(event) => onChange({ kind: 'custom', name: event.target.value })}
-              />
-            )}
-            {options.map((option) => (
-              <button
-                key={`${option.kind}-${option.label}`}
-                type="button"
-                className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--link-bg-hover)]"
-                onClick={() => {
-                  onChange(option.kind === 'custom' && 'sourceId' in option
-                    ? { kind: 'custom', sourceId: option.sourceId }
-                    : option.kind === 'custom'
-                      ? { kind: 'custom', name: option.label }
-                      : { kind: option.kind as keyof typeof FIXED_INCOME_SOURCES })
-                  setAdding(false)
-                  setOpen(false)
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+    <Field data-invalid={!!error}>
+      <FieldLabel htmlFor="income-source-trigger">¿De dónde viene este ingreso?</FieldLabel>
+      <Select items={selectItems} value={selectedValue} onValueChange={handleSourceChange}>
+        <SelectTrigger id="income-source-trigger" aria-label="¿De dónde viene este ingreso?" className="w-full">
+          <SelectValue placeholder="Seleccionar fuente" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+          <SelectItem value={OTHER_SOURCE_VALUE}>Otro (agregar nuevo)</SelectItem>
+        </SelectContent>
+      </Select>
+      {isOtherSource && (
+        <Field>
+          <FieldLabel htmlFor="new-income-name">Nombre del ingreso nuevo</FieldLabel>
+          <Input
+            id="new-income-name"
+            aria-label="Nombre del ingreso nuevo"
+            value={value.kind === 'custom' && 'name' in value ? value.name : ''}
+            onChange={(event) => {
+              onChange({ kind: 'custom', name: event.target.value })
+            }}
+          />
+          <FieldDescription>Este ingreso se va a guardar para que puedas volver a usarlo</FieldDescription>
+        </Field>
+      )}
+      {error && <FieldError>{error}</FieldError>}
+    </Field>
   )
 }

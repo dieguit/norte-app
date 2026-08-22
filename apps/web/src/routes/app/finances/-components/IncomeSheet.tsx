@@ -3,8 +3,11 @@ import { useRouter } from '@tanstack/react-router'
 import BigNumber from 'bignumber.js'
 import { toast } from 'sonner'
 import { Button } from '../../../../components/ui/button'
+import { Field, FieldError, FieldGroup, FieldLabel, FieldSet } from '../../../../components/ui/field'
 import { Input } from '../../../../components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../../components/ui/sheet'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../components/ui/select'
+import { Switch } from '../../../../components/ui/switch'
 import { MonthPickerInput } from '../../../../components/MonthPicker'
 import { createIncome, deleteIncome, updateIncome } from '../../../../features/financial/financial.functions'
 import { FIXED_INCOME_SOURCES } from '../../../../features/financial/incomes'
@@ -47,11 +50,13 @@ export function IncomeSheet({
   const router = useRouter()
   const [draft, setDraft] = useState<IncomeDraft>(() => defaultDraft(month))
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setError(null)
+    setValidationErrors({})
     setDraft(income ? {
       source: income.sourceKind === 'custom'
         ? { kind: 'custom', sourceId: income.sourceId! }
@@ -66,9 +71,15 @@ export function IncomeSheet({
   async function save() {
     const parsed = createIncomeSchema.safeParse({ draft })
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Revisá los datos del ingreso.')
+      const errors: Record<string, string> = {}
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[1]
+        if (typeof field === 'string' && !errors[field]) errors[field] = issue.message
+      }
+      setValidationErrors(errors)
       return
     }
+    setValidationErrors({})
     setSaving(true)
     setError(null)
     try {
@@ -107,7 +118,6 @@ export function IncomeSheet({
   const arsEquivalent = parsedUsdAmount && new BigNumber(parsedUsdAmount.amount).isGreaterThan(0)
     ? new BigNumber(parsedUsdAmount.amount).times(PLANNING_ARS_PER_USD)
     : null
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]">
@@ -116,39 +126,57 @@ export function IncomeSheet({
           <SheetDescription>Indicá el origen y desde cuándo contás con este ingreso.</SheetDescription>
         </SheetHeader>
         <form className="flex flex-1 flex-col gap-5 overflow-y-auto p-6" onSubmit={(event) => { event.preventDefault(); void save() }}>
-          <IncomeSourcePicker sources={sources} value={draft.source} onChange={(source) => setDraft({ ...draft, source })} />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-medium text-[var(--sea-ink)]">
-              Monto
-              <Input
-                aria-label="Monto"
-                inputMode="decimal"
-                placeholder="0"
-                value={draft.amount}
-                onChange={(event) => setDraft({ ...draft, amount: formatMoneyInput(event.target.value) })}
-              />
-            </label>
-            <fieldset className="grid gap-2">
-              <legend className="text-sm font-medium text-[var(--sea-ink)]">Moneda</legend>
-              <div className="flex gap-2">
-                {(['ARS', 'USD'] as const).map((currency) => <Button key={currency} type="button" variant={draft.currency === currency ? 'default' : 'outline'} aria-pressed={draft.currency === currency} onClick={() => setDraft({ ...draft, currency })}>{currency}</Button>)}
-              </div>
-            </fieldset>
-          </div>
-          {arsEquivalent !== null && <p className="text-sm text-[var(--sea-ink-soft)]">Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}</p>}
-          <label className="flex items-center gap-3 text-sm font-medium text-[var(--sea-ink)]">
-            <input type="checkbox" checked={draft.recurring} onChange={(event) => setDraft({ ...draft, recurring: event.target.checked })} />
-            Es ingreso recurrente
-          </label>
-          <label className="grid gap-2 text-sm font-medium text-[var(--sea-ink)]">
-            {draft.recurring ? 'Desde el mes' : 'Mes del ingreso'}
-            <MonthPickerInput
-              aria-label={draft.recurring ? 'Desde el mes' : 'Mes del ingreso'}
-              value={draft.effectiveMonth}
-              onValueChange={(effectiveMonth) => setDraft({ ...draft, effectiveMonth })}
+          <FieldGroup>
+            <IncomeSourcePicker
+              sources={sources}
+              value={draft.source}
+              error={validationErrors.source}
+              onChange={(source) => setDraft({ ...draft, source })}
             />
-          </label>
-          {error && <p role="alert" tabIndex={-1} className="text-sm text-destructive">{error}</p>}
+            <FieldSet>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field data-invalid={!!validationErrors.amount}>
+                  <FieldLabel htmlFor="income-amount">Monto</FieldLabel>
+                  <Input
+                    id="income-amount"
+                    aria-label="Monto"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={draft.amount}
+                    onChange={(event) => setDraft({ ...draft, amount: formatMoneyInput(event.target.value) })}
+                  />
+                  {validationErrors.amount && <FieldError>{validationErrors.amount}</FieldError>}
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="income-currency-trigger">Moneda</FieldLabel>
+                  <Select
+                    items={{ ARS: 'Pesos (ARS)', USD: 'Dólares (USD)' }}
+                    value={draft.currency}
+                    onValueChange={(currency) => currency && setDraft({ ...draft, currency: currency as 'ARS' | 'USD' })}
+                  >
+                    <SelectTrigger id="income-currency-trigger" aria-label="Moneda" className="w-full"><SelectValue placeholder="Seleccionar moneda" /></SelectTrigger>
+                    <SelectContent><SelectItem value="ARS">Pesos (ARS)</SelectItem><SelectItem value="USD">Dólares (USD)</SelectItem></SelectContent>
+                  </Select>
+                </Field>
+              </div>
+              {arsEquivalent !== null && <p className="text-sm text-[var(--sea-ink-soft)]">Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}</p>}
+              <Field orientation="horizontal">
+                <Switch id="income-recurring" checked={draft.recurring} onCheckedChange={(recurring) => setDraft({ ...draft, recurring })} />
+                <FieldLabel htmlFor="income-recurring">Es ingreso recurrente</FieldLabel>
+              </Field>
+              <Field data-invalid={!!validationErrors.effectiveMonth}>
+                <FieldLabel htmlFor="income-month-picker">{draft.recurring ? 'Desde el mes' : 'Mes del ingreso'}</FieldLabel>
+                <MonthPickerInput
+                  id="income-month-picker"
+                  aria-label={draft.recurring ? 'Desde el mes' : 'Mes del ingreso'}
+                  value={draft.effectiveMonth}
+                  onValueChange={(effectiveMonth) => setDraft({ ...draft, effectiveMonth })}
+                />
+                {validationErrors.effectiveMonth && <FieldError>{validationErrors.effectiveMonth}</FieldError>}
+              </Field>
+              {error && <FieldError>{error}</FieldError>}
+            </FieldSet>
+          </FieldGroup>
           <div className="mt-auto flex gap-3 pt-4">
             {income && <Button type="button" variant="destructive" onClick={() => void remove()} disabled={saving}>Eliminar</Button>}
             <Button type="submit" disabled={saving} className="flex-1">{saving ? 'Guardando...' : 'Guardar'}</Button>

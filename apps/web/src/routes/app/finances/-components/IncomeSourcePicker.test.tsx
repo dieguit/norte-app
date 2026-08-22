@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IncomeSourcePicker } from './IncomeSourcePicker'
@@ -8,7 +9,7 @@ import { IncomeSourcePicker } from './IncomeSourcePicker'
 describe('IncomeSourcePicker', () => {
   afterEach(cleanup)
 
-  it('puts add new before source items and does not show a search textbox', async () => {
+  it('lists existing sources and ends with the new-source option', async () => {
     const user = userEvent.setup()
 
     render(
@@ -19,132 +20,85 @@ describe('IncomeSourcePicker', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
 
-    const addNew = screen.getByRole('button', { name: '+ Agregar nuevo' })
-    const source = screen.getByRole('button', { name: 'Consultoría' })
-
-    expect(addNew.compareDocumentPosition(source) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: 'Consultoría' })).toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' })).toBeInTheDocument()
   })
 
-  it('reports a custom source while typing its name', async () => {
+  it('puts the new-source option after every regular option', async () => {
     const user = userEvent.setup()
-    const onChange = vi.fn()
 
     render(
       <IncomeSourcePicker
-        sources={[]}
+        sources={[{ id: 'source_1', name: 'Consultoría' }]}
         value={{ kind: 'salary' }}
-        onChange={onChange}
+        onChange={vi.fn()}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
-    await user.click(screen.getByRole('button', { name: '+ Agregar nuevo' }))
-    await user.type(screen.getByRole('textbox', { name: 'Nueva fuente' }), 'Consultoría')
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
 
+    expect((await screen.findAllByRole('option')).at(-1)).toHaveTextContent('Otro (agregar nuevo)')
+  })
+
+  it('shows a name input and keeps the other option selected', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    function ControlledPicker() {
+      const [value, setValue] = useState<Parameters<typeof IncomeSourcePicker>[0]['value']>({ kind: 'salary' })
+      return <IncomeSourcePicker sources={[]} value={value} onChange={(nextValue) => { setValue(nextValue); onChange(nextValue) }} />
+    }
+
+    render(<ControlledPicker />)
+
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' }), 'Consultoría')
+
+    expect(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })).toHaveTextContent('Otro (agregar nuevo)')
+    expect(screen.getByText('Este ingreso se va a guardar para que puedas volver a usarlo')).toBeInTheDocument()
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'custom', name: 'Consultoría' })
   })
 
-  it('does not change the selected source when add-new is activated', async () => {
+  it('hides the new-source input when a regular option is selected', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
+    const { rerender } = render(
+      <IncomeSourcePicker sources={[]} value={{ kind: 'salary' }} onChange={onChange} />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
+    rerender(<IncomeSourcePicker sources={[]} value={{ kind: 'custom', name: '' }} onChange={onChange} />)
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(await screen.findByRole('option', { name: 'Trabajo independiente' }))
+    rerender(<IncomeSourcePicker sources={[]} value={{ kind: 'independent' }} onChange={onChange} />)
+
+    expect(screen.queryByRole('textbox', { name: 'Nombre del ingreso nuevo' })).not.toBeInTheDocument()
+    expect(onChange).toHaveBeenLastCalledWith({ kind: 'independent' })
+  })
+
+  it('displays persisted custom sources and emits their source ID', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const sourceId = '00000000-0000-4000-8000-000000000001'
+
     render(
       <IncomeSourcePicker
-        sources={[]}
-        value={{ kind: 'salary' }}
+        sources={[{ id: sourceId, name: 'Consultoría' }]}
+        value={{ kind: 'custom', sourceId }}
         onChange={onChange}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
-    await user.click(screen.getByRole('button', { name: '+ Agregar nuevo' }))
+    expect(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })).toHaveTextContent('Consultoría')
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(await screen.findByRole('option', { name: 'Consultoría' }))
 
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenLastCalledWith({ kind: 'custom', sourceId })
   })
 
-  it('resets add mode after selecting an existing source', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <IncomeSourcePicker
-        sources={[{ id: 'source_1', name: 'Consultoría' }]}
-        value={{ kind: 'salary' }}
-        onChange={vi.fn()}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
-    await user.click(screen.getByRole('button', { name: '+ Agregar nuevo' }))
-
-    expect(screen.getByRole('textbox', { name: 'Nueva fuente' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Consultoría' }))
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
-    expect(screen.queryByRole('textbox', { name: 'Nueva fuente' })).not.toBeInTheDocument()
-  })
-
-  it('resets add mode when the popover is dismissed with Escape', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <IncomeSourcePicker
-        sources={[]}
-        value={{ kind: 'salary' }}
-        onChange={vi.fn()}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
-    await user.click(screen.getByRole('button', { name: '+ Agregar nuevo' }))
-    expect(screen.getByRole('textbox', { name: 'Nueva fuente' })).toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
-    expect(screen.queryByRole('textbox', { name: 'Nueva fuente' })).not.toBeInTheDocument()
-  })
-
-  it('resets add mode when the popover is dismissed by clicking outside', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <>
-        <button type="button">Fuera</button>
-        <IncomeSourcePicker
-          sources={[]}
-          value={{ kind: 'salary' }}
-          onChange={vi.fn()}
-        />
-      </>,
-    )
-
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
-    await user.click(screen.getByRole('button', { name: '+ Agregar nuevo' }))
-    expect(screen.getByRole('textbox', { name: 'Nueva fuente' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Fuera' }))
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '¿De dónde viene este ingreso?', expanded: false }))
-    expect(screen.queryByRole('textbox', { name: 'Nueva fuente' })).not.toBeInTheDocument()
-  })
-
-  it('falls back to selecting a source when the custom name is empty', () => {
-    render(
-      <IncomeSourcePicker
-        sources={[]}
-        value={{ kind: 'custom', name: '' }}
-        onChange={vi.fn()}
-      />,
-    )
-
-    const trigger = screen.getByRole('button', { name: '¿De dónde viene este ingreso?' })
-    expect(trigger).toHaveTextContent('Seleccionar fuente')
-  })
 })
