@@ -24,6 +24,7 @@ import {
   derivePreviousMonthShortfalls,
   type PreviousMonthShortfall,
 } from '../contributions/saving-contribution'
+import { getIncomeTotalArs } from './incomes'
 
 export async function persistInitialPlan(
   userId: string,
@@ -88,6 +89,19 @@ export async function getInitialHomeState(
     where: (profiles, { eq }) => eq(profiles.userId, userId),
   })
   if (!profile) return null
+
+  const currentMonth = now.toISOString().slice(0, 7)
+  const incomeRows = await db.query.incomes.findMany({
+    where: (incomes, { eq }) => eq(incomes.userId, userId),
+  })
+  const income = getIncomeTotalArs(
+    incomeRows.filter((row) => row.recurring).map((row) => ({
+      amount: createMoney(row.amount, row.currency as CurrencyCode),
+      recurring: row.recurring,
+      effectiveMonth: row.effectiveMonth,
+    })),
+    currentMonth,
+  )
 
   const goal = await db.query.financialGoals.findFirst({
     where: (goals, { eq }) => eq(goals.userId, userId),
@@ -175,7 +189,7 @@ export async function getInitialHomeState(
   }
 
   return {
-    income: createMoney(profile.approximateMonthlyIncome, 'ARS'),
+    income,
     expensesKnowledge,
     expenses,
     plan: {

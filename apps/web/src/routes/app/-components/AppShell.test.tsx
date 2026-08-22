@@ -72,7 +72,10 @@ describe('AppShell', () => {
     expect(goalsLinks[0]).toHaveClass('motion-reduce:transition-none')
     expect(goalsLinks[1]).toHaveClass('motion-reduce:transition-none')
 
-    expect(screen.getAllByRole('button', { name: 'Finanzas' })[0]).toBeDisabled()
+    const financesLinks = screen.getAllByRole('link', { name: 'Finanzas' })
+    expect(financesLinks).toHaveLength(2)
+    expect(financesLinks[0]?.getAttribute('href')).toBe('/app/finances')
+    expect(financesLinks[1]?.getAttribute('href')).toBe('/app/finances')
     expect(screen.getAllByRole('button', { name: 'Cuenta' })).toHaveLength(2)
     expect(screen.getByRole('heading', { name: 'Tu plan está empezando a tomar forma' })).toBeDefined()
   })

@@ -27,6 +27,9 @@ vi.mock('../../db/client', () => ({
       investmentContributions: {
         findMany: vi.fn(),
       },
+      incomes: {
+        findMany: vi.fn(),
+      },
     },
   },
 }))
@@ -34,6 +37,9 @@ vi.mock('../../db/client', () => ({
 describe('financial repository.server getInitialHomeState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(db.query.incomes.findMany).mockResolvedValue([
+      { amount: '500000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-01-01' },
+    ] as never)
   })
 
   it('evaluates previous month shortfalls when an applicable snapshot exists', async () => {
@@ -209,5 +215,36 @@ describe('financial repository.server getInitialHomeState', () => {
     const home = await getInitialHomeState('user_future', fixedNow)
     expect(home).not.toBeNull()
     expect(home?.previousMonthShortfalls).toEqual([])
+  })
+
+  it('uses recurring incomes in the current month instead of the onboarding approximation', async () => {
+    const fixedNow = new Date('2026-08-15T12:00:00Z')
+    vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
+      userId: 'user_income',
+      baseCurrency: 'ARS',
+      approximateMonthlyIncome: '500000.00',
+      approximateMonthlyExpenses: null,
+      expensesKnowledge: 'unknown',
+      plannedMonthlyContribution: '50000.00',
+    } as never)
+    vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue({
+      id: 'goal_income', userId: 'user_income', name: 'Meta', type: 'fixed_savings',
+      targetAmount: '1000000.00', currency: 'ARS', emergencyFundMonths: null, strategy: 'save',
+    } as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findFirst).mockResolvedValue({
+      id: 'snapshot_income', userId: 'user_income', effectiveMonth: '2026-08-01', plannedMonthlyContribution: '50000.00',
+    } as never)
+    vi.mocked(db.query.allocationPlanEntries.findFirst).mockResolvedValue({
+      snapshotId: 'snapshot_income', goalId: 'goal_income', percentage: '100.00',
+    } as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.incomes.findMany).mockResolvedValue([
+      { amount: '100000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08-01' },
+      { amount: '100.00', currency: 'USD', recurring: true, effectiveMonth: '2026-08-01' },
+      { amount: '900000.00', currency: 'ARS', recurring: false, effectiveMonth: '2026-08-01' },
+    ] as never)
+
+    const home = await getInitialHomeState('user_income', fixedNow)
+    expect(home?.income).toEqual({ amount: '250000.00', currency: 'ARS' })
   })
 })

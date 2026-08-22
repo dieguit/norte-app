@@ -2,12 +2,12 @@ import type { ReactNode } from 'react'
 import { UserButton } from '@clerk/tanstack-react-start'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { House, Target, WalletCards } from 'lucide-react'
-import { Button } from '../../../components/ui/button'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const isHome = pathname === '/app'
   const isGoals = pathname === '/app/goals' || pathname.startsWith('/app/goals/')
+  const isFinances = pathname === '/app/finances' || pathname.startsWith('/app/finances/')
 
   return (
     <div className="flex min-h-dvh flex-col text-[var(--sea-ink)] md:flex-row">
@@ -64,15 +64,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Target className="size-4" aria-hidden="true" />
             <span>Objetivos</span>
           </Link>
-          <Button
-            variant="ghost"
-            disabled
-            aria-label="Finanzas"
-            className="flex w-full items-center justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--sea-ink-soft)] opacity-60"
+          <Link
+            to="/app/finances"
+            aria-current={isFinances ? 'page' : undefined}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors motion-reduce:transition-none ${
+              isFinances
+                ? 'bg-[var(--chip-bg)] font-semibold text-[var(--sea-ink)] shadow-sm'
+                : 'text-[var(--sea-ink-soft)] hover:bg-[var(--link-bg-hover)] hover:text-[var(--sea-ink)]'
+            }`}
           >
             <WalletCards className="size-4" aria-hidden="true" />
             <span>Finanzas</span>
-          </Button>
+          </Link>
         </nav>
 
         <div className="mt-auto border-t border-[var(--line)] pt-4">
@@ -114,15 +117,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Target className="size-5" aria-hidden="true" />
           <span>Objetivos</span>
         </Link>
-        <Button
-          variant="ghost"
-          disabled
-          aria-label="Finanzas"
-          className="flex h-auto flex-1 flex-col items-center justify-center gap-1 py-1 text-xs font-medium text-[var(--sea-ink-soft)] opacity-60 hover:bg-transparent"
+        <Link
+          to="/app/finances"
+          aria-current={isFinances ? 'page' : undefined}
+          className={`flex flex-1 flex-col items-center justify-center gap-1 py-1 text-xs font-medium no-underline transition-colors motion-reduce:transition-none ${
+            isFinances
+              ? 'font-semibold text-[var(--sea-ink)]'
+              : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
+          }`}
         >
           <WalletCards className="size-5" aria-hidden="true" />
           <span>Finanzas</span>
-        </Button>
+        </Link>
       </nav>
     </div>
   )

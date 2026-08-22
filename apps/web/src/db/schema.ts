@@ -292,3 +292,58 @@ export type SavingContributionAllocation = typeof savingContributionAllocations.
 export type InvestmentContribution = typeof investmentContributions.$inferSelect
 export type InvestmentContributionAllocation = typeof investmentContributionAllocations.$inferSelect
 
+export const incomeSources = pgTable(
+  'income_sources',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 120 }).notNull(),
+    normalizedName: varchar('normalized_name', { length: 120 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('income_sources_user_normalized_name_uidx').on(
+      table.userId,
+      table.normalizedName,
+    ),
+  ],
+)
+
+export const incomes = pgTable(
+  'incomes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
+    sourceKind: varchar('source_kind', { length: 24 }).notNull(),
+    sourceId: uuid('source_id').references(() => incomeSources.id, { onDelete: 'restrict' }),
+    amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull(),
+    recurring: boolean('recurring').notNull(),
+    effectiveMonth: date('effective_month', { mode: 'string' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => sql`now()`)
+      .notNull(),
+  },
+  (table) => [
+    index('incomes_user_id_idx').on(table.userId),
+    check('incomes_amount_check', sql`${table.amount} > 0`),
+    check('incomes_currency_check', sql`${table.currency} in ('ARS', 'USD')`),
+    check(
+      'incomes_source_kind_check',
+      sql`${table.sourceKind} in ('salary', 'independent', 'pension', 'rent', 'investments', 'family_support', 'custom')`,
+    ),
+    check(
+      'incomes_source_check',
+      sql`(${table.sourceKind} = 'custom' and ${table.sourceId} is not null) or (${table.sourceKind} != 'custom' and ${table.sourceId} is null)`,
+    ),
+  ],
+)
+
+export type IncomeSource = typeof incomeSources.$inferSelect
+export type Income = typeof incomes.$inferSelect

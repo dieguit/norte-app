@@ -8,6 +8,8 @@ import {
   financialProfiles,
   goalInvestmentPositions,
   goalSavingsPositions,
+  incomeSources,
+  incomes,
   investmentContributionAllocations,
   investmentContributions,
   onboardingDrafts,
@@ -114,6 +116,27 @@ describe('onboarding database schema', () => {
     expect(investmentContributions.effectiveRate.name).toBe('effective_rate')
     expect(getTableName(investmentContributionAllocations)).toBe('investment_contribution_allocations')
     expect(investmentContributionAllocations.investmentPositionId.name).toBe('investment_position_id')
+  })
+
+  it('defines user-owned income sources', () => {
+    expect(getTableName(incomeSources)).toBe('income_sources')
+    expect(incomeSources.userId.name).toBe('user_id')
+    expect(incomeSources.name.name).toBe('name')
+    expect(incomeSources.normalizedName.name).toBe('normalized_name')
+    expect(incomeSources.createdAt.name).toBe('created_at')
+  })
+
+  it('defines user incomes with source relationship', () => {
+    expect(getTableName(incomes)).toBe('incomes')
+    expect(incomes.userId.name).toBe('user_id')
+    expect(incomes.sourceKind.name).toBe('source_kind')
+    expect(incomes.sourceId.name).toBe('source_id')
+    expect(incomes.amount.name).toBe('amount')
+    expect(incomes.currency.name).toBe('currency')
+    expect(incomes.recurring.name).toBe('recurring')
+    expect(incomes.effectiveMonth.name).toBe('effective_month')
+    expect(incomes.createdAt.name).toBe('created_at')
+    expect(incomes.updatedAt.name).toBe('updated_at')
   })
 })
 

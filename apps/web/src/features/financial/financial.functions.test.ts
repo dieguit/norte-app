@@ -130,6 +130,11 @@ vi.mock('../../db/client', () => ({
       investmentContributions: {
         findMany: vi.fn().mockResolvedValue([]),
       },
+      incomes: {
+        findMany: vi.fn().mockResolvedValue([
+          { amount: '500000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-01-01' },
+        ]),
+      },
     },
   },
 }))
