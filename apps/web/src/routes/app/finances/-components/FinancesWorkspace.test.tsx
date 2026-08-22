@@ -14,6 +14,7 @@ describe('FinancesWorkspace', () => {
 
     expect(screen.getByRole('heading', { name: 'Tus Finanzas' })).toHaveClass('whitespace-nowrap')
     expect(screen.getByLabelText('Mes de finanzas')).toHaveClass('sm:w-auto')
+    expect(screen.getByRole('tab', { name: 'Ingresos' })).toHaveClass('px-3', 'py-1', 'text-base')
     expect(screen.getByRole('heading', { name: 'Ingresos de agosto de 2026' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Agregar nuevo' })).toHaveClass('sm:ml-auto')
 
