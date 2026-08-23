@@ -1,0 +1,273 @@
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createExpense, deleteExpense, updateExpense } from '../../../../features/financial/financial.functions'
+import { ExpenseSheet } from './ExpenseSheet'
+
+vi.mock('@tanstack/react-router', () => ({
+  useRouter: () => ({ invalidate: vi.fn() }),
+}))
+
+vi.mock('../../../../features/financial/financial.functions', () => ({
+  createExpense: vi.fn(),
+  deleteExpense: vi.fn(),
+  updateExpense: vi.fn(),
+}))
+
+describe('ExpenseSheet', () => {
+  afterEach(cleanup)
+  beforeEach(() => vi.clearAllMocks())
+
+  function renderSheet(
+    expense?: Parameters<typeof ExpenseSheet>[0]['expense'],
+    sources: Array<{ id: string; name: string }> = [],
+  ) {
+    return render(
+      <ExpenseSheet
+        open
+        onOpenChange={vi.fn()}
+        month="2026-08"
+        sources={sources}
+        expense={expense}
+      />,
+    )
+  }
+
+  it('uses the selected workspace month as application context for recurring expenses', () => {
+    renderSheet()
+
+    expect(screen.getByText('Se aplicará desde agosto de 2026')).toBeInTheDocument()
+    expect(document.querySelector('input[type="month"]')).not.toBeInTheDocument()
+  })
+
+  it('uses the selected workspace month as application context for one-off expenses', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
+
+    expect(screen.getByText('Se aplicará en agosto de 2026')).toBeInTheDocument()
+  })
+
+  it('formats the amount while typing', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('125.000')
+  })
+
+  it('submits a canonical amount and effective month when creating an expense', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(createExpense).toHaveBeenCalledWith({
+      data: {
+        draft: expect.objectContaining({
+          source: { kind: 'housing' },
+          amount: '125000.00',
+          currency: 'ARS',
+          recurring: true,
+        }),
+        effectiveMonth: '2026-08',
+      },
+    })
+  })
+
+  it('submits a custom concept when creating an expense', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Nombre del gasto nuevo' }), 'Gimnasio')
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(createExpense).toHaveBeenCalledWith({
+      data: {
+        draft: expect.objectContaining({
+          source: { kind: 'custom', name: 'Gimnasio' },
+          amount: '125000.00',
+        }),
+        effectiveMonth: '2026-08',
+      },
+    })
+  })
+
+  it('submits a canonical amount and selected month boundary when updating an expense', async () => {
+    const user = userEvent.setup()
+    renderSheet({
+      id: 'exp_1',
+      sourceKind: 'housing',
+      sourceId: null,
+      sourceName: 'Alquiler / vivienda',
+      amount: '100.00',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-06-01',
+      endMonth: null,
+    })
+
+    const amount = screen.getByRole('textbox', { name: 'Monto' })
+    await user.clear(amount)
+    await user.type(amount, '125,50')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(updateExpense).toHaveBeenCalledWith({
+      data: {
+        expenseId: 'exp_1',
+        draft: expect.objectContaining({ amount: '125.50' }),
+        effectiveMonth: '2026-08',
+      },
+    })
+  })
+
+  it('uses a currency Select and shows the USD equivalent', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
+    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+
+    expect(screen.getByText('Equivale a ARS 187.500.000')).toBeInTheDocument()
+  })
+
+  it('preserves decimal precision in the USD equivalent', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
+    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125,50')
+
+    expect(screen.getByText('Equivale a ARS 188.250')).toBeInTheDocument()
+  })
+
+  it('formats a canonical edit amount for the Argentine input', () => {
+    renderSheet({
+      id: 'exp_1',
+      sourceKind: 'housing',
+      sourceId: null,
+      sourceName: 'Alquiler / vivienda',
+      amount: '1250.50',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-06-01',
+      endMonth: null,
+    })
+
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
+  })
+
+  it('rejects an empty new custom source without creating an expense', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const sourceField = screen.getByRole('combobox', { name: 'Concepto del gasto' }).closest('[data-slot="field"]')
+    expect(sourceField).toHaveAttribute('data-invalid', 'true')
+    expect(sourceField).toHaveTextContent('Ingresá un concepto.')
+    expect(createExpense).not.toHaveBeenCalled()
+  })
+
+  it('shows schema errors in their invalid fields', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const amountField = screen.getByRole('textbox', { name: 'Monto' }).closest('[data-slot="field"]')
+    expect(amountField).toHaveAttribute('data-invalid', 'true')
+    expect(amountField).toHaveTextContent('Ingresá un monto mayor a cero.')
+  })
+
+  it('updates a persisted custom source without showing the new-source input', async () => {
+    const user = userEvent.setup()
+    const sourceId = '00000000-0000-4000-8000-000000000001'
+    renderSheet({
+      id: 'exp_1',
+      sourceKind: 'custom',
+      sourceId,
+      sourceName: 'Gimnasio',
+      amount: '100.00',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-06-01',
+      endMonth: null,
+    }, [{ id: sourceId, name: 'Gimnasio' }])
+
+    expect(screen.getByRole('combobox', { name: 'Concepto del gasto' })).toHaveTextContent('Gimnasio')
+    expect(screen.queryByRole('textbox', { name: 'Nombre del gasto nuevo' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(updateExpense).toHaveBeenCalledWith({
+      data: {
+        expenseId: 'exp_1',
+        draft: expect.objectContaining({ source: { kind: 'custom', sourceId } }),
+        effectiveMonth: '2026-08',
+      },
+    })
+  })
+
+  it('confirms before deleting an expense with the selected month boundary', async () => {
+    const user = userEvent.setup()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    renderSheet({
+      id: 'exp_1',
+      sourceKind: 'housing',
+      sourceId: null,
+      sourceName: 'Alquiler / vivienda',
+      amount: '100.00',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-06-01',
+      endMonth: null,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+
+    expect(confirmSpy).toHaveBeenCalledWith('¿Eliminar este gasto desde el mes seleccionado?')
+    expect(deleteExpense).toHaveBeenCalledWith({
+      data: { expenseId: 'exp_1', effectiveMonth: '2026-08' },
+    })
+
+    confirmSpy.mockRestore()
+  })
+
+  it('does not delete when confirmation is cancelled', async () => {
+    const user = userEvent.setup()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    renderSheet({
+      id: 'exp_1',
+      sourceKind: 'housing',
+      sourceId: null,
+      sourceName: 'Alquiler / vivienda',
+      amount: '100.00',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-06-01',
+      endMonth: null,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+
+    expect(confirmSpy).toHaveBeenCalledWith('¿Eliminar este gasto desde el mes seleccionado?')
+    expect(deleteExpense).not.toHaveBeenCalled()
+
+    confirmSpy.mockRestore()
+  })
+})

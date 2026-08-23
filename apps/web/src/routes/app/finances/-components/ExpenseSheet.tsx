@@ -1,0 +1,312 @@
+import { useEffect, useState } from 'react'
+import { useRouter } from '@tanstack/react-router'
+import BigNumber from 'bignumber.js'
+import { toast } from 'sonner'
+import { Button } from '../../../../components/ui/button'
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from '../../../../components/ui/field'
+import { Input } from '../../../../components/ui/input'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '../../../../components/ui/sheet'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../../../components/ui/select'
+import { Switch } from '../../../../components/ui/switch'
+import {
+  createExpense,
+  deleteExpense,
+  updateExpense,
+} from '../../../../features/financial/financial.functions'
+import { FIXED_EXPENSE_SOURCES } from '../../../../features/financial/expenses'
+import {
+  createExpenseSchema,
+  type ExpenseDraft,
+} from '../../../../features/financial/expenses.schema'
+import { PLANNING_ARS_PER_USD } from '../../../../features/financial/financial'
+import { formatCalendarMonth } from '../../../../lib/format'
+import { formatMoneyInput, parseMoneyInput } from '../../../../lib/money'
+import { ExpenseSourcePicker } from './ExpenseSourcePicker'
+
+type ExpenseRow = {
+  id: string
+  sourceKind: string
+  sourceId: string | null
+  sourceName: string
+  amount: string
+  currency: 'ARS' | 'USD'
+  recurring: boolean
+  effectiveMonth: string
+  endMonth?: string | null
+}
+
+function defaultDraft(): ExpenseDraft {
+  return {
+    source: { kind: 'housing' },
+    amount: '',
+    currency: 'ARS',
+    recurring: true,
+  }
+}
+
+export function ExpenseSheet({
+  open,
+  onOpenChange,
+  month,
+  sources,
+  expense,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  month: string
+  sources: Array<{ id: string; name: string }>
+  expense?: ExpenseRow
+}) {
+  const router = useRouter()
+  const [draft, setDraft] = useState<ExpenseDraft>(() => defaultDraft())
+  const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setError(null)
+    setValidationErrors({})
+    setDraft(
+      expense
+        ? {
+            source:
+              expense.sourceKind === 'custom'
+                ? { kind: 'custom', sourceId: expense.sourceId! }
+                : {
+                    kind: expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES,
+                  },
+            amount: formatMoneyInput(expense.amount.replace('.', ',')),
+            currency: expense.currency,
+            recurring: expense.recurring,
+          }
+        : defaultDraft(),
+    )
+  }, [expense, open])
+
+  async function save() {
+    const parsed = createExpenseSchema.safeParse({ draft, effectiveMonth: month })
+    if (!parsed.success) {
+      const errors: Record<string, string> = {}
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[1]
+        if (typeof field === 'string' && !errors[field]) {
+          errors[field] = issue.message
+        }
+      }
+      setValidationErrors(errors)
+      return
+    }
+    setValidationErrors({})
+    setSaving(true)
+    setError(null)
+    try {
+      const normalizedDraft = {
+        ...parsed.data.draft,
+        amount: parseMoneyInput(
+          parsed.data.draft.amount,
+          parsed.data.draft.currency,
+        )!.amount,
+      }
+      if (expense) {
+        await updateExpense({
+          data: {
+            expenseId: expense.id,
+            draft: normalizedDraft,
+            effectiveMonth: month,
+          },
+        })
+      } else {
+        await createExpense({
+          data: {
+            draft: normalizedDraft,
+            effectiveMonth: month,
+          },
+        })
+      }
+      await router.invalidate()
+      toast.success(expense ? 'Gasto actualizado.' : 'Gasto agregado.')
+      onOpenChange(false)
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'No pudimos guardar el gasto.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function remove() {
+    if (!expense || !window.confirm('¿Eliminar este gasto desde el mes seleccionado?')) return
+    setSaving(true)
+    try {
+      await deleteExpense({
+        data: {
+          expenseId: expense.id,
+          effectiveMonth: month,
+        },
+      })
+      await router.invalidate()
+      toast.success('Gasto eliminado.')
+      onOpenChange(false)
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'No pudimos eliminar el gasto.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const parsedUsdAmount =
+    draft.currency === 'USD' ? parseMoneyInput(draft.amount, 'USD') : null
+  const arsEquivalent =
+    parsedUsdAmount && new BigNumber(parsedUsdAmount.amount).isGreaterThan(0)
+      ? new BigNumber(parsedUsdAmount.amount).times(PLANNING_ARS_PER_USD)
+      : null
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
+      >
+        <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
+          <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
+            {expense ? 'Editar gasto' : 'Nuevo gasto'}
+          </SheetTitle>
+          <SheetDescription>
+            Indicá el concepto y las condiciones de este gasto.
+          </SheetDescription>
+        </SheetHeader>
+        <form
+          className="flex flex-1 flex-col gap-5 overflow-y-auto p-6"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void save()
+          }}
+        >
+          <FieldGroup>
+            <ExpenseSourcePicker
+              sources={sources}
+              value={draft.source}
+              error={validationErrors.source}
+              onChange={(source) => setDraft({ ...draft, source })}
+            />
+            <FieldSet>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field data-invalid={!!validationErrors.amount}>
+                  <FieldLabel htmlFor="expense-amount">Monto</FieldLabel>
+                  <Input
+                    id="expense-amount"
+                    aria-label="Monto"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={draft.amount}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        amount: formatMoneyInput(event.target.value),
+                      })
+                    }
+                  />
+                  {validationErrors.amount && (
+                    <FieldError>{validationErrors.amount}</FieldError>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="expense-currency-trigger">
+                    Moneda
+                  </FieldLabel>
+                  <Select
+                    items={{ ARS: 'Pesos (ARS)', USD: 'Dólares (USD)' }}
+                    value={draft.currency}
+                    onValueChange={(currency) =>
+                      currency &&
+                      setDraft({
+                        ...draft,
+                        currency: currency as 'ARS' | 'USD',
+                      })
+                    }
+                  >
+                    <SelectTrigger
+                      id="expense-currency-trigger"
+                      aria-label="Moneda"
+                      className="w-full"
+                    >
+                      <SelectValue placeholder="Seleccionar moneda" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ARS">Pesos (ARS)</SelectItem>
+                      <SelectItem value="USD">Dólares (USD)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+              {arsEquivalent !== null && (
+                <p className="text-sm text-[var(--sea-ink-soft)]">
+                  Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}
+                </p>
+              )}
+              <Field orientation="horizontal">
+                <Switch
+                  id="expense-recurring"
+                  checked={draft.recurring}
+                  onCheckedChange={(recurring) =>
+                    setDraft({ ...draft, recurring })
+                  }
+                />
+                <FieldLabel htmlFor="expense-recurring">
+                  Es gasto recurrente
+                </FieldLabel>
+              </Field>
+              <p className="text-sm text-[var(--sea-ink-soft)]">
+                {draft.recurring
+                  ? `Se aplicará desde ${formatCalendarMonth(month)}`
+                  : `Se aplicará en ${formatCalendarMonth(month)}`}
+              </p>
+              {error && <FieldError>{error}</FieldError>}
+            </FieldSet>
+          </FieldGroup>
+          <div className="mt-auto flex gap-3 pt-4">
+            {expense && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => void remove()}
+                disabled={saving}
+              >
+                Eliminar
+              </Button>
+            )}
+            <Button type="submit" disabled={saving} className="flex-1">
+              {saving ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
+  )
+}

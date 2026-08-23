@@ -23,6 +23,7 @@ import {
   type ExpensesWorkspace,
 } from '../../../../features/financial/expenses'
 import { IncomeSheet } from './IncomeSheet'
+import { ExpenseSheet } from './ExpenseSheet'
 
 function formatMoneyWithCurrency(amount: string, currency: string) {
   return `${currency} ${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -47,6 +48,8 @@ export function FinancesWorkspace({
   const [selectedMonth, setSelectedMonth] = useState(initialMonth)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null)
+  const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false)
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
 
   const displayedIncomes = workspace.incomes.incomes.filter((income) =>
     isIncomeIncludedInMonth(income, selectedMonth),
@@ -253,6 +256,7 @@ export function FinancesWorkspace({
               <Button
                 className="sm:ml-auto"
                 type="button"
+                onClick={() => setIsCreateExpenseOpen(true)}
               >
                 Agregar nuevo
               </Button>
@@ -268,7 +272,7 @@ export function FinancesWorkspace({
                   className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
                 >
                   {recurringExpenses.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
+                     <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
                       No tenés gastos recurrentes para este mes.
                     </div>
                   ) : (
@@ -295,6 +299,7 @@ export function FinancesWorkspace({
                                   variant="ghost"
                                   size="sm"
                                   aria-label={`Editar gasto ${label}`}
+                                  onClick={() => setEditingExpenseId(expense.id)}
                                 >
                                   <Pencil
                                     data-icon="inline-start"
@@ -377,6 +382,7 @@ export function FinancesWorkspace({
                                   variant="ghost"
                                   size="sm"
                                   aria-label={`Editar gasto ${label}`}
+                                  onClick={() => setEditingExpenseId(expense.id)}
                                 >
                                   <Pencil
                                     data-icon="inline-start"
@@ -423,6 +429,23 @@ export function FinancesWorkspace({
                 </section>
               </div>
             </div>
+            <ExpenseSheet
+              open={isCreateExpenseOpen}
+              onOpenChange={setIsCreateExpenseOpen}
+              month={selectedMonth}
+              sources={workspace.expenses.sources}
+            />
+            <ExpenseSheet
+              open={editingExpenseId !== null}
+              onOpenChange={(open) => {
+                if (!open) setEditingExpenseId(null)
+              }}
+              month={selectedMonth}
+              sources={workspace.expenses.sources}
+              expense={workspace.expenses.expenses.find(
+                (expense) => expense.id === editingExpenseId,
+              )}
+            />
           </div>
         </TabsContent>
       </Tabs>

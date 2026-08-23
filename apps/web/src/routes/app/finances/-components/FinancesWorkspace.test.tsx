@@ -2,8 +2,21 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FinancesWorkspace } from './FinancesWorkspace'
+
+vi.mock('@tanstack/react-router', () => ({
+  useRouter: () => ({ invalidate: vi.fn() }),
+}))
+
+vi.mock('../../../../features/financial/financial.functions', () => ({
+  createExpense: vi.fn(),
+  deleteExpense: vi.fn(),
+  updateExpense: vi.fn(),
+  createIncome: vi.fn(),
+  deleteIncome: vi.fn(),
+  updateIncome: vi.fn(),
+}))
 
 afterEach(cleanup)
 
@@ -184,5 +197,25 @@ describe('FinancesWorkspace', () => {
     await user.click(screen.getByRole('button', { name: 'Editar ingreso Sueldo' }))
 
     expect(screen.getByRole('heading', { name: 'Editar ingreso' })).toBeInTheDocument()
+  })
+
+  it('opens expense sheet to add a new expense', async () => {
+    const user = userEvent.setup()
+    render(<FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />)
+
+    await user.click(screen.getByRole('tab', { name: 'Gastos' }))
+    await user.click(screen.getByRole('button', { name: 'Agregar nuevo' }))
+
+    expect(screen.getByRole('heading', { name: 'Nuevo gasto' })).toBeInTheDocument()
+  })
+
+  it('opens expense sheet to edit an existing expense', async () => {
+    const user = userEvent.setup()
+    render(<FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />)
+
+    await user.click(screen.getByRole('tab', { name: 'Gastos' }))
+    await user.click(screen.getByRole('button', { name: 'Editar gasto Alquiler / vivienda' }))
+
+    expect(screen.getByRole('heading', { name: 'Editar gasto' })).toBeInTheDocument()
   })
 })
