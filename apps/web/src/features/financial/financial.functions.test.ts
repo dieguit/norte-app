@@ -7,7 +7,14 @@ import {
   financialGoals,
   financialProfiles,
 } from '../../db/schema'
-import { completeInitialPlan } from './financial.functions'
+import {
+  completeInitialPlan,
+  createExpense,
+  deleteExpense,
+  getFinancesWorkspace,
+  updateExpense,
+} from './financial.functions'
+import { getFinancesWorkspaceServer } from './financial.server'
 import { getInitialHomeState } from './repository.server'
 
 vi.mock('@tanstack/react-start', () => ({
@@ -134,6 +141,18 @@ vi.mock('../../db/client', () => ({
         findMany: vi.fn().mockResolvedValue([
           { amount: '500000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-01-01' },
         ]),
+      },
+      incomeSources: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn(),
+      },
+      expenses: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn(),
+      },
+      expenseSources: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn(),
       },
     },
   },
@@ -469,6 +488,158 @@ describe('financial.server boundary', () => {
         projection: { status: 'outside_horizon' },
         previousMonthShortfalls: [],
       })
+    })
+  })
+
+  describe('getFinancesWorkspaceServer', () => {
+    it('returns null when profile does not exist for the authenticated user', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(undefined as never)
+
+      const result = await getFinancesWorkspaceServer()
+      expect(result).toBeNull()
+    })
+
+    it('returns income and expense workspaces for the same authenticated user', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+      vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
+        userId: 'user_1',
+      } as never)
+      vi.mocked(db.query.incomeSources.findMany).mockResolvedValue([
+        { id: 'inc_src_1', userId: 'user_1', name: 'Sueldo Principal', normalizedName: 'sueldo principal' },
+      ] as never)
+      vi.mocked(db.query.incomes.findMany).mockResolvedValue([
+        {
+          id: 'inc_1',
+          userId: 'user_1',
+          sourceKind: 'custom',
+          sourceId: 'inc_src_1',
+          amount: '800000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+        },
+      ] as never)
+      vi.mocked(db.query.expenseSources.findMany).mockResolvedValue([
+        { id: 'exp_src_1', userId: 'user_1', name: 'Gimnasio', normalizedName: 'gimnasio' },
+      ] as never)
+      vi.mocked(db.query.expenses.findMany).mockResolvedValue([
+        {
+          id: 'exp_1',
+          userId: 'user_1',
+          sourceKind: 'housing',
+          sourceId: null,
+          amount: '200000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+          endMonth: null,
+        },
+      ] as never)
+
+      const result = await getFinancesWorkspaceServer()
+      expect(result).toEqual({
+        incomes: {
+          sources: [
+            { id: 'inc_src_1', userId: 'user_1', name: 'Sueldo Principal', normalizedName: 'sueldo principal' },
+          ],
+          incomes: [
+            {
+              id: 'inc_1',
+              sourceKind: 'custom',
+              sourceId: 'inc_src_1',
+              sourceName: 'Sueldo Principal',
+              amount: '800000.00',
+              currency: 'ARS',
+              recurring: true,
+              effectiveMonth: '2026-01-01',
+            },
+          ],
+        },
+        expenses: {
+          sources: [
+            { id: 'exp_src_1', userId: 'user_1', name: 'Gimnasio', normalizedName: 'gimnasio' },
+          ],
+          expenses: [
+            {
+              id: 'exp_1',
+              sourceKind: 'housing',
+              sourceId: null,
+              sourceName: 'housing',
+              amount: '200000.00',
+              currency: 'ARS',
+              recurring: true,
+              effectiveMonth: '2026-01-01',
+              endMonth: null,
+            },
+          ],
+        },
+      })
+    })
+  })
+
+  describe('expense server functions', () => {
+    it('redirects getFinancesWorkspace when unauthenticated', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+      await expect(getFinancesWorkspace()).rejects.toMatchObject({
+        options: expect.objectContaining({ to: '/sign-in/$' }),
+      })
+    })
+
+    it('rejects createExpense when unauthenticated', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+      await expect(
+        createExpense({
+          data: {
+            draft: { source: { kind: 'housing' }, amount: '100000', currency: 'ARS', recurring: true },
+            effectiveMonth: '2026-08',
+          },
+        }),
+      ).rejects.toMatchObject({
+        options: expect.objectContaining({ to: '/sign-in/$' }),
+      })
+    })
+
+    it('validates schema on createExpense input', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+
+      await expect(
+        createExpense({
+          data: {
+            draft: { source: { kind: 'housing' }, amount: '-500', currency: 'ARS', recurring: true },
+            effectiveMonth: '2026-08',
+          },
+        }),
+      ).rejects.toThrow()
+    })
+
+    it('validates schema on updateExpense input', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+
+      await expect(
+        updateExpense({
+          data: {
+            expenseId: 'not-a-uuid',
+            draft: { source: { kind: 'housing' }, amount: '100000', currency: 'ARS', recurring: true },
+            effectiveMonth: '2026-08',
+          },
+        }),
+      ).rejects.toThrow()
+    })
+
+    it('validates schema on deleteExpense input', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+
+      await expect(
+        deleteExpense({
+          data: {
+            expenseId: 'not-a-uuid',
+            effectiveMonth: '2026-08',
+          },
+        }),
+      ).rejects.toThrow()
     })
   })
 })
