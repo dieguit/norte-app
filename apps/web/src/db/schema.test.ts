@@ -4,6 +4,8 @@ import * as schema from './schema'
 import {
   allocationPlanEntries,
   allocationPlanSnapshots,
+  expenseSources,
+  expenses,
   financialGoals,
   financialProfiles,
   goalInvestmentPositions,
@@ -137,6 +139,28 @@ describe('onboarding database schema', () => {
     expect(incomes.effectiveMonth.name).toBe('effective_month')
     expect(incomes.createdAt.name).toBe('created_at')
     expect(incomes.updatedAt.name).toBe('updated_at')
+  })
+
+  it('defines user-owned expense sources', () => {
+    expect(getTableName(expenseSources)).toBe('expense_sources')
+    expect(expenseSources.userId.name).toBe('user_id')
+    expect(expenseSources.name.name).toBe('name')
+    expect(expenseSources.normalizedName.name).toBe('normalized_name')
+    expect(expenseSources.createdAt.name).toBe('created_at')
+  })
+
+  it('defines user expenses with source relationship and recurrence boundaries', () => {
+    expect(getTableName(expenses)).toBe('expenses')
+    expect(expenses.userId.name).toBe('user_id')
+    expect(expenses.sourceKind.name).toBe('source_kind')
+    expect(expenses.sourceId.name).toBe('source_id')
+    expect(expenses.amount.name).toBe('amount')
+    expect(expenses.currency.name).toBe('currency')
+    expect(expenses.recurring.name).toBe('recurring')
+    expect(expenses.effectiveMonth.name).toBe('effective_month')
+    expect(expenses.endMonth.name).toBe('end_month')
+    expect(expenses.createdAt.name).toBe('created_at')
+    expect(expenses.updatedAt.name).toBe('updated_at')
   })
 })
 

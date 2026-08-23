@@ -1,8 +1,8 @@
 import { ClerkProvider } from "@clerk/tanstack-react-start";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import { esES } from "@clerk/localizations";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { TanStackDevtools } from "@tanstack/react-devtools";
+// import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+// import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 

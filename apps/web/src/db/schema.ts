@@ -347,3 +347,65 @@ export const incomes = pgTable(
 
 export type IncomeSource = typeof incomeSources.$inferSelect
 export type Income = typeof incomes.$inferSelect
+
+export const expenseSources = pgTable(
+  'expense_sources',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 120 }).notNull(),
+    normalizedName: varchar('normalized_name', { length: 120 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('expense_sources_user_normalized_name_uidx').on(
+      table.userId,
+      table.normalizedName,
+    ),
+  ],
+)
+
+export const expenses = pgTable(
+  'expenses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
+    sourceKind: varchar('source_kind', { length: 24 }).notNull(),
+    sourceId: uuid('source_id').references(() => expenseSources.id, { onDelete: 'restrict' }),
+    amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull(),
+    recurring: boolean('recurring').notNull(),
+    effectiveMonth: date('effective_month', { mode: 'string' }).notNull(),
+    endMonth: date('end_month', { mode: 'string' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => sql`now()`)
+      .notNull(),
+  },
+  (table) => [
+    index('expenses_user_id_idx').on(table.userId),
+    check('expenses_amount_check', sql`${table.amount} > 0`),
+    check('expenses_currency_check', sql`${table.currency} in ('ARS', 'USD')`),
+    check(
+      'expenses_source_kind_check',
+      sql`${table.sourceKind} in ('housing', 'school', 'health', 'loans', 'utilities', 'insurance', 'family_support', 'subscriptions', 'custom')`,
+    ),
+    check(
+      'expenses_source_check',
+      sql`(${table.sourceKind} = 'custom' and ${table.sourceId} is not null) or (${table.sourceKind} != 'custom' and ${table.sourceId} is null)`,
+    ),
+    check(
+      'expenses_end_month_check',
+      sql`(${table.recurring} = false and ${table.endMonth} is null) or (${table.recurring} = true and (${table.endMonth} is null or ${table.endMonth} > ${table.effectiveMonth}))`,
+    ),
+  ],
+)
+
+export type ExpenseSource = typeof expenseSources.$inferSelect
+export type Expense = typeof expenses.$inferSelect
+
