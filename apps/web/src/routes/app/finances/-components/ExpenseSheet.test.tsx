@@ -35,20 +35,20 @@ describe('ExpenseSheet', () => {
     )
   }
 
-  it('uses the selected workspace month as application context for recurring expenses', () => {
+  it('defaults the expense month picker to the selected workspace month', () => {
     renderSheet()
 
-    expect(screen.getByText('Se aplicará desde agosto de 2026')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Desde el mes' })).toHaveTextContent('agosto de 2026')
     expect(document.querySelector('input[type="month"]')).not.toBeInTheDocument()
   })
 
-  it('uses the selected workspace month as application context for one-off expenses', async () => {
+  it('uses the recurrence Switch to show the one-time month picker', async () => {
     const user = userEvent.setup()
     renderSheet()
 
     await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
 
-    expect(screen.getByText('Se aplicará en agosto de 2026')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mes del gasto' })).toBeInTheDocument()
   })
 
   it('formats the amount while typing', async () => {
@@ -60,23 +60,17 @@ describe('ExpenseSheet', () => {
     expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('125.000')
   })
 
-  it('submits a canonical amount and effective month when creating an expense', async () => {
+  it('submits the selected effective month when creating an expense', async () => {
     const user = userEvent.setup()
     renderSheet()
 
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Desde el mes' }))
+    await user.click(screen.getByRole('button', { name: 'Sep' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(createExpense).toHaveBeenCalledWith({
-      data: {
-        draft: expect.objectContaining({
-          source: { kind: 'housing' },
-          amount: '125000.00',
-          currency: 'ARS',
-          recurring: true,
-        }),
-        effectiveMonth: '2026-08',
-      },
+      data: expect.objectContaining({ effectiveMonth: '2026-09' }),
     })
   })
 
@@ -118,13 +112,15 @@ describe('ExpenseSheet', () => {
     const amount = screen.getByRole('textbox', { name: 'Monto' })
     await user.clear(amount)
     await user.type(amount, '125,50')
+    await user.click(screen.getByRole('button', { name: 'Desde el mes' }))
+    await user.click(screen.getByRole('button', { name: 'Sep' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(updateExpense).toHaveBeenCalledWith({
       data: {
         expenseId: 'exp_1',
         draft: expect.objectContaining({ amount: '125.50' }),
-        effectiveMonth: '2026-08',
+        effectiveMonth: '2026-09',
       },
     })
   })
@@ -216,7 +212,7 @@ describe('ExpenseSheet', () => {
       data: {
         expenseId: 'exp_1',
         draft: expect.objectContaining({ source: { kind: 'custom', sourceId } }),
-        effectiveMonth: '2026-08',
+        effectiveMonth: '2026-06',
       },
     })
   })

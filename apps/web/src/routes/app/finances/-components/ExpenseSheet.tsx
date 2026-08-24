@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '../../../../components/ui/select'
 import { Switch } from '../../../../components/ui/switch'
+import { MonthPickerInput } from '../../../../components/MonthPicker'
 import {
   createExpense,
   deleteExpense,
@@ -37,7 +38,6 @@ import {
   type ExpenseDraft,
 } from '../../../../features/financial/expenses.schema'
 import { PLANNING_ARS_PER_USD } from '../../../../features/financial/financial'
-import { formatCalendarMonth } from '../../../../lib/format'
 import { formatMoneyInput, parseMoneyInput } from '../../../../lib/money'
 import { ExpenseSourcePicker } from './ExpenseSourcePicker'
 
@@ -53,12 +53,15 @@ type ExpenseRow = {
   endMonth?: string | null
 }
 
-function defaultDraft(): ExpenseDraft {
+type ExpenseFormDraft = ExpenseDraft & { effectiveMonth: string }
+
+function defaultDraft(month: string): ExpenseFormDraft {
   return {
     source: { kind: 'housing' },
     amount: '',
     currency: 'ARS',
     recurring: true,
+    effectiveMonth: month,
   }
 }
 
@@ -76,7 +79,7 @@ export function ExpenseSheet({
   expense?: ExpenseRow
 }) {
   const router = useRouter()
-  const [draft, setDraft] = useState<ExpenseDraft>(() => defaultDraft())
+  const [draft, setDraft] = useState<ExpenseFormDraft>(() => defaultDraft(month))
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -97,17 +100,26 @@ export function ExpenseSheet({
             amount: formatMoneyInput(expense.amount.replace('.', ',')),
             currency: expense.currency,
             recurring: expense.recurring,
+            effectiveMonth: expense.effectiveMonth.slice(0, 7),
           }
-        : defaultDraft(),
+        : defaultDraft(month),
     )
-  }, [expense, open])
+  }, [expense, month, open])
 
   async function save() {
-    const parsed = createExpenseSchema.safeParse({ draft, effectiveMonth: month })
+    const parsed = createExpenseSchema.safeParse({
+      draft: {
+        source: draft.source,
+        amount: draft.amount,
+        currency: draft.currency,
+        recurring: draft.recurring,
+      },
+      effectiveMonth: draft.effectiveMonth,
+    })
     if (!parsed.success) {
       const errors: Record<string, string> = {}
       for (const issue of parsed.error.issues) {
-        const field = issue.path[1]
+        const field = issue.path[0] === 'draft' ? issue.path[1] : issue.path[0]
         if (typeof field === 'string' && !errors[field]) {
           errors[field] = issue.message
         }
@@ -131,14 +143,14 @@ export function ExpenseSheet({
           data: {
             expenseId: expense.id,
             draft: normalizedDraft,
-            effectiveMonth: month,
+            effectiveMonth: parsed.data.effectiveMonth,
           },
         })
       } else {
         await createExpense({
           data: {
             draft: normalizedDraft,
-            effectiveMonth: month,
+            effectiveMonth: parsed.data.effectiveMonth,
           },
         })
       }
@@ -282,11 +294,22 @@ export function ExpenseSheet({
                   Es gasto recurrente
                 </FieldLabel>
               </Field>
-              <p className="text-sm text-[var(--sea-ink-soft)]">
-                {draft.recurring
-                  ? `Se aplicará desde ${formatCalendarMonth(month)}`
-                  : `Se aplicará en ${formatCalendarMonth(month)}`}
-              </p>
+              <Field data-invalid={!!validationErrors.effectiveMonth}>
+                <FieldLabel htmlFor="expense-month-picker">
+                  {draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
+                </FieldLabel>
+                <MonthPickerInput
+                  id="expense-month-picker"
+                  aria-label={draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
+                  value={draft.effectiveMonth}
+                  onValueChange={(effectiveMonth) =>
+                    setDraft({ ...draft, effectiveMonth })
+                  }
+                />
+                {validationErrors.effectiveMonth && (
+                  <FieldError>{validationErrors.effectiveMonth}</FieldError>
+                )}
+              </Field>
               {error && <FieldError>{error}</FieldError>}
             </FieldSet>
           </FieldGroup>
