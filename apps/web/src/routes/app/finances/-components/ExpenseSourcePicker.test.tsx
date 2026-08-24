@@ -9,37 +9,27 @@ import { ExpenseSourcePicker } from './ExpenseSourcePicker'
 describe('ExpenseSourcePicker', () => {
   afterEach(cleanup)
 
-  it('lists existing sources and ends with the new-source option', async () => {
+  it('lists recurrent fixed and custom sources, ending with the new-source option', async () => {
     const user = userEvent.setup()
-
-    render(
-      <ExpenseSourcePicker
-        sources={[{ id: 'source_1', name: 'Gimnasio' }]}
-        value={{ kind: 'housing' }}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<ExpenseSourcePicker recurring sources={[{ id: 'source_1', name: 'Gimnasio' }]} value={{ kind: 'housing' }} onChange={vi.fn()} />)
 
     await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
 
     expect(await screen.findByRole('option', { name: 'Alquiler / vivienda' })).toBeInTheDocument()
-    expect(await screen.findByRole('option', { name: 'Gimnasio' })).toBeInTheDocument()
-    expect(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Compra de ropa' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Gimnasio' })).toBeInTheDocument()
+    expect((await screen.findAllByRole('option')).at(-1)).toHaveTextContent('Otro (agregar nuevo)')
   })
 
-  it('puts the new-source option after every regular option', async () => {
+  it('lists one-time fixed and custom sources, ending with the new-source option', async () => {
     const user = userEvent.setup()
-
-    render(
-      <ExpenseSourcePicker
-        sources={[{ id: 'source_1', name: 'Gimnasio' }]}
-        value={{ kind: 'housing' }}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<ExpenseSourcePicker recurring={false} sources={[{ id: 'source_1', name: 'Gimnasio' }]} value={{ kind: 'clothing' }} onChange={vi.fn()} />)
 
     await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
 
+    expect(await screen.findByRole('option', { name: 'Compra de ropa' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Alquiler / vivienda' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Gimnasio' })).toBeInTheDocument()
     expect((await screen.findAllByRole('option')).at(-1)).toHaveTextContent('Otro (agregar nuevo)')
   })
 
@@ -49,7 +39,7 @@ describe('ExpenseSourcePicker', () => {
 
     function ControlledPicker() {
       const [value, setValue] = useState<Parameters<typeof ExpenseSourcePicker>[0]['value']>({ kind: 'housing' })
-      return <ExpenseSourcePicker sources={[]} value={value} onChange={(nextValue) => { setValue(nextValue); onChange(nextValue) }} />
+      return <ExpenseSourcePicker recurring sources={[]} value={value} onChange={(nextValue) => { setValue(nextValue); onChange(nextValue) }} />
     }
 
     render(<ControlledPicker />)
@@ -68,15 +58,15 @@ describe('ExpenseSourcePicker', () => {
     const onChange = vi.fn()
 
     const { rerender } = render(
-      <ExpenseSourcePicker sources={[]} value={{ kind: 'housing' }} onChange={onChange} />,
+      <ExpenseSourcePicker recurring sources={[]} value={{ kind: 'housing' }} onChange={onChange} />,
     )
 
     await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
-    rerender(<ExpenseSourcePicker sources={[]} value={{ kind: 'custom', name: '' }} onChange={onChange} />)
+    rerender(<ExpenseSourcePicker recurring sources={[]} value={{ kind: 'custom', name: '' }} onChange={onChange} />)
     await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Servicios' }))
-    rerender(<ExpenseSourcePicker sources={[]} value={{ kind: 'utilities' }} onChange={onChange} />)
+    rerender(<ExpenseSourcePicker recurring sources={[]} value={{ kind: 'utilities' }} onChange={onChange} />)
 
     expect(screen.queryByRole('textbox', { name: 'Nombre del gasto nuevo' })).not.toBeInTheDocument()
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'utilities' })
@@ -89,6 +79,7 @@ describe('ExpenseSourcePicker', () => {
 
     render(
       <ExpenseSourcePicker
+        recurring
         sources={[{ id: sourceId, name: 'Gimnasio' }]}
         value={{ kind: 'custom', sourceId }}
         onChange={onChange}
