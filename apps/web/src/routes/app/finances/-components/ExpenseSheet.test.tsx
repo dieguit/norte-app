@@ -38,7 +38,7 @@ describe('ExpenseSheet', () => {
   it('defaults the expense month picker to the selected workspace month', () => {
     renderSheet()
 
-    expect(screen.getByRole('button', { name: 'Desde el mes' })).toHaveTextContent('agosto de 2026')
+    expect(screen.getByRole('button', { name: 'Desde el mes' })).toHaveTextContent('Agosto de 2026')
     expect(document.querySelector('input[type="month"]')).not.toBeInTheDocument()
   })
 
@@ -49,6 +49,31 @@ describe('ExpenseSheet', () => {
     await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
 
     expect(screen.getByRole('button', { name: 'Mes del gasto' })).toBeInTheDocument()
+  })
+
+  it('shows the concept selector after recurrence and resets a fixed source for one-time expenses', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    const recurrence = screen.getByRole('switch', { name: 'Es gasto recurrente' })
+    const concept = screen.getByRole('combobox', { name: 'Concepto del gasto' })
+    expect(recurrence.compareDocumentPosition(concept) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    await user.click(recurrence)
+    expect(concept).toHaveTextContent('Compra de ropa')
+    await user.click(concept)
+    expect(await screen.findByRole('option', { name: 'Regalo' })).toBeInTheDocument()
+  })
+
+  it('keeps a custom source selected when recurrence changes', async () => {
+    const user = userEvent.setup()
+    renderSheet(undefined, [{ id: '00000000-0000-4000-8000-000000000001', name: 'Gimnasio' }])
+
+    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Gimnasio' }))
+    await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
+
+    expect(screen.getByRole('combobox', { name: 'Concepto del gasto' })).toHaveTextContent('Gimnasio')
   })
 
   it('formats the amount while typing', async () => {

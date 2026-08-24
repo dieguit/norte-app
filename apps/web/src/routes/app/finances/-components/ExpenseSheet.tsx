@@ -221,12 +221,6 @@ export function ExpenseSheet({
           }}
         >
           <FieldGroup>
-            <ExpenseSourcePicker
-              sources={sources}
-              value={draft.source}
-              error={validationErrors.source}
-              onChange={(source) => setDraft({ ...draft, source })}
-            />
             <FieldSet>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field data-invalid={!!validationErrors.amount}>
@@ -287,13 +281,27 @@ export function ExpenseSheet({
                   id="expense-recurring"
                   checked={draft.recurring}
                   onCheckedChange={(recurring) =>
-                    setDraft({ ...draft, recurring })
+                    setDraft({
+                      ...draft,
+                      recurring,
+                      source:
+                        draft.source.kind === 'custom'
+                          ? draft.source
+                          : { kind: recurring ? 'housing' : 'clothing' },
+                    })
                   }
                 />
                 <FieldLabel htmlFor="expense-recurring">
                   Es gasto recurrente
                 </FieldLabel>
               </Field>
+              <ExpenseSourcePicker
+                recurring={draft.recurring}
+                sources={sources}
+                value={draft.source}
+                error={validationErrors.source}
+                onChange={(source) => setDraft({ ...draft, source })}
+              />
               <Field data-invalid={!!validationErrors.effectiveMonth}>
                 <FieldLabel htmlFor="expense-month-picker">
                   {draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
