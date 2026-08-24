@@ -62,11 +62,12 @@ export function formatMonthDelta(months: number): string {
 
 export function formatCalendarMonth(month: string): string {
   const [year, monthNumber] = month.split('-').map(Number);
-  return new Intl.DateTimeFormat(ES_AR_LOCALE, {
+  const formatted = new Intl.DateTimeFormat(ES_AR_LOCALE, {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+  return formatted[0].toUpperCase() + formatted.slice(1);
 }
 
 export function formatMonthName(month: string): string {

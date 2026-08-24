@@ -110,8 +110,8 @@ describe("es-AR Presentation Boundary", () => {
   });
 
   describe("formatCalendarMonth", () => {
-    it("formats a calendar month in Argentine Spanish", () => {
-      expect(formatCalendarMonth("2026-09")).toBe("septiembre de 2026");
+    it("formats a capitalized calendar month in Argentine Spanish", () => {
+      expect(formatCalendarMonth("2026-09")).toBe("Septiembre de 2026");
     });
   });
 
