@@ -38,7 +38,7 @@ describe('IncomeSheet', () => {
   it('uses the selected workspace month for the initial recurring month', () => {
     renderSheet()
 
-    expect(screen.getByRole('button', { name: 'Desde el mes' })).toHaveTextContent('agosto de 2026')
+    expect(screen.getByRole('button', { name: 'Desde el mes' })).toHaveTextContent('Agosto de 2026')
   })
 
   it('formats the amount while typing', async () => {

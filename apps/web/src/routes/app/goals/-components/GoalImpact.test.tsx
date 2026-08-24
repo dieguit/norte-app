@@ -232,12 +232,12 @@ describe('GoalImpact component', () => {
     // Pending goal impact
     expect(screen.getAllByText('Viaje al sur').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('Objetivo todavía no creado')).toBeVisible()
-    expect(screen.getByText('abril de 2027')).toBeVisible()
+    expect(screen.getByText('Abril de 2027')).toBeVisible()
 
     // Existing goal impact
     expect(screen.getAllByText('Fondo de emergencia').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('enero de 2027')).toBeVisible()
-    expect(screen.getByText('marzo de 2027')).toBeVisible()
+    expect(screen.getByText('Enero de 2027')).toBeVisible()
+    expect(screen.getByText('Marzo de 2027')).toBeVisible()
 
     // Comparison labels
     expect(screen.getAllByText('Antes')).toHaveLength(2)
@@ -316,8 +316,8 @@ describe('AllocationImpactComparison component', () => {
     expect(screen.getByText('Fondo de emergencia')).toBeVisible()
     expect(screen.getByText('Antes')).toBeVisible()
     expect(screen.getByText('Con este cambio')).toBeVisible()
-    expect(screen.getByText('enero de 2027')).toBeVisible()
-    expect(screen.getByText('marzo de 2027')).toBeVisible()
+    expect(screen.getByText('Enero de 2027')).toBeVisible()
+    expect(screen.getByText('Marzo de 2027')).toBeVisible()
   })
 
   it('renders pending goal with custom beforeNotCreatedLabel', () => {
@@ -337,7 +337,7 @@ describe('AllocationImpactComparison component', () => {
 
     expect(screen.getByText('Viaje al sur')).toBeVisible()
     expect(screen.getByText('Objetivo todavía no creado')).toBeVisible()
-    expect(screen.getByText('abril de 2027')).toBeVisible()
+    expect(screen.getByText('Abril de 2027')).toBeVisible()
   })
 
   it('renders nothing when impacts array is empty', () => {

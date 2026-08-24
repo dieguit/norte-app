@@ -32,7 +32,7 @@ describe('goal display formatting', () => {
     const goal = makeGoal()
 
     expect(GOAL_PRIORITY_LABELS[goal.priority]).toBe('Prioridad alta')
-    expect(getGoalProjectionDisplay(goal)).toBe('junio de 2029')
+    expect(getGoalProjectionDisplay(goal)).toBe('Junio de 2029')
   })
 
   it.each([
@@ -52,7 +52,7 @@ describe('goal display formatting', () => {
       getGoalProjectionDisplay(
         makeGoal({ status: 'completed', completedAt: '2028-04-10T00:00:00Z' }),
       ),
-    ).toBe('abril de 2028')
+    ).toBe('Abril de 2028')
     expect(getGoalProjectionDisplay(makeGoal({ status: 'completed' }))).toBe('Fecha no disponible')
   })
 })

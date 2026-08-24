@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { createMoney } from '../../lib/money'
 import {
   FIXED_EXPENSE_SOURCES,
+  ONE_TIME_EXPENSE_SOURCES,
+  RECURRING_EXPENSE_SOURCES,
   getExpenseTotalArs,
   getMonthlyBalanceArs,
   isExpenseIncludedInMonth,
@@ -162,7 +164,7 @@ describe('monthly balance rules', () => {
 
 describe('fixed expense sources', () => {
   it('defines the expected fixed categories', () => {
-    expect(FIXED_EXPENSE_SOURCES).toEqual({
+    expect(RECURRING_EXPENSE_SOURCES).toEqual({
       housing: 'Alquiler / vivienda',
       school: 'Colegio',
       health: 'Prepaga / salud',
@@ -171,6 +173,22 @@ describe('fixed expense sources', () => {
       insurance: 'Seguros',
       family_support: 'Ayuda a familiares',
       subscriptions: 'Suscripciones',
+    })
+
+    expect(ONE_TIME_EXPENSE_SOURCES).toEqual({
+      clothing: 'Compra de ropa',
+      gift: 'Regalo',
+      family_help: 'Ayuda familiar',
+      occasional_health: 'Salud ocasional',
+      maintenance: 'Reparación / mantenimiento',
+      travel_leisure: 'Viaje / salida',
+      technology: 'Tecnología / electrónica',
+      taxes_fees: 'Trámite / impuesto',
+    })
+
+    expect(FIXED_EXPENSE_SOURCES).toEqual({
+      ...RECURRING_EXPENSE_SOURCES,
+      ...ONE_TIME_EXPENSE_SOURCES,
     })
   })
 })

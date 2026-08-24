@@ -392,8 +392,8 @@ describe("AllocationChange and AllocationChangeSheet", () => {
 
       expect(screen.getAllByText("Antes").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Con este cambio").length).toBeGreaterThan(0);
-      expect(screen.getByText("octubre de 2026")).toBeInTheDocument();
-      expect(screen.getByText("noviembre de 2027")).toBeInTheDocument();
+      expect(screen.getByText("Octubre de 2026")).toBeInTheDocument();
+      expect(screen.getByText("Noviembre de 2027")).toBeInTheDocument();
     });
 
     it('successful confirmation invalidates the router, emits "Plan actualizado.", and closes', async () => {

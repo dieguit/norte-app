@@ -93,12 +93,12 @@ describe('FinancesWorkspace', () => {
     expect(within(summary).getByText('ARS 100.000')).toBeInTheDocument()
 
     expect(screen.getByRole('tab', { name: 'Ingresos' })).toHaveClass('px-3', 'py-1', 'text-base')
-    expect(screen.getByRole('heading', { name: 'Ingresos de agosto de 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ingresos de Agosto de 2026' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: 'Gastos' }))
 
     expect(screen.getByLabelText('Mes de finanzas')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Gastos de agosto de 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Gastos de Agosto de 2026' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Recurrentes' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Únicos' })).toBeInTheDocument()
   })
@@ -112,14 +112,14 @@ describe('FinancesWorkspace', () => {
     const recurringSection = screen.getByLabelText('Gastos recurrentes')
     expect(within(recurringSection).getByText('Alquiler / vivienda')).toBeInTheDocument()
     expect(within(recurringSection).getByText('ARS 200,000.00')).toBeInTheDocument()
-    expect(within(recurringSection).getByText('Todos los meses desde junio de 2026')).toBeInTheDocument()
+    expect(within(recurringSection).getByText('Todos los meses desde Junio de 2026')).toBeInTheDocument()
     expect(within(recurringSection).queryByText('Servicios')).not.toBeInTheDocument()
 
     const oneOffSection = screen.getByLabelText('Gastos únicos')
     expect(within(oneOffSection).getByText('Vuelo')).toBeInTheDocument()
     expect(within(oneOffSection).getByText('USD 200.00')).toBeInTheDocument()
     expect(within(oneOffSection).getByText('Equivale a ARS 300.000')).toBeInTheDocument()
-    expect(within(oneOffSection).getByText('agosto de 2026')).toBeInTheDocument()
+    expect(within(oneOffSection).getByText('Agosto de 2026')).toBeInTheDocument()
   })
 
   it('renders separate empty states when there are no recurring or one-off expenses', async () => {
@@ -193,7 +193,7 @@ describe('FinancesWorkspace', () => {
       />,
     )
 
-    expect(screen.getByRole('heading', { name: 'Ingresos de agosto de 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ingresos de Agosto de 2026' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Editar ingreso Sueldo' }))
 
     expect(screen.getByRole('heading', { name: 'Editar ingreso' })).toBeInTheDocument()

@@ -156,8 +156,8 @@ describe('SavingContribution component', () => {
       // Section: Antes / Con este aporte
       expect(screen.getAllByText('Antes').length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText('Con este aporte').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getByText('junio de 2027')).toBeVisible()
-      expect(screen.getByText('febrero de 2027')).toBeVisible()
+      expect(screen.getByText('Junio de 2027')).toBeVisible()
+      expect(screen.getByText('Febrero de 2027')).toBeVisible()
     })
 
     it('submits confirmation and calls onSuccess with toast', async () => {
@@ -750,7 +750,7 @@ describe('SavingContribution component', () => {
         />,
       )
 
-      expect(screen.getByText('Este aporte se registrará para julio de 2026.')).toBeVisible()
+      expect(screen.getByText('Este aporte se registrará para Julio de 2026.')).toBeVisible()
       expect(screen.queryByText(/Necesitás ahorrar/i)).not.toBeInTheDocument()
       expect(screen.getByLabelText(/monto en pesos/i)).toHaveValue('25.000')
       expect(screen.queryByRole('button', { name: 'Ahorré USD' })).not.toBeInTheDocument()

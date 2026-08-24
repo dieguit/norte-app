@@ -315,7 +315,7 @@ describe('FinancialOnboarding component', () => {
     expect(screen.getByText('Ahorrar USD')).toBeVisible()
     expect(screen.getByText('Aportás $ 150.000,00 por mes')).toBeVisible()
     expect(screen.getByText('Estimado: US$ 100,00 por mes')).toBeVisible()
-    expect(screen.getByText('Desde septiembre de 2026')).toBeVisible()
+    expect(screen.getByText('Desde Septiembre de 2026')).toBeVisible()
     expect(screen.getByText('Usamos un tipo de cambio de planificación de 1 USD = 1.500 ARS.')).toBeVisible()
 
     vi.useRealTimers()
@@ -338,7 +338,7 @@ describe('FinancialOnboarding component', () => {
     expect(screen.getByText('Ahorrar ARS')).toBeVisible()
     expect(screen.getByText('Aportás $ 150.000,00 por mes')).toBeVisible()
     expect(screen.queryByText(/Estimado:/i)).not.toBeInTheDocument()
-    expect(screen.getByText('Desde septiembre de 2026')).toBeVisible()
+    expect(screen.getByText('Desde Septiembre de 2026')).toBeVisible()
     expect(screen.queryByText(/tipo de cambio/i)).not.toBeInTheDocument()
 
     vi.useRealTimers()
