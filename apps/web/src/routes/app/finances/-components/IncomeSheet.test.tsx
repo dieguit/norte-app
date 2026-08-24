@@ -136,6 +136,31 @@ describe('IncomeSheet', () => {
     expect(screen.getByRole('button', { name: 'Mes del ingreso' })).toBeInTheDocument()
   })
 
+  it('shows the concept selector after recurrence and resets a fixed source for one-time incomes', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    const recurrence = screen.getByRole('switch', { name: 'Es ingreso recurrente' })
+    const concept = screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })
+    expect(recurrence.compareDocumentPosition(concept) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    await user.click(recurrence)
+    expect(concept).toHaveTextContent('Venta de bienes / usados')
+    await user.click(concept)
+    expect(await screen.findByRole('option', { name: 'Bono / aguinaldo / premio' })).toBeInTheDocument()
+  })
+
+  it('keeps a custom source selected when recurrence changes', async () => {
+    const user = userEvent.setup()
+    renderSheet(undefined, [{ id: '00000000-0000-4000-8000-000000000001', name: 'Consultoría' }])
+
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(await screen.findByRole('option', { name: 'Consultoría' }))
+    await user.click(screen.getByRole('switch', { name: 'Es ingreso recurrente' }))
+
+    expect(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })).toHaveTextContent('Consultoría')
+  })
+
   it('submits a named custom source', async () => {
     const user = userEvent.setup()
     renderSheet()

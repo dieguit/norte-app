@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FIXED_INCOME_SOURCES,
+  ONE_TIME_INCOME_SOURCES,
+  RECURRING_INCOME_SOURCES,
   getIncomeTotalArs,
   isIncomeIncludedInMonth,
 } from './incomes'
+
+describe('income sources', () => {
+  it('defines separated recurring, one-time, and combined fixed income maps', () => {
+    expect(RECURRING_INCOME_SOURCES.salary).toBe('Sueldo')
+    expect(RECURRING_INCOME_SOURCES.independent).toBe('Trabajo independiente')
+    expect(ONE_TIME_INCOME_SOURCES.asset_sale).toBe('Venta de bienes / usados')
+    expect(ONE_TIME_INCOME_SOURCES.bonus).toBe('Bono / aguinaldo / premio')
+    expect(FIXED_INCOME_SOURCES.salary).toBe('Sueldo')
+    expect(FIXED_INCOME_SOURCES.asset_sale).toBe('Venta de bienes / usados')
+  })
+})
 
 describe('income month rules', () => {
   it('includes recurring income from its effective month onward', () => {

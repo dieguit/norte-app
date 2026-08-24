@@ -194,12 +194,6 @@ export function IncomeSheet({
           }}
         >
           <FieldGroup>
-            <IncomeSourcePicker
-              sources={sources}
-              value={draft.source}
-              error={validationErrors.source}
-              onChange={(source) => setDraft({ ...draft, source })}
-            />
             <FieldSet>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field data-invalid={!!validationErrors.amount}>
@@ -260,13 +254,27 @@ export function IncomeSheet({
                   id="income-recurring"
                   checked={draft.recurring}
                   onCheckedChange={(recurring) =>
-                    setDraft({ ...draft, recurring })
+                    setDraft({
+                      ...draft,
+                      recurring,
+                      source:
+                        draft.source.kind === "custom"
+                          ? draft.source
+                          : { kind: recurring ? "salary" : "asset_sale" },
+                    })
                   }
                 />
                 <FieldLabel htmlFor="income-recurring">
                   Es ingreso recurrente
                 </FieldLabel>
               </Field>
+              <IncomeSourcePicker
+                recurring={draft.recurring}
+                sources={sources}
+                value={draft.source}
+                error={validationErrors.source}
+                onChange={(source) => setDraft({ ...draft, source })}
+              />
               <Field data-invalid={!!validationErrors.effectiveMonth}>
                 <FieldLabel htmlFor="income-month-picker">
                   {draft.recurring ? "Desde el mes" : "Mes del ingreso"}

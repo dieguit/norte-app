@@ -9,11 +9,12 @@ import { IncomeSourcePicker } from './IncomeSourcePicker'
 describe('IncomeSourcePicker', () => {
   afterEach(cleanup)
 
-  it('lists existing sources and ends with the new-source option', async () => {
+  it('lists recurrent fixed and custom sources, ending with the new-source option', async () => {
     const user = userEvent.setup()
 
     render(
       <IncomeSourcePicker
+        recurring
         sources={[{ id: 'source_1', name: 'Consultoría' }]}
         value={{ kind: 'salary' }}
         onChange={vi.fn()}
@@ -22,23 +23,29 @@ describe('IncomeSourcePicker', () => {
 
     await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
 
-    expect(await screen.findByRole('option', { name: 'Consultoría' })).toBeInTheDocument()
-    expect(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' })).toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: 'Sueldo' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Venta de bienes / usados' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Consultoría' })).toBeInTheDocument()
+    expect((await screen.findAllByRole('option')).at(-1)).toHaveTextContent('Otro (agregar nuevo)')
   })
 
-  it('puts the new-source option after every regular option', async () => {
+  it('lists one-time fixed and custom sources, ending with the new-source option', async () => {
     const user = userEvent.setup()
 
     render(
       <IncomeSourcePicker
+        recurring={false}
         sources={[{ id: 'source_1', name: 'Consultoría' }]}
-        value={{ kind: 'salary' }}
+        value={{ kind: 'asset_sale' }}
         onChange={vi.fn()}
       />,
     )
 
     await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
 
+    expect(await screen.findByRole('option', { name: 'Venta de bienes / usados' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Sueldo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Consultoría' })).toBeInTheDocument()
     expect((await screen.findAllByRole('option')).at(-1)).toHaveTextContent('Otro (agregar nuevo)')
   })
 
@@ -48,7 +55,7 @@ describe('IncomeSourcePicker', () => {
 
     function ControlledPicker() {
       const [value, setValue] = useState<Parameters<typeof IncomeSourcePicker>[0]['value']>({ kind: 'salary' })
-      return <IncomeSourcePicker sources={[]} value={value} onChange={(nextValue) => { setValue(nextValue); onChange(nextValue) }} />
+      return <IncomeSourcePicker recurring sources={[]} value={value} onChange={(nextValue) => { setValue(nextValue); onChange(nextValue) }} />
     }
 
     render(<ControlledPicker />)
@@ -67,15 +74,15 @@ describe('IncomeSourcePicker', () => {
     const onChange = vi.fn()
 
     const { rerender } = render(
-      <IncomeSourcePicker sources={[]} value={{ kind: 'salary' }} onChange={onChange} />,
+      <IncomeSourcePicker recurring sources={[]} value={{ kind: 'salary' }} onChange={onChange} />,
     )
 
     await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
     await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
-    rerender(<IncomeSourcePicker sources={[]} value={{ kind: 'custom', name: '' }} onChange={onChange} />)
+    rerender(<IncomeSourcePicker recurring sources={[]} value={{ kind: 'custom', name: '' }} onChange={onChange} />)
     await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
     await user.click(await screen.findByRole('option', { name: 'Trabajo independiente' }))
-    rerender(<IncomeSourcePicker sources={[]} value={{ kind: 'independent' }} onChange={onChange} />)
+    rerender(<IncomeSourcePicker recurring sources={[]} value={{ kind: 'independent' }} onChange={onChange} />)
 
     expect(screen.queryByRole('textbox', { name: 'Nombre del ingreso nuevo' })).not.toBeInTheDocument()
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'independent' })
@@ -88,6 +95,7 @@ describe('IncomeSourcePicker', () => {
 
     render(
       <IncomeSourcePicker
+        recurring
         sources={[{ id: sourceId, name: 'Consultoría' }]}
         value={{ kind: 'custom', sourceId }}
         onChange={onChange}

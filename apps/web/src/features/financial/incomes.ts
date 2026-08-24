@@ -2,13 +2,27 @@ import BigNumber from 'bignumber.js'
 import { createMoney, type Money } from '../../lib/money'
 import { PLANNING_ARS_PER_USD } from './financial'
 
-export const FIXED_INCOME_SOURCES = {
+export const RECURRING_INCOME_SOURCES = {
   salary: 'Sueldo',
   independent: 'Trabajo independiente',
   pension: 'Jubilación o pensión',
   rent: 'Alquileres',
   investments: 'Inversiones',
   family_support: 'Ayuda familiar',
+} as const
+
+export const ONE_TIME_INCOME_SOURCES = {
+  asset_sale: 'Venta de bienes / usados',
+  bonus: 'Bono / aguinaldo / premio',
+  occasional_work: 'Trabajo ocasional / changa',
+  gift_inheritance: 'Regalo / herencia',
+  refund: 'Reintegro / devolución',
+  extraordinary_income: 'Rescate o cobro extraordinario',
+} as const
+
+export const FIXED_INCOME_SOURCES = {
+  ...RECURRING_INCOME_SOURCES,
+  ...ONE_TIME_INCOME_SOURCES,
 } as const
 
 export type FixedIncomeSourceKind = keyof typeof FIXED_INCOME_SOURCES

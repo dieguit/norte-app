@@ -7,24 +7,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../../components/ui/select'
-import { FIXED_INCOME_SOURCES } from '../../../../features/financial/incomes'
+import {
+  FIXED_INCOME_SOURCES,
+  ONE_TIME_INCOME_SOURCES,
+  RECURRING_INCOME_SOURCES,
+} from '../../../../features/financial/incomes'
 import type { IncomeDraft } from '../../../../features/financial/incomes.schema'
 
 const OTHER_SOURCE_VALUE = 'other'
 
 export function IncomeSourcePicker({
+  recurring,
   sources,
   value,
   error,
   onChange,
 }: {
+  recurring: boolean
   sources: Array<{ id: string; name: string }>
   value: IncomeDraft['source']
   error?: string
   onChange: (source: IncomeDraft['source']) => void
 }) {
+  const fixedSources = recurring ? RECURRING_INCOME_SOURCES : ONE_TIME_INCOME_SOURCES
   const options = [
-    ...Object.entries(FIXED_INCOME_SOURCES).map(([kind, label]) => ({ value: `fixed:${kind}`, label })),
+    ...Object.entries(fixedSources).map(([kind, label]) => ({ value: `fixed:${kind}`, label })),
     ...sources.map((source) => ({ value: `custom:${source.id}`, label: source.name })),
   ]
   const selectItems = [...options, { value: OTHER_SOURCE_VALUE, label: 'Otro (agregar nuevo)' }]
