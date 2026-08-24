@@ -1,64 +1,68 @@
-import { useState } from 'react'
-import { Pencil } from 'lucide-react'
-import { MonthPickerInput } from '../../../../components/MonthPicker'
-import { Button } from '../../../../components/ui/button'
+import { useState } from "react";
+import { Pencil } from "lucide-react";
+import { MonthPickerInput } from "../../../../components/MonthPicker";
+import { Button } from "../../../../components/ui/button";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '../../../../components/ui/tabs'
-import { formatCalendarMonth } from '../../../../lib/format'
+} from "../../../../components/ui/tabs";
+import { formatCalendarMonth } from "../../../../lib/format";
 import {
   getIncomeTotalArs,
   isIncomeIncludedInMonth,
   FIXED_INCOME_SOURCES,
   type IncomesWorkspace,
-} from '../../../../features/financial/incomes'
+} from "../../../../features/financial/incomes";
 import {
   getExpenseTotalArs,
   getMonthlyBalanceArs,
   isExpenseIncludedInMonth,
   FIXED_EXPENSE_SOURCES,
   type ExpensesWorkspace,
-} from '../../../../features/financial/expenses'
-import { IncomeSheet } from './IncomeSheet'
-import { ExpenseSheet } from './ExpenseSheet'
+} from "../../../../features/financial/expenses";
+import { IncomeSheet } from "./IncomeSheet";
+import { ExpenseSheet } from "./ExpenseSheet";
 
 function formatMoneyWithCurrency(amount: string, currency: string) {
-  return `${currency} ${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `${currency} ${Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatArs(amount: string) {
-  return Number(amount).toLocaleString('es-AR', { maximumFractionDigits: 0 })
+  return Number(amount).toLocaleString("es-AR", { maximumFractionDigits: 0 });
 }
 
 export interface FinancesWorkspaceData {
-  incomes: IncomesWorkspace
-  expenses: ExpensesWorkspace
+  incomes: IncomesWorkspace;
+  expenses: ExpensesWorkspace;
 }
 
 export function FinancesWorkspace({
   workspace,
   initialMonth = new Date().toISOString().slice(0, 7),
 }: {
-  workspace: FinancesWorkspaceData
-  initialMonth?: string
+  workspace: FinancesWorkspaceData;
+  initialMonth?: string;
 }) {
-  const [selectedMonth, setSelectedMonth] = useState(initialMonth)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null)
-  const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false)
-  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
+  const [selectedMonth, setSelectedMonth] = useState(initialMonth);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
+  const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const displayedIncomes = workspace.incomes.incomes.filter((income) =>
     isIncomeIncludedInMonth(income, selectedMonth),
-  )
+  );
   const displayedExpenses = workspace.expenses.expenses.filter((expense) =>
     isExpenseIncludedInMonth(expense, selectedMonth),
-  )
-  const recurringExpenses = displayedExpenses.filter((expense) => expense.recurring)
-  const oneOffExpenses = displayedExpenses.filter((expense) => !expense.recurring)
+  );
+  const recurringExpenses = displayedExpenses.filter(
+    (expense) => expense.recurring,
+  );
+  const oneOffExpenses = displayedExpenses.filter(
+    (expense) => !expense.recurring,
+  );
 
   const expensesTotal = getExpenseTotalArs(
     workspace.expenses.expenses.map((expense) => ({
@@ -68,7 +72,7 @@ export function FinancesWorkspace({
       endMonth: expense.endMonth,
     })),
     selectedMonth,
-  )
+  );
   const incomeTotal = getIncomeTotalArs(
     workspace.incomes.incomes.map((income) => ({
       amount: { amount: income.amount, currency: income.currency },
@@ -76,8 +80,8 @@ export function FinancesWorkspace({
       effectiveMonth: income.effectiveMonth,
     })),
     selectedMonth,
-  )
-  const balance = getMonthlyBalanceArs(incomeTotal, expensesTotal)
+  );
+  const balance = getMonthlyBalanceArs(incomeTotal, expensesTotal);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
@@ -93,21 +97,30 @@ export function FinancesWorkspace({
         />
       </header>
 
-      <section aria-label="Resumen financiero" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section
+        aria-label="Resumen financiero"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+      >
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">Ingresos</p>
+          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
+            Ingresos
+          </p>
           <p className="mt-2 font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]">
             ARS {formatArs(incomeTotal.amount)}
           </p>
         </div>
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">Gastos</p>
+          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
+            Gastos
+          </p>
           <p className="mt-2 font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]">
             ARS {formatArs(expensesTotal.amount)}
           </p>
         </div>
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">Balance</p>
+          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
+            Balance
+          </p>
           <p className="mt-2 font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]">
             ARS {formatArs(balance.amount)}
           </p>
@@ -130,9 +143,6 @@ export function FinancesWorkspace({
                 <h2 className="font-serif text-xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-4xl">
                   Ingresos de {formatCalendarMonth(selectedMonth)}
                 </h2>
-                <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--sea-ink-soft)]">
-                  Registrá lo que entra cada mes para mantener tu panorama financiero actualizado.
-                </p>
               </div>
               <Button
                 className="sm:ml-auto"
@@ -155,11 +165,11 @@ export function FinancesWorkspace({
                 <ul className="divide-y divide-[var(--line)]">
                   {displayedIncomes.map((income) => {
                     const label =
-                      income.sourceKind === 'custom'
+                      income.sourceKind === "custom"
                         ? income.sourceName
                         : FIXED_INCOME_SOURCES[
                             income.sourceKind as keyof typeof FIXED_INCOME_SOURCES
-                          ]
+                          ];
                     return (
                       <li
                         key={income.id}
@@ -194,18 +204,21 @@ export function FinancesWorkspace({
                         </div>
                         <div className="text-right">
                           <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                            {formatMoneyWithCurrency(income.amount, income.currency)}
+                            {formatMoneyWithCurrency(
+                              income.amount,
+                              income.currency,
+                            )}
                           </p>
-                          {income.currency === 'USD' && (
+                          {income.currency === "USD" && (
                             <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                              Equivale a ARS{' '}
+                              Equivale a ARS{" "}
                               {formatArs(
                                 getIncomeTotalArs(
                                   [
                                     {
                                       amount: {
                                         amount: income.amount,
-                                        currency: 'USD',
+                                        currency: "USD",
                                       },
                                       recurring: true,
                                       effectiveMonth: selectedMonth,
@@ -218,7 +231,7 @@ export function FinancesWorkspace({
                           )}
                         </div>
                       </li>
-                    )
+                    );
                   })}
                 </ul>
               )}
@@ -232,7 +245,7 @@ export function FinancesWorkspace({
             <IncomeSheet
               open={editingIncomeId !== null}
               onOpenChange={(open) => {
-                if (!open) setEditingIncomeId(null)
+                if (!open) setEditingIncomeId(null);
               }}
               month={selectedMonth}
               sources={workspace.incomes.sources}
@@ -249,9 +262,6 @@ export function FinancesWorkspace({
                 <h2 className="font-serif text-xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-4xl">
                   Gastos de {formatCalendarMonth(selectedMonth)}
                 </h2>
-                <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--sea-ink-soft)]">
-                  Registrá tus gastos recurrentes y consumos únicos para mantener tu panorama financiero actualizado.
-                </p>
               </div>
               <Button
                 className="sm:ml-auto"
@@ -272,18 +282,18 @@ export function FinancesWorkspace({
                   className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
                 >
                   {recurringExpenses.length === 0 ? (
-                     <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
+                    <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
                       No tenés gastos recurrentes para este mes.
                     </div>
                   ) : (
                     <ul className="divide-y divide-[var(--line)]">
                       {recurringExpenses.map((expense) => {
                         const label =
-                          expense.sourceKind === 'custom'
+                          expense.sourceKind === "custom"
                             ? expense.sourceName
                             : FIXED_EXPENSE_SOURCES[
                                 expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES
-                              ]
+                              ];
                         return (
                           <li
                             key={expense.id}
@@ -299,7 +309,9 @@ export function FinancesWorkspace({
                                   variant="ghost"
                                   size="sm"
                                   aria-label={`Editar gasto ${label}`}
-                                  onClick={() => setEditingExpenseId(expense.id)}
+                                  onClick={() =>
+                                    setEditingExpenseId(expense.id)
+                                  }
                                 >
                                   <Pencil
                                     data-icon="inline-start"
@@ -309,23 +321,29 @@ export function FinancesWorkspace({
                                 </Button>
                               </div>
                               <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                                Todos los meses desde {formatCalendarMonth(expense.effectiveMonth.slice(0, 7))}
+                                Todos los meses desde{" "}
+                                {formatCalendarMonth(
+                                  expense.effectiveMonth.slice(0, 7),
+                                )}
                               </p>
                             </div>
                             <div className="text-right">
                               <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                                {formatMoneyWithCurrency(expense.amount, expense.currency)}
+                                {formatMoneyWithCurrency(
+                                  expense.amount,
+                                  expense.currency,
+                                )}
                               </p>
-                              {expense.currency === 'USD' && (
+                              {expense.currency === "USD" && (
                                 <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                                  Equivale a ARS{' '}
+                                  Equivale a ARS{" "}
                                   {formatArs(
                                     getExpenseTotalArs(
                                       [
                                         {
                                           amount: {
                                             amount: expense.amount,
-                                            currency: 'USD',
+                                            currency: "USD",
                                           },
                                           recurring: expense.recurring,
                                           effectiveMonth: selectedMonth,
@@ -339,7 +357,7 @@ export function FinancesWorkspace({
                               )}
                             </div>
                           </li>
-                        )
+                        );
                       })}
                     </ul>
                   )}
@@ -362,11 +380,11 @@ export function FinancesWorkspace({
                     <ul className="divide-y divide-[var(--line)]">
                       {oneOffExpenses.map((expense) => {
                         const label =
-                          expense.sourceKind === 'custom'
+                          expense.sourceKind === "custom"
                             ? expense.sourceName
                             : FIXED_EXPENSE_SOURCES[
                                 expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES
-                              ]
+                              ];
                         return (
                           <li
                             key={expense.id}
@@ -382,7 +400,9 @@ export function FinancesWorkspace({
                                   variant="ghost"
                                   size="sm"
                                   aria-label={`Editar gasto ${label}`}
-                                  onClick={() => setEditingExpenseId(expense.id)}
+                                  onClick={() =>
+                                    setEditingExpenseId(expense.id)
+                                  }
                                 >
                                   <Pencil
                                     data-icon="inline-start"
@@ -392,23 +412,28 @@ export function FinancesWorkspace({
                                 </Button>
                               </div>
                               <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                                {formatCalendarMonth(expense.effectiveMonth.slice(0, 7))}
+                                {formatCalendarMonth(
+                                  expense.effectiveMonth.slice(0, 7),
+                                )}
                               </p>
                             </div>
                             <div className="text-right">
                               <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                                {formatMoneyWithCurrency(expense.amount, expense.currency)}
+                                {formatMoneyWithCurrency(
+                                  expense.amount,
+                                  expense.currency,
+                                )}
                               </p>
-                              {expense.currency === 'USD' && (
+                              {expense.currency === "USD" && (
                                 <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                                  Equivale a ARS{' '}
+                                  Equivale a ARS{" "}
                                   {formatArs(
                                     getExpenseTotalArs(
                                       [
                                         {
                                           amount: {
                                             amount: expense.amount,
-                                            currency: 'USD',
+                                            currency: "USD",
                                           },
                                           recurring: expense.recurring,
                                           effectiveMonth: selectedMonth,
@@ -422,7 +447,7 @@ export function FinancesWorkspace({
                               )}
                             </div>
                           </li>
-                        )
+                        );
                       })}
                     </ul>
                   )}
@@ -438,7 +463,7 @@ export function FinancesWorkspace({
             <ExpenseSheet
               open={editingExpenseId !== null}
               onOpenChange={(open) => {
-                if (!open) setEditingExpenseId(null)
+                if (!open) setEditingExpenseId(null);
               }}
               month={selectedMonth}
               sources={workspace.expenses.sources}
@@ -450,5 +475,5 @@ export function FinancesWorkspace({
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
