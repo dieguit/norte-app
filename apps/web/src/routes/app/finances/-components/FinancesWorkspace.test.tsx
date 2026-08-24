@@ -34,6 +34,16 @@ const sampleWorkspace = {
         recurring: true,
         effectiveMonth: '2026-01-01',
       },
+      {
+        id: 'income_bonus',
+        sourceKind: 'custom',
+        sourceId: null,
+        sourceName: 'Bono',
+        amount: '100000.00',
+        currency: 'ARS' as const,
+        recurring: false,
+        effectiveMonth: '2026-08-01',
+      },
     ],
   },
   expenses: {
@@ -86,11 +96,11 @@ describe('FinancesWorkspace', () => {
 
     const summary = screen.getByLabelText('Resumen financiero')
     expect(within(summary).getByText('Ingresos')).toBeInTheDocument()
-    expect(within(summary).getByText('ARS 600.000')).toBeInTheDocument()
+    expect(within(summary).getByText('ARS 700.000')).toBeInTheDocument()
     expect(within(summary).getByText('Gastos')).toBeInTheDocument()
     expect(within(summary).getByText('ARS 500.000')).toBeInTheDocument()
     expect(within(summary).getByText('Balance')).toBeInTheDocument()
-    expect(within(summary).getByText('ARS 100.000')).toBeInTheDocument()
+    expect(within(summary).getByText('ARS 200.000')).toBeInTheDocument()
 
     expect(screen.getByRole('tab', { name: 'Ingresos' })).toHaveClass('px-3', 'py-1', 'text-base')
     expect(screen.getByRole('heading', { name: 'Ingresos de Agosto de 2026' })).toBeInTheDocument()
@@ -101,6 +111,19 @@ describe('FinancesWorkspace', () => {
     expect(screen.getByRole('heading', { name: 'Gastos de Agosto de 2026' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Recurrentes' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Únicos' })).toBeInTheDocument()
+  })
+
+  it('renders one-time incomes before recurring incomes', () => {
+    render(<FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />)
+
+    const oneOffSection = screen.getByLabelText('Ingresos únicos')
+    const recurringSection = screen.getByLabelText('Ingresos recurrentes')
+
+    expect(within(oneOffSection).getByText('Bono')).toBeInTheDocument()
+    expect(within(recurringSection).getByText('Sueldo')).toBeInTheDocument()
+    expect(oneOffSection.compareDocumentPosition(recurringSection)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
 
   it('shows monthly-filtered expense lists, excludes closed recurrences, and calculates USD equivalents', async () => {
@@ -120,6 +143,9 @@ describe('FinancesWorkspace', () => {
     expect(within(oneOffSection).getByText('USD 200.00')).toBeInTheDocument()
     expect(within(oneOffSection).getByText('Equivale a ARS 300.000')).toBeInTheDocument()
     expect(within(oneOffSection).getByText('Agosto de 2026')).toBeInTheDocument()
+    expect(oneOffSection.compareDocumentPosition(recurringSection)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
 
   it('renders separate empty states when there are no recurring or one-off expenses', async () => {
@@ -133,6 +159,12 @@ describe('FinancesWorkspace', () => {
         initialMonth="2026-08"
       />,
     )
+
+    const oneOffIncomeSection = screen.getByLabelText('Ingresos únicos')
+    expect(within(oneOffIncomeSection).getByText('No tenés ingresos únicos para este mes.')).toBeInTheDocument()
+
+    const recurringIncomeSection = screen.getByLabelText('Ingresos recurrentes')
+    expect(within(recurringIncomeSection).getByText('No tenés ingresos recurrentes para este mes.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: 'Gastos' }))
 
