@@ -54,6 +54,8 @@ export function FinancesWorkspace({
   const displayedIncomes = workspace.incomes.incomes.filter((income) =>
     isIncomeIncludedInMonth(income, selectedMonth),
   );
+  const oneOffIncomes = displayedIncomes.filter((income) => !income.recurring);
+  const recurringIncomes = displayedIncomes.filter((income) => income.recurring);
   const displayedExpenses = workspace.expenses.expenses.filter((expense) =>
     isExpenseIncludedInMonth(expense, selectedMonth),
   );
@@ -63,6 +65,65 @@ export function FinancesWorkspace({
   const oneOffExpenses = displayedExpenses.filter(
     (expense) => !expense.recurring,
   );
+
+  const renderIncomeRow = (income: IncomesWorkspace["incomes"][number]) => {
+    const label =
+      income.sourceKind === "custom"
+        ? income.sourceName
+        : FIXED_INCOME_SOURCES[
+            income.sourceKind as keyof typeof FIXED_INCOME_SOURCES
+          ];
+
+    return (
+      <li
+        key={income.id}
+        className="flex flex-col items-stretch justify-between gap-5 p-5 sm:flex-row sm:items-center"
+      >
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-[var(--sea-ink)]">{label}</p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`Editar ingreso ${label}`}
+              onClick={() => setEditingIncomeId(income.id)}
+            >
+              <Pencil data-icon="inline-start" aria-hidden="true" />
+              Editar ingreso
+            </Button>
+          </div>
+          <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+            {income.recurring
+              ? `Todos los meses desde ${formatCalendarMonth(income.effectiveMonth.slice(0, 7))}`
+              : formatCalendarMonth(income.effectiveMonth.slice(0, 7))}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
+            {formatMoneyWithCurrency(income.amount, income.currency)}
+          </p>
+          {income.currency === "USD" && (
+            <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+              Equivale a ARS{" "}
+              {formatArs(
+                getIncomeTotalArs(
+                  [
+                    {
+                      amount: { amount: income.amount, currency: "USD" },
+                      recurring: true,
+                      effectiveMonth: selectedMonth,
+                    },
+                  ],
+                  selectedMonth,
+                ).amount,
+              )}
+            </p>
+          )}
+        </div>
+      </li>
+    );
+  };
 
   const expensesTotal = getExpenseTotalArs(
     workspace.expenses.expenses.map((expense) => ({
@@ -153,89 +214,46 @@ export function FinancesWorkspace({
               </Button>
             </div>
 
-            <section
-              aria-label="Ingresos registrados"
-              className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
-            >
-              {displayedIncomes.length === 0 ? (
-                <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
-                  No tenés ingresos para este mes.
-                </div>
-              ) : (
-                <ul className="divide-y divide-[var(--line)]">
-                  {displayedIncomes.map((income) => {
-                    const label =
-                      income.sourceKind === "custom"
-                        ? income.sourceName
-                        : FIXED_INCOME_SOURCES[
-                            income.sourceKind as keyof typeof FIXED_INCOME_SOURCES
-                          ];
-                    return (
-                      <li
-                        key={income.id}
-                        className="flex flex-col items-stretch justify-between gap-5 p-5 sm:flex-row sm:items-center"
-                      >
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-semibold text-[var(--sea-ink)]">
-                              {label}
-                            </p>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              aria-label={`Editar ingreso ${label}`}
-                              onClick={() => setEditingIncomeId(income.id)}
-                            >
-                              <Pencil
-                                data-icon="inline-start"
-                                aria-hidden="true"
-                              />
-                              Editar ingreso
-                            </Button>
-                          </div>
-                          <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                            {income.recurring
-                              ? `Todos los meses desde ${formatCalendarMonth(income.effectiveMonth.slice(0, 7))}`
-                              : formatCalendarMonth(
-                                  income.effectiveMonth.slice(0, 7),
-                                )}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                            {formatMoneyWithCurrency(
-                              income.amount,
-                              income.currency,
-                            )}
-                          </p>
-                          {income.currency === "USD" && (
-                            <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                              Equivale a ARS{" "}
-                              {formatArs(
-                                getIncomeTotalArs(
-                                  [
-                                    {
-                                      amount: {
-                                        amount: income.amount,
-                                        currency: "USD",
-                                      },
-                                      recurring: true,
-                                      effectiveMonth: selectedMonth,
-                                    },
-                                  ],
-                                  selectedMonth,
-                                ).amount,
-                              )}
-                            </p>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-3">
+                <h3 className="font-serif text-lg font-bold text-[var(--sea-ink)] sm:text-xl">
+                  Únicos
+                </h3>
+                <section
+                  aria-label="Ingresos únicos"
+                  className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
+                >
+                  {oneOffIncomes.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
+                      No tenés ingresos únicos para este mes.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-[var(--line)]">
+                      {oneOffIncomes.map(renderIncomeRow)}
+                    </ul>
+                  )}
+                </section>
+              </div>
+              <div className="flex flex-col gap-3">
+                <h3 className="font-serif text-lg font-bold text-[var(--sea-ink)] sm:text-xl">
+                  Recurrentes
+                </h3>
+                <section
+                  aria-label="Ingresos recurrentes"
+                  className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
+                >
+                  {recurringIncomes.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
+                      No tenés ingresos recurrentes para este mes.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-[var(--line)]">
+                      {recurringIncomes.map(renderIncomeRow)}
+                    </ul>
+                  )}
+                </section>
+              </div>
+            </div>
             <IncomeSheet
               open={isCreateOpen}
               onOpenChange={setIsCreateOpen}
@@ -273,6 +291,96 @@ export function FinancesWorkspace({
             </div>
 
             <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-3">
+                <h3 className="font-serif text-lg font-bold text-[var(--sea-ink)] sm:text-xl">
+                  Únicos
+                </h3>
+                <section
+                  aria-label="Gastos únicos"
+                  className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
+                >
+                  {oneOffExpenses.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
+                      No tenés gastos únicos para este mes.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-[var(--line)]">
+                      {oneOffExpenses.map((expense) => {
+                        const label =
+                          expense.sourceKind === "custom"
+                            ? expense.sourceName
+                            : FIXED_EXPENSE_SOURCES[
+                                expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES
+                              ];
+                        return (
+                          <li
+                            key={expense.id}
+                            className="flex flex-col items-stretch justify-between gap-5 p-5 sm:flex-row sm:items-center"
+                          >
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-semibold text-[var(--sea-ink)]">
+                                  {label}
+                                </p>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  aria-label={`Editar gasto ${label}`}
+                                  onClick={() =>
+                                    setEditingExpenseId(expense.id)
+                                  }
+                                >
+                                  <Pencil
+                                    data-icon="inline-start"
+                                    aria-hidden="true"
+                                  />
+                                  Editar gasto
+                                </Button>
+                              </div>
+                              <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+                                {formatCalendarMonth(
+                                  expense.effectiveMonth.slice(0, 7),
+                                )}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
+                                {formatMoneyWithCurrency(
+                                  expense.amount,
+                                  expense.currency,
+                                )}
+                              </p>
+                              {expense.currency === "USD" && (
+                                <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+                                  Equivale a ARS{" "}
+                                  {formatArs(
+                                    getExpenseTotalArs(
+                                      [
+                                        {
+                                          amount: {
+                                            amount: expense.amount,
+                                            currency: "USD",
+                                          },
+                                          recurring: expense.recurring,
+                                          effectiveMonth: selectedMonth,
+                                          endMonth: expense.endMonth,
+                                        },
+                                      ],
+                                      selectedMonth,
+                                    ).amount,
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
+              </div>
+
               <div className="flex flex-col gap-3">
                 <h3 className="font-serif text-lg font-bold text-[var(--sea-ink)] sm:text-xl">
                   Recurrentes
@@ -322,96 +430,6 @@ export function FinancesWorkspace({
                               </div>
                               <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
                                 Todos los meses desde{" "}
-                                {formatCalendarMonth(
-                                  expense.effectiveMonth.slice(0, 7),
-                                )}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                                {formatMoneyWithCurrency(
-                                  expense.amount,
-                                  expense.currency,
-                                )}
-                              </p>
-                              {expense.currency === "USD" && (
-                                <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                                  Equivale a ARS{" "}
-                                  {formatArs(
-                                    getExpenseTotalArs(
-                                      [
-                                        {
-                                          amount: {
-                                            amount: expense.amount,
-                                            currency: "USD",
-                                          },
-                                          recurring: expense.recurring,
-                                          effectiveMonth: selectedMonth,
-                                          endMonth: expense.endMonth,
-                                        },
-                                      ],
-                                      selectedMonth,
-                                    ).amount,
-                                  )}
-                                </p>
-                              )}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </section>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <h3 className="font-serif text-lg font-bold text-[var(--sea-ink)] sm:text-xl">
-                  Únicos
-                </h3>
-                <section
-                  aria-label="Gastos únicos"
-                  className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
-                >
-                  {oneOffExpenses.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-[var(--sea-ink-soft)]">
-                      No tenés gastos únicos para este mes.
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-[var(--line)]">
-                      {oneOffExpenses.map((expense) => {
-                        const label =
-                          expense.sourceKind === "custom"
-                            ? expense.sourceName
-                            : FIXED_EXPENSE_SOURCES[
-                                expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES
-                              ];
-                        return (
-                          <li
-                            key={expense.id}
-                            className="flex flex-col items-stretch justify-between gap-5 p-5 sm:flex-row sm:items-center"
-                          >
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-semibold text-[var(--sea-ink)]">
-                                  {label}
-                                </p>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  aria-label={`Editar gasto ${label}`}
-                                  onClick={() =>
-                                    setEditingExpenseId(expense.id)
-                                  }
-                                >
-                                  <Pencil
-                                    data-icon="inline-start"
-                                    aria-hidden="true"
-                                  />
-                                  Editar gasto
-                                </Button>
-                              </div>
-                              <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
                                 {formatCalendarMonth(
                                   expense.effectiveMonth.slice(0, 7),
                                 )}
