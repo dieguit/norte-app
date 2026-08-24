@@ -8,16 +8,21 @@ import type { InitialHomeState } from '../../../features/financial/financial'
 import type { PreviousMonthShortfall } from '../../../features/contributions/saving-contribution'
 import { getSavingContributionContext } from '../../../features/contributions/saving-contribution.functions'
 
+import type { RoadmapData } from '../../../features/roadmap/roadmap'
+
 vi.mock('../../../features/contributions/saving-contribution.functions', () => ({
-  getSavingContributionContext: vi.fn(),
-  previewSavingContribution: vi.fn(),
-  confirmSavingContribution: vi.fn(),
+  getSavingContributionContext: vi.fn().mockResolvedValue(null),
+  previewSavingContribution: vi.fn().mockResolvedValue(null),
+  confirmSavingContribution: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({
     invalidate: vi.fn(),
   }),
+  Link: ({ children, to, className }: { children: React.ReactNode; to: string; className?: string }) => (
+    <a href={to} className={className}>{children}</a>
+  ),
 }))
 
 afterEach(() => {
@@ -26,50 +31,21 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('Home initial-plan component', () => {
-  const knownExpenseEmergencyFund: InitialHomeState = {
-    income: { amount: '500000.00', currency: 'ARS' },
-    expensesKnowledge: 'known',
-    expenses: { amount: '250000.00', currency: 'ARS' },
-    plan: {
-      fundingMethod: 'save',
-      destinationCurrency: 'USD',
-      monthlyCommitment: { amount: '50000.00', currency: 'ARS' },
-      destinationAmount: { amount: '33.33', currency: 'USD' },
-      effectiveMonth: '2026-09',
-      allocationPercentage: '100.00',
+describe('Home component', () => {
+  const emptyRoadmap: RoadmapData = {
+    undatedObjectives: [],
+    futureMonths: [],
+    currentMonth: {
+      month: '2026-05',
+      objectives: [],
+      oneTimeExpenses: [],
+      recurringExpenses: [],
+      endingExpenses: [],
+      oneTimeIncomes: [],
+      recurringIncomes: [],
+      contributions: [],
     },
-    goal: {
-      type: 'emergency_fund',
-      name: 'Colchón financiero',
-      targetAmount: { amount: '1000.00', currency: 'USD' },
-      currentAmount: { amount: '0.00', currency: 'USD' },
-      emergencyFundMonths: 6,
-    },
-    projection: { status: 'available', completionMonth: '2029-03' },
-    previousMonthShortfalls: [],
-  }
-
-  const unknownExpenseEmergencyFund: InitialHomeState = {
-    income: { amount: '600000.00', currency: 'ARS' },
-    expensesKnowledge: 'unknown',
-    plan: {
-      fundingMethod: 'save',
-      destinationCurrency: 'USD',
-      monthlyCommitment: { amount: '80000.00', currency: 'ARS' },
-      destinationAmount: { amount: '53.33', currency: 'USD' },
-      effectiveMonth: '2026-09',
-      allocationPercentage: '100.00',
-    },
-    goal: {
-      type: 'emergency_fund',
-      name: 'Colchón financiero',
-      targetAmount: undefined,
-      currentAmount: { amount: '0.00', currency: 'USD' },
-      emergencyFundMonths: 6,
-    },
-    projection: { status: 'unknown_expenses' },
-    previousMonthShortfalls: [],
+    historyMonths: [],
   }
 
   const fixedSavingsHome: InitialHomeState = {
@@ -95,28 +71,21 @@ describe('Home initial-plan component', () => {
     previousMonthShortfalls: [],
   }
 
-  const outsideHorizonHome: InitialHomeState = {
-    income: { amount: '500000.00', currency: 'ARS' },
-    expensesKnowledge: 'known',
-    expenses: { amount: '250000.00', currency: 'ARS' },
-    plan: {
-      fundingMethod: 'save',
-      destinationCurrency: 'ARS',
-      monthlyCommitment: { amount: '0.00', currency: 'ARS' },
-      destinationAmount: { amount: '0.00', currency: 'ARS' },
-      effectiveMonth: '2026-09',
-      allocationPercentage: '100.00',
-    },
-    goal: {
-      type: 'fixed_savings',
-      name: 'Ahorro a muy largo plazo',
-      targetAmount: { amount: '10000000.00', currency: 'ARS' },
-      currentAmount: { amount: '0.00', currency: 'ARS' },
-      emergencyFundMonths: undefined,
-    },
-    projection: { status: 'outside_horizon' },
-    previousMonthShortfalls: [],
-  }
+  it('shows the success status when the last closed month has no shortfall', () => {
+    render(
+      <Home
+        home={{ ...fixedSavingsHome, previousMonthShortfalls: [] }}
+        roadmap={emptyRoadmap}
+        now={new Date('2026-05-15T12:00:00Z')}
+      />
+    )
+
+    expect(screen.getByRole('heading', { name: 'Cumpliste tus objetivos de abril.' })).toBeVisible()
+    expect(screen.getByText('Seguís en camino con tu plan.')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Tu hoja de ruta' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Tu Plan' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Tus avances' })).not.toBeInTheDocument()
+  })
 
   it('renders one prior-month alert with every shortfall', async () => {
     const user = userEvent.setup()
@@ -152,7 +121,13 @@ describe('Home initial-plan component', () => {
       },
     ]
 
-    render(<Home home={{ ...fixedSavingsHome, previousMonthShortfalls: shortfalls }} />)
+    render(
+      <Home
+        home={{ ...fixedSavingsHome, previousMonthShortfalls: shortfalls }}
+        roadmap={emptyRoadmap}
+        now={new Date('2026-05-15T12:00:00Z')}
+      />
+    )
 
     expect(screen.getByText('No cumpliste todos tus objetivos de abril.')).toBeVisible()
     expect(screen.getByText('En abril te faltaron ahorrar USD US$ 20,00.')).toBeVisible()
@@ -182,76 +157,7 @@ describe('Home initial-plan component', () => {
     expect(screen.queryByText(/Necesitás/i)).not.toBeInTheDocument()
   })
 
-  it('renders nothing when previousMonthShortfalls is empty', () => {
-    render(<Home home={{ ...fixedSavingsHome, previousMonthShortfalls: [] }} />)
-
-    expect(screen.queryByRole('heading', { name: /No cumpliste todos tus objetivos/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: /No cumpliste todos tus objetivos/i })).not.toBeInTheDocument()
-  })
-
-  it('shows the canonical Plan separately from empty actual progress', () => {
-    render(<Home home={knownExpenseEmergencyFund} />)
-
-    expect(screen.getByRole('heading', { name: 'Tu Plan' })).toBeVisible()
-    expect(screen.getByText('Ahorrar USD')).toBeVisible()
-    expect(screen.getByText('$ 50.000,00 por mes')).toBeVisible()
-    expect(screen.getByText('US$ 33,33 estimados por mes')).toBeVisible()
-    expect(screen.getByText('Desde Septiembre de 2026')).toBeVisible()
-    expect(screen.getByText('1 USD = 1.500 ARS')).toBeVisible()
-    expect(screen.getByText('100% asignado a este objetivo')).toBeVisible()
-    expect(screen.getByText('US$ 1.000,00')).toBeVisible()
-    expect(screen.getByText('Marzo de 2029')).toBeVisible()
-
-    expect(screen.getByRole('heading', { name: 'Tus avances' })).toBeVisible()
-    expect(screen.getByText('US$ 0,00')).toBeVisible()
-    expect(screen.getByText('Todavía no registraste aportes')).toBeVisible()
-  })
-
-  it('renders the incomplete emergency-fund state without inventing a target or date', () => {
-    render(<Home home={unknownExpenseEmergencyFund} />)
-
-    expect(screen.getByRole('heading', { name: 'Tu plan está empezando a tomar forma' })).toBeVisible()
-    expect(screen.getByText('Todavía no sabemos')).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Tu Plan' })).toBeVisible()
-    expect(screen.getByText('Ahorrar USD')).toBeVisible()
-    expect(screen.getByText('$ 80.000,00 por mes')).toBeVisible()
-    expect(screen.getAllByText('Fecha por calcular').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('Necesitamos conocer mejor tus gastos para calcular cuánto necesitás.')).toBeVisible()
-    expect(screen.queryByRole('link', { name: 'Agregar mis gastos principales' })).not.toBeInTheDocument()
-    expect(screen.getByText('Agregar mis gastos principales')).toBeVisible()
-    expect(screen.getByText(/Alquiler/)).toBeVisible()
-    expect(screen.getByText(/Obra social/)).toBeVisible()
-    expect(screen.getByText(/Servicios/)).toBeVisible()
-    expect(screen.getByText(/Suscripciones/)).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Tus avances' })).toBeVisible()
-    expect(screen.getByText('US$ 0,00')).toBeVisible()
-    expect(screen.getByText('Todavía no registraste aportes')).toBeVisible()
-  })
-
-  it('renders outside_horizon projection message when projection is not reachable', () => {
-    render(<Home home={outsideHorizonHome} />)
-
-    expect(screen.getByRole('heading', { name: 'Tu Plan' })).toBeVisible()
-    expect(screen.getByText('No alcanzado dentro del horizonte')).toBeVisible()
-  })
-
-  it('renders the selected fixed target and same-currency plan details', () => {
-    render(<Home home={fixedSavingsHome} />)
-
-    expect(screen.getAllByText('Quiero ahorrar cierta suma de dinero').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByRole('heading', { name: 'Tu Plan' })).toBeVisible()
-    expect(screen.getByText('Ahorrar ARS')).toBeVisible()
-    expect(screen.getByText('$ 100.000,00 por mes')).toBeVisible()
-    expect(screen.queryByText(/estimados por mes/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/1 USD =/)).not.toBeInTheDocument()
-    expect(screen.getByText('$ 500.000,00')).toBeVisible()
-    expect(screen.getByText('Febrero de 2027')).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Tus avances' })).toBeVisible()
-    expect(screen.getByText('$ 0,00')).toBeVisible()
-    expect(screen.getByText('Todavía no registraste aportes')).toBeVisible()
-  })
-
-  it('renders + Registrar button directly after introduction and opens four-action chooser', async () => {
+  it('renders + Registrar button and opens four-action chooser', async () => {
     const user = userEvent.setup()
     vi.mocked(getSavingContributionContext).mockResolvedValue({
       profile: 'present',
@@ -272,7 +178,7 @@ describe('Home initial-plan component', () => {
       },
     })
 
-    render(<Home home={knownExpenseEmergencyFund} />)
+    render(<Home home={fixedSavingsHome} roadmap={emptyRoadmap} />)
 
     const launchButton = screen.getByRole('button', { name: '+ Registrar' })
     expect(launchButton).toBeInTheDocument()

@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getFinancialAppState } from '../../features/financial/financial.functions'
+import type { RoadmapData } from '../../features/roadmap/roadmap'
 import { FinancialOnboarding } from './-components/FinancialOnboarding'
 import { Home } from './-components/Home'
 import { Route as rootRoute } from '../__root'
@@ -32,6 +33,22 @@ vi.mock('../../features/financial/financial.functions', () => ({
 
 afterEach(cleanup)
 
+const emptyRoadmap: RoadmapData = {
+  undatedObjectives: [],
+  futureMonths: [],
+  currentMonth: {
+    month: '2026-08',
+    objectives: [],
+    oneTimeExpenses: [],
+    recurringExpenses: [],
+    endingExpenses: [],
+    oneTimeIncomes: [],
+    recurringIncomes: [],
+    contributions: [],
+  },
+  historyMonths: [],
+}
+
 function createTestRouter() {
   const appRoute = AppRoute.update({
     id: '/app',
@@ -44,7 +61,11 @@ function createTestRouter() {
     path: '/',
     component: () => {
       const context = AppRoute.useRouteContext()
-      return context.profile === 'missing' ? <FinancialOnboarding /> : <Home home={context.home} />
+      return context.profile === 'missing' ? (
+        <FinancialOnboarding />
+      ) : (
+        <Home home={context.home} roadmap={emptyRoadmap} />
+      )
     },
   })
 
@@ -84,7 +105,7 @@ describe('App route layout', () => {
     const router = createTestRouter()
     render(<RouterProvider router={router} />)
 
-    expect(await screen.findByRole('heading', { name: 'Tu plan está empezando a tomar forma' })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: 'Inicio' })).toBeDefined()
     expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
   })
 })

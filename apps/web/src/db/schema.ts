@@ -336,7 +336,7 @@ export const incomes = pgTable(
     check('incomes_currency_check', sql`${table.currency} in ('ARS', 'USD')`),
     check(
       'incomes_source_kind_check',
-      sql`${table.sourceKind} in ('salary', 'independent', 'pension', 'rent', 'investments', 'family_support', 'custom')`,
+      sql`${table.sourceKind} in ('salary', 'independent', 'pension', 'rent', 'investments', 'family_support', 'asset_sale', 'bonus', 'occasional_work', 'gift_inheritance', 'refund', 'extraordinary_income', 'custom')`,
     ),
     check(
       'incomes_source_check',
@@ -393,7 +393,7 @@ export const expenses = pgTable(
     check('expenses_currency_check', sql`${table.currency} in ('ARS', 'USD')`),
     check(
       'expenses_source_kind_check',
-      sql`${table.sourceKind} in ('housing', 'school', 'health', 'loans', 'utilities', 'insurance', 'family_support', 'subscriptions', 'custom')`,
+      sql`${table.sourceKind} in ('housing', 'school', 'health', 'loans', 'utilities', 'insurance', 'family_support', 'subscriptions', 'clothing', 'gift', 'family_help', 'occasional_health', 'maintenance', 'travel_leisure', 'technology', 'taxes_fees', 'custom')`,
     ),
     check(
       'expenses_source_check',

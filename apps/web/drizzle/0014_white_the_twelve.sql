@@ -1,0 +1,4 @@
+ALTER TABLE "expenses" DROP CONSTRAINT "expenses_source_kind_check";--> statement-breakpoint
+ALTER TABLE "incomes" DROP CONSTRAINT "incomes_source_kind_check";--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_source_kind_check" CHECK ("expenses"."source_kind" in ('housing', 'school', 'health', 'loans', 'utilities', 'insurance', 'family_support', 'subscriptions', 'clothing', 'gift', 'family_help', 'occasional_health', 'maintenance', 'travel_leisure', 'technology', 'taxes_fees', 'custom'));--> statement-breakpoint
+ALTER TABLE "incomes" ADD CONSTRAINT "incomes_source_kind_check" CHECK ("incomes"."source_kind" in ('salary', 'independent', 'pension', 'rent', 'investments', 'family_support', 'asset_sale', 'bonus', 'occasional_work', 'gift_inheritance', 'refund', 'extraordinary_income', 'custom'));

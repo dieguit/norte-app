@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { RoadmapData } from '../../../features/roadmap/roadmap'
 import { AppShell } from './AppShell'
 import { Home } from './Home'
 
@@ -28,6 +29,22 @@ afterEach(() => {
   cleanup()
   currentPathname = '/app'
 })
+
+const emptyRoadmap: RoadmapData = {
+  undatedObjectives: [],
+  futureMonths: [],
+  currentMonth: {
+    month: '2026-08',
+    objectives: [],
+    oneTimeExpenses: [],
+    recurringExpenses: [],
+    endingExpenses: [],
+    oneTimeIncomes: [],
+    recurringIncomes: [],
+    contributions: [],
+  },
+  historyMonths: [],
+}
 
 describe('AppShell', () => {
   const mockHome = {
@@ -56,7 +73,7 @@ describe('AppShell', () => {
   it('renders responsive navigation regions, active home link, enabled goals links, unavailable finance controls, account controls, and child content', () => {
     render(
       <AppShell>
-        <Home home={mockHome} />
+        <Home home={mockHome} roadmap={emptyRoadmap} />
       </AppShell>,
     )
 
@@ -77,14 +94,14 @@ describe('AppShell', () => {
     expect(financesLinks[0]?.getAttribute('href')).toBe('/app/finances')
     expect(financesLinks[1]?.getAttribute('href')).toBe('/app/finances')
     expect(screen.getAllByRole('button', { name: 'Cuenta' })).toHaveLength(2)
-    expect(screen.getByRole('heading', { name: 'Tu plan está empezando a tomar forma' })).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Inicio' })).toBeDefined()
   })
 
   it('sets aria-current="page" on Goals navigation links when on /app/goals', () => {
     currentPathname = '/app/goals'
     render(
       <AppShell>
-        <Home home={mockHome} />
+        <Home home={mockHome} roadmap={emptyRoadmap} />
       </AppShell>,
     )
 
@@ -98,7 +115,7 @@ describe('AppShell', () => {
     currentPathname = '/app/goals/goal-1'
     render(
       <AppShell>
-        <Home home={mockHome} />
+        <Home home={mockHome} roadmap={emptyRoadmap} />
       </AppShell>,
     )
 
