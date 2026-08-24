@@ -105,7 +105,7 @@ function MonthGroup({
   return (
     <section
       aria-labelledby={`roadmap-${kind}-${group.month}`}
-      className="relative flex flex-col gap-4 py-6"
+      className="relative flex flex-col gap-2 py-3"
     >
       <h3
         id={`roadmap-${kind}-${group.month}`}
@@ -118,7 +118,7 @@ function MonthGroup({
           {group.objectives.map((goal) => (
             <article
               key={goal.id}
-              className="w-full rounded-2xl border border-[var(--line)] bg-[var(--surface)] backdrop-blur-md p-4 text-center shadow-[var(--shadow-card)]"
+              className="w-full rounded-2xl border border-[var(--line)] bg-white/90 p-4 text-center shadow-[var(--shadow-card)]"
             >
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--palm)]">
                 Objetivo proyectado
@@ -144,6 +144,7 @@ function MonthGroup({
               title="Gastos únicos"
               items={group.oneTimeExpenses}
               getLabel={expenseLabel}
+              titleClassName="text-[var(--error)]"
             />
             <RecordGroup
               title="Gastos recurrentes"
@@ -166,6 +167,7 @@ function MonthGroup({
               title="Ingresos únicos"
               items={group.oneTimeIncomes}
               getLabel={incomeLabel}
+              titleClassName="text-[var(--palm)]"
             />
             <RecordGroup
               title="Ingresos recurrentes"
@@ -233,7 +235,7 @@ export function Roadmap({ roadmap }: { roadmap: RoadmapData }) {
           {roadmap.undatedObjectives.map((goal) => (
             <article
               key={goal.id}
-              className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4"
+              className="rounded-2xl border border-[var(--line)] bg-white/90 p-4"
             >
               <h4 className="font-semibold">{goal.name}</h4>
               <p className="text-sm text-[var(--sea-ink-soft)]">

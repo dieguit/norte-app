@@ -67,6 +67,7 @@ describe('Roadmap component', () => {
     expect(screen.getByRole('heading', { name: 'Tu hoja de ruta' })).toBeVisible()
     expect(screen.getByText(/Hoy/)).toBeVisible()
     expect(screen.getByText('Historial')).toBeVisible()
+    expect(screen.getByText('Septiembre de 2026').closest('section')).toHaveClass('py-4')
     expect(screen.getByRole('region', { name: 'Gastos previstos para Agosto de 2026' })).toHaveAttribute(
       'data-side',
       'left',
@@ -79,6 +80,12 @@ describe('Roadmap component', () => {
     expect(screen.getByRole('heading', { name: 'Colchón de 3 meses' })).toHaveAttribute(
       'data-roadmap-objective',
       'full-width',
+    )
+    const projectedGoalCard = screen.getByRole('heading', { name: 'Colchón de 3 meses' }).closest('article')
+    expect(projectedGoalCard).toHaveClass('bg-white/90')
+    expect(projectedGoalCard).not.toHaveClass('backdrop-blur-md')
+    expect(screen.getByRole('heading', { name: 'Viaje' }).closest('article')).toHaveClass(
+      'bg-white/90',
     )
     expect(screen.getByText('Julio de 2026')).toBeVisible()
     expect(screen.queryByText('Junio de 2026')).not.toBeInTheDocument()
