@@ -10,6 +10,13 @@ import { GoalEditSheet } from './-components/GoalEditSheet'
 import { GoalLifecycleSheet } from './-components/GoalLifecycleSheet'
 
 export const Route = createFileRoute('/app/goals')({
+  head: () => ({
+    meta: [
+      { title: 'Objetivos | Norte' },
+      { name: 'description', content: 'Definí y seguí los objetivos que orientan tu planificación financiera.' },
+      { name: 'robots', content: 'noindex, nofollow' },
+    ],
+  }),
   loader: () => getGoalsWorkspace(),
   pendingMs: 0,
   pendingMinMs: 300,

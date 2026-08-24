@@ -14,6 +14,13 @@ export async function loadHomeRoadmap(profile: 'missing' | 'present', currentMon
 }
 
 export const Route = createFileRoute('/app/')({
+  head: () => ({
+    meta: [
+      { title: 'Inicio | Norte' },
+      { name: 'description', content: 'Consultá tu hoja de ruta financiera y los próximos pasos hacia tus objetivos.' },
+      { name: 'robots', content: 'noindex, nofollow' },
+    ],
+  }),
   loader: ({ context }) => loadHomeRoadmap(context.profile, new Date().toISOString().slice(0, 7)),
   pendingMs: 0,
   pendingMinMs: 300,

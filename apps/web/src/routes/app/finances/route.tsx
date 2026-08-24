@@ -4,6 +4,13 @@ import { FinancialOnboarding } from '../-components/FinancialOnboarding'
 import { FinancesWorkspace } from './-components/FinancesWorkspace'
 
 export const Route = createFileRoute('/app/finances')({
+  head: () => ({
+    meta: [
+      { title: 'Finanzas | Norte' },
+      { name: 'description', content: 'Gestioná tus ingresos y gastos para mantener tu planificación financiera actualizada.' },
+      { name: 'robots', content: 'noindex, nofollow' },
+    ],
+  }),
   loader: () => getFinancesWorkspace(),
   pendingMs: 0,
   component: FinancesRoute,
