@@ -25,6 +25,7 @@ export interface GoalObjectiveFieldsProps {
   context: GoalCreationContext
   validationErrors?: Record<string, string>
   immutableIdentity?: boolean
+  showStrategyFields?: boolean
 }
 
 const GOAL_TYPE_OPTIONS = [
@@ -50,6 +51,7 @@ export function GoalObjectiveFields({
   context,
   validationErrors = {},
   immutableIdentity = false,
+  showStrategyFields = true,
 }: GoalObjectiveFieldsProps) {
   const values = useStore(form.store, (state) => state.values)
 
@@ -234,115 +236,119 @@ export function GoalObjectiveFields({
 
 
         {/* Strategy Radio Group */}
-        <Field data-invalid={!!validationErrors.strategy}>
-          <FieldLabel>Estrategia</FieldLabel>
-          <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
-            <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-[var(--sea-ink)]">
-              <input
-                type="radio"
-                name="strategy"
-                value="save"
-                aria-label="Ahorrar"
-                checked={values.strategy === 'save'}
-                onChange={() => form.setFieldValue('strategy', 'save')}
-                disabled={immutableIdentity}
-                className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
-              />
-              <span>Ahorrar</span>
-            </label>
-            <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-[var(--sea-ink)]">
-              <input
-                type="radio"
-                name="strategy"
-                value="invest"
-                aria-label="Invertir"
-                checked={values.strategy === 'invest'}
-                onChange={() => form.setFieldValue('strategy', 'invest')}
-                disabled={immutableIdentity}
-                className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
-              />
-              <span>Invertir</span>
-            </label>
-          </div>
-          {validationErrors.strategy && (
-            <FieldError>{validationErrors.strategy}</FieldError>
-          )}
-        </Field>
-
-        {/* Investment Assumptions (only when strategy === 'invest') */}
-        {values.strategy === 'invest' && (
-          <div className="flex flex-col gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5">
-            <h4 className="text-sm font-semibold text-[var(--sea-ink)]">
-              Supuestos de inversión
-            </h4>
-
-            <Field data-invalid={!!validationErrors.annualReturnRate}>
-              <FieldLabel htmlFor="annual-return-rate-input">
-                Rendimiento anual estimado (%)
-              </FieldLabel>
-              <Input
-                id="annual-return-rate-input"
-                aria-label="Rendimiento anual estimado (%)"
-                inputMode="decimal"
-                value={values.annualReturnRate}
-                onChange={(e) => form.setFieldValue('annualReturnRate', e.target.value)}
-                className="w-full sm:w-40"
-              />
-              <FieldDescription>Tasa anual esperada para proyectar el crecimiento.</FieldDescription>
-              {validationErrors.annualReturnRate && (
-                <FieldError>{validationErrors.annualReturnRate}</FieldError>
+        {showStrategyFields && (
+          <>
+            <Field data-invalid={!!validationErrors.strategy}>
+              <FieldLabel>Estrategia</FieldLabel>
+              <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-[var(--sea-ink)]">
+                  <input
+                    type="radio"
+                    name="strategy"
+                    value="save"
+                    aria-label="Ahorrar"
+                    checked={values.strategy === 'save'}
+                    onChange={() => form.setFieldValue('strategy', 'save')}
+                    disabled={immutableIdentity}
+                    className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
+                  />
+                  <span>Ahorrar</span>
+                </label>
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-[var(--sea-ink)]">
+                  <input
+                    type="radio"
+                    name="strategy"
+                    value="invest"
+                    aria-label="Invertir"
+                    checked={values.strategy === 'invest'}
+                    onChange={() => form.setFieldValue('strategy', 'invest')}
+                    disabled={immutableIdentity}
+                    className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
+                  />
+                  <span>Invertir</span>
+                </label>
+              </div>
+              {validationErrors.strategy && (
+                <FieldError>{validationErrors.strategy}</FieldError>
               )}
             </Field>
 
-            <Field data-invalid={!!validationErrors.availability}>
-              <FieldLabel htmlFor="availability-select-trigger">
-                Disponibilidad de los fondos
-              </FieldLabel>
-              <Select
-                value={values.availability}
-                onValueChange={(val) => val && form.setFieldValue('availability', val as any)}
-              >
-                <SelectTrigger
-                  id="availability-select-trigger"
-                  aria-label="Disponibilidad de los fondos"
-                  className="w-full"
-                >
-                  <SelectValue>
-                    {AVAILABILITY_OPTIONS.find((opt) => opt.value === values.availability)?.label ??
-                      'Seleccionar disponibilidad'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {AVAILABILITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {validationErrors.availability && (
-                <FieldError>{validationErrors.availability}</FieldError>
-              )}
-            </Field>
+            {/* Investment Assumptions (only when strategy === 'invest') */}
+            {values.strategy === 'invest' && (
+              <div className="flex flex-col gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5">
+                <h4 className="text-sm font-semibold text-[var(--sea-ink)]">
+                  Supuestos de inversión
+                </h4>
 
-            {values.availability === 'available_from' && (
-              <Field data-invalid={!!validationErrors.availableFromMonth}>
-                <FieldLabel htmlFor="available-from-month-input">
-                  Mes a partir del cual estará disponible
-                </FieldLabel>
-                <MonthPickerInput
-                  id="available-from-month-input"
-                  aria-label="Mes a partir del cual estará disponible"
-                  value={values.availableFromMonth}
-                  minMonth={context.currentMonth}
-                  onValueChange={(month) => form.setFieldValue('availableFromMonth', month)}
-                />
-                {validationErrors.availableFromMonth && (
-                  <FieldError>{validationErrors.availableFromMonth}</FieldError>
+                <Field data-invalid={!!validationErrors.annualReturnRate}>
+                  <FieldLabel htmlFor="annual-return-rate-input">
+                    Rendimiento anual estimado (%)
+                  </FieldLabel>
+                  <Input
+                    id="annual-return-rate-input"
+                    aria-label="Rendimiento anual estimado (%)"
+                    inputMode="decimal"
+                    value={values.annualReturnRate}
+                    onChange={(e) => form.setFieldValue('annualReturnRate', e.target.value)}
+                    className="w-full sm:w-40"
+                  />
+                  <FieldDescription>Tasa anual esperada para proyectar el crecimiento.</FieldDescription>
+                  {validationErrors.annualReturnRate && (
+                    <FieldError>{validationErrors.annualReturnRate}</FieldError>
+                  )}
+                </Field>
+
+                <Field data-invalid={!!validationErrors.availability}>
+                  <FieldLabel htmlFor="availability-select-trigger">
+                    Disponibilidad de los fondos
+                  </FieldLabel>
+                  <Select
+                    value={values.availability}
+                    onValueChange={(val) => val && form.setFieldValue('availability', val as any)}
+                  >
+                    <SelectTrigger
+                      id="availability-select-trigger"
+                      aria-label="Disponibilidad de los fondos"
+                      className="w-full"
+                    >
+                      <SelectValue>
+                        {AVAILABILITY_OPTIONS.find((opt) => opt.value === values.availability)?.label ??
+                          'Seleccionar disponibilidad'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AVAILABILITY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {validationErrors.availability && (
+                    <FieldError>{validationErrors.availability}</FieldError>
+                  )}
+                </Field>
+
+                {values.availability === 'available_from' && (
+                  <Field data-invalid={!!validationErrors.availableFromMonth}>
+                    <FieldLabel htmlFor="available-from-month-input">
+                      Mes a partir del cual estará disponible
+                    </FieldLabel>
+                    <MonthPickerInput
+                      id="available-from-month-input"
+                      aria-label="Mes a partir del cual estará disponible"
+                      value={values.availableFromMonth}
+                      minMonth={context.currentMonth}
+                      onValueChange={(month) => form.setFieldValue('availableFromMonth', month)}
+                    />
+                    {validationErrors.availableFromMonth && (
+                      <FieldError>{validationErrors.availableFromMonth}</FieldError>
+                    )}
+                  </Field>
                 )}
-              </Field>
+              </div>
             )}
-          </div>
+          </>
         )}
       </FieldSet>
     </FieldGroup>
