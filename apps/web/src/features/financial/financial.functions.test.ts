@@ -504,6 +504,7 @@ describe('financial.server boundary', () => {
       vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
+        goalDedicationPercentage: '85.00',
       } as never)
       vi.mocked(db.query.incomeSources.findMany).mockResolvedValue([
         { id: 'inc_src_1', userId: 'user_1', name: 'Sueldo Principal', normalizedName: 'sueldo principal' },
@@ -539,6 +540,7 @@ describe('financial.server boundary', () => {
 
       const result = await getFinancesWorkspaceServer()
       expect(result).toEqual({
+        goalDedicationPercentage: '85.00',
         incomes: {
           sources: [
             { id: 'inc_src_1', userId: 'user_1', name: 'Sueldo Principal', normalizedName: 'sueldo principal' },

@@ -211,3 +211,13 @@ export async function getInitialHomeState(
     previousMonthShortfalls,
   }
 }
+
+export async function getGoalDedicationPercentage(
+  userId: string,
+): Promise<string | null> {
+  const profile = await db.query.financialProfiles.findFirst({
+    where: (profiles, { eq }) => eq(profiles.userId, userId),
+  })
+
+  return profile?.goalDedicationPercentage ?? null
+}

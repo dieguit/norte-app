@@ -11,7 +11,7 @@ import {
 } from "../../../../features/goals/goals";
 import { getGoalProjectionDisplay } from "./goal-display";
 import { SavingContributionActions } from "./SavingContributionActions";
-import { GoalsFinancialSummary } from "./GoalsFinancialSummary";
+import { FinancialSummaryCards } from "../../../../components/FinancialSummaryCards";
 
 import { Button } from "../../../../components/ui/button";
 
@@ -281,7 +281,8 @@ export function GoalsWorkspace({
       </div>
 
       {activeGoals.length > 0 && (
-        <GoalsFinancialSummary
+        <FinancialSummaryCards
+          mode="goals"
           summary={workspace.financialSummary}
           onChangePlanning={onChangePlanning}
         />

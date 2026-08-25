@@ -24,6 +24,8 @@ import {
 } from "../../../../features/financial/expenses";
 import { IncomeSheet } from "./IncomeSheet";
 import { ExpenseSheet } from "./ExpenseSheet";
+import { FinancialSummaryCards } from "../../../../components/FinancialSummaryCards";
+import { getGoalContributionArs } from "../../../../features/financial/monthly-plan";
 
 function formatMoneyWithCurrency(amount: string, currency: string) {
   return `${currency} ${Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -34,6 +36,7 @@ function formatArs(amount: string) {
 }
 
 export interface FinancesWorkspaceData {
+  goalDedicationPercentage: string;
   incomes: IncomesWorkspace;
   expenses: ExpensesWorkspace;
 }
@@ -143,6 +146,10 @@ export function FinancesWorkspace({
     selectedMonth,
   );
   const balance = getMonthlyBalanceArs(incomeTotal, expensesTotal);
+  const contribution = getGoalContributionArs(
+    balance,
+    workspace.goalDedicationPercentage,
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
@@ -158,35 +165,17 @@ export function FinancesWorkspace({
         />
       </header>
 
-      <section
-        aria-label="Resumen financiero"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-3"
-      >
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
-            Ingresos
-          </p>
-          <p className="mt-2 font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]">
-            ARS {formatArs(incomeTotal.amount)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
-            Gastos
-          </p>
-          <p className="mt-2 font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]">
-            ARS {formatArs(expensesTotal.amount)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-[var(--shadow-card)]">
-          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
-            Balance
-          </p>
-          <p className="mt-2 font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]">
-            ARS {formatArs(balance.amount)}
-          </p>
-        </div>
-      </section>
+      <FinancialSummaryCards
+        mode="finances"
+        summary={{
+          month: selectedMonth,
+          income: incomeTotal,
+          expenses: expensesTotal,
+          balance,
+          dedicationPercentage: workspace.goalDedicationPercentage,
+          contribution,
+        }}
+      />
 
       <Tabs defaultValue="incomes">
         <TabsList className="h-10 p-1">

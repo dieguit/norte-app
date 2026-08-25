@@ -10,13 +10,18 @@ import { getExpensesWorkspaceState } from './expenses.repository.server'
 import type { ExpensesWorkspace } from './expenses'
 import { getIncomesWorkspaceState } from './incomes.repository.server'
 import type { IncomesWorkspace } from './incomes'
-import { getInitialHomeState, persistInitialPlan } from './repository.server'
+import {
+  getGoalDedicationPercentage,
+  getInitialHomeState,
+  persistInitialPlan,
+} from './repository.server'
 
 export type FinancialAppState =
   | { profile: 'missing' }
   | { profile: 'present'; home: InitialHomeState }
 
 export interface FinancesWorkspaceState {
+  goalDedicationPercentage: string
   incomes: IncomesWorkspace
   expenses: ExpensesWorkspace
 }
@@ -32,14 +37,15 @@ export async function getFinancialAppStateServer(): Promise<FinancialAppState> {
 
 export async function getFinancesWorkspaceServer(): Promise<FinancesWorkspaceState | null> {
   const userId = await requireFinancialUser()
-  const [incomes, expenses] = await Promise.all([
+  const [incomes, expenses, goalDedicationPercentage] = await Promise.all([
     getIncomesWorkspaceState(userId),
     getExpensesWorkspaceState(userId),
+    getGoalDedicationPercentage(userId),
   ])
-  if (!incomes || !expenses) {
+  if (!incomes || !expenses || goalDedicationPercentage === null) {
     return null
   }
-  return { incomes, expenses }
+  return { goalDedicationPercentage, incomes, expenses }
 }
 
 export async function completeInitialPlanServer(input: Parameters<typeof parseInitialPlan>[0]) {
