@@ -31,20 +31,35 @@ export const onboardingDrafts = pgTable('onboarding_drafts', {
     .notNull(),
 })
 
-export const financialProfiles = pgTable('financial_profiles', {
-  userId: text('user_id').primaryKey(),
-  baseCurrency: varchar('base_currency', { length: 3 }).notNull().default('ARS'),
-  approximateMonthlyIncome: numeric('approximate_monthly_income', { precision: 12, scale: 2 }).notNull(),
-  approximateMonthlyExpenses: numeric('approximate_monthly_expenses', { precision: 12, scale: 2 }),
-  expensesKnowledge: varchar('expenses_knowledge', { length: 16 }).notNull(),
-  plannedMonthlyContribution: numeric('planned_monthly_contribution', { precision: 12, scale: 2 }),
-  onboardingCompleted: boolean('onboarding_completed').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .defaultNow()
-    .$onUpdate(() => sql`now()`)
-    .notNull(),
-})
+export const financialProfiles = pgTable(
+  'financial_profiles',
+  {
+    userId: text('user_id').primaryKey(),
+    baseCurrency: varchar('base_currency', { length: 3 }).notNull().default('ARS'),
+    approximateMonthlyIncome: numeric('approximate_monthly_income', { precision: 12, scale: 2 }).notNull(),
+    approximateMonthlyExpenses: numeric('approximate_monthly_expenses', { precision: 12, scale: 2 }),
+    expensesKnowledge: varchar('expenses_knowledge', { length: 16 }).notNull(),
+    plannedMonthlyContribution: numeric('planned_monthly_contribution', { precision: 12, scale: 2 }),
+    goalDedicationPercentage: numeric('goal_dedication_percentage', {
+      precision: 5,
+      scale: 2,
+    })
+      .notNull()
+      .default('90.00'),
+    onboardingCompleted: boolean('onboarding_completed').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => sql`now()`)
+      .notNull(),
+  },
+  (table) => [
+    check(
+      'financial_profiles_goal_dedication_percentage_check',
+      sql`${table.goalDedicationPercentage} between 0 and 100`,
+    ),
+  ],
+)
 
 export const financialGoals = pgTable(
   'financial_goals',

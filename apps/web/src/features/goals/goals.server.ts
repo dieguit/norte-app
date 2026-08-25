@@ -383,6 +383,9 @@ export function mapAllocationChangeContext(
       ? createMoney(profile.plannedMonthlyContribution, profile.baseCurrency ?? 'ARS')
       : undefined
 
+  const workspace = buildGoalsWorkspace(state.source, currentMonth)
+  const financialSummary = workspace.financialSummary
+
   const activeGoals = (state.source.goals ?? [])
     .filter((g) => g.status === 'active')
     .map((g) => ({
@@ -425,6 +428,7 @@ export function mapAllocationChangeContext(
 
   return {
     currentMonth,
+    financialSummary,
     plannedMonthlyContribution,
     activeGoals,
     currentAllocation,

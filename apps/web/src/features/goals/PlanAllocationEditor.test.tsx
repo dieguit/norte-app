@@ -46,7 +46,7 @@ describe('PlanAllocationEditor component', () => {
   })
 
   describe('Step 1: Rendering, language and copy boundaries', () => {
-    it('renders global summary, group heading, all goal names, derived amounts and USD conversion', () => {
+    it('renders group heading, all goal names, derived amounts and USD conversion', () => {
       const allocation = createMockAllocation()
 
       render(
@@ -60,9 +60,8 @@ describe('PlanAllocationEditor component', () => {
       // Group heading
       expect(screen.getByText('Distribución de tu aporte mensual')).toBeVisible()
 
-      // Header summary with monthly contribution
-      expect(screen.getByText('Tu aporte mensual')).toBeVisible()
-      expect(screen.getByText('$ 120.000,00')).toBeVisible()
+      // Header summary with monthly contribution should not be in editor
+      expect(screen.queryByText('Tu aporte mensual')).not.toBeInTheDocument()
 
       // Goal names in DOM order: pending goal first, then existing goals
       const names = screen

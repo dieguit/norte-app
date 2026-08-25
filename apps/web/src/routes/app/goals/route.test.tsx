@@ -89,7 +89,17 @@ const sampleGoal: GoalWorkspaceItem = {
   usesPlanningRate: false,
 }
 
+const sampleFinancialSummary = {
+  month: '2026-08',
+  income: { amount: '150000.00', currency: 'ARS' as const },
+  expenses: { amount: '50000.00', currency: 'ARS' as const },
+  balance: { amount: '100000.00', currency: 'ARS' as const },
+  dedicationPercentage: '90',
+  contribution: { amount: '90000.00', currency: 'ARS' as const },
+}
+
 const sampleWorkspace: GoalsWorkspace = {
+  financialSummary: sampleFinancialSummary,
   groups: [
     {
       status: 'active',
@@ -107,6 +117,7 @@ const sampleWorkspace: GoalsWorkspace = {
 }
 
 const emptyWorkspace: GoalsWorkspace = {
+  financialSummary: sampleFinancialSummary,
   groups: [
     { status: 'active', goals: [] },
     { status: 'paused', goals: [] },
@@ -351,6 +362,7 @@ describe('Goals routes and workspace', () => {
         status: 'paused',
       }
       const workspaceWithPaused: GoalsWorkspace = {
+        financialSummary: sampleFinancialSummary,
         groups: [
           { status: 'active', goals: [] },
           { status: 'paused', goals: [pausedGoal] },

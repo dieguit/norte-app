@@ -4,6 +4,14 @@ import type { RoadmapFinances } from './roadmap'
 import { buildRoadmap } from './roadmap'
 
 const goals: GoalsWorkspace = {
+  financialSummary: {
+    month: '2026-08',
+    income: { amount: '3000000.00', currency: 'ARS' },
+    expenses: { amount: '900000.00', currency: 'ARS' },
+    balance: { amount: '2100000.00', currency: 'ARS' },
+    dedicationPercentage: '90.00',
+    contribution: { amount: '1890000.00', currency: 'ARS' },
+  },
   groups: [
     {
       status: 'active',

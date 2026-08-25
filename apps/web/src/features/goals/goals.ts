@@ -11,6 +11,14 @@ import {
   deriveEmergencyFundTarget,
   PROJECTION_HORIZON_MONTHS,
 } from '../financial/financial'
+import {
+  type MonthlyFinancialPlan,
+  type MonthlyFinancialSummary,
+  getMonthlyFinancialSummary,
+  getGoalContributionArs,
+} from '../financial/monthly-plan'
+import type { IncomesWorkspace } from '../financial/incomes'
+import type { ExpensesWorkspace } from '../financial/expenses'
 
 export type GoalPriority = 'high' | 'medium' | 'low'
 export type GoalStatus = 'active' | 'paused' | 'completed'
@@ -92,7 +100,13 @@ export interface GoalWorkspaceItem {
   savingContributions?: ContributionSummary[]
 }
 
+export interface GoalsFinancialSummary extends MonthlyFinancialSummary {
+  dedicationPercentage: string
+  contribution: Money
+}
+
 export interface GoalsWorkspace {
+  financialSummary: GoalsFinancialSummary
   groups: Array<{ status: GoalStatus; goals: GoalWorkspaceItem[] }>
 }
 
@@ -108,6 +122,7 @@ export interface GoalsWorkspaceSource {
     approximateMonthlyExpenses?: string | null
     expensesKnowledge: 'known' | 'unknown' | string
     plannedMonthlyContribution?: string | null
+    goalDedicationPercentage?: string
     onboardingCompleted: boolean
   } | null
   goals: Array<{
@@ -154,6 +169,8 @@ export interface GoalsWorkspaceSource {
   }>
   contributions?: ContributionSummary[]
   savingContributions?: SavingContributionSummary[]
+  incomes?: IncomesWorkspace['incomes']
+  expenses?: ExpensesWorkspace['expenses']
 }
 
 const PRIORITY_ORDER: Record<GoalPriority, number> = { high: 0, medium: 1, low: 2 }
@@ -205,6 +222,7 @@ export function projectGoalCompletion(params: {
   annualReturnRate?: string
   funding: GoalFundingRow[]
   currentMonth: string
+  getMonthlyContribution?: (month: string) => Money
 }): GoalProjection {
   const {
     status,
@@ -216,6 +234,7 @@ export function projectGoalCompletion(params: {
     annualReturnRate,
     funding,
     currentMonth,
+    getMonthlyContribution,
   } = params
 
   if (!targetAmount) {
@@ -288,13 +307,24 @@ export function projectGoalCompletion(params: {
     const monthFunding = selectFundingForMonth(funding, projectedMonth)
     if (
       monthFunding &&
-      monthFunding.allocatedDestinationAmount &&
       new BigNumber(monthFunding.percentage).isGreaterThan(0)
     ) {
-      if (strategy === 'save') {
-        currentSavings = currentSavings.plus(monthFunding.allocatedDestinationAmount.amount)
-      } else if (strategy === 'invest') {
-        currentInvestments = currentInvestments.plus(monthFunding.allocatedDestinationAmount.amount)
+      let allocatedDestination = monthFunding.allocatedDestinationAmount
+      if (getMonthlyContribution) {
+        const monthContribution = getMonthlyContribution(projectedMonth)
+        const allocatedBase = multiplyMoneyByFactor(
+          monthContribution,
+          new BigNumber(monthFunding.percentage).dividedBy(100).toString(),
+        )
+        allocatedDestination = convertCommitmentToDestination(allocatedBase, targetAmount.currency)
+      }
+
+      if (allocatedDestination && new BigNumber(allocatedDestination.amount).isGreaterThan(0)) {
+        if (strategy === 'save') {
+          currentSavings = currentSavings.plus(allocatedDestination.amount)
+        } else if (strategy === 'invest') {
+          currentInvestments = currentInvestments.plus(allocatedDestination.amount)
+        }
       }
     }
 
@@ -314,6 +344,47 @@ export function buildGoalsWorkspace(
   rows: GoalsWorkspaceSource,
   currentMonth: string,
 ): GoalsWorkspace {
+  const dedicationPercentage = rows.profile?.goalDedicationPercentage ?? '90.00'
+  const hasPlan = rows.incomes !== undefined || rows.expenses !== undefined
+  const monthlyPlan: MonthlyFinancialPlan = {
+    incomes: rows.incomes ?? [],
+    expenses: rows.expenses ?? [],
+  }
+  const currentFinancials = getMonthlyFinancialSummary(monthlyPlan, currentMonth)
+
+  const hasLegacyContribution =
+    rows.profile?.plannedMonthlyContribution !== null &&
+    rows.profile?.plannedMonthlyContribution !== undefined
+
+  let currentContribution: Money | undefined
+  let getMonthlyContribution: ((month: string) => Money) | undefined
+
+  if (hasPlan) {
+    getMonthlyContribution = (month: string): Money => {
+      const financials = getMonthlyFinancialSummary(monthlyPlan, month)
+      return getGoalContributionArs(financials.balance, dedicationPercentage)
+    }
+    currentContribution = getMonthlyContribution(currentMonth)
+  } else if (hasLegacyContribution) {
+    const legacyContribution = createMoney(
+      rows.profile!.plannedMonthlyContribution!,
+      rows.profile?.baseCurrency ?? 'ARS',
+    )
+    currentContribution = legacyContribution
+    getMonthlyContribution = () => legacyContribution
+  } else {
+    currentContribution = undefined
+    getMonthlyContribution = undefined
+  }
+
+  const financialSummary: GoalsFinancialSummary = {
+    ...currentFinancials,
+    dedicationPercentage,
+    contribution:
+      currentContribution ??
+      getGoalContributionArs(currentFinancials.balance, dedicationPercentage),
+  }
+
   const goalItems: GoalWorkspaceItem[] = rows.goals.map((goal) => {
     // 1. Savings value
     const goalSavings = (rows.savingsPositions ?? []).filter((pos) => pos.goalId === goal.id)
@@ -381,18 +452,12 @@ export function buildGoalsWorkspace(
       const snapshot = (rows.snapshots ?? []).find((s) => s.id === alloc.snapshotId)
       if (!snapshot) continue
 
-      let monthlyContribution: Money | undefined
       let allocatedBaseAmount: Money | undefined
       let allocatedDestinationAmount: Money | undefined
 
-      if (
-        rows.profile?.plannedMonthlyContribution !== null &&
-        rows.profile?.plannedMonthlyContribution !== undefined
-      ) {
-        const baseCurr = rows.profile?.baseCurrency ?? 'ARS'
-        monthlyContribution = createMoney(rows.profile.plannedMonthlyContribution, baseCurr)
+      if (currentContribution) {
         const factor = new BigNumber(alloc.percentage).dividedBy(100).toString()
-        allocatedBaseAmount = multiplyMoneyByFactor(monthlyContribution, factor)
+        allocatedBaseAmount = multiplyMoneyByFactor(currentContribution, factor)
         allocatedDestinationAmount = convertCommitmentToDestination(
           allocatedBaseAmount,
           goal.currency,
@@ -405,7 +470,7 @@ export function buildGoalsWorkspace(
 
       funding.push({
         percentage: alloc.percentage,
-        monthlyContribution,
+        monthlyContribution: currentContribution,
         allocatedBaseAmount,
         allocatedDestinationAmount,
         effectiveMonth: snapshot.effectiveMonth,
@@ -423,6 +488,7 @@ export function buildGoalsWorkspace(
       annualReturnRate,
       funding,
       currentMonth,
+      getMonthlyContribution,
     })
 
     // 7. desiredDateDeltaMonths
@@ -468,6 +534,7 @@ export function buildGoalsWorkspace(
   })
 
   return {
+    financialSummary,
     groups: groupGoals(goalItems),
   }
 }

@@ -11,6 +11,7 @@ import {
 } from "../../../../features/goals/goals";
 import { getGoalProjectionDisplay } from "./goal-display";
 import { SavingContributionActions } from "./SavingContributionActions";
+import { GoalsFinancialSummary } from "./GoalsFinancialSummary";
 
 import { Button } from "../../../../components/ui/button";
 
@@ -276,18 +277,15 @@ export function GoalsWorkspace({
           >
             Nuevo objetivo
           </Button>
-          {activeGoals.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onChangePlanning}
-              className="self-start sm:self-auto"
-            >
-              Cambiar planificación de objetivos
-            </Button>
-          )}
         </div>
       </div>
+
+      {activeGoals.length > 0 && (
+        <GoalsFinancialSummary
+          summary={workspace.financialSummary}
+          onChangePlanning={onChangePlanning}
+        />
+      )}
 
       <div className="flex flex-col gap-7">
         {activeGoals.length > 0 && (

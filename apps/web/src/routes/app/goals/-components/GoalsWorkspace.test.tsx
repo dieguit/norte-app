@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { GoalsWorkspace as GoalsWorkspaceType, GoalWorkspaceItem } from '../../../../features/goals/goals'
+import type { GoalsWorkspace as GoalsWorkspaceType, GoalWorkspaceItem, GoalsFinancialSummary } from '../../../../features/goals/goals'
 import {
   updateSavingContribution,
   deleteSavingContribution,
@@ -44,6 +44,24 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+function makeFinancialSummary(overrides: Partial<GoalsFinancialSummary> = {}): GoalsFinancialSummary {
+  return {
+    month: '2026-08',
+    income: { amount: '300000.00', currency: 'ARS' },
+    expenses: { amount: '150000.00', currency: 'ARS' },
+    balance: { amount: '150000.00', currency: 'ARS' },
+    dedicationPercentage: '90',
+    contribution: { amount: '135000.00', currency: 'ARS' },
+    ...overrides,
+  }
+}
+
+function makeWorkspace(overrides: Partial<GoalsWorkspaceType> = {}): GoalsWorkspaceType {
+  return {
+    financialSummary: overrides.financialSummary ?? makeFinancialSummary(),
+    groups: overrides.groups ?? [],
+  }
+}
 
 function makeGoal(overrides: Partial<GoalWorkspaceItem>): GoalWorkspaceItem {
   return {
@@ -121,13 +139,13 @@ describe('GoalsWorkspace component', () => {
       projection: { status: 'available', completionMonth: '2026-03' },
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [
         { status: 'active', goals: [activeGoal] },
         { status: 'paused', goals: [pausedGoal] },
         { status: 'completed', goals: [completedGoal] },
       ],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -160,13 +178,104 @@ describe('GoalsWorkspace component', () => {
     expect(screen.getByText('Comprar laptop')).toBeInTheDocument()
   })
 
-  it('renders Cambiar planificación de objetivos button when active goals exist and calls onChangePlanning', async () => {
+  it('renders monthly finances and dedication cards below the heading when active goals exist', async () => {
     const user = userEvent.setup()
     const onChangePlanning = vi.fn()
     const activeGoal = makeGoal({ id: 'goal-1', status: 'active' })
-    const workspace: GoalsWorkspaceType = {
+    const financialSummary = makeFinancialSummary({
+      month: '2026-08',
+      income: { amount: '300000.00', currency: 'ARS' },
+      expenses: { amount: '100000.00', currency: 'ARS' },
+      balance: { amount: '200000.00', currency: 'ARS' },
+      dedicationPercentage: '90',
+      contribution: { amount: '180000.00', currency: 'ARS' },
+    })
+    const workspace = makeWorkspace({
+      financialSummary,
       groups: [{ status: 'active', goals: [activeGoal] }],
-    }
+    })
+
+    render(<GoalsWorkspace workspace={workspace} onChangePlanning={onChangePlanning} />)
+
+    // Heading action group has only 'Nuevo objetivo'
+    expect(screen.getByRole('button', { name: 'Nuevo objetivo' })).toBeInTheDocument()
+
+    // Monthly finances card
+    const summarySection = screen.getByRole('region', { name: 'Resumen mensual para objetivos' })
+    expect(summarySection).toBeInTheDocument()
+    expect(within(summarySection).getByText('Ingresos')).toBeInTheDocument()
+    expect(within(summarySection).getByText('$ 300.000,00')).toBeInTheDocument()
+    expect(within(summarySection).getByText('Gastos')).toBeInTheDocument()
+    expect(within(summarySection).getByText('$ 100.000,00')).toBeInTheDocument()
+    expect(within(summarySection).getByText('Balance')).toBeInTheDocument()
+    expect(within(summarySection).getByText('$ 200.000,00')).toBeInTheDocument()
+    expect(within(summarySection).getByRole('link', { name: /ver finanzas/i })).toHaveAttribute('href', '/app/finances')
+
+    // Dedication card
+    const slider = within(summarySection).getByRole('slider', { hidden: true })
+    expect(slider).toBeDisabled()
+    expect(slider).toHaveAttribute('aria-label', 'Porcentaje destinado a objetivos')
+    expect(slider).toHaveAttribute('aria-valuenow', '90')
+    expect(within(summarySection).getByText(/90% · aproximadamente \$ 180\.000,00/i)).toBeInTheDocument()
+
+    const planBtn = within(summarySection).getByRole('button', { name: 'Cambiar planificación de objetivos' })
+    expect(planBtn).toBeEnabled()
+    await user.click(planBtn)
+    expect(onChangePlanning).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders disabled slider, disabled planning button, and Sin saldo disponible este mes when balance is zero or negative', () => {
+    const activeGoal = makeGoal({ id: 'goal-1', status: 'active' })
+    const financialSummary = makeFinancialSummary({
+      month: '2026-08',
+      income: { amount: '100000.00', currency: 'ARS' },
+      expenses: { amount: '150000.00', currency: 'ARS' },
+      balance: { amount: '-50000.00', currency: 'ARS' },
+      dedicationPercentage: '90',
+      contribution: { amount: '0.00', currency: 'ARS' },
+    })
+    const workspace = makeWorkspace({
+      financialSummary,
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    })
+
+    render(<GoalsWorkspace workspace={workspace} onChangePlanning={vi.fn()} />)
+
+    const summarySection = screen.getByRole('region', { name: 'Resumen mensual para objetivos' })
+    expect(summarySection).toBeInTheDocument()
+    expect(within(summarySection).getByText('Sin saldo disponible este mes')).toBeInTheDocument()
+    expect(within(summarySection).getByRole('link', { name: /ver finanzas/i })).toHaveAttribute('href', '/app/finances')
+
+    const slider = within(summarySection).getByRole('slider', { hidden: true })
+    expect(slider).toBeDisabled()
+    expect(slider).toHaveAttribute('aria-label', 'Porcentaje destinado a objetivos')
+
+    const planBtn = within(summarySection).getByRole('button', { name: 'Cambiar planificación de objetivos' })
+    expect(planBtn).toBeDisabled()
+  })
+
+  it('does not render financial summary cards or planning button when there are no active goals', () => {
+    const pausedGoal = makeGoal({ id: 'goal-2', status: 'paused' })
+    const workspace: GoalsWorkspaceType = makeWorkspace({
+      groups: [
+        { status: 'active', goals: [] },
+        { status: 'paused', goals: [pausedGoal] },
+      ],
+    })
+
+    render(<GoalsWorkspace workspace={workspace} onChangePlanning={vi.fn()} />)
+
+    expect(screen.queryByRole('region', { name: 'Resumen mensual para objetivos' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cambiar planificación de objetivos' })).not.toBeInTheDocument()
+  })
+
+  it('renders Cambiar planificación de objetivos button inside dedication card when active goals exist and calls onChangePlanning', async () => {
+    const user = userEvent.setup()
+    const onChangePlanning = vi.fn()
+    const activeGoal = makeGoal({ id: 'goal-1', status: 'active' })
+    const workspace: GoalsWorkspaceType = makeWorkspace({
+      groups: [{ status: 'active', goals: [activeGoal] }],
+    })
 
     render(<GoalsWorkspace workspace={workspace} onChangePlanning={onChangePlanning} />)
 
@@ -176,30 +285,16 @@ describe('GoalsWorkspace component', () => {
     expect(onChangePlanning).toHaveBeenCalledTimes(1)
   })
 
-  it('hides Cambiar planificación de objetivos button when no active goals exist', () => {
-    const pausedGoal = makeGoal({ id: 'goal-2', status: 'paused' })
-    const workspace: GoalsWorkspaceType = {
-      groups: [
-        { status: 'active', goals: [] },
-        { status: 'paused', goals: [pausedGoal] },
-      ],
-    }
-
-    render(<GoalsWorkspace workspace={workspace} onChangePlanning={vi.fn()} />)
-
-    expect(screen.queryByRole('button', { name: 'Cambiar planificación de objetivos' })).not.toBeInTheDocument()
-  })
-
   it('maintains a single expanded goal-detail state across active and collapsed groups', async () => {
     const user = userEvent.setup()
     const activeGoal = makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })
     const pausedGoal = makeGoal({ id: 'goal-2', name: 'Viaje a Tokio', status: 'paused' })
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [
         { status: 'active', goals: [activeGoal] },
         { status: 'paused', goals: [pausedGoal] },
       ],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -217,7 +312,7 @@ describe('GoalsWorkspace component', () => {
     const user = userEvent.setup()
     render(
       <GoalsWorkspace
-        workspace={{ groups: [{ status: 'active', goals: [makeGoal({})] }] }}
+        workspace={makeWorkspace({ groups: [{ status: 'active', goals: [makeGoal({})] }] })}
       />,
     )
 
@@ -251,7 +346,7 @@ describe('GoalsWorkspace component', () => {
     const second = makeGoal({ id: 'goal-2', name: 'Viaje' })
     render(
       <GoalsWorkspace
-        workspace={{ groups: [{ status: 'active', goals: [first, second] }] }}
+        workspace={makeWorkspace({ groups: [{ status: 'active', goals: [first, second] }] })}
       />,
     )
 
@@ -272,7 +367,7 @@ describe('GoalsWorkspace component', () => {
     const user = userEvent.setup()
     render(
       <GoalsWorkspace
-        workspace={{
+        workspace={makeWorkspace({
           groups: [{
             status: 'active',
             goals: [makeGoal({
@@ -280,7 +375,7 @@ describe('GoalsWorkspace component', () => {
               investmentValue: { amount: '75.00', currency: 'USD' },
             })],
           }],
-        }}
+        })}
       />,
     )
 
@@ -302,13 +397,13 @@ describe('GoalsWorkspace component', () => {
 
   it('omits empty groups from rendering', () => {
     const activeGoal = makeGoal({ id: 'goal-1', status: 'active' })
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [
         { status: 'active', goals: [activeGoal] },
         { status: 'paused', goals: [] },
         { status: 'completed', goals: [] },
       ],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -333,11 +428,11 @@ describe('GoalsWorkspace component', () => {
       completedAt: undefined,
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [
         { status: 'completed', goals: [completedWithDate, completedWithoutDate] },
       ],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -365,9 +460,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'paused', goals: [pausedGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -395,9 +490,9 @@ describe('GoalsWorkspace component', () => {
       projection: { status: 'target_unavailable' },
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [unknownTargetGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -430,9 +525,9 @@ describe('GoalsWorkspace component', () => {
       }),
     ]
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -451,9 +546,9 @@ describe('GoalsWorkspace component', () => {
       progressPercentage: '125.00',
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [aboveTargetGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -487,9 +582,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [complexGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -528,9 +623,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [zeroAllocGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -543,9 +638,9 @@ describe('GoalsWorkspace component', () => {
     const user = userEvent.setup()
     const onEditGoal = vi.fn()
     const activeGoal = makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [activeGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} onEditGoal={onEditGoal} />)
 
@@ -563,9 +658,9 @@ describe('GoalsWorkspace component', () => {
   it('places Pausar objetivo immediately after Editar objetivo for active goals', () => {
     const onEditGoal = vi.fn()
     const onChangeGoalLifecycle = vi.fn()
-    const activeWorkspace: GoalsWorkspaceType = {
+    const activeWorkspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })] }],
-    }
+    })
 
     render(
       <GoalsWorkspace
@@ -586,13 +681,13 @@ describe('GoalsWorkspace component', () => {
     const user = userEvent.setup()
     const onEditGoal = vi.fn()
     const onChangeGoalLifecycle = vi.fn()
-    const workspaceWithAllStatuses: GoalsWorkspaceType = {
+    const workspaceWithAllStatuses: GoalsWorkspaceType = makeWorkspace({
       groups: [
         { status: 'active', goals: [makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })] },
         { status: 'paused', goals: [makeGoal({ id: 'goal-2', name: 'Viaje', status: 'paused' })] },
         { status: 'completed', goals: [makeGoal({ id: 'goal-3', name: 'Laptop', status: 'completed' })] },
       ],
-    }
+    })
 
     render(
       <GoalsWorkspace
@@ -612,12 +707,12 @@ describe('GoalsWorkspace component', () => {
   it('calls onChangeGoalLifecycle with correct lifecycle action when clicking pause or resume', async () => {
     const user = userEvent.setup()
     const onChangeGoalLifecycle = vi.fn()
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [
         { status: 'active', goals: [makeGoal({ id: 'goal-1', name: 'Colchón financiero', status: 'active' })] },
         { status: 'paused', goals: [makeGoal({ id: 'goal-2', name: 'Viaje', status: 'paused' })] },
       ],
-    }
+    })
 
     render(
       <GoalsWorkspace
@@ -662,9 +757,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [activeGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -705,9 +800,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [activeGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -769,9 +864,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [activeGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -826,9 +921,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [activeGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -871,9 +966,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [activeGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -945,9 +1040,9 @@ describe('GoalsWorkspace component', () => {
       ],
     })
 
-    const workspace: GoalsWorkspaceType = {
+    const workspace: GoalsWorkspaceType = makeWorkspace({
       groups: [{ status: 'active', goals: [activeGoal] }],
-    }
+    })
 
     render(<GoalsWorkspace workspace={workspace} />)
 
@@ -986,9 +1081,9 @@ describe('GoalsRouteStates', () => {
 
   it('disables card transitions for reduced-motion users', () => {
     const goal = makeGoal({})
-    render(<GoalsWorkspace workspace={{ groups: [{ status: 'active', goals: [goal] }] }} />)
+    render(<GoalsWorkspace workspace={makeWorkspace({ groups: [{ status: 'active', goals: [goal] }] })} />)
 
-    expect(screen.getByRole('article')).toHaveClass('motion-reduce:transition-none')
+    expect(screen.getByRole('article', { name: 'Colchón financiero' })).toHaveClass('motion-reduce:transition-none')
   })
 
   it('renders GoalsError with alert role, neutral copy, and retry button', () => {
@@ -1008,7 +1103,7 @@ describe('GoalsRouteStates', () => {
     const goal = makeGoal({})
     render(
       <GoalsWorkspace
-        workspace={{ groups: [{ status: 'active', goals: [goal] }] }}
+        workspace={makeWorkspace({ groups: [{ status: 'active', goals: [goal] }] })}
         onNewGoal={handleNewGoal}
       />,
     )

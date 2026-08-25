@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import BigNumber from "bignumber.js";
+import { formatMoney } from "../../../../lib/format";
+import { createMoney } from "../../../../lib/money";
 import { Button } from "../../../../components/ui/button";
+import { Slider } from "../../../../components/ui/slider";
 import { PlanAllocationEditor } from "../../../../features/goals/PlanAllocationEditor";
+import { getGoalContributionArs } from "../../../../features/financial/monthly-plan";
 import {
   calculatePercentageSum,
   rebalanceAllocationEntries,
@@ -35,6 +39,14 @@ export function AllocationChange({
   const router = useRouter();
   const serverErrorRef = useRef<HTMLDivElement>(null);
 
+  const [dedicationPercentage, setDedicationPercentage] = useState<number>(
+    () => {
+      const raw = context.financialSummary?.dedicationPercentage;
+      const parsed = Number(raw ? String(raw).replace(",", ".") : 90);
+      return Number.isFinite(parsed) ? Math.round(parsed) : 90;
+    },
+  );
+
   const [entries, setEntries] = useState<
     Array<{ goalId: string; percentage: string }>
   >(() => {
@@ -58,6 +70,19 @@ export function AllocationChange({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const hasPositiveBalance = useMemo(() => {
+    return new BigNumber(
+      context.financialSummary?.balance?.amount ?? "0",
+    ).isGreaterThan(0);
+  }, [context.financialSummary?.balance?.amount]);
+
+  const monthlyContribution = useMemo(() => {
+    return getGoalContributionArs(
+      context.financialSummary?.balance ?? createMoney("0", "ARS"),
+      dedicationPercentage,
+    );
+  }, [context.financialSummary?.balance, dedicationPercentage]);
+
   useEffect(() => {
     if (serverError) {
       serverErrorRef.current?.focus();
@@ -68,7 +93,12 @@ export function AllocationChange({
     if (calculatePercentageSum(entries).isEqualTo(100)) {
       let active = true;
       setIsPreviewPending(true);
-      previewAllocationChange({ data: { allocations: entries } })
+      previewAllocationChange({
+        data: {
+          dedicationPercentage,
+          allocations: entries,
+        },
+      })
         .then((res) => {
           if (active) {
             setPreview(res);
@@ -106,7 +136,7 @@ export function AllocationChange({
 
   const amountsMap = useMemo(() => {
     return recalculateAllocationAmounts({
-      monthlyContribution: context.plannedMonthlyContribution,
+      monthlyContribution,
       entries: baseEntries.map((entry) => {
         const goal = context.activeGoals.find((g) => g.id === entry.goalId);
         return {
@@ -116,7 +146,7 @@ export function AllocationChange({
         };
       }),
     });
-  }, [context.plannedMonthlyContribution, context.activeGoals, baseEntries]);
+  }, [monthlyContribution, context.activeGoals, baseEntries]);
 
   const displayEntries: GoalCreationAllocationEntry[] = useMemo(() => {
     return baseEntries.map((entry) => {
@@ -138,6 +168,9 @@ export function AllocationChange({
 
   const isPreviewSynced = useMemo(() => {
     if (!preview) return false;
+    if (preview.proposal.dedicationPercentage !== dedicationPercentage) {
+      return false;
+    }
     if (entries.length === 0) return true;
     return entries.every((draftEntry) => {
       const propEntry = preview.proposal.allocation.entries.find(
@@ -163,7 +196,7 @@ export function AllocationChange({
         return false;
       }
     });
-  }, [preview, entries]);
+  }, [preview, entries, dedicationPercentage]);
 
   const isPreviewOutdated = !preview || !isPreviewSynced;
 
@@ -176,8 +209,14 @@ export function AllocationChange({
     setEntries(rebalanced);
   };
 
-  const handlePercentageCommit = async () => {
-    if (!calculatePercentageSum(entries).isEqualTo(100)) {
+  const handleCommit = async (
+    overrideEntries?: Array<{ goalId: string; percentage: string }>,
+    overrideDedication?: number,
+  ) => {
+    const currentEntries = overrideEntries ?? entries;
+    const currentDedication = overrideDedication ?? dedicationPercentage;
+
+    if (!calculatePercentageSum(currentEntries).isEqualTo(100)) {
       return;
     }
 
@@ -185,7 +224,10 @@ export function AllocationChange({
     setServerError(null);
     try {
       const previewResult = await previewAllocationChange({
-        data: { allocations: entries },
+        data: {
+          dedicationPercentage: currentDedication,
+          allocations: currentEntries,
+        },
       });
       setPreview(previewResult);
     } catch (err: any) {
@@ -200,19 +242,29 @@ export function AllocationChange({
   };
 
   const handleConfirm = async () => {
-    if (!preview || !isPreviewSynced || !isAllocationsValid) return;
+    if (
+      !preview ||
+      !isPreviewSynced ||
+      !isAllocationsValid ||
+      !hasPositiveBalance
+    )
+      return;
     setIsSubmitting(true);
     setServerError(null);
 
     try {
       const result = await confirmAllocationChange({
         data: {
-          draft: { allocations: entries },
+          draft: {
+            dedicationPercentage,
+            allocations: entries,
+          },
           previewToken: preview.previewToken,
         },
       });
 
       if (result.status === "stale") {
+        setDedicationPercentage(result.preview.proposal.dedicationPercentage);
         setEntries(
           result.preview.proposal.allocation.entries.map((e) => ({
             goalId: e.goalId,
@@ -239,7 +291,7 @@ export function AllocationChange({
   };
 
   const allocationToDisplay: GoalCreationAllocation = {
-    monthlyContribution: context.plannedMonthlyContribution,
+    monthlyContribution: undefined,
     effectiveMonth: preview?.proposal.allocation.effectiveMonth ?? "",
     entries: displayEntries,
     totalPercentage: totalBn.toFixed(2),
@@ -268,6 +320,59 @@ export function AllocationChange({
           </div>
         )}
 
+        {/* Dedication percentage slider */}
+        <section
+          aria-labelledby="dedication-heading"
+          className="flex flex-col gap-4"
+        >
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h3
+                id="dedication-heading"
+                className="text-base font-semibold text-[var(--sea-ink)]"
+              >
+                Aporte mensual a objetivos
+              </h3>
+              <p className="text-sm text-[var(--sea-ink-soft)]">
+                Elegí qué porcentaje de tu saldo mensual querés destinar a tus
+                objetivos.
+              </p>
+            </div>
+            <strong className="tabular-nums text-[var(--sea-ink)]">
+              {dedicationPercentage}%
+            </strong>
+          </div>
+          <Slider
+            aria-label="Porcentaje del saldo para objetivos"
+            min={0}
+            max={100}
+            step={1}
+            value={[dedicationPercentage]}
+            onValueChange={(val) => {
+              const num = Array.isArray(val) ? val[0] : (val as number);
+              setDedicationPercentage(
+                typeof num === "number" ? Math.round(num) : 0,
+              );
+            }}
+            onValueCommitted={(val) => {
+              const num = Array.isArray(val) ? val[0] : val;
+              const nextDedication =
+                typeof num === "number" ? Math.round(num) : dedicationPercentage;
+              handleCommit(undefined, nextDedication);
+            }}
+            disabled={isPreviewPending || isSubmitting || !hasPositiveBalance}
+          />
+          <p className="text-sm text-[var(--sea-ink-soft)]">
+            Aproximadamente <strong>{formatMoney(monthlyContribution)}</strong>{" "}
+            por mes
+          </p>
+          {!hasPositiveBalance && (
+            <p className="text-sm text-[var(--sea-ink-soft)]">
+              No tenés saldo disponible este mes para asignar a objetivos.
+            </p>
+          )}
+        </section>
+
         {/* Allocation Editor */}
         <section
           aria-label="Distribución del Plan"
@@ -277,7 +382,7 @@ export function AllocationChange({
             allocation={allocationToDisplay}
             disabled={isPreviewPending || isSubmitting}
             onPercentageChange={handlePercentageChange}
-            onPercentageCommit={handlePercentageCommit}
+            onPercentageCommit={() => handleCommit()}
           />
         </section>
 
@@ -335,7 +440,8 @@ export function AllocationChange({
             isPreviewPending ||
             isSubmitting ||
             !preview ||
-            !isPreviewSynced
+            !isPreviewSynced ||
+            !hasPositiveBalance
           }
           onClick={handleConfirm}
         >

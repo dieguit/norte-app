@@ -67,7 +67,7 @@ describe('Roadmap component', () => {
     expect(screen.getByRole('heading', { name: 'Tu hoja de ruta' })).toBeVisible()
     expect(screen.getByText(/Hoy/)).toBeVisible()
     expect(screen.getByText('Historial')).toBeVisible()
-    expect(screen.getByText('Septiembre de 2026').closest('section')).toHaveClass('py-4')
+    expect(screen.getByText('Septiembre de 2026').closest('section')).toHaveClass('py-3')
     expect(screen.getByRole('region', { name: 'Gastos previstos para Agosto de 2026' })).toHaveAttribute(
       'data-side',
       'left',

@@ -105,6 +105,46 @@ describe('groupGoals', () => {
   })
 })
 
+function recurringIncome(amount: string, effectiveMonth: string) {
+  return {
+    id: `inc-${amount}-${effectiveMonth}`,
+    sourceKind: 'salary',
+    sourceId: null,
+    sourceName: 'Sueldo',
+    amount,
+    currency: 'ARS' as const,
+    recurring: true,
+    effectiveMonth: `${effectiveMonth.slice(0, 7)}-01`,
+  }
+}
+
+function oneTimeIncome(amount: string, effectiveMonth: string) {
+  return {
+    id: `inc-${amount}-${effectiveMonth}`,
+    sourceKind: 'bonus',
+    sourceId: null,
+    sourceName: 'Bono',
+    amount,
+    currency: 'ARS' as const,
+    recurring: false,
+    effectiveMonth: `${effectiveMonth.slice(0, 7)}-01`,
+  }
+}
+
+function recurringExpense(amount: string, effectiveMonth: string, endMonth: string | null = null) {
+  return {
+    id: `exp-${amount}-${effectiveMonth}`,
+    sourceKind: 'housing',
+    sourceId: null,
+    sourceName: 'Alquiler',
+    amount,
+    currency: 'ARS' as const,
+    recurring: true,
+    effectiveMonth: `${effectiveMonth.slice(0, 7)}-01`,
+    endMonth: endMonth ? `${endMonth.slice(0, 7)}-01` : null,
+  }
+}
+
 function createMockWorkspaceSource(overrides: Partial<GoalsWorkspaceSource> = {}): GoalsWorkspaceSource {
   return {
     profile: {
@@ -114,6 +154,7 @@ function createMockWorkspaceSource(overrides: Partial<GoalsWorkspaceSource> = {}
       approximateMonthlyExpenses: '600000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '100000.00',
+      goalDedicationPercentage: '100.00',
       onboardingCompleted: true,
     },
     goals: [],
@@ -121,6 +162,10 @@ function createMockWorkspaceSource(overrides: Partial<GoalsWorkspaceSource> = {}
     investmentPositions: [],
     snapshots: [],
     allocations: [],
+    incomes: [
+      recurringIncome('100000.00', '2026-01'),
+    ],
+    expenses: [],
     ...overrides,
   }
 }
@@ -180,8 +225,10 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '150000.00',
+        goalDedicationPercentage: '100.00',
         onboardingCompleted: true,
       },
+      incomes: [recurringIncome('150000.00', '2026-01')],
       goals: [
         {
           id: 'goal-usd',
@@ -224,7 +271,7 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
     expect(item.usesPlanningRate).toBe(true)
   })
 
-  it('leaves derived amounts absent when plannedMonthlyContribution is null', () => {
+  it('calculates zero contribution and zero allocated amounts when dedication percentage is zero', () => {
     const source = createMockWorkspaceSource({
       profile: {
         userId: 'user-1',
@@ -232,7 +279,8 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
-        plannedMonthlyContribution: null as any,
+        plannedMonthlyContribution: '0.00',
+        goalDedicationPercentage: '0.00',
         onboardingCompleted: true,
       },
       goals: [
@@ -267,9 +315,9 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
 
     const workspace = buildGoalsWorkspace(source, '2026-08')
     const item = workspace.groups[0].goals[0]
-    expect(item.funding[0].monthlyContribution).toBeUndefined()
-    expect(item.funding[0].allocatedBaseAmount).toBeUndefined()
-    expect(item.funding[0].allocatedDestinationAmount).toBeUndefined()
+    expect(item.funding[0].monthlyContribution).toEqual({ amount: '0.00', currency: 'ARS' })
+    expect(item.funding[0].allocatedBaseAmount).toEqual({ amount: '0.00', currency: 'ARS' })
+    expect(item.funding[0].allocatedDestinationAmount).toEqual({ amount: '0.00', currency: 'ARS' })
   })
 
   it('calculates actual value from savings and investment positions', () => {
@@ -440,8 +488,10 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
           approximateMonthlyExpenses: '600000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '100.00',
+          goalDedicationPercentage: '100.00',
           onboardingCompleted: true,
         },
+        incomes: [recurringIncome('100.00', '2026-01')],
         goals: [
           {
             id: 'goal-delta',
@@ -480,6 +530,155 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
 describe('buildGoalsWorkspace - projection monthly simulation', () => {
   const currentMonth = '2026-08'
 
+  it('derives completion month dynamically when month contributions vary', () => {
+    const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '100000.00',
+        goalDedicationPercentage: '90.00',
+        onboardingCompleted: true,
+      },
+      incomes: [
+        recurringIncome('50000.00', '2026-01'),
+        oneTimeIncome('50000.00', '2026-08'),
+      ],
+      expenses: [],
+      goals: [
+        {
+          id: 'goal-dynamic',
+          name: 'Meta Dinamica',
+          type: 'purchase',
+          targetAmount: '180000.00',
+          currency: 'ARS',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          createdAt: '2026-08-01T00:00:00.000Z',
+        },
+      ],
+      snapshots: [
+        {
+          id: 'snap-1',
+          userId: 'user-1',
+          effectiveMonth: '2026-08-01',
+        },
+      ],
+      allocations: [
+        { id: 'alloc-1', snapshotId: 'snap-1', goalId: 'goal-dynamic', percentage: '100.00' },
+      ],
+    })
+
+    const workspace = buildGoalsWorkspace(source, '2026-08')
+
+    expect(workspace.financialSummary).toMatchObject({
+      dedicationPercentage: '90.00',
+      contribution: { amount: '90000.00', currency: 'ARS' },
+    })
+    expect(workspace.groups[0].goals[0].projection).toEqual({
+      status: 'available',
+      completionMonth: '2026-10',
+    })
+  })
+
+  it('proves actualValue and contribution history are unchanged when dedication percentage changes', () => {
+    const baseSource = createMockWorkspaceSource({
+      goals: [
+        {
+          id: 'goal-1',
+          name: 'Meta Ahorro',
+          type: 'purchase',
+          targetAmount: '100000.00',
+          currency: 'ARS',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          createdAt: '2026-08-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [
+        { id: 'sav-1', goalId: 'goal-1', amount: '50000.00', currency: 'ARS' },
+      ],
+      contributions: [
+        {
+          id: 'sc-1',
+          kind: 'saving',
+          amount: '50000.00',
+          currency: 'ARS',
+          createdAt: '2026-08-10T12:00:00.000Z',
+          allocations: [
+            { goalId: 'goal-1', goalName: 'Meta Ahorro', amount: '50000.00', percentage: '100.00' },
+          ],
+        },
+      ],
+    })
+
+    const workspace90 = buildGoalsWorkspace(
+      {
+        ...baseSource,
+        profile: { ...baseSource.profile!, goalDedicationPercentage: '90.00' },
+      },
+      '2026-08',
+    )
+    const workspace50 = buildGoalsWorkspace(
+      {
+        ...baseSource,
+        profile: { ...baseSource.profile!, goalDedicationPercentage: '50.00' },
+      },
+      '2026-08',
+    )
+
+    const goal90 = workspace90.groups[0].goals[0]
+    const goal50 = workspace50.groups[0].goals[0]
+
+    expect(goal90.actualValue).toEqual({ amount: '50000.00', currency: 'ARS' })
+    expect(goal50.actualValue).toEqual({ amount: '50000.00', currency: 'ARS' })
+    expect(goal90.contributions).toEqual(goal50.contributions)
+  })
+
+  it('deducts recurring expenses when calculating monthly contribution and projection', () => {
+    const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        approximateMonthlyIncome: '1000000.00',
+        approximateMonthlyExpenses: '600000.00',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '100000.00',
+        goalDedicationPercentage: '100.00',
+        onboardingCompleted: true,
+      },
+      incomes: [recurringIncome('100000.00', '2026-01')],
+      expenses: [recurringExpense('20000.00', '2026-01')],
+      goals: [
+        {
+          id: 'goal-exp',
+          name: 'Meta con Gastos',
+          type: 'purchase',
+          targetAmount: '160000.00',
+          currency: 'ARS',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          createdAt: '2026-08-01T00:00:00.000Z',
+        },
+      ],
+      snapshots: [{ id: 'snap-1', userId: 'user-1', effectiveMonth: '2026-08-01' }],
+      allocations: [{ id: 'alloc-1', snapshotId: 'snap-1', goalId: 'goal-exp', percentage: '100.00' }],
+    })
+
+    const workspace = buildGoalsWorkspace(source, '2026-08')
+    expect(workspace.financialSummary.balance).toEqual({ amount: '80000.00', currency: 'ARS' })
+    expect(workspace.financialSummary.contribution).toEqual({ amount: '80000.00', currency: 'ARS' })
+    expect(workspace.groups[0].goals[0].projection).toEqual({
+      status: 'available',
+      completionMonth: '2026-09',
+    })
+  })
+
   it('projects saving-only completion month accurately', () => {
     const source = createMockWorkspaceSource({
       profile: {
@@ -489,8 +688,10 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '20000.00',
+        goalDedicationPercentage: '100.00',
         onboardingCompleted: true,
       },
+      incomes: [recurringIncome('20000.00', '2026-01')],
       goals: [
         {
           id: 'goal-save',
@@ -530,8 +731,10 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '10000.00',
+        goalDedicationPercentage: '100.00',
         onboardingCompleted: true,
       },
+      incomes: [recurringIncome('10000.00', '2026-01')],
       goals: [
         {
           id: 'goal-inv',
@@ -580,8 +783,10 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '20000.00',
+        goalDedicationPercentage: '100.00',
         onboardingCompleted: true,
       },
+      incomes: [recurringIncome('20000.00', '2026-01')],
       goals: [
         {
           id: 'goal-save-with-inv',
@@ -686,7 +891,7 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
     })
   })
 
-  it('returns commitment_absent when plannedMonthlyContribution is null', () => {
+  it('returns outside_horizon when dedication percentage is 0.00', () => {
     const source = createMockWorkspaceSource({
       profile: {
         userId: 'user-1',
@@ -694,7 +899,8 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         approximateMonthlyIncome: '1000000.00',
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
-        plannedMonthlyContribution: null as any,
+        plannedMonthlyContribution: '0.00',
+        goalDedicationPercentage: '0.00',
         onboardingCompleted: true,
       },
       goals: [
@@ -722,7 +928,7 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
 
     const workspace = buildGoalsWorkspace(source, currentMonth)
     expect(workspace.groups[0].goals[0].projection).toEqual({
-      status: 'commitment_absent',
+      status: 'outside_horizon',
     })
   })
 
@@ -735,8 +941,10 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '50000.00',
+        goalDedicationPercentage: '100.00',
         onboardingCompleted: true,
       },
+      incomes: [recurringIncome('50000.00', '2026-01')],
       goals: [
         {
           id: 'goal-zero',
@@ -775,8 +983,10 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '10000.00',
+        goalDedicationPercentage: '100.00',
         onboardingCompleted: true,
       },
+      incomes: [recurringIncome('10000.00', '2026-01')],
       goals: [
         {
           id: 'goal-missing-rate',
@@ -815,8 +1025,10 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '10000.00',
+        goalDedicationPercentage: '100.00',
         onboardingCompleted: true,
       },
+      incomes: [recurringIncome('10000.00', '2026-01')],
       goals: [
         {
           id: 'goal-next-month',
@@ -856,8 +1068,10 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
         approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '100.00',
+        goalDedicationPercentage: '100.00',
         onboardingCompleted: true,
       },
+      incomes: [recurringIncome('100.00', '2026-01')],
       goals: [
         {
           id: 'goal-horizon',

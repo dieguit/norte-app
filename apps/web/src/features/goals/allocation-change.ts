@@ -2,11 +2,11 @@ import BigNumber from 'bignumber.js'
 import {
   type CurrencyCode,
   type Money,
-  createMoney,
 } from '../../lib/money'
 import { PLANNING_ARS_PER_USD } from '../financial/financial'
 import {
   type GoalProjection,
+  type GoalsFinancialSummary,
   type GoalsWorkspaceSource,
   buildGoalsWorkspace,
 } from './goals'
@@ -26,6 +26,7 @@ export interface AllocationChangeState {
 
 export interface AllocationChangeContext {
   currentMonth: string
+  financialSummary: GoalsFinancialSummary
   plannedMonthlyContribution?: Money
   activeGoals: Array<{
     id: string
@@ -49,6 +50,7 @@ export interface AllocationChangeContext {
 }
 
 export interface AllocationChangeProposal {
+  dedicationPercentage: number
   allocation: GoalCreationAllocation
   impacts: Array<{
     goalId: string
@@ -70,40 +72,22 @@ export interface BuildAllocationChangeProposalInput {
   currentMonth: string
 }
 
-function getNextCalendarMonthStr(currentMonth: string): string {
-  const [year, month] = currentMonth.slice(0, 7).split('-').map(Number)
-  const totalMonths = year * 12 + (month - 1) + 1
-  const targetYear = Math.floor(totalMonths / 12)
-  const targetMonth = (totalMonths % 12) + 1
-  return `${targetYear}-${String(targetMonth).padStart(2, '0')}`
-}
-
 export function buildAllocationChangeProposal(
   input: BuildAllocationChangeProposalInput,
 ): AllocationChangeProposal {
   const { draft, state, currentMonth } = input
 
-  const nextMonthStr = getNextCalendarMonthStr(currentMonth)
-  const nextMonthEffective = `${nextMonthStr}-01`
-
+  const effectiveMonth = `${currentMonth.slice(0, 7)}-01`
   const activeGoals = (state.source.goals ?? []).filter((g) => g.status === 'active')
 
-  const pendingNextSnapshot = state.pendingSnapshots?.find(
-    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
-  )
-  const sourceNextSnapshot = state.source.snapshots?.find(
-    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
-  )
-  const currentSnapshot = state.source.snapshots
-    ?.filter((s) => s.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
+  const selectedSnapshot = (state.source.snapshots ?? [])
+    .filter((snapshot) => snapshot.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
     .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
 
-  const selectedSnapshot = pendingNextSnapshot ?? sourceNextSnapshot ?? currentSnapshot
-
   const sourceAllocs = selectedSnapshot
-    ? (pendingNextSnapshot ? state.pendingAllocations : state.source.allocations)?.filter(
+    ? (state.source.allocations ?? []).filter(
         (a) => a.snapshotId === selectedSnapshot.id,
-      ) ?? []
+      )
     : []
 
   let entries: GoalCreationAllocationEntry[] = []
@@ -174,14 +158,66 @@ export function buildAllocationChangeProposal(
     throw new Error(`Allocation percentages must sum to 100%, got ${totalBn.toFixed(2)}%`)
   }
 
-  let monthlyContribution: Money | undefined
-  if (
-    state.source.profile?.plannedMonthlyContribution !== null &&
-    state.source.profile?.plannedMonthlyContribution !== undefined
-  ) {
-    const baseCurr = state.source.profile.baseCurrency ?? 'ARS'
-    monthlyContribution = createMoney(state.source.profile.plannedMonthlyContribution, baseCurr)
+  const dedicationPercentage =
+    draft !== undefined
+      ? draft.dedicationPercentage
+      : Number(state.source.profile?.goalDedicationPercentage ?? 90)
+
+  const proposedProfile = state.source.profile
+    ? {
+        ...state.source.profile,
+        goalDedicationPercentage: String(dedicationPercentage),
+      }
+    : null
+
+  const proposedSnapshots = [...(state.source.snapshots ?? [])]
+  const proposedAllocations = [...(state.source.allocations ?? [])]
+
+  const snapshotId = selectedSnapshot?.id ?? `snap-allocation-${currentMonth.slice(0, 7)}`
+
+  const newSnapshot = {
+    id: snapshotId,
+    userId: state.source.profile?.userId,
+    effectiveMonth,
   }
+
+  const existingSnapIndex = proposedSnapshots.findIndex(
+    (s) => s.effectiveMonth.slice(0, 7) === currentMonth.slice(0, 7),
+  )
+  if (existingSnapIndex >= 0) {
+    proposedSnapshots[existingSnapIndex] = newSnapshot
+  } else {
+    proposedSnapshots.push(newSnapshot)
+  }
+
+  const filteredAllocations = proposedAllocations.filter((a) => a.snapshotId !== snapshotId)
+  const newAllocRows = entries.map((entry) => ({
+    id: `alloc-${snapshotId}-${entry.goalId}`,
+    snapshotId,
+    goalId: entry.goalId,
+    percentage: entry.percentage,
+  }))
+
+  proposedAllocations.length = 0
+  proposedAllocations.push(...filteredAllocations, ...newAllocRows)
+
+  const proposedSource: GoalsWorkspaceSource = {
+    profile: proposedProfile,
+    goals: state.source.goals ?? [],
+    savingsPositions: state.source.savingsPositions,
+    investmentPositions: state.source.investmentPositions,
+    snapshots: proposedSnapshots,
+    allocations: proposedAllocations,
+    incomes: state.source.incomes,
+    expenses: state.source.expenses,
+    contributions: state.source.contributions,
+    savingContributions: state.source.savingContributions,
+  }
+
+  const beforeWorkspace = buildGoalsWorkspace(state.source, currentMonth)
+  const afterWorkspace = buildGoalsWorkspace(proposedSource, currentMonth)
+
+  const monthlyContribution = afterWorkspace.financialSummary.contribution
 
   const entriesCurrencyMap = new Map<string, CurrencyCode>()
   for (const g of activeGoals) {
@@ -210,81 +246,10 @@ export function buildAllocationChangeProposal(
 
   const allocation: GoalCreationAllocation = {
     monthlyContribution,
-    effectiveMonth: nextMonthEffective,
+    effectiveMonth,
     entries,
     totalPercentage: totalBn.toFixed(2),
   }
-
-  const baselineSnapshots = [...(state.source.snapshots ?? [])]
-  const baselineAllocations = [...(state.source.allocations ?? [])]
-
-  if (pendingNextSnapshot) {
-    const existingIndex = baselineSnapshots.findIndex((s) => s.id === pendingNextSnapshot.id)
-    if (existingIndex >= 0) {
-      baselineSnapshots[existingIndex] = pendingNextSnapshot
-    } else {
-      baselineSnapshots.push(pendingNextSnapshot)
-    }
-
-    const pendingAllocsForSnap = (state.pendingAllocations ?? []).filter(
-      (a) => a.snapshotId === pendingNextSnapshot.id,
-    )
-    const filteredBaselineAllocations = baselineAllocations.filter(
-      (a) => a.snapshotId !== pendingNextSnapshot.id,
-    )
-    baselineAllocations.length = 0
-    baselineAllocations.push(...filteredBaselineAllocations, ...pendingAllocsForSnap)
-  }
-
-  const baselineSource: GoalsWorkspaceSource = {
-    ...state.source,
-    snapshots: baselineSnapshots,
-    allocations: baselineAllocations,
-  }
-
-  const beforeWorkspace = buildGoalsWorkspace(baselineSource, currentMonth)
-
-  const proposedSnapshots = [...(state.source.snapshots ?? [])]
-  const proposedAllocations = [...(state.source.allocations ?? [])]
-
-  const snapshotId = pendingNextSnapshot?.id ?? `snap-allocation-${nextMonthStr}`
-
-  const newSnapshot = {
-    id: snapshotId,
-    userId: state.source.profile?.userId,
-    effectiveMonth: nextMonthEffective,
-  }
-
-  const existingSnapIndex = proposedSnapshots.findIndex(
-    (s) => s.effectiveMonth === nextMonthEffective,
-  )
-  if (existingSnapIndex >= 0) {
-    proposedSnapshots[existingSnapIndex] = newSnapshot
-  } else {
-    proposedSnapshots.push(newSnapshot)
-  }
-
-  const filteredAllocations = proposedAllocations.filter((a) => a.snapshotId !== snapshotId)
-  const newAllocRows = entries.map((entry) => ({
-    id: `alloc-${snapshotId}-${entry.goalId}`,
-    snapshotId,
-    goalId: entry.goalId,
-    percentage: entry.percentage,
-  }))
-
-  proposedAllocations.length = 0
-  proposedAllocations.push(...filteredAllocations, ...newAllocRows)
-
-  const proposedSource: GoalsWorkspaceSource = {
-    profile: state.source.profile,
-    goals: state.source.goals ?? [],
-    savingsPositions: state.source.savingsPositions,
-    investmentPositions: state.source.investmentPositions,
-    snapshots: proposedSnapshots,
-    allocations: proposedAllocations,
-  }
-
-  const afterWorkspace = buildGoalsWorkspace(proposedSource, currentMonth)
 
   const beforeGoals = beforeWorkspace.groups.flatMap((g) => g.goals)
   const afterGoals = afterWorkspace.groups.flatMap((g) => g.goals)
@@ -306,7 +271,7 @@ export function buildAllocationChangeProposal(
     let amountsChanged = false
 
     const beforeFundingRow = beforeGoal?.funding?.find(
-      (f) => f.effectiveMonth === selectedSnapshot?.effectiveMonth,
+      (f) => f.effectiveMonth.slice(0, 7) === currentMonth.slice(0, 7),
     ) ?? beforeGoal?.funding?.[0]
 
     if (beforeFundingRow?.allocatedDestinationAmount) {
@@ -341,6 +306,7 @@ export function buildAllocationChangeProposal(
   }
 
   return {
+    dedicationPercentage,
     allocation,
     impacts,
     proposedSource,
@@ -374,9 +340,35 @@ export function serializeAllocationChangeState(
           approximateMonthlyExpenses: source.profile.approximateMonthlyExpenses ?? null,
           expensesKnowledge: source.profile.expensesKnowledge,
           plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
+          goalDedicationPercentage: source.profile.goalDedicationPercentage ?? null,
           onboardingCompleted: source.profile.onboardingCompleted,
         }
       : null,
+    incomes: (source.incomes ?? [])
+      .map((i) => ({
+        id: i.id,
+        sourceKind: i.sourceKind,
+        sourceId: i.sourceId ?? null,
+        sourceName: i.sourceName ?? null,
+        amount: i.amount,
+        currency: i.currency,
+        recurring: i.recurring,
+        effectiveMonth: i.effectiveMonth,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    expenses: (source.expenses ?? [])
+      .map((e) => ({
+        id: e.id,
+        sourceKind: e.sourceKind,
+        sourceId: e.sourceId ?? null,
+        sourceName: e.sourceName ?? null,
+        amount: e.amount,
+        currency: e.currency,
+        recurring: e.recurring,
+        effectiveMonth: e.effectiveMonth,
+        endMonth: e.endMonth ?? null,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
     goals: (source.goals ?? [])
       .map((g) => ({
         id: g.id,
@@ -446,6 +438,7 @@ export function serializeAllocationChangeState(
       .sort((a, b) => a.id.localeCompare(b.id)),
     draft: draft
       ? {
+          dedicationPercentage: draft.dedicationPercentage,
           allocations: (draft.allocations ?? [])
             .map((e) => ({
               goalId: e.goalId,

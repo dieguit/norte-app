@@ -1,5 +1,6 @@
 import '@tanstack/react-start/server-only'
 import { createHash } from 'node:crypto'
+import BigNumber from 'bignumber.js'
 import { db } from '../../db/client'
 import { and, eq } from 'drizzle-orm'
 import {
@@ -10,10 +11,12 @@ import {
   goalInvestmentPositions,
   type AllocationPlanEntry,
   type AllocationPlanSnapshot,
+  type Expense,
   type FinancialGoal,
   type FinancialProfile,
   type GoalInvestmentPosition,
   type GoalSavingsPosition,
+  type Income,
 } from '../../db/schema'
 import type {
   ContributionKind,
@@ -89,6 +92,8 @@ export interface GoalsWorkspaceRows {
   investmentPositions: GoalInvestmentPosition[]
   snapshots: AllocationPlanSnapshot[]
   allocations: AllocationPlanEntry[]
+  incomes?: Income[]
+  expenses?: Expense[]
   contributions?: Array<{
     id: string
     kind: ContributionKind
@@ -155,9 +160,17 @@ async function getOwnedGoalPlanBase(
     return null
   }
 
-  const goals = await executor.query.financialGoals.findMany({
-    where: (goalsTable: any, { eq }: any) => eq(goalsTable.userId, userId),
-  })
+  const [goals, incomes, expenses] = await Promise.all([
+    executor.query.financialGoals.findMany({
+      where: (goalsTable: any, { eq }: any) => eq(goalsTable.userId, userId),
+    }),
+    executor.query.incomes.findMany({
+      where: (table: any, { eq }: any) => eq(table.userId, userId),
+    }),
+    executor.query.expenses.findMany({
+      where: (table: any, { eq }: any) => eq(table.userId, userId),
+    }),
+  ])
 
   const goalIds = goals.map((g: any) => g.id)
   const savingsPositions =
@@ -184,6 +197,8 @@ async function getOwnedGoalPlanBase(
     savingsPositions,
     investmentPositions,
     snapshots,
+    incomes: incomes ?? [],
+    expenses: expenses ?? [],
   }
 }
 
@@ -337,6 +352,8 @@ export async function getActiveGoalPlanStateWithExecutor(
       investmentPositions: base.investmentPositions,
       snapshots: currentSnapshots,
       allocations: allocations.filter((allocation: any) => currentSnapshotIds.has(allocation.snapshotId)),
+      incomes: base.incomes,
+      expenses: base.expenses,
     }),
     pendingSnapshots: pendingSnapshots.map(mapSnapshot),
     pendingAllocations: allocations
@@ -411,6 +428,8 @@ export async function getGoalEditStateWithExecutor(
       allocations: allocations.filter((allocation: any) =>
         currentSnapshotIds.has(allocation.snapshotId),
       ),
+      incomes: base.incomes,
+      expenses: base.expenses,
     }),
     pendingSnapshots: pendingSnapshots.map(mapSnapshot),
     pendingAllocations: allocations
@@ -481,6 +500,8 @@ export async function getGoalLifecycleStateWithExecutor(
       allocations: allocations.filter((allocation: any) =>
         currentSnapshotIds.has(allocation.snapshotId),
       ),
+      incomes: base.incomes,
+      expenses: base.expenses,
     }),
     pendingSnapshots: pendingSnapshots.map(mapSnapshot),
     pendingAllocations: allocations
@@ -640,11 +661,19 @@ export async function confirmAllocationChangeInRepository(input: {
       throw new StaleAllocationChangePreviewError({ proposal, previewToken: currentToken })
     }
 
+    await tx
+      .update(financialProfiles)
+      .set({
+        goalDedicationPercentage: new BigNumber(draft.dedicationPercentage).toFixed(2),
+        plannedMonthlyContribution: proposal.allocation.monthlyContribution?.amount ?? '0.00',
+      })
+      .where(eq(financialProfiles.userId, userId))
+
     const snapshotId = await replacePendingAllocationSnapshot(
       tx,
       userId,
       proposal.allocation,
-      lockedProfile[0]?.plannedMonthlyContribution ?? state.source.profile?.plannedMonthlyContribution ?? null,
+      proposal.allocation.monthlyContribution?.amount ?? '0.00',
     )
     await tx.delete(allocationPlanEntries).where(eq(allocationPlanEntries.snapshotId, snapshotId))
     await tx.insert(allocationPlanEntries).values(
@@ -890,8 +919,30 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
       approximateMonthlyExpenses: rows.profile.approximateMonthlyExpenses,
       expensesKnowledge: rows.profile.expensesKnowledge,
       plannedMonthlyContribution: rows.profile.plannedMonthlyContribution,
+      goalDedicationPercentage: rows.profile.goalDedicationPercentage,
       onboardingCompleted: rows.profile.onboardingCompleted,
     },
+    incomes: (rows.incomes ?? []).map((income) => ({
+      id: income.id,
+      sourceKind: income.sourceKind,
+      sourceId: income.sourceId,
+      sourceName: income.sourceKind,
+      amount: income.amount,
+      currency: income.currency as 'ARS' | 'USD',
+      recurring: income.recurring,
+      effectiveMonth: income.effectiveMonth,
+    })),
+    expenses: (rows.expenses ?? []).map((expense) => ({
+      id: expense.id,
+      sourceKind: expense.sourceKind,
+      sourceId: expense.sourceId,
+      sourceName: expense.sourceKind,
+      amount: expense.amount,
+      currency: expense.currency as 'ARS' | 'USD',
+      recurring: expense.recurring,
+      effectiveMonth: expense.effectiveMonth,
+      endMonth: expense.endMonth,
+    })),
     goals: rows.goals.map((g) => ({
       id: g.id,
       userId: g.userId,

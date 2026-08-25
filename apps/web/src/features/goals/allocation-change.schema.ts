@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import { goalImpactSchema } from './goal-creation.schema'
 
-export const allocationChangeDraftSchema = goalImpactSchema
+export const allocationChangeDraftSchema = goalImpactSchema.extend({
+  dedicationPercentage: z.number().int().min(0).max(100),
+})
 
 export const confirmAllocationChangeSchema = z.object({
   draft: allocationChangeDraftSchema,

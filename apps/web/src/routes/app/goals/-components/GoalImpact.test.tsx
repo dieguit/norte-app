@@ -223,8 +223,7 @@ describe('GoalImpact component', () => {
 
     // Allocation editor elements
     expect(screen.getByText('Distribución de tu aporte mensual')).toBeVisible()
-    expect(screen.getByText('Tu aporte mensual')).toBeVisible()
-    expect(screen.getByText('$ 120.000,00')).toBeVisible()
+    expect(screen.getByText('$ 48.000,00')).toBeVisible()
 
     // Impact section elements
     expect(screen.getByText('Impacto en las fechas')).toBeVisible()

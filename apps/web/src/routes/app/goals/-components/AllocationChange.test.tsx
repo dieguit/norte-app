@@ -47,7 +47,15 @@ describe("AllocationChange and AllocationChangeSheet", () => {
 
   const sampleContext: AllocationChangeContext = {
     currentMonth: "2026-08",
-    plannedMonthlyContribution: { amount: "100000.00", currency: "ARS" },
+    financialSummary: {
+      month: "2026-08",
+      income: { amount: "150000.00", currency: "ARS" },
+      expenses: { amount: "40000.00", currency: "ARS" },
+      balance: { amount: "110000.00", currency: "ARS" },
+      dedicationPercentage: "90.00",
+      contribution: { amount: "99000.00", currency: "ARS" },
+    },
+    plannedMonthlyContribution: { amount: "99000.00", currency: "ARS" },
     activeGoals: [
       { id: "goal-1", name: "Fondo de emergencia", currency: "ARS" },
       { id: "goal-2", name: "Viaje a Japón", currency: "USD" },
@@ -66,8 +74,9 @@ describe("AllocationChange and AllocationChangeSheet", () => {
   ): AllocationChangePreviewResult => ({
     previewToken: "b".repeat(64),
     proposal: {
+      dedicationPercentage: 90,
       allocation: {
-        monthlyContribution: { amount: "100000.00", currency: "ARS" },
+        monthlyContribution: { amount: "99000.00", currency: "ARS" },
         effectiveMonth: "2026-09-01",
         totalPercentage: "100.00",
         entries: [
@@ -75,16 +84,16 @@ describe("AllocationChange and AllocationChangeSheet", () => {
             goalId: "goal-1",
             goalName: "Fondo de emergencia",
             percentage: "60.00",
-            allocatedBaseAmount: { amount: "60000.00", currency: "ARS" },
-            allocatedDestinationAmount: { amount: "60000.00", currency: "ARS" },
+            allocatedBaseAmount: { amount: "59400.00", currency: "ARS" },
+            allocatedDestinationAmount: { amount: "59400.00", currency: "ARS" },
             pending: false,
           },
           {
             goalId: "goal-2",
             goalName: "Viaje a Japón",
             percentage: "40.00",
-            allocatedBaseAmount: { amount: "40000.00", currency: "ARS" },
-            allocatedDestinationAmount: { amount: "30.77", currency: "USD" },
+            allocatedBaseAmount: { amount: "39600.00", currency: "ARS" },
+            allocatedDestinationAmount: { amount: "30.46", currency: "USD" },
             pending: false,
           },
         ],
@@ -96,7 +105,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
           before: {
             status: "existing",
             projection: { status: "available", completionMonth: "2026-12" },
-            allocatedMonthlyAmounts: [{ amount: "60000.00", currency: "ARS" }],
+            allocatedMonthlyAmounts: [{ amount: "59400.00", currency: "ARS" }],
           },
           after: { status: "available", completionMonth: "2026-12" },
         },
@@ -106,7 +115,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
           before: {
             status: "existing",
             projection: { status: "available", completionMonth: "2027-08" },
-            allocatedMonthlyAmounts: [{ amount: "30.77", currency: "USD" }],
+            allocatedMonthlyAmounts: [{ amount: "30.46", currency: "USD" }],
           },
           after: { status: "available", completionMonth: "2027-08" },
         },
@@ -232,7 +241,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
   });
 
   describe("AllocationChange interactions", () => {
-    it('opening the Sheet loads "Distribución e impacto" and renders the active goals', async () => {
+    it('opening the Sheet loads "Distribución e impacto", dedication slider at 90%, and renders active goals', async () => {
       vi.mocked(previewAllocationChange).mockResolvedValue(makeMockPreview());
 
       render(
@@ -244,6 +253,15 @@ describe("AllocationChange and AllocationChangeSheet", () => {
       );
 
       expect(screen.getByText("Distribución e impacto")).toBeInTheDocument();
+      expect(screen.getByText("Aporte mensual a objetivos")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Elegí qué porcentaje de tu saldo mensual querés destinar a tus objetivos.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText("90%")).toBeInTheDocument();
+      expect(screen.getByText("$ 99.000,00")).toBeInTheDocument();
+
       expect(
         screen.getByRole("textbox", {
           name: /porcentaje para fondo de emergencia/i,
@@ -252,6 +270,174 @@ describe("AllocationChange and AllocationChangeSheet", () => {
       expect(
         screen.getByRole("textbox", { name: /porcentaje para viaje a japón/i }),
       ).toHaveValue("40,00");
+    });
+
+    it("moving the dedication slider to 75% immediately shows $82.500,00 and updates goal amounts locally before preview resolves", async () => {
+      vi.mocked(previewAllocationChange).mockResolvedValue(makeMockPreview());
+
+      render(
+        <AllocationChange
+          context={sampleContext}
+          onCancel={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Actualizar Plan" }),
+        ).toBeEnabled();
+      });
+
+      const sliders = screen.getAllByRole("slider", { hidden: true });
+      const dedicationSlider =
+        sliders.find((el) => el.getAttribute("aria-label")?.includes("Porcentaje del saldo")) ??
+        sliders[0];
+
+      // Change dedication slider to 75%
+      fireEvent.change(dedicationSlider, { target: { value: "75" } });
+
+      // Local contribution amount updates immediately: 110,000 * 0.75 = 82,500
+      expect(screen.getByText("75%")).toBeInTheDocument();
+      expect(screen.getByText("$ 82.500,00")).toBeInTheDocument();
+
+      // Goal allocated base amounts update immediately: 82,500 * 0.60 = 49,500; 82,500 * 0.40 = 33,000
+      expect(screen.getByText("$ 49.500,00")).toBeInTheDocument();
+      expect(screen.getByText("$ 33.000,00")).toBeInTheDocument();
+
+      // Confirmation is disabled because preview is out of sync or pending
+      expect(
+        screen.getByRole("button", { name: "Actualizar Plan" }),
+      ).toBeDisabled();
+      expect(
+        screen.getByText(
+          /Actualizando impacto\.\.\.|Proyección pendiente de actualización/,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("committing the dedication slider triggers preview with dedicationPercentage: 75 and enables confirmation once synced", async () => {
+      const initialPreview = makeMockPreview();
+      const updatedPreview = makeMockPreview({
+        proposal: {
+          ...initialPreview.proposal,
+          dedicationPercentage: 75,
+          allocation: {
+            ...initialPreview.proposal.allocation,
+            monthlyContribution: { amount: "82500.00", currency: "ARS" },
+            entries: [
+              {
+                ...initialPreview.proposal.allocation.entries[0],
+                allocatedBaseAmount: { amount: "49500.00", currency: "ARS" },
+                allocatedDestinationAmount: {
+                  amount: "49500.00",
+                  currency: "ARS",
+                },
+              },
+              {
+                ...initialPreview.proposal.allocation.entries[1],
+                allocatedBaseAmount: { amount: "33000.00", currency: "ARS" },
+                allocatedDestinationAmount: {
+                  amount: "25.38",
+                  currency: "USD",
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      vi.mocked(previewAllocationChange)
+        .mockResolvedValueOnce(initialPreview)
+        .mockResolvedValueOnce(updatedPreview);
+
+      render(
+        <AllocationChange
+          context={sampleContext}
+          onCancel={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Actualizar Plan" }),
+        ).toBeEnabled();
+      });
+
+      const sliders = screen.getAllByRole("slider", { hidden: true });
+      const dedicationSlider =
+        sliders.find((el) =>
+          el.getAttribute("aria-label")?.includes("Porcentaje del saldo"),
+        ) ?? sliders[0];
+
+      fireEvent.change(dedicationSlider, { target: { value: "75" } });
+
+      await waitFor(() => {
+        expect(previewAllocationChange).toHaveBeenCalledWith({
+          data: {
+            dedicationPercentage: 75,
+            allocations: [
+              { goalId: "goal-1", percentage: "60.00" },
+              { goalId: "goal-2", percentage: "40.00" },
+            ],
+          },
+        });
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Actualizar Plan" }),
+        ).toBeEnabled();
+      });
+    });
+
+    it("renders dedication slider and confirmation disabled when balance is zero or negative with explanatory message", async () => {
+      const zeroBalanceContext: AllocationChangeContext = {
+        ...sampleContext,
+        financialSummary: {
+          ...sampleContext.financialSummary,
+          balance: { amount: "0.00", currency: "ARS" },
+          contribution: { amount: "0.00", currency: "ARS" },
+        },
+      };
+
+      vi.mocked(previewAllocationChange).mockResolvedValue(
+        makeMockPreview({
+          proposal: {
+            ...makeMockPreview().proposal,
+            allocation: {
+              ...makeMockPreview().proposal.allocation,
+              monthlyContribution: { amount: "0.00", currency: "ARS" },
+            },
+          },
+        }),
+      );
+
+      render(
+        <AllocationChange
+          context={zeroBalanceContext}
+          onCancel={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      );
+
+      const sliders = screen.getAllByRole("slider", { hidden: true });
+      const dedicationSlider =
+        sliders.find((el) =>
+          el.getAttribute("aria-label")?.includes("Porcentaje del saldo"),
+        ) ?? sliders[0];
+      expect(dedicationSlider).toBeDisabled();
+
+      expect(
+        screen.getByText(
+          "No tenés saldo disponible este mes para asignar a objetivos.",
+        ),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole("button", { name: "Actualizar Plan" }),
+      ).toBeDisabled();
     });
 
     it("changing a percentage invokes the proportional rebalanceAllocationEntries behavior", async () => {
@@ -343,7 +529,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
                 status: "existing",
                 projection: { status: "available", completionMonth: "2026-12" },
                 allocatedMonthlyAmounts: [
-                  { amount: "60000.00", currency: "ARS" },
+                  { amount: "59400.00", currency: "ARS" },
                 ],
               },
               after: { status: "available", completionMonth: "2026-10" },
@@ -354,7 +540,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
               before: {
                 status: "existing",
                 projection: { status: "available", completionMonth: "2027-08" },
-                allocatedMonthlyAmounts: [{ amount: "30.77", currency: "USD" }],
+                allocatedMonthlyAmounts: [{ amount: "30.46", currency: "USD" }],
               },
               after: { status: "available", completionMonth: "2027-11" },
             },
@@ -423,6 +609,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
         expect(confirmAllocationChange).toHaveBeenCalledWith({
           data: {
             draft: {
+              dedicationPercentage: 90,
               allocations: [
                 { goalId: "goal-1", percentage: "60.00" },
                 { goalId: "goal-2", percentage: "40.00" },
@@ -446,6 +633,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
         previewToken: "c".repeat(64),
         proposal: {
           ...makeMockPreview().proposal,
+          dedicationPercentage: 80,
           allocation: {
             ...makeMockPreview().proposal.allocation,
             entries: [
@@ -490,6 +678,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
       expect(onUpdated).not.toHaveBeenCalled();
       expect(mockInvalidate).not.toHaveBeenCalled();
 
+      expect(screen.getByText("80%")).toBeInTheDocument();
       expect(
         screen.getByRole("textbox", {
           name: /porcentaje para fondo de emergencia/i,

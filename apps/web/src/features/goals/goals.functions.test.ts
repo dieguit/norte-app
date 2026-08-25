@@ -689,8 +689,34 @@ describe('getAllocationChangeContext', () => {
           approximateMonthlyExpenses: '500000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '60000.00',
+          goalDedicationPercentage: '90.00',
           onboardingCompleted: true,
         },
+        incomes: [
+          {
+            id: 'inc-1',
+            sourceKind: 'salary',
+            sourceId: null,
+            sourceName: 'salary',
+            amount: '1000000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-01-01',
+          },
+        ],
+        expenses: [
+          {
+            id: 'exp-1',
+            sourceKind: 'housing',
+            sourceId: null,
+            sourceName: 'housing',
+            amount: '500000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-01-01',
+            endMonth: null,
+          },
+        ],
         goals: [
           {
             id: 'g1',
@@ -780,6 +806,14 @@ describe('getAllocationChangeContext', () => {
       profile: 'present',
       context: {
         currentMonth: '2026-08',
+        financialSummary: {
+          month: '2026-08',
+          income: { amount: '1000000.00', currency: 'ARS' },
+          expenses: { amount: '500000.00', currency: 'ARS' },
+          balance: { amount: '500000.00', currency: 'ARS' },
+          dedicationPercentage: '90.00',
+          contribution: { amount: '450000.00', currency: 'ARS' },
+        },
         plannedMonthlyContribution: { amount: '60000.00', currency: 'ARS' },
         activeGoals: [
           { id: 'g1', name: 'Reserva', currency: 'USD' },
@@ -812,6 +846,7 @@ describe('getAllocationChangeContext', () => {
 
 describe('previewAllocationChange', () => {
   const validDraft: AllocationChangeDraft = {
+    dedicationPercentage: 90,
     allocations: [
       { goalId: 'g1', percentage: '50.00' },
       { goalId: 'g2', percentage: '50.00' },
@@ -827,8 +862,34 @@ describe('previewAllocationChange', () => {
         approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
+        goalDedicationPercentage: '90.00',
         onboardingCompleted: true,
       },
+      incomes: [
+        {
+          id: 'inc-1',
+          sourceKind: 'salary',
+          sourceId: null,
+          sourceName: 'salary',
+          amount: '1000000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+        },
+      ],
+      expenses: [
+        {
+          id: 'exp-1',
+          sourceKind: 'housing',
+          sourceId: null,
+          sourceName: 'housing',
+          amount: '500000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+          endMonth: null,
+        },
+      ],
       goals: [
         {
           id: 'g1',
@@ -922,6 +983,7 @@ describe('previewAllocationChange', () => {
     vi.mocked(getAllocationChangeState).mockResolvedValue(mockState)
 
     const invalidDraft = {
+      dedicationPercentage: 90,
       allocations: [
         { goalId: 'g1', percentage: '30.00' },
         { goalId: 'g2', percentage: '50.00' },
@@ -956,6 +1018,7 @@ describe('confirmAllocationChange', () => {
   const staleToken = 'b'.repeat(64)
 
   const validDraft: AllocationChangeDraft = {
+    dedicationPercentage: 90,
     allocations: [
       { goalId: 'g1', percentage: '50.00' },
       { goalId: 'g2', percentage: '50.00' },
@@ -971,8 +1034,34 @@ describe('confirmAllocationChange', () => {
         approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
+        goalDedicationPercentage: '90.00',
         onboardingCompleted: true,
       },
+      incomes: [
+        {
+          id: 'inc-1',
+          sourceKind: 'salary',
+          sourceId: null,
+          sourceName: 'salary',
+          amount: '1000000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+        },
+      ],
+      expenses: [
+        {
+          id: 'exp-1',
+          sourceKind: 'housing',
+          sourceId: null,
+          sourceName: 'housing',
+          amount: '500000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+          endMonth: null,
+        },
+      ],
       goals: [
         {
           id: 'g1',

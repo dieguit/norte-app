@@ -127,23 +127,9 @@ export function PlanAllocationEditor({
       className="flex flex-col gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5"
     >
       <div className="flex flex-col gap-1">
-        <div className="flex flex-col sm:flex-col sm:justify-between gap-1">
-          <h3 className="text-base font-semibold text-[var(--sea-ink)]">
-            Distribución de tu aporte mensual
-          </h3>
-          <div>
-            {allocation.monthlyContribution && (
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-[var(--sea-ink-soft)] font-medium">
-                  Tu aporte mensual
-                </span>
-                <span className="text-sm font-semibold text-[var(--sea-ink)]">
-                  {formatMoney(allocation.monthlyContribution)}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+        <h3 className="text-base font-semibold text-[var(--sea-ink)]">
+          Distribución de tu aporte mensual
+        </h3>
         {errorMessage && <FieldError>{errorMessage}</FieldError>}
       </div>
 

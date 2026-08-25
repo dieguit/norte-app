@@ -90,8 +90,34 @@ describe('mapAllocationChangeContext', () => {
           approximateMonthlyExpenses: '500000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '75000.00',
+          goalDedicationPercentage: '90.00',
           onboardingCompleted: true,
         },
+        incomes: [
+          {
+            id: 'inc-1',
+            sourceKind: 'salary',
+            sourceId: null,
+            sourceName: 'salary',
+            amount: '1000000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-01-01',
+          },
+        ],
+        expenses: [
+          {
+            id: 'exp-1',
+            sourceKind: 'housing',
+            sourceId: null,
+            sourceName: 'housing',
+            amount: '500000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-01-01',
+            endMonth: null,
+          },
+        ],
         goals: [
           {
             id: 'g1',
@@ -143,6 +169,14 @@ describe('mapAllocationChangeContext', () => {
 
     expect(context).toEqual({
       currentMonth: '2026-08',
+      financialSummary: {
+        month: '2026-08',
+        income: { amount: '1000000.00', currency: 'ARS' },
+        expenses: { amount: '500000.00', currency: 'ARS' },
+        balance: { amount: '500000.00', currency: 'ARS' },
+        dedicationPercentage: '90.00',
+        contribution: { amount: '450000.00', currency: 'ARS' },
+      },
       plannedMonthlyContribution: { amount: '75000.00', currency: 'ARS' },
       activeGoals: [
         { id: 'g1', name: 'Reserva', currency: 'USD' },
