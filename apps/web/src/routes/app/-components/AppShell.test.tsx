@@ -71,12 +71,11 @@ describe('AppShell', () => {
   }
 
   it('renders responsive navigation regions, active home link, enabled goals links, unavailable finance controls, account controls, and child content', () => {
-    render(
+    const { container } = render(
       <AppShell>
         <Home home={mockHome} roadmap={emptyRoadmap} />
       </AppShell>,
     )
-
     expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Inicio' })[0]?.getAttribute('aria-current')).toBe('page')
 
@@ -95,6 +94,30 @@ describe('AppShell', () => {
     expect(financesLinks[1]?.getAttribute('href')).toBe('/app/finances')
     expect(screen.getAllByRole('button', { name: 'Cuenta' })).toHaveLength(2)
     expect(screen.getByRole('heading', { name: 'Inicio' })).toBeDefined()
+
+    expect(container.firstElementChild).toHaveClass('h-dvh', 'overflow-hidden')
+    expect(screen.getAllByRole('banner')[0]).toHaveClass('shrink-0')
+    expect(screen.getAllByRole('banner')[0]).toHaveClass(
+      'h-[calc(3.5rem+env(safe-area-inset-top))]',
+      'pt-[env(safe-area-inset-top)]',
+    )
+    expect(screen.getByRole('complementary')).toHaveClass('shrink-0')
+    expect(screen.getByRole('main')).toHaveClass('min-h-0', 'overflow-y-auto')
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'app-scroll-area')
+    expect(screen.getByRole('main')).toHaveAttribute(
+      'data-scroll-restoration-id',
+      'app-scroll-area',
+    )
+
+    const mobileNavigation = screen.getAllByRole('navigation', {
+      name: 'Navegación principal',
+    })[1]
+    expect(mobileNavigation).toHaveClass('shrink-0')
+    expect(mobileNavigation).not.toHaveClass('fixed')
+    expect(mobileNavigation).toHaveClass(
+      'h-[calc(4rem+env(safe-area-inset-bottom))]',
+      'pb-[env(safe-area-inset-bottom)]',
+    )
   })
 
   it('sets aria-current="page" on Goals navigation links when on /app/goals', () => {

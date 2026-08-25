@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   toaster: vi.fn(() => null),
-  rootOptions: undefined as undefined | { shellComponent: React.ComponentType<{ children: React.ReactNode }> },
+  rootOptions: undefined as
+    | undefined
+    | {
+        head: () => { meta: Array<Record<string, string>> }
+        shellComponent: React.ComponentType<{ children: React.ReactNode }>
+      },
 }))
 
 vi.mock('@clerk/tanstack-react-start', () => ({
@@ -34,7 +39,7 @@ vi.mock('sonner', () => ({ Toaster: mocks.toaster }))
 
 import './__root'
 
-describe('root toast configuration', () => {
+describe('root document configuration', () => {
   it('uses a two-second default duration', () => {
     const RootDocument = mocks.rootOptions!.shellComponent
 
@@ -44,5 +49,12 @@ describe('root toast configuration', () => {
       expect.objectContaining({ duration: 2000 }),
       undefined,
     )
+  })
+
+  it('enables mobile safe-area insets', () => {
+    expect(mocks.rootOptions!.head().meta).toContainEqual({
+      name: 'viewport',
+      content: 'width=device-width, initial-scale=1, viewport-fit=cover',
+    })
   })
 })

@@ -10,8 +10,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isFinances = pathname === '/app/finances' || pathname.startsWith('/app/finances/')
 
   return (
-    <div className="flex min-h-dvh flex-col text-[var(--sea-ink)] md:flex-row">
-      <header className="flex h-14 items-center justify-between border-b border-[var(--line)] bg-[var(--header-bg)] px-5 backdrop-blur-md md:hidden">
+    <div className="flex h-dvh flex-col overflow-hidden text-[var(--sea-ink)] md:flex-row">
+      <header className="flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center justify-between border-b border-[var(--line)] bg-[var(--header-bg)] px-5 pt-[env(safe-area-inset-top)] backdrop-blur-md md:hidden">
         <a href="/app" aria-label="Norte" className="flex min-h-11 min-w-11 items-center gap-3 no-underline">
           <img
             src="/images/logo.png"
@@ -85,13 +85,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex min-h-0 flex-1 flex-col pb-20 md:pb-0">
+      <main
+        id="app-scroll-area"
+        data-scroll-restoration-id="app-scroll-area"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+      >
         {children}
       </main>
 
       <nav
         aria-label="Navegación principal"
-        className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-[var(--line)] bg-[var(--header-bg)] px-2 backdrop-blur-md md:hidden"
+        className="flex h-[calc(4rem+env(safe-area-inset-bottom))] shrink-0 items-center justify-around border-t border-[var(--line)] bg-[var(--header-bg)] px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
       >
         <Link
           to="/app"
