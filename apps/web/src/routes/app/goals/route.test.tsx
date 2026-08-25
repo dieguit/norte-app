@@ -221,7 +221,7 @@ describe('Goals routes and workspace', () => {
       const router = createTestRouter()
       render(<RouterProvider router={router} />)
 
-      expect(await screen.findByRole('heading', { name: 'Vamos a construir tu perfil financiero' })).toBeDefined()
+      expect(await screen.findByRole('heading', { name: 'Tu plan empieza con una dirección clara' })).toBeDefined()
     })
 
     it('renders error alert on loader failure and retries on button click', async () => {
