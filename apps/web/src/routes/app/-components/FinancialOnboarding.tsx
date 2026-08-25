@@ -2,12 +2,18 @@ import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import {
+  FIXED_EXPENSE_SOURCES,
+  getExpenseTotalArs,
+} from "../../../features/financial/expenses";
+import type { ExpenseDraft } from "../../../features/financial/expenses.schema";
+import {
   FIXED_INCOME_SOURCES,
   getIncomeTotalArs,
 } from "../../../features/financial/incomes";
 import type { IncomeDraft } from "../../../features/financial/incomes.schema";
 import type { GoalCreationContext } from "../../../features/goals/goal-creation";
 import { createObjectiveSchema } from "../../../features/goals/goal-creation.schema";
+import { ExpenseSheet } from "../finances/-components/ExpenseSheet";
 import { IncomeSheet } from "../finances/-components/IncomeSheet";
 import { GoalObjectiveFields } from "../goals/-components/GoalObjectiveFields";
 import { useGoalCreationForm } from "../goals/-components/useGoalCreationForm";
@@ -17,6 +23,11 @@ type OnboardingStep = 1 | 2 | 3 | 4;
 type OnboardingIncome = {
   id: string;
   draft: IncomeDraft;
+};
+
+type OnboardingExpense = {
+  id: string;
+  draft: ExpenseDraft;
 };
 
 function formatAmount(amount: string, currency: "ARS" | "USD") {
@@ -33,6 +44,15 @@ function incomeSourceLabel(draft: IncomeDraft) {
   return FIXED_INCOME_SOURCES[draft.source.kind];
 }
 
+function expenseSourceLabel(draft: ExpenseDraft) {
+  if (draft.source.kind === "custom") {
+    return "name" in draft.source
+      ? draft.source.name
+      : "Concepto personalizado";
+  }
+  return FIXED_EXPENSE_SOURCES[draft.source.kind];
+}
+
 const STEP_LABELS = ["Bienvenida", "Objetivo", "Ingresos", "Gastos"] as const;
 
 export function FinancialOnboarding() {
@@ -43,6 +63,9 @@ export function FinancialOnboarding() {
   const [incomeDrafts, setIncomeDrafts] = useState<OnboardingIncome[]>([]);
   const [incomeSheetOpen, setIncomeSheetOpen] = useState(false);
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
+  const [expenseDrafts, setExpenseDrafts] = useState<OnboardingExpense[]>([]);
+  const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const objectiveForm = useGoalCreationForm({
@@ -63,6 +86,19 @@ export function FinancialOnboarding() {
       amount: { amount: draft.amount, currency: draft.currency },
       recurring: draft.recurring,
       effectiveMonth: draft.effectiveMonth,
+    })),
+    currentMonth,
+  );
+
+  const editingExpense = expenseDrafts.find(
+    ({ id }) => id === editingExpenseId,
+  );
+  const expenseTotal = getExpenseTotalArs(
+    expenseDrafts.map(({ draft }) => ({
+      amount: { amount: draft.amount, currency: draft.currency },
+      recurring: true,
+      effectiveMonth: currentMonth,
+      endMonth: null,
     })),
     currentMonth,
   );
@@ -110,6 +146,28 @@ export function FinancialOnboarding() {
   function removeIncome(id: string) {
     if (!window.confirm("¿Eliminar este ingreso?")) return;
     setIncomeDrafts((current) => current.filter((income) => income.id !== id));
+  }
+
+  function openNewExpense() {
+    setEditingExpenseId(null);
+    setExpenseSheetOpen(true);
+  }
+
+  function saveExpenseDraft(draft: ExpenseDraft) {
+    setExpenseDrafts((current) =>
+      editingExpenseId
+        ? current.map((expense) =>
+            expense.id === editingExpenseId ? { ...expense, draft } : expense,
+          )
+        : [...current, { id: crypto.randomUUID(), draft }],
+    );
+  }
+
+  function removeExpense(id: string) {
+    if (!window.confirm("¿Eliminar este gasto?")) return;
+    setExpenseDrafts((current) =>
+      current.filter((expense) => expense.id !== id),
+    );
   }
 
   return (
@@ -325,7 +383,7 @@ export function FinancialOnboarding() {
               {incomeDrafts.length === 0 && (
                 <p
                   id="income-requirement"
-                  className="text-sm text-[var(--sea-ink-soft)]"
+                  className="text-sm text-[var(--sea-ink-soft)] text-right"
                 >
                   Agregá al menos un ingreso recurrente para continuar.
                 </p>
@@ -371,30 +429,129 @@ export function FinancialOnboarding() {
             className="flex flex-col gap-6"
             aria-labelledby="expenses-title"
           >
-            <div>
-              <h1
-                id="expenses-title"
-                className="font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]"
-              >
-                Gastos
-              </h1>
-              <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-                Acá vas a registrar tus gastos para entender cuánto dinero queda
-                disponible cada mes.
-              </p>
-            </div>
-            <p className="rounded-xl border border-[var(--line)] bg-[var(--foam)] p-4 text-sm text-[var(--sea-ink-soft)]">
-              Este paso se completa en la próxima etapa.
-            </p>
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep(3)}
-              >
-                Volver
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1
+                  id="expenses-title"
+                  className="font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]"
+                >
+                  Gastos
+                </h1>
+                <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
+                  Sumá el dinero que gastás normalmente cada mes.
+                </p>
+              </div>
+              <Button type="button" onClick={openNewExpense}>
+                Agregar gasto
               </Button>
             </div>
+
+            {expenseDrafts.length === 0 ? (
+              <p className="rounded-xl border border-[var(--line)] bg-[var(--foam)] p-4 text-sm text-[var(--sea-ink-soft)]">
+                Agregá tus gastos mensuales para entender cuánto dinero queda
+                disponible.
+              </p>
+            ) : (
+              <section
+                aria-labelledby="recurring-expenses-title"
+                className="flex flex-col gap-3"
+              >
+                <h2
+                  id="recurring-expenses-title"
+                  className="font-serif text-xl font-bold text-[var(--sea-ink)]"
+                >
+                  Gastos recurrentes
+                </h2>
+                <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]">
+                  <ul className="divide-y divide-[var(--line)]">
+                    {expenseDrafts.map((expense) => {
+                      const label = expenseSourceLabel(expense.draft);
+                      return (
+                        <li
+                          key={expense.id}
+                          className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div>
+                            <p className="font-semibold text-[var(--sea-ink)]">
+                              {label}
+                            </p>
+                            <p className="mt-1 text-sm tabular-nums text-[var(--sea-ink-soft)]">
+                              {formatAmount(
+                                expense.draft.amount,
+                                expense.draft.currency,
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Editar gasto ${label}`}
+                              onClick={() => {
+                                setEditingExpenseId(expense.id);
+                                setExpenseSheetOpen(true);
+                              }}
+                            >
+                              <Pencil aria-hidden="true" />
+                              Editar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Eliminar gasto ${label}`}
+                              onClick={() => removeExpense(expense.id)}
+                            >
+                              <Trash2 aria-hidden="true" />
+                              Eliminar
+                            </Button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="flex items-center justify-between gap-4 border-t border-[var(--line)] bg-[var(--foam)] px-4 py-3">
+                    <span className="text-sm font-semibold text-[var(--sea-ink)]">
+                      Total mensual estimado
+                    </span>
+                    <span className="font-semibold tabular-nums text-[var(--sea-ink)]">
+                      {formatAmount(expenseTotal.amount, "ARS")}
+                    </span>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            <div className="flex flex-col gap-3">
+              {expenseDrafts.length === 0 && (
+                <p className="text-sm text-right text-[var(--sea-ink-soft)]">
+                  Agregá al menos un gasto recurrente para completar este paso.
+                </p>
+              )}
+              <div className="flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(3)}
+                >
+                  Volver
+                </Button>
+              </div>
+            </div>
+
+            <ExpenseSheet
+              open={expenseSheetOpen}
+              onOpenChange={(open) => {
+                setExpenseSheetOpen(open);
+                if (!open) setEditingExpenseId(null);
+              }}
+              month={currentMonth}
+              sources={[]}
+              draft={editingExpense?.draft}
+              onSaveDraft={saveExpenseDraft}
+              recurringOnly
+            />
           </section>
         )}
       </main>

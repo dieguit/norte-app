@@ -23,6 +23,13 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
   }
 
+  async function reachExpenseStep(user: ReturnType<typeof userEvent.setup>) {
+    await reachIncomeStep(user)
+    await addSalary(user)
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    expect(screen.getByText('Paso 4 de 4')).toBeVisible()
+  }
+
   it('introduces goals, finances, and the roadmap before asking for data', () => {
     render(<FinancialOnboarding />)
 
@@ -64,7 +71,6 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByText('Ingresá un nombre.')).toBeVisible()
     expect(screen.getByText('Ingresá un monto objetivo mayor a cero.')).toBeVisible()
     expect(screen.getByLabelText('Moneda')).toBeVisible()
-    expect(screen.getByLabelText('Mes objetivo')).toBeVisible()
     expect(screen.getByText('Paso 2 de 4')).toBeVisible()
   })
 
@@ -158,6 +164,10 @@ describe('FinancialOnboarding', () => {
     await addSalary(user)
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '75000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
     await user.click(screen.getByRole('button', { name: 'Volver' }))
     expect(screen.getByText('Sueldo')).toBeVisible()
 
@@ -168,6 +178,82 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     expect(screen.getByText('Sueldo')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    expect(screen.getByText('Alquiler / vivienda')).toBeVisible()
+    expect(screen.getAllByText('ARS 75.000,00')).toHaveLength(2)
+  })
+
+  it('edits and removes a local expense', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+
+    await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    await user.click(screen.getByRole('button', { name: 'Editar gasto Alquiler / vivienda' }))
+    const amount = screen.getByRole('textbox', { name: 'Monto' })
+    await user.clear(amount)
+    await user.type(amount, '200000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(screen.getAllByText('ARS 200.000,00')).toHaveLength(2)
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar gasto Alquiler / vivienda' }))
+    expect(window.confirm).toHaveBeenCalledWith('¿Eliminar este gasto?')
+    expect(screen.queryByRole('heading', { name: 'Gastos recurrentes' })).not.toBeInTheDocument()
+    expect(screen.getByText('Agregá al menos un gasto recurrente para completar este paso.')).toBeVisible()
+  })
+
+  it('renders a named custom recurring expense', async () => {
+    const user = userEvent.setup()
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+
+    await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Nombre del gasto nuevo' }), 'Gimnasio')
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '50000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(screen.getByText('Gimnasio')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Editar gasto Gimnasio' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Eliminar gasto Gimnasio' })).toBeVisible()
+  })
+
+  it('asks for at least one recurring expense', async () => {
+    const user = userEvent.setup()
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+
+    expect(screen.getByText('Agregá tus gastos mensuales para entender cuánto dinero queda disponible.')).toBeVisible()
+    expect(screen.getByText('Agregá al menos un gasto recurrente para completar este paso.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Agregar gasto' })).toBeEnabled()
+  })
+
+  it('adds a recurring expense and shows the monthly ARS total', async () => {
+    const user = userEvent.setup()
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+
+    await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
+    expect(screen.getByRole('heading', { name: 'Nuevo gasto recurrente' })).toBeVisible()
+    expect(screen.queryByRole('switch', { name: 'Es gasto recurrente' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
+    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(screen.getByRole('heading', { name: 'Gastos recurrentes' })).toBeVisible()
+    expect(screen.getByText('Alquiler / vivienda')).toBeVisible()
+    expect(screen.getByText('USD 100,00')).toBeVisible()
+    expect(screen.getByText('Total mensual estimado')).toBeVisible()
+    expect(screen.getByText('ARS 150.000,00')).toBeVisible()
   })
 })
 

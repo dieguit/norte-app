@@ -291,4 +291,72 @@ describe('ExpenseSheet', () => {
 
     confirmSpy.mockRestore()
   })
+
+  it('saves a local recurring draft without month controls or server mutations', async () => {
+    const user = userEvent.setup()
+    const onSaveDraft = vi.fn()
+    const onOpenChange = vi.fn()
+
+    render(
+      <ExpenseSheet
+        open
+        onOpenChange={onOpenChange}
+        month="2026-08"
+        sources={[]}
+        draft={{
+          source: { kind: 'custom', name: 'Gimnasio' },
+          amount: '1250.50',
+          currency: 'ARS',
+          recurring: true,
+        }}
+        onSaveDraft={onSaveDraft}
+        recurringOnly
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Editar gasto recurrente' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
+    expect(screen.queryByRole('switch', { name: 'Es gasto recurrente' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/se va a guardar para que puedas volver a usarlo/i)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(onSaveDraft).toHaveBeenCalledWith({
+      source: { kind: 'custom', name: 'Gimnasio' },
+      amount: '1250.50',
+      currency: 'ARS',
+      recurring: true,
+    })
+    expect(createExpense).not.toHaveBeenCalled()
+    expect(updateExpense).not.toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('renders the reduced recurring-expense variant for new draft without persistence claims', async () => {
+    const user = userEvent.setup()
+    const onSaveDraft = vi.fn()
+
+    render(
+      <ExpenseSheet
+        open
+        onOpenChange={vi.fn()}
+        month="2026-08"
+        sources={[]}
+        onSaveDraft={onSaveDraft}
+        recurringOnly
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Nuevo gasto recurrente' })).toBeVisible()
+    expect(screen.getByText('Indicá cuánto gastás por mes y en qué concepto.')).toBeVisible()
+    expect(screen.queryByRole('switch', { name: 'Es gasto recurrente' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+
+    expect(screen.getByRole('textbox', { name: 'Nombre del gasto nuevo' })).toBeVisible()
+    expect(screen.queryByText(/se va a guardar para que puedas volver a usarlo/i)).not.toBeInTheDocument()
+  })
 })

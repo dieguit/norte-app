@@ -71,12 +71,18 @@ export function ExpenseSheet({
   month,
   sources,
   expense,
+  draft: initialDraft,
+  onSaveDraft,
+  recurringOnly = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   month: string
   sources: Array<{ id: string; name: string }>
   expense?: ExpenseRow
+  draft?: ExpenseDraft
+  onSaveDraft?: (draft: ExpenseDraft) => void
+  recurringOnly?: boolean
 }) {
   const router = useRouter()
   const [draft, setDraft] = useState<ExpenseFormDraft>(() => defaultDraft(month))
@@ -102,9 +108,16 @@ export function ExpenseSheet({
             recurring: expense.recurring,
             effectiveMonth: expense.effectiveMonth.slice(0, 7),
           }
-        : defaultDraft(month),
+        : initialDraft
+          ? {
+              ...initialDraft,
+              amount: formatMoneyInput(initialDraft.amount.replace('.', ',')),
+              recurring: recurringOnly ? true : initialDraft.recurring,
+              effectiveMonth: month,
+            }
+          : defaultDraft(month),
     )
-  }, [expense, month, open])
+  }, [expense, initialDraft, month, open, recurringOnly])
 
   async function save() {
     const parsed = createExpenseSchema.safeParse({
@@ -138,24 +151,28 @@ export function ExpenseSheet({
           parsed.data.draft.currency,
         )!.amount,
       }
-      if (expense) {
-        await updateExpense({
-          data: {
-            expenseId: expense.id,
-            draft: normalizedDraft,
-            effectiveMonth: parsed.data.effectiveMonth,
-          },
-        })
+      if (onSaveDraft) {
+        onSaveDraft(normalizedDraft)
       } else {
-        await createExpense({
-          data: {
-            draft: normalizedDraft,
-            effectiveMonth: parsed.data.effectiveMonth,
-          },
-        })
+        if (expense) {
+          await updateExpense({
+            data: {
+              expenseId: expense.id,
+              draft: normalizedDraft,
+              effectiveMonth: parsed.data.effectiveMonth,
+            },
+          })
+        } else {
+          await createExpense({
+            data: {
+              draft: normalizedDraft,
+              effectiveMonth: parsed.data.effectiveMonth,
+            },
+          })
+        }
+        await router.invalidate()
+        toast.success(expense ? 'Gasto actualizado.' : 'Gasto agregado.')
       }
-      await router.invalidate()
-      toast.success(expense ? 'Gasto actualizado.' : 'Gasto agregado.')
       onOpenChange(false)
     } catch (cause) {
       setError(
@@ -207,10 +224,18 @@ export function ExpenseSheet({
       >
         <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
           <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-            {expense ? 'Editar gasto' : 'Nuevo gasto'}
+            {recurringOnly
+              ? initialDraft
+                ? 'Editar gasto recurrente'
+                : 'Nuevo gasto recurrente'
+              : expense
+                ? 'Editar gasto'
+                : 'Nuevo gasto'}
           </SheetTitle>
           <SheetDescription>
-            Indicá el concepto y las condiciones de este gasto.
+            {recurringOnly
+              ? 'Indicá cuánto gastás por mes y en qué concepto.'
+              : 'Indicá el concepto y las condiciones de este gasto.'}
           </SheetDescription>
         </SheetHeader>
         <form
@@ -276,48 +301,53 @@ export function ExpenseSheet({
                   Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}
                 </p>
               )}
-              <Field orientation="horizontal">
-                <Switch
-                  id="expense-recurring"
-                  checked={draft.recurring}
-                  onCheckedChange={(recurring) =>
-                    setDraft({
-                      ...draft,
-                      recurring,
-                      source:
-                        draft.source.kind === 'custom'
-                          ? draft.source
-                          : { kind: recurring ? 'housing' : 'clothing' },
-                    })
-                  }
-                />
-                <FieldLabel htmlFor="expense-recurring">
-                  Es gasto recurrente
-                </FieldLabel>
-              </Field>
+              {!recurringOnly && (
+                <Field orientation="horizontal">
+                  <Switch
+                    id="expense-recurring"
+                    checked={draft.recurring}
+                    onCheckedChange={(recurring) =>
+                      setDraft({
+                        ...draft,
+                        recurring,
+                        source:
+                          draft.source.kind === 'custom'
+                            ? draft.source
+                            : { kind: recurring ? 'housing' : 'clothing' },
+                      })
+                    }
+                  />
+                  <FieldLabel htmlFor="expense-recurring">
+                    Es gasto recurrente
+                  </FieldLabel>
+                </Field>
+              )}
               <ExpenseSourcePicker
                 recurring={draft.recurring}
                 sources={sources}
                 value={draft.source}
                 error={validationErrors.source}
                 onChange={(source) => setDraft({ ...draft, source })}
+                showPersistenceHint={!onSaveDraft}
               />
-              <Field data-invalid={!!validationErrors.effectiveMonth}>
-                <FieldLabel htmlFor="expense-month-picker">
-                  {draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
-                </FieldLabel>
-                <MonthPickerInput
-                  id="expense-month-picker"
-                  aria-label={draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
-                  value={draft.effectiveMonth}
-                  onValueChange={(effectiveMonth) =>
-                    setDraft({ ...draft, effectiveMonth })
-                  }
-                />
-                {validationErrors.effectiveMonth && (
-                  <FieldError>{validationErrors.effectiveMonth}</FieldError>
-                )}
-              </Field>
+              {!recurringOnly && (
+                <Field data-invalid={!!validationErrors.effectiveMonth}>
+                  <FieldLabel htmlFor="expense-month-picker">
+                    {draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
+                  </FieldLabel>
+                  <MonthPickerInput
+                    id="expense-month-picker"
+                    aria-label={draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
+                    value={draft.effectiveMonth}
+                    onValueChange={(effectiveMonth) =>
+                      setDraft({ ...draft, effectiveMonth })
+                    }
+                  />
+                  {validationErrors.effectiveMonth && (
+                    <FieldError>{validationErrors.effectiveMonth}</FieldError>
+                  )}
+                </Field>
+              )}
               {error && <FieldError>{error}</FieldError>}
             </FieldSet>
           </FieldGroup>

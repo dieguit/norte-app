@@ -22,12 +22,14 @@ export function ExpenseSourcePicker({
   value,
   error,
   onChange,
+  showPersistenceHint = true,
 }: {
   recurring: boolean
   sources: Array<{ id: string; name: string }>
   value: ExpenseDraft['source']
   error?: string
   onChange: (source: ExpenseDraft['source']) => void
+  showPersistenceHint?: boolean
 }) {
   const fixedSources = recurring ? RECURRING_EXPENSE_SOURCES : ONE_TIME_EXPENSE_SOURCES
   const options = [
@@ -81,7 +83,9 @@ export function ExpenseSourcePicker({
               onChange({ kind: 'custom', name: event.target.value })
             }}
           />
-          <FieldDescription>Este gasto se va a guardar para que puedas volver a usarlo</FieldDescription>
+          {showPersistenceHint && (
+            <FieldDescription>Este gasto se va a guardar para que puedas volver a usarlo</FieldDescription>
+          )}
         </Field>
       )}
       {error && <FieldError>{error}</FieldError>}
