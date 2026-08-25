@@ -25,6 +25,16 @@ import { Route as GoalsIndexRoute } from './index'
 vi.mock('@clerk/tanstack-react-start', () => ({
   ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   UserButton: () => <button type="button">Cuenta</button>,
+  useUser: () => ({
+    isLoaded: true,
+    isSignedIn: true,
+    user: { id: 'user_test', fullName: null, primaryEmailAddress: null, createdAt: null },
+  }),
+}))
+
+vi.mock('@posthog/react', () => ({
+  PostHogProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  usePostHog: () => ({ identify: vi.fn(), reset: vi.fn() }),
 }))
 
 vi.mock('@tanstack/react-devtools', () => ({
