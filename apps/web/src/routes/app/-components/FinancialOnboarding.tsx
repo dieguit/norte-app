@@ -84,7 +84,7 @@ export function FinancialOnboarding() {
                 id="welcome-title"
                 className="font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)]"
               >
-                Tu plan empieza con una dirección clara
+                Hola, te damos la bienvenida a Norte!
               </h1>
               <p className="mt-2 text-sm leading-relaxed text-[var(--sea-ink-soft)] sm:text-base">
                 Norte conecta lo que querés lograr con tus ingresos y gastos
