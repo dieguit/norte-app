@@ -61,7 +61,6 @@ export function GoalObjectiveFields({
 
   const handleTypeChange = (newType: string | null) => {
     if (!newType) return
-    const currentName = values.name
     const wasEmergencyFund = values.type === 'emergency_fund'
     form.setFieldValue('type', newType as any)
 
@@ -70,14 +69,7 @@ export function GoalObjectiveFields({
     }
 
     if (newType === 'emergency_fund') {
-      if (
-        !currentName ||
-        currentName.trim() === '' ||
-        currentName === 'Compra o gasto grande' ||
-        currentName === 'Otro objetivo'
-      ) {
-        form.setFieldValue('name', 'Colchón financiero')
-      }
+      form.setFieldValue('name', 'Colchón financiero')
       form.setFieldValue('currency', 'USD')
     }
   }
@@ -120,19 +112,21 @@ export function GoalObjectiveFields({
         </Field>
 
         {/* Goal Name */}
-        <Field data-invalid={!!validationErrors.name}>
-          <FieldLabel htmlFor="goal-name-input">Nombre del objetivo</FieldLabel>
-          <Input
-            id="goal-name-input"
-            aria-label="Nombre del objetivo"
-            placeholder="Ej: Vacaciones 2027, Auto nuevo..."
-            value={values.name}
-            onChange={(e) => form.setFieldValue('name', e.target.value)}
-          />
-          {validationErrors.name && (
-            <FieldError>{validationErrors.name}</FieldError>
-          )}
-        </Field>
+        {!isEmergencyFund && (
+          <Field data-invalid={!!validationErrors.name}>
+            <FieldLabel htmlFor="goal-name-input">Nombre del objetivo</FieldLabel>
+            <Input
+              id="goal-name-input"
+              aria-label="Nombre del objetivo"
+              placeholder="Ej: Vacaciones 2027, Auto nuevo..."
+              value={values.name}
+              onChange={(e) => form.setFieldValue('name', e.target.value)}
+            />
+            {validationErrors.name && (
+              <FieldError>{validationErrors.name}</FieldError>
+            )}
+          </Field>
+        )}
 
         {/* Currency and Target Amount */}
         {isEmergencyFund ? (

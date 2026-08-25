@@ -52,7 +52,7 @@ describe('GoalCreationSheet', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Nuevo objetivo')).toBeInTheDocument()
 
-    expect(await screen.findByLabelText('Nombre del objetivo')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Tipo de objetivo')).toBeInTheDocument()
   })
 
   it('renders error state when context loading fails', async () => {

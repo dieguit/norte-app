@@ -291,7 +291,8 @@ describe('Goals routes and workspace', () => {
       fireEvent.click(editBtn)
 
       expect(await screen.findByRole('heading', { level: 2, name: 'Editar objetivo' })).toBeInTheDocument()
-      expect(await screen.findByLabelText('Nombre del objetivo')).toHaveValue('Colchón financiero')
+      expect(await screen.findByLabelText('Tipo de objetivo')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Nombre del objetivo')).not.toBeInTheDocument()
     })
 
     it('opens GoalLifecycleSheet when clicking Pausar objetivo on active goal', async () => {

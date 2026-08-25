@@ -29,7 +29,7 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByText('Paso 2 de 4')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Elegí tu primer objetivo' })).toBeVisible()
     expect(screen.getByLabelText('Tipo de objetivo')).toHaveTextContent('Colchón financiero')
-    expect(screen.getByLabelText('Nombre del objetivo')).toHaveValue('Colchón financiero')
+    expect(screen.queryByLabelText('Nombre del objetivo')).not.toBeInTheDocument()
     expect(screen.getByText('Dólares (USD)')).toBeVisible()
     expect(screen.getByText('El colchón equivale a 6 meses de gastos y se calculará automáticamente.')).toBeVisible()
     expect(screen.queryByLabelText('Monto objetivo')).not.toBeInTheDocument()

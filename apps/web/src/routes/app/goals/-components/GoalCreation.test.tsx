@@ -219,8 +219,8 @@ describe('GoalCreation component (2-step flow)', () => {
       await user.click(typeSelect)
       await user.click(screen.getByRole('option', { name: /colchón financiero/i }))
 
-      // Name should be prefilled
-      expect(screen.getByLabelText(/nombre/i)).toHaveValue('Colchón financiero')
+      // Name field is hidden for emergency fund (default name is used)
+      expect(screen.queryByLabelText(/nombre/i)).not.toBeInTheDocument()
 
       // Currency is locked to USD
       expect(screen.getAllByText(/USD|Dólares/i)[0]).toBeVisible()
