@@ -54,7 +54,11 @@ export function PlanAllocationEditor({
         : null;
 
     return (
-      <Field key={entry.goalId} data-invalid={!isValid} data-testid="allocation-row">
+      <Field
+        key={entry.goalId}
+        data-invalid={!isValid}
+        data-testid="allocation-row"
+      >
         <div className="flex items-center justify-between gap-4">
           <FieldLabel
             id={`allocation-${entry.goalId}-label`}
@@ -94,7 +98,7 @@ export function PlanAllocationEditor({
               onChange={(event) =>
                 onPercentageChange(entry.goalId, event.target.value)
               }
-              className="w-20 text-right font-mono text-sm"
+              className="w-20! text-right font-mono text-sm"
             />
             <span
               aria-hidden="true"
