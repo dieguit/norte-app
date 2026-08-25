@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePostHog } from "@posthog/react";
 import { useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import BigNumber from "bignumber.js";
@@ -37,6 +38,7 @@ export function AllocationChange({
   onUpdated,
 }: AllocationChangeProps) {
   const router = useRouter();
+  const posthog = usePostHog();
   const serverErrorRef = useRef<HTMLDivElement>(null);
 
   const [dedicationPercentage, setDedicationPercentage] = useState<number>(
@@ -279,6 +281,32 @@ export function AllocationChange({
         return;
       }
 
+      const initialDedicationPercentage = Math.round(
+        Number(
+          String(
+            context.financialSummary?.dedicationPercentage ?? 90,
+          ).replace(",", "."),
+        ),
+      );
+      const originalAllocation =
+        context.pendingAllocation ?? context.currentAllocation;
+      const allocationsChanged =
+        entries.length !== (originalAllocation?.entries.length ?? 0) ||
+        entries.some((entry) => {
+          const original = originalAllocation?.entries.find(
+            (candidate) => candidate.goalId === entry.goalId,
+          );
+          return (
+            !original || !new BigNumber(entry.percentage).isEqualTo(original.percentage)
+          );
+        });
+
+      if (allocationsChanged) {
+        posthog?.capture("goal_allocations_updated");
+      }
+      if (dedicationPercentage !== initialDedicationPercentage) {
+        posthog?.capture("goal_monthly_balance_percentage_updated");
+      }
       await router.invalidate();
       toast.success("Plan actualizado.");
       onUpdated();

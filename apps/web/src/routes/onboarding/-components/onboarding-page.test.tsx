@@ -848,6 +848,11 @@ describe('OnboardingPage component tests', () => {
         contentType: 'application/pdf',
       })
     }))
+    expect(posthogCapture).toHaveBeenCalledWith('file_upload_completed', {
+      field_id: 't1_upload_url',
+      file_type: 'application/pdf',
+      operation: 'created',
+    })
     expect(screen.getByText('resumen1.pdf')).toBeDefined()
     expect(saveOnboardingDraft).toHaveBeenLastCalledWith(expect.objectContaining({
       data: expect.objectContaining({
@@ -872,6 +877,11 @@ describe('OnboardingPage component tests', () => {
       })
     }))
     expect(screen.getByText('resumen2.pdf')).toBeDefined()
+    expect(posthogCapture).toHaveBeenLastCalledWith('file_upload_completed', {
+      field_id: 't1_upload_url',
+      file_type: 'application/pdf',
+      operation: 'replaced',
+    })
     expect(saveOnboardingDraft).toHaveBeenLastCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         answers: expect.objectContaining({

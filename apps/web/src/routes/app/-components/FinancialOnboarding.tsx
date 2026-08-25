@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePostHog } from "@posthog/react";
 import { useRouter } from "@tanstack/react-router";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
@@ -56,6 +57,7 @@ const STEP_LABELS = ["Bienvenida", "Objetivo", "Ingresos", "Gastos"] as const;
 
 export function FinancialOnboarding() {
   const router = useRouter();
+  const posthog = usePostHog();
   const [step, setStep] = useState<OnboardingStep>(1);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
@@ -190,6 +192,7 @@ export function FinancialOnboarding() {
         setIsSubmitting(false);
         return;
       }
+      posthog?.capture("financial_onboarding_completed");
       await router.invalidate();
       await router.navigate({ to: "/app" });
     } catch {

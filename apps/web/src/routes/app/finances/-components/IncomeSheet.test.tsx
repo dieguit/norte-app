@@ -3,12 +3,18 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createIncome, updateIncome } from '../../../../features/financial/financial.functions'
+import { createIncome, deleteIncome, updateIncome } from '../../../../features/financial/financial.functions'
 import type { IncomeDraft } from '../../../../features/financial/incomes.schema'
 import { IncomeSheet } from './IncomeSheet'
 
 vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({ invalidate: vi.fn() }),
+}))
+
+const posthogCapture = vi.fn()
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({ capture: posthogCapture }),
 }))
 
 vi.mock('../../../../features/financial/financial.functions', () => ({
@@ -83,6 +89,11 @@ describe('IncomeSheet', () => {
         draft: expect.objectContaining({ amount: '125000.00' }),
       },
     })
+    expect(posthogCapture).toHaveBeenCalledWith('income_created', {
+      recurring: true,
+      currency: 'ARS',
+      source_kind: 'salary',
+    })
   })
 
   it('submits a canonical amount when updating an income', async () => {
@@ -108,6 +119,36 @@ describe('IncomeSheet', () => {
         incomeId: 'income_1',
         draft: expect.objectContaining({ amount: '125.50' }),
       },
+    })
+    expect(posthogCapture).toHaveBeenCalledWith('income_updated', {
+      recurring: true,
+      currency: 'ARS',
+      source_kind: 'salary',
+    })
+  })
+
+  it('captures a deletion event after a confirmed persisted-income delete', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(deleteIncome).mockResolvedValue(undefined)
+    renderSheet({
+      id: 'income_1',
+      sourceKind: 'salary',
+      sourceId: null,
+      sourceName: 'Sueldo',
+      amount: '100.00',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-08-01',
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+
+    expect(deleteIncome).toHaveBeenCalledWith({ data: { incomeId: 'income_1' } })
+    expect(posthogCapture).toHaveBeenCalledWith('income_deleted', {
+      recurring: true,
+      currency: 'ARS',
+      source_kind: 'salary',
     })
   })
 
@@ -279,6 +320,7 @@ describe('IncomeSheet', () => {
     })
     expect(createIncome).not.toHaveBeenCalled()
     expect(updateIncome).not.toHaveBeenCalled()
+    expect(posthogCapture).not.toHaveBeenCalled()
   })
 
   it('populates and updates a local draft', async () => {

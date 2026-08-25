@@ -8,12 +8,17 @@ import { FinancialOnboarding } from './FinancialOnboarding'
 
 const mockInvalidate = vi.fn().mockResolvedValue(undefined)
 const mockNavigate = vi.fn().mockResolvedValue(undefined)
+const posthogCapture = vi.fn()
 
 vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({
     invalidate: mockInvalidate,
     navigate: mockNavigate,
   }),
+}))
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({ capture: posthogCapture }),
 }))
 
 vi.mock('../../../features/financial/financial.functions', () => ({
@@ -309,6 +314,8 @@ describe('FinancialOnboarding', () => {
     })
     expect(mockInvalidate).toHaveBeenCalledOnce()
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/app' })
+    expect(posthogCapture).toHaveBeenCalledOnce()
+    expect(posthogCapture).toHaveBeenCalledWith('financial_onboarding_completed')
   })
 
   it('shows a retry message and stays on step 4 when a plan already exists', async () => {
@@ -331,6 +338,7 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByText('Paso 4 de 4')).toBeVisible()
     expect(submit).toBeEnabled()
     expect(mockNavigate).not.toHaveBeenCalled()
+    expect(posthogCapture).not.toHaveBeenCalled()
   })
 
   it('shows an error message and stays on step 4 if onboarding submission fails', async () => {
@@ -353,6 +361,7 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByText('Paso 4 de 4')).toBeVisible()
     expect(submit).toBeEnabled()
     expect(mockNavigate).not.toHaveBeenCalled()
+    expect(posthogCapture).not.toHaveBeenCalled()
   })
 })
 

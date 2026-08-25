@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { usePostHog } from '@posthog/react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import BigNumber from 'bignumber.js'
@@ -46,6 +47,7 @@ export function GoalCreation({
   edit,
 }: GoalCreationProps) {
   const router = useRouter()
+  const posthog = usePostHog()
   const form = useGoalCreationForm(edit?.initialDraft)
   const values = useStore(form.store, (state) => state.values)
 
@@ -235,6 +237,11 @@ export function GoalCreation({
         return
       }
 
+      posthog?.capture(edit ? 'goal_updated' : 'goal_created', {
+        goal_type: form.state.values.type,
+        strategy: form.state.values.strategy,
+        currency: form.state.values.currency,
+      })
       await router.invalidate()
       toast.success(edit ? 'Objetivo y Plan actualizados.' : 'Objetivo creado y Plan actualizado.')
       onCreated()

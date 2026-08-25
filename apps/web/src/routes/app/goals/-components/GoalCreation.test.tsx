@@ -22,6 +22,12 @@ vi.mock('@tanstack/react-router', () => ({
   useRouter: vi.fn(),
 }))
 
+const posthogCapture = vi.fn()
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({ capture: posthogCapture }),
+}))
+
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
@@ -346,6 +352,7 @@ describe('GoalCreation component (2-step flow)', () => {
       // User stays on Step 2 (Impact)
       expect(screen.getByRole('heading', { name: '2. Distribución e impacto' })).toBeVisible()
       expect(screen.getByRole('button', { name: 'Crear objetivo y actualizar Plan' })).toBeVisible()
+      expect(posthogCapture).not.toHaveBeenCalled()
     })
 
     it('handles persistence error, focuses error summary, and succeeds on retry', async () => {
@@ -382,6 +389,11 @@ describe('GoalCreation component (2-step flow)', () => {
         expect(mockInvalidate).toHaveBeenCalledTimes(1)
         expect(toast.success).toHaveBeenCalledWith('Objetivo creado y Plan actualizado.')
         expect(onCreated).toHaveBeenCalledTimes(1)
+      })
+      expect(posthogCapture).toHaveBeenCalledWith('goal_created', {
+        goal_type: 'purchase',
+        strategy: 'save',
+        currency: 'ARS',
       })
     })
   })
@@ -501,6 +513,11 @@ describe('GoalCreation component (2-step flow)', () => {
         expect(toast.success).toHaveBeenCalledWith('Objetivo y Plan actualizados.')
         expect(onCreated).toHaveBeenCalledTimes(1)
       })
+      expect(posthogCapture).toHaveBeenCalledWith('goal_updated', {
+        goal_type: 'purchase',
+        strategy: 'invest',
+        currency: 'USD',
+      })
     })
 
     it('handles stale preview on edit confirmation', async () => {
@@ -568,6 +585,7 @@ describe('GoalCreation component (2-step flow)', () => {
         await screen.findByText('Tu Plan cambió. Revisá la distribución actualizada antes de confirmar.'),
       ).toBeVisible()
       expect(screen.getByRole('heading', { name: '2. Distribución e impacto' })).toBeVisible()
+      expect(posthogCapture).not.toHaveBeenCalled()
     })
   })
 })

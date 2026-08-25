@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePostHog } from "@posthog/react";
 import { useRouter } from "@tanstack/react-router";
 import BigNumber from "bignumber.js";
 import { toast } from "sonner";
@@ -82,6 +83,7 @@ export function IncomeSheet({
   recurringOnly?: boolean;
 }) {
   const router = useRouter();
+  const posthog = usePostHog();
   const [draft, setDraft] = useState<IncomeDraft>(() => defaultDraft(month));
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<
@@ -149,6 +151,11 @@ export function IncomeSheet({
             data: { incomeId: income.id, draft: normalizedDraft },
           });
         else await createIncome({ data: { draft: normalizedDraft } });
+        posthog?.capture(income ? "income_updated" : "income_created", {
+          recurring: normalizedDraft.recurring,
+          currency: normalizedDraft.currency,
+          source_kind: normalizedDraft.source.kind,
+        });
         await router.invalidate();
         toast.success(income ? "Ingreso actualizado." : "Ingreso agregado.");
       }
@@ -169,6 +176,11 @@ export function IncomeSheet({
     setSaving(true);
     try {
       await deleteIncome({ data: { incomeId: income.id } });
+      posthog?.capture("income_deleted", {
+        recurring: income.recurring,
+        currency: income.currency,
+        source_kind: income.sourceKind,
+      });
       await router.invalidate();
       toast.success("Ingreso eliminado.");
       onOpenChange(false);

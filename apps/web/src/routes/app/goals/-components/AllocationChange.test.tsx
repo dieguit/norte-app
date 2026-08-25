@@ -27,6 +27,12 @@ vi.mock("@tanstack/react-router", () => ({
   useRouter: vi.fn(),
 }));
 
+const posthogCapture = vi.fn();
+
+vi.mock("@posthog/react", () => ({
+  usePostHog: () => ({ capture: posthogCapture }),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -623,6 +629,138 @@ describe("AllocationChange and AllocationChangeSheet", () => {
       expect(mockInvalidate).toHaveBeenCalledTimes(1);
       expect(toast.success).toHaveBeenCalledWith("Plan actualizado.");
       expect(onUpdated).toHaveBeenCalledTimes(1);
+      expect(posthogCapture).not.toHaveBeenCalled();
+    });
+
+    it('captures only the dedication event when the slider changed to 75 and confirms', async () => {
+      const user = userEvent.setup();
+      const onUpdated = vi.fn();
+
+      const initialPreview = makeMockPreview();
+      const updatedPreview = makeMockPreview({
+        proposal: {
+          ...initialPreview.proposal,
+          dedicationPercentage: 75,
+        },
+      });
+
+      vi.mocked(previewAllocationChange)
+        .mockResolvedValueOnce(initialPreview)
+        .mockResolvedValueOnce(updatedPreview);
+      vi.mocked(confirmAllocationChange).mockResolvedValue({
+        status: "updated",
+      });
+
+      render(
+        <AllocationChange
+          context={sampleContext}
+          onCancel={vi.fn()}
+          onUpdated={onUpdated}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Actualizar Plan" }),
+        ).toBeEnabled();
+      });
+
+      const sliders = screen.getAllByRole("slider", { hidden: true });
+      const dedicationSlider =
+        sliders.find((el) =>
+          el.getAttribute("aria-label")?.includes("Porcentaje del saldo"),
+        ) ?? sliders[0];
+
+      fireEvent.change(dedicationSlider, { target: { value: "75" } });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Actualizar Plan" }),
+        ).toBeEnabled();
+      });
+
+      await user.click(screen.getByRole("button", { name: "Actualizar Plan" }));
+
+      await waitFor(() => {
+        expect(mockInvalidate).toHaveBeenCalledTimes(1);
+      });
+      expect(posthogCapture).toHaveBeenCalledWith(
+        "goal_monthly_balance_percentage_updated",
+      );
+      expect(posthogCapture).not.toHaveBeenCalledWith(
+        "goal_allocations_updated",
+      );
+    });
+
+    it('captures only the allocations event when entries change from 60/40 to 70/30 and confirms', async () => {
+      const user = userEvent.setup();
+      const onUpdated = vi.fn();
+
+      const initialPreview = makeMockPreview();
+      const updatedPreview = makeMockPreview({
+        proposal: {
+          ...initialPreview.proposal,
+          allocation: {
+            ...initialPreview.proposal.allocation,
+            entries: [
+              {
+                ...initialPreview.proposal.allocation.entries[0],
+                percentage: "70.00",
+              },
+              {
+                ...initialPreview.proposal.allocation.entries[1],
+                percentage: "30.00",
+              },
+            ],
+          },
+        },
+      });
+
+      vi.mocked(previewAllocationChange)
+        .mockResolvedValueOnce(initialPreview)
+        .mockResolvedValueOnce(updatedPreview);
+      vi.mocked(confirmAllocationChange).mockResolvedValue({
+        status: "updated",
+      });
+
+      render(
+        <AllocationChange
+          context={sampleContext}
+          onCancel={vi.fn()}
+          onUpdated={onUpdated}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Actualizar Plan" }),
+        ).toBeEnabled();
+      });
+
+      const g1Input = screen.getByRole("textbox", {
+        name: /porcentaje para fondo de emergencia/i,
+      });
+      fireEvent.change(g1Input, { target: { value: "70" } });
+      fireEvent.blur(g1Input);
+
+      await waitFor(() => {
+        expect(previewAllocationChange).toHaveBeenCalledTimes(2);
+      });
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Actualizar Plan" }),
+        ).toBeEnabled();
+      });
+
+      await user.click(screen.getByRole("button", { name: "Actualizar Plan" }));
+
+      await waitFor(() => {
+        expect(mockInvalidate).toHaveBeenCalledTimes(1);
+      });
+      expect(posthogCapture).toHaveBeenCalledWith("goal_allocations_updated");
+      expect(posthogCapture).not.toHaveBeenCalledWith(
+        "goal_monthly_balance_percentage_updated",
+      );
     });
 
     it("a stale result preserves the draft, replaces the preview, and shows stale error message", async () => {
@@ -677,6 +815,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
 
       expect(onUpdated).not.toHaveBeenCalled();
       expect(mockInvalidate).not.toHaveBeenCalled();
+      expect(posthogCapture).not.toHaveBeenCalled();
 
       expect(screen.getByText("80%")).toBeInTheDocument();
       expect(
@@ -712,6 +851,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
       expect(
         await screen.findByText("Error del servidor al confirmar"),
       ).toBeInTheDocument();
+      expect(posthogCapture).not.toHaveBeenCalled();
       expect(
         screen.getByRole("textbox", {
           name: /porcentaje para fondo de emergencia/i,

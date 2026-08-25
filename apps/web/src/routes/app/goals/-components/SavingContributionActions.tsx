@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePostHog } from '@posthog/react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Pencil, Trash2 } from 'lucide-react'
@@ -31,6 +32,7 @@ export function SavingContributionActions({
   contributions,
 }: SavingContributionActionsProps) {
   const router = useRouter()
+  const posthog = usePostHog()
   const [editingContribution, setEditingContribution] = useState<ContributionSummary | null>(null)
   const [deletingContributionId, setDeletingContributionId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -46,6 +48,10 @@ export function SavingContributionActions({
         data: {
           contributionId: contribution.id,
         },
+      })
+      posthog?.capture('contribution_deleted', {
+        kind: contribution.kind,
+        currency: contribution.currency,
       })
       await router.invalidate()
       toast.success(contribution.kind === 'investment' ? 'Inversión eliminada.' : 'Ahorro eliminado.')

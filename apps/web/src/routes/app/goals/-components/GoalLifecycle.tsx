@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { usePostHog } from '@posthog/react'
 import { useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import BigNumber from 'bignumber.js'
@@ -37,6 +38,7 @@ export function GoalLifecycle({
   onUpdated,
 }: GoalLifecycleProps) {
   const router = useRouter()
+  const posthog = usePostHog()
   const serverErrorRef = useRef<HTMLDivElement>(null)
 
   const [entries, setEntries] = useState<
@@ -307,6 +309,7 @@ export function GoalLifecycle({
         return
       }
 
+      posthog?.capture(lifecycle === 'pause' ? 'goal_paused' : 'goal_resumed')
       await router.invalidate()
       toast.success(
         lifecycle === 'pause' ? 'Objetivo pausado.' : 'Objetivo reanudado.',

@@ -8,6 +8,7 @@ import { useRouter } from '@tanstack/react-router'
 import {
   previewSavingContribution,
   confirmSavingContribution,
+  updateSavingContribution,
 } from '../../../features/contributions/saving-contribution.functions'
 import type {
   SavingContributionContext,
@@ -17,6 +18,12 @@ import { SavingContribution } from './SavingContribution'
 
 vi.mock('@tanstack/react-router', () => ({
   useRouter: vi.fn(),
+}))
+
+const posthogCapture = vi.fn()
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({ capture: posthogCapture }),
 }))
 
 vi.mock('sonner', () => ({
@@ -29,6 +36,7 @@ vi.mock('sonner', () => ({
 vi.mock('../../../features/contributions/saving-contribution.functions', () => ({
   previewSavingContribution: vi.fn(),
   confirmSavingContribution: vi.fn(),
+  updateSavingContribution: vi.fn(),
 }))
 
 afterEach(cleanup)
@@ -201,6 +209,70 @@ describe('SavingContribution component', () => {
         expect(toast.success).toHaveBeenCalledWith('Ahorro registrado.')
         expect(onSuccess).toHaveBeenCalledTimes(1)
       })
+      expect(posthogCapture).toHaveBeenCalledWith('contribution_recorded', {
+        kind: 'saving',
+        currency: 'ARS',
+        period: 'current',
+      })
+    })
+
+    it('corrects an existing contribution and captures the correction event', async () => {
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      vi.mocked(previewSavingContribution).mockResolvedValue(mockArsPreview)
+      vi.mocked(updateSavingContribution).mockResolvedValue({ status: 'updated' })
+
+      render(
+        <SavingContribution
+          initialContribution={{
+            id: 'contribution-1',
+            kind: 'saving',
+            amount: '100.00',
+            currency: 'ARS',
+            location: 'Banco Santander',
+            createdAt: '2026-08-01T00:00:00.000Z',
+            allocations: [
+              {
+                goalId: 'goal-ars-1',
+                goalName: 'Viaje a Bariloche',
+                amount: '60000.00',
+                percentage: '60.00',
+              },
+              {
+                goalId: 'goal-ars-2',
+                goalName: 'Auto nuevo',
+                amount: '40000.00',
+                percentage: '40.00',
+              },
+            ],
+          }}
+          onCancel={vi.fn()}
+          onSuccess={onSuccess}
+        />,
+      )
+
+      expect(await screen.findByText('Así se distribuye tu ahorro')).toBeVisible()
+
+      const confirmBtn = screen.getByRole('button', { name: 'Guardar cambios' })
+      await waitFor(() => {
+        expect(confirmBtn).toBeEnabled()
+      })
+
+      await user.click(confirmBtn)
+
+      await waitFor(() => {
+        expect(updateSavingContribution).toHaveBeenCalledWith({
+          data: {
+            contributionId: 'contribution-1',
+            draft: expect.objectContaining({ kind: 'saving', currency: 'ARS' }),
+          },
+        })
+      })
+      expect(posthogCapture).toHaveBeenCalledWith('contribution_corrected', {
+        kind: 'saving',
+        currency: 'ARS',
+      })
+      expect(onSuccess).toHaveBeenCalledTimes(1)
     })
 
     it('clears preview when draft is modified', async () => {
@@ -400,6 +472,7 @@ describe('SavingContribution component', () => {
       expect(
         await screen.findByText('Tu Plan cambió. Revisá la distribución actualizada antes de confirmar.'),
       ).toBeVisible()
+      expect(posthogCapture).not.toHaveBeenCalled()
 
       // Preview is updated with refreshed data
       expect(screen.getByText('$ 100.000,00')).toBeVisible()
@@ -453,6 +526,7 @@ describe('SavingContribution component', () => {
 
       expect(await screen.findByText('Fallo de red')).toBeVisible()
       expect(amountInput).toHaveValue('100.000')
+      expect(posthogCapture).not.toHaveBeenCalled()
 
       // Retry succeeds
       await user.click(screen.getByRole('button', { name: /confirmar ahorro/i }))
@@ -668,6 +742,11 @@ describe('SavingContribution component', () => {
         expect(toast.success).toHaveBeenCalledWith('Inversión registrada.')
         expect(onSuccess).toHaveBeenCalledTimes(1)
       })
+      expect(posthogCapture).toHaveBeenCalledWith('contribution_recorded', {
+        kind: 'investment',
+        currency: 'USD',
+        period: 'current',
+      })
     })
 
     it('disables confirmation and shows empty message when no eligible investment goals exist in USD', () => {
@@ -781,6 +860,11 @@ describe('SavingContribution component', () => {
         expect(mockInvalidate).toHaveBeenCalledTimes(1)
         expect(toast.success).toHaveBeenCalledWith('Ahorro registrado.')
         expect(onSuccess).toHaveBeenCalledTimes(1)
+      })
+      expect(posthogCapture).toHaveBeenCalledWith('contribution_recorded', {
+        kind: 'saving',
+        currency: 'ARS',
+        period: 'catch_up',
       })
     })
   })

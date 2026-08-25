@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { usePostHog } from '@posthog/react'
 import { useRouter } from '@tanstack/react-router'
 import BigNumber from 'bignumber.js'
 import { toast } from 'sonner'
@@ -85,6 +86,7 @@ export function ExpenseSheet({
   recurringOnly?: boolean
 }) {
   const router = useRouter()
+  const posthog = usePostHog()
   const [draft, setDraft] = useState<ExpenseFormDraft>(() => defaultDraft(month))
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
@@ -170,6 +172,11 @@ export function ExpenseSheet({
             },
           })
         }
+        posthog?.capture(expense ? 'expense_updated' : 'expense_created', {
+          recurring: normalizedDraft.recurring,
+          currency: normalizedDraft.currency,
+          source_kind: normalizedDraft.source.kind,
+        })
         await router.invalidate()
         toast.success(expense ? 'Gasto actualizado.' : 'Gasto agregado.')
       }
@@ -194,6 +201,11 @@ export function ExpenseSheet({
           expenseId: expense.id,
           effectiveMonth: month,
         },
+      })
+      posthog?.capture('expense_deleted', {
+        recurring: expense.recurring,
+        currency: expense.currency,
+        source_kind: expense.sourceKind,
       })
       await router.invalidate()
       toast.success('Gasto eliminado.')

@@ -82,6 +82,7 @@ export default function OnboardingUpload({
       posthog?.capture('file_upload_completed', {
         field_id: fieldId,
         file_type: file.type,
+        operation: value ? 'replaced' : 'created',
       })
     } catch (err) {
       console.error('Error uploading file:', err)

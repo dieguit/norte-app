@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePostHog } from "@posthog/react";
 import { useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import BigNumber from "bignumber.js";
@@ -69,6 +70,7 @@ export function SavingContribution({
   onSuccess,
 }: SavingContributionProps) {
   const router = useRouter();
+  const posthog = usePostHog();
   const isEdit = Boolean(initialContribution);
 
   const kind: ContributionKind =
@@ -490,6 +492,7 @@ export function SavingContribution({
           },
         });
 
+        posthog?.capture("contribution_corrected", { kind, currency });
         await router.invalidate();
         toast.success(
           kind === "investment"
@@ -517,6 +520,11 @@ export function SavingContribution({
         return;
       }
 
+      posthog?.capture("contribution_recorded", {
+        kind,
+        currency,
+        period: catchUpMonth ? "catch_up" : "current",
+      });
       await router.invalidate();
       toast.success(
         kind === "investment" ? "Inversión registrada." : "Ahorro registrado.",

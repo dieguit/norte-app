@@ -21,6 +21,12 @@ vi.mock('@tanstack/react-router', () => ({
   useRouter: vi.fn(),
 }))
 
+const posthogCapture = vi.fn()
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({ capture: posthogCapture }),
+}))
+
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
@@ -381,6 +387,7 @@ describe('GoalLifecycle component', () => {
       expect(toast.success).toHaveBeenCalledWith('Objetivo reanudado.')
       expect(onUpdated).toHaveBeenCalled()
     })
+    expect(posthogCapture).toHaveBeenCalledWith('goal_resumed')
   })
 
   it('pauses an active goal with proportional redistribution, previews and confirms', async () => {
@@ -424,6 +431,7 @@ describe('GoalLifecycle component', () => {
       expect(toast.success).toHaveBeenCalledWith('Objetivo pausado.')
       expect(onUpdated).toHaveBeenCalled()
     })
+    expect(posthogCapture).toHaveBeenCalledWith('goal_paused')
   })
 
   it('keeps the allocation draft and displays a stale-review message', async () => {
@@ -463,6 +471,7 @@ describe('GoalLifecycle component', () => {
     ).toHaveTextContent('Tu Plan cambió. Revisá la distribución actualizada antes de confirmar.')
     expect(screen.getAllByText('Viaje')[0]).toBeVisible()
     expect(onUpdated).not.toHaveBeenCalled()
+    expect(posthogCapture).not.toHaveBeenCalled()
   })
 
   it('pauses the only active goal with 0% commitment', async () => {
@@ -572,6 +581,7 @@ describe('GoalLifecycle component', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Network failure')
     expect(onUpdated).not.toHaveBeenCalled()
+    expect(posthogCapture).not.toHaveBeenCalled()
   })
 
   it('calls onCancel when clicking Cancelar button', async () => {

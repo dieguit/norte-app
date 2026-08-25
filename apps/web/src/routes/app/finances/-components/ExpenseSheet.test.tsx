@@ -10,6 +10,12 @@ vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({ invalidate: vi.fn() }),
 }))
 
+const posthogCapture = vi.fn()
+
+vi.mock('@posthog/react', () => ({
+  usePostHog: () => ({ capture: posthogCapture }),
+}))
+
 vi.mock('../../../../features/financial/financial.functions', () => ({
   createExpense: vi.fn(),
   deleteExpense: vi.fn(),
@@ -97,6 +103,11 @@ describe('ExpenseSheet', () => {
     expect(createExpense).toHaveBeenCalledWith({
       data: expect.objectContaining({ effectiveMonth: '2026-09' }),
     })
+    expect(posthogCapture).toHaveBeenCalledWith('expense_created', {
+      recurring: true,
+      currency: 'ARS',
+      source_kind: 'housing',
+    })
   })
 
   it('submits a custom concept when creating an expense', async () => {
@@ -147,6 +158,11 @@ describe('ExpenseSheet', () => {
         draft: expect.objectContaining({ amount: '125.50' }),
         effectiveMonth: '2026-09',
       },
+    })
+    expect(posthogCapture).toHaveBeenCalledWith('expense_updated', {
+      recurring: true,
+      currency: 'ARS',
+      source_kind: 'housing',
     })
   })
 
@@ -264,6 +280,11 @@ describe('ExpenseSheet', () => {
     expect(deleteExpense).toHaveBeenCalledWith({
       data: { expenseId: 'exp_1', effectiveMonth: '2026-08' },
     })
+    expect(posthogCapture).toHaveBeenCalledWith('expense_deleted', {
+      recurring: true,
+      currency: 'ARS',
+      source_kind: 'housing',
+    })
 
     confirmSpy.mockRestore()
   })
@@ -288,6 +309,7 @@ describe('ExpenseSheet', () => {
 
     expect(confirmSpy).toHaveBeenCalledWith('¿Eliminar este gasto desde el mes seleccionado?')
     expect(deleteExpense).not.toHaveBeenCalled()
+    expect(posthogCapture).not.toHaveBeenCalled()
 
     confirmSpy.mockRestore()
   })
@@ -330,6 +352,7 @@ describe('ExpenseSheet', () => {
     })
     expect(createExpense).not.toHaveBeenCalled()
     expect(updateExpense).not.toHaveBeenCalled()
+    expect(posthogCapture).not.toHaveBeenCalled()
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
