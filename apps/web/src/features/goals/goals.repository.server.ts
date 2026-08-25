@@ -212,6 +212,11 @@ export async function getGoalsWorkspaceRows(
   }
 
   const snapshots = selectWinningSnapshots(base.snapshots, currentMonth)
+  const nextMonth = getNextCalendarMonth(new Date(`${currentMonth.slice(0, 7)}-01T00:00:00Z`))
+  snapshots.push(...base.snapshots.filter(
+    (snapshot: AllocationPlanSnapshot) => snapshot.effectiveMonth.slice(0, 7) === nextMonth &&
+      snapshots.every((selected) => selected.id !== snapshot.id),
+  ))
   const snapshotIds = snapshots.map((s) => s.id)
 
   const allocations =

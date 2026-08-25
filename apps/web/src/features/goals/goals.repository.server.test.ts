@@ -153,7 +153,7 @@ describe('goals.repository.server', () => {
     expect(db.query.allocationPlanSnapshots.findMany).not.toHaveBeenCalled()
   })
 
-  it('filters goals and snapshots by userId, and loads positions and allocations only for selected IDs', async () => {
+  it('loads the current and next-month plans used to project newly allocated goals', async () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
@@ -241,11 +241,11 @@ describe('goals.repository.server', () => {
       goalId: 'g1',
       percentage: '60.00',
     }
-    const mockAlloc2 = {
+    const mockFutureAlloc = {
       id: 'a2',
-      snapshotId: 's2',
+      snapshotId: 's3',
       goalId: 'g2',
-      percentage: '40.00',
+      percentage: '100.00',
     }
 
     vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(mockProfile as never)
@@ -257,7 +257,10 @@ describe('goals.repository.server', () => {
       snapshotCurrent,
       snapshotFuture,
     ] as never)
-    vi.mocked(db.query.allocationPlanEntries.findMany).mockResolvedValue([mockAlloc1, mockAlloc2] as never)
+    vi.mocked(db.query.allocationPlanEntries.findMany).mockResolvedValue([
+      mockAlloc1,
+      mockFutureAlloc,
+    ] as never)
 
     const result = await getGoalsWorkspaceRows('user_1', '2026-08')
 
@@ -266,8 +269,8 @@ describe('goals.repository.server', () => {
     expect(result?.goals).toEqual([mockGoal1, mockGoal2])
     expect(result?.savingsPositions).toEqual([mockSavingsPos])
     expect(result?.investmentPositions).toEqual([mockInvestPos])
-    expect(result?.snapshots).toEqual([snapshotCurrent])
-    expect(result?.allocations).toEqual([mockAlloc1, mockAlloc2])
+    expect(result?.snapshots).toEqual([snapshotCurrent, snapshotFuture])
+    expect(result?.allocations).toEqual([mockAlloc1, mockFutureAlloc])
 
     const eqMock = vi.fn((col, val) => ({ col, val, op: 'eq' }))
     const inArrayMock = vi.fn((col, val) => ({ col, val, op: 'inArray' }))
@@ -308,7 +311,7 @@ describe('goals.repository.server', () => {
         (allocsWhereArg as any)({ snapshotId: 'snapshotId' }, { inArray: inArrayMock }),
     ).toEqual({
       col: 'snapshotId',
-      val: ['s2'],
+      val: ['s2', 's3'],
       op: 'inArray',
     })
 
@@ -3020,4 +3023,3 @@ describe('goals.repository.server', () => {
     })
   })
 })
-
