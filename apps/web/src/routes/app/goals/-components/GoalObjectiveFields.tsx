@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/react-form'
+import { useStore } from "@tanstack/react-form";
 import {
   Field,
   FieldDescription,
@@ -6,45 +6,45 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSet,
-} from '../../../../components/ui/field'
-import { Input } from '../../../../components/ui/input'
-import { MonthPickerInput } from '../../../../components/MonthPicker'
+} from "../../../../components/ui/field";
+import { Input } from "../../../../components/ui/input";
+import { MonthPickerInput } from "../../../../components/MonthPicker";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../../../components/ui/select'
-import { formatMoneyInput } from '../../../../lib/money'
-import type { GoalCreationContext } from '../../../../features/goals/goal-creation'
-import type { GoalCreationFormApi } from './useGoalCreationForm'
+} from "../../../../components/ui/select";
+import { formatMoneyInput } from "../../../../lib/money";
+import type { GoalCreationContext } from "../../../../features/goals/goal-creation";
+import type { GoalCreationFormApi } from "./useGoalCreationForm";
 
 export interface GoalObjectiveFieldsProps {
-  form: GoalCreationFormApi
-  context: GoalCreationContext
-  validationErrors?: Record<string, string>
-  immutableIdentity?: boolean
-  showStrategyFields?: boolean
+  form: GoalCreationFormApi;
+  context: GoalCreationContext;
+  validationErrors?: Record<string, string>;
+  immutableIdentity?: boolean;
+  showStrategyFields?: boolean;
 }
 
 const GOAL_TYPE_OPTIONS = [
-  { value: 'purchase', label: 'Compra o gasto grande' },
-  { value: 'emergency_fund', label: 'Colchón financiero' },
-  { value: 'retirement', label: 'Jubilación' },
-  { value: 'other', label: 'Otro objetivo' },
-] as const
+  { value: "purchase", label: "Compra o gasto grande" },
+  { value: "emergency_fund", label: "Colchón financiero" },
+  { value: "retirement", label: "Jubilación" },
+  { value: "other", label: "Otro objetivo" },
+] as const;
 
 const CURRENCY_OPTIONS = [
-  { value: 'ARS', label: 'Pesos (ARS)' },
-  { value: 'USD', label: 'Dólares (USD)' },
-] as const
+  { value: "ARS", label: "Pesos (ARS)" },
+  { value: "USD", label: "Dólares (USD)" },
+] as const;
 
 const AVAILABILITY_OPTIONS = [
-  { value: 'available_now', label: 'Disponible en cualquier momento' },
-  { value: 'available_from', label: 'Disponible a partir de una fecha' },
-  { value: 'long_term', label: 'Largo plazo / Al vencimiento' },
-] as const
+  { value: "available_now", label: "Disponible en cualquier momento" },
+  { value: "available_from", label: "Disponible a partir de una fecha" },
+  { value: "long_term", label: "Largo plazo / Al vencimiento" },
+] as const;
 
 export function GoalObjectiveFields({
   form,
@@ -53,33 +53,33 @@ export function GoalObjectiveFields({
   immutableIdentity = false,
   showStrategyFields = true,
 }: GoalObjectiveFieldsProps) {
-  const values = useStore(form.store, (state) => state.values)
+  const values = useStore(form.store, (state) => state.values);
 
   const goalTypeOptions = context.hasEmergencyFund
-    ? GOAL_TYPE_OPTIONS.filter((option) => option.value !== 'emergency_fund')
-    : GOAL_TYPE_OPTIONS
+    ? GOAL_TYPE_OPTIONS.filter((option) => option.value !== "emergency_fund")
+    : GOAL_TYPE_OPTIONS;
 
   const handleTypeChange = (newType: string | null) => {
-    if (!newType) return
-    const wasEmergencyFund = values.type === 'emergency_fund'
-    form.setFieldValue('type', newType as any)
+    if (!newType) return;
+    const wasEmergencyFund = values.type === "emergency_fund";
+    form.setFieldValue("type", newType as any);
 
-    if (wasEmergencyFund && newType !== 'emergency_fund') {
-      form.setFieldValue('name', '')
+    if (wasEmergencyFund && newType !== "emergency_fund") {
+      form.setFieldValue("name", "");
     }
 
-    if (newType === 'emergency_fund') {
-      form.setFieldValue('name', 'Colchón financiero')
-      form.setFieldValue('currency', 'USD')
+    if (newType === "emergency_fund") {
+      form.setFieldValue("name", "Colchón financiero");
+      form.setFieldValue("currency", "USD");
     }
-  }
+  };
 
   const handleTargetAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatMoneyInput(e.target.value)
-    form.setFieldValue('targetAmount', formatted)
-  }
+    const formatted = formatMoneyInput(e.target.value);
+    form.setFieldValue("targetAmount", formatted);
+  };
 
-  const isEmergencyFund = values.type === 'emergency_fund'
+  const isEmergencyFund = values.type === "emergency_fund";
 
   return (
     <FieldGroup className="flex flex-col gap-4">
@@ -87,7 +87,11 @@ export function GoalObjectiveFields({
         {/* Goal Type */}
         <Field data-invalid={!!validationErrors.type}>
           <FieldLabel htmlFor="goal-type-trigger">Tipo de objetivo</FieldLabel>
-          <Select value={values.type} onValueChange={handleTypeChange} disabled={immutableIdentity}>
+          <Select
+            value={values.type}
+            onValueChange={handleTypeChange}
+            disabled={immutableIdentity}
+          >
             <SelectTrigger
               id="goal-type-trigger"
               aria-label="Tipo de objetivo"
@@ -95,7 +99,8 @@ export function GoalObjectiveFields({
               disabled={immutableIdentity}
             >
               <SelectValue>
-                {goalTypeOptions.find((opt) => opt.value === values.type)?.label ?? 'Seleccionar tipo'}
+                {goalTypeOptions.find((opt) => opt.value === values.type)
+                  ?.label ?? "Seleccionar tipo"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -114,13 +119,15 @@ export function GoalObjectiveFields({
         {/* Goal Name */}
         {!isEmergencyFund && (
           <Field data-invalid={!!validationErrors.name}>
-            <FieldLabel htmlFor="goal-name-input">Nombre del objetivo</FieldLabel>
+            <FieldLabel htmlFor="goal-name-input">
+              Nombre del objetivo
+            </FieldLabel>
             <Input
               id="goal-name-input"
               aria-label="Nombre del objetivo"
               placeholder="Ej: Vacaciones 2027, Auto nuevo..."
               value={values.name}
-              onChange={(e) => form.setFieldValue('name', e.target.value)}
+              onChange={(e) => form.setFieldValue("name", e.target.value)}
             />
             {validationErrors.name && (
               <FieldError>{validationErrors.name}</FieldError>
@@ -148,9 +155,9 @@ export function GoalObjectiveFields({
             </Field>
 
             <FieldDescription className="text-sm text-[var(--sea-ink-soft)]">
-              {context.expensesKnowledge === 'unknown'
-                ? 'Vamos a calcular el monto sugerido una vez que definas tus gastos mensuales.'
-                : 'El colchón equivale a 6 meses de gastos y se calculará automáticamente.'}
+              {context.expensesKnowledge === "unknown"
+                ? "Vamos a calcular el monto sugerido una vez que definas tus gastos mensuales."
+                : "El colchón equivale a 6 meses de gastos y se calculará automáticamente."}
             </FieldDescription>
           </div>
         ) : (
@@ -160,7 +167,7 @@ export function GoalObjectiveFields({
               <Select
                 value={values.currency}
                 onValueChange={(val) =>
-                  val && form.setFieldValue('currency', val as any)
+                  val && form.setFieldValue("currency", val as any)
                 }
                 disabled={immutableIdentity}
               >
@@ -173,7 +180,7 @@ export function GoalObjectiveFields({
                   <SelectValue>
                     {CURRENCY_OPTIONS.find(
                       (opt) => opt.value === values.currency,
-                    )?.label ?? 'Seleccionar moneda'}
+                    )?.label ?? "Seleccionar moneda"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -209,25 +216,25 @@ export function GoalObjectiveFields({
         )}
 
         {/* Desired Month */}
-        <Field data-invalid={!!validationErrors.desiredMonth}>
-          <FieldLabel htmlFor="goal-desired-month-input">
-            Mes objetivo (opcional)
-          </FieldLabel>
-          <MonthPickerInput
-            id="goal-desired-month-input"
-            aria-label="Mes objetivo"
-            value={values.desiredMonth}
-            minMonth={context.currentMonth}
-            onValueChange={(month) => form.setFieldValue('desiredMonth', month)}
-          />
-          <FieldDescription>
-            Dejalo vacío si no tenés una fecha límite definida.
-          </FieldDescription>
-          {validationErrors.desiredMonth && (
-            <FieldError>{validationErrors.desiredMonth}</FieldError>
-          )}
-        </Field>
-
+        {/* Will be enabled later */}
+        {/* <Field data-invalid={!!validationErrors.desiredMonth}> */}
+        {/*   <FieldLabel htmlFor="goal-desired-month-input"> */}
+        {/*     Mes objetivo (opcional) */}
+        {/*   </FieldLabel> */}
+        {/*   <MonthPickerInput */}
+        {/*     id="goal-desired-month-input" */}
+        {/*     aria-label="Mes objetivo" */}
+        {/*     value={values.desiredMonth} */}
+        {/*     minMonth={context.currentMonth} */}
+        {/*     onValueChange={(month) => form.setFieldValue('desiredMonth', month)} */}
+        {/*   /> */}
+        {/*   <FieldDescription> */}
+        {/*     Dejalo vacío si no tenés una fecha límite definida. */}
+        {/*   </FieldDescription> */}
+        {/*   {validationErrors.desiredMonth && ( */}
+        {/*     <FieldError>{validationErrors.desiredMonth}</FieldError> */}
+        {/*   )} */}
+        {/* </Field> */}
 
         {/* Strategy Radio Group */}
         {showStrategyFields && (
@@ -241,8 +248,8 @@ export function GoalObjectiveFields({
                     name="strategy"
                     value="save"
                     aria-label="Ahorrar"
-                    checked={values.strategy === 'save'}
-                    onChange={() => form.setFieldValue('strategy', 'save')}
+                    checked={values.strategy === "save"}
+                    onChange={() => form.setFieldValue("strategy", "save")}
                     disabled={immutableIdentity}
                     className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
                   />
@@ -254,8 +261,8 @@ export function GoalObjectiveFields({
                     name="strategy"
                     value="invest"
                     aria-label="Invertir"
-                    checked={values.strategy === 'invest'}
-                    onChange={() => form.setFieldValue('strategy', 'invest')}
+                    checked={values.strategy === "invest"}
+                    onChange={() => form.setFieldValue("strategy", "invest")}
                     disabled={immutableIdentity}
                     className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
                   />
@@ -268,7 +275,7 @@ export function GoalObjectiveFields({
             </Field>
 
             {/* Investment Assumptions (only when strategy === 'invest') */}
-            {values.strategy === 'invest' && (
+            {values.strategy === "invest" && (
               <div className="flex flex-col gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5">
                 <h4 className="text-sm font-semibold text-[var(--sea-ink)]">
                   Supuestos de inversión
@@ -283,10 +290,14 @@ export function GoalObjectiveFields({
                     aria-label="Rendimiento anual estimado (%)"
                     inputMode="decimal"
                     value={values.annualReturnRate}
-                    onChange={(e) => form.setFieldValue('annualReturnRate', e.target.value)}
+                    onChange={(e) =>
+                      form.setFieldValue("annualReturnRate", e.target.value)
+                    }
                     className="w-full sm:w-40"
                   />
-                  <FieldDescription>Tasa anual esperada para proyectar el crecimiento.</FieldDescription>
+                  <FieldDescription>
+                    Tasa anual esperada para proyectar el crecimiento.
+                  </FieldDescription>
                   {validationErrors.annualReturnRate && (
                     <FieldError>{validationErrors.annualReturnRate}</FieldError>
                   )}
@@ -298,7 +309,9 @@ export function GoalObjectiveFields({
                   </FieldLabel>
                   <Select
                     value={values.availability}
-                    onValueChange={(val) => val && form.setFieldValue('availability', val as any)}
+                    onValueChange={(val) =>
+                      val && form.setFieldValue("availability", val as any)
+                    }
                   >
                     <SelectTrigger
                       id="availability-select-trigger"
@@ -306,8 +319,9 @@ export function GoalObjectiveFields({
                       className="w-full"
                     >
                       <SelectValue>
-                        {AVAILABILITY_OPTIONS.find((opt) => opt.value === values.availability)?.label ??
-                          'Seleccionar disponibilidad'}
+                        {AVAILABILITY_OPTIONS.find(
+                          (opt) => opt.value === values.availability,
+                        )?.label ?? "Seleccionar disponibilidad"}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -323,7 +337,7 @@ export function GoalObjectiveFields({
                   )}
                 </Field>
 
-                {values.availability === 'available_from' && (
+                {values.availability === "available_from" && (
                   <Field data-invalid={!!validationErrors.availableFromMonth}>
                     <FieldLabel htmlFor="available-from-month-input">
                       Mes a partir del cual estará disponible
@@ -333,10 +347,14 @@ export function GoalObjectiveFields({
                       aria-label="Mes a partir del cual estará disponible"
                       value={values.availableFromMonth}
                       minMonth={context.currentMonth}
-                      onValueChange={(month) => form.setFieldValue('availableFromMonth', month)}
+                      onValueChange={(month) =>
+                        form.setFieldValue("availableFromMonth", month)
+                      }
                     />
                     {validationErrors.availableFromMonth && (
-                      <FieldError>{validationErrors.availableFromMonth}</FieldError>
+                      <FieldError>
+                        {validationErrors.availableFromMonth}
+                      </FieldError>
                     )}
                   </Field>
                 )}
@@ -346,5 +364,5 @@ export function GoalObjectiveFields({
         )}
       </FieldSet>
     </FieldGroup>
-  )
+  );
 }

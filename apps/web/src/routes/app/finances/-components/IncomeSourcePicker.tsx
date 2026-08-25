@@ -22,12 +22,14 @@ export function IncomeSourcePicker({
   value,
   error,
   onChange,
+  showPersistenceHint = true,
 }: {
   recurring: boolean
   sources: Array<{ id: string; name: string }>
   value: IncomeDraft['source']
   error?: string
   onChange: (source: IncomeDraft['source']) => void
+  showPersistenceHint?: boolean
 }) {
   const fixedSources = recurring ? RECURRING_INCOME_SOURCES : ONE_TIME_INCOME_SOURCES
   const options = [
@@ -80,7 +82,9 @@ export function IncomeSourcePicker({
               onChange({ kind: 'custom', name: event.target.value })
             }}
           />
-          <FieldDescription>Este ingreso se va a guardar para que puedas volver a usarlo</FieldDescription>
+          {showPersistenceHint && (
+            <FieldDescription>Este ingreso se va a guardar para que puedas volver a usarlo</FieldDescription>
+          )}
         </Field>
       )}
       {error && <FieldError>{error}</FieldError>}

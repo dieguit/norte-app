@@ -68,12 +68,18 @@ export function IncomeSheet({
   month,
   sources,
   income,
+  draft: initialDraft,
+  onSaveDraft,
+  recurringOnly = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   month: string;
   sources: Array<{ id: string; name: string }>;
   income?: IncomeRow;
+  draft?: IncomeDraft;
+  onSaveDraft?: (draft: IncomeDraft) => void;
+  recurringOnly?: boolean;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<IncomeDraft>(() => defaultDraft(month));
@@ -101,9 +107,16 @@ export function IncomeSheet({
             recurring: income.recurring,
             effectiveMonth: income.effectiveMonth.slice(0, 7),
           }
-        : defaultDraft(month),
+        : initialDraft
+          ? {
+              ...initialDraft,
+              amount: formatMoneyInput(initialDraft.amount.replace(".", ",")),
+              recurring: recurringOnly ? true : initialDraft.recurring,
+              effectiveMonth: recurringOnly ? month : initialDraft.effectiveMonth,
+            }
+          : defaultDraft(month),
     );
-  }, [income, month, open]);
+  }, [income, initialDraft, month, open, recurringOnly]);
 
   async function save() {
     const parsed = createIncomeSchema.safeParse({ draft });
@@ -128,13 +141,17 @@ export function IncomeSheet({
           parsed.data.draft.currency,
         )!.amount,
       };
-      if (income)
-        await updateIncome({
-          data: { incomeId: income.id, draft: normalizedDraft },
-        });
-      else await createIncome({ data: { draft: normalizedDraft } });
-      await router.invalidate();
-      toast.success(income ? "Ingreso actualizado." : "Ingreso agregado.");
+      if (onSaveDraft) {
+        onSaveDraft(normalizedDraft);
+      } else {
+        if (income)
+          await updateIncome({
+            data: { incomeId: income.id, draft: normalizedDraft },
+          });
+        else await createIncome({ data: { draft: normalizedDraft } });
+        await router.invalidate();
+        toast.success(income ? "Ingreso actualizado." : "Ingreso agregado.");
+      }
       onOpenChange(false);
     } catch (cause) {
       setError(
@@ -180,10 +197,18 @@ export function IncomeSheet({
       >
         <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
           <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-            {income ? "Editar ingreso" : "Nuevo ingreso"}
+            {recurringOnly
+              ? initialDraft
+                ? 'Editar ingreso recurrente'
+                : 'Nuevo ingreso recurrente'
+              : income
+                ? 'Editar ingreso'
+                : 'Nuevo ingreso'}
           </SheetTitle>
           <SheetDescription>
-            Indicá el origen y desde cuándo contás con este ingreso.
+            {recurringOnly
+              ? 'Indicá cuánto recibís por mes y de dónde viene.'
+              : 'Indicá el origen y desde cuándo contás con este ingreso.'}
           </SheetDescription>
         </SheetHeader>
         <form
@@ -249,50 +274,55 @@ export function IncomeSheet({
                   Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}
                 </p>
               )}
-              <Field orientation="horizontal">
-                <Switch
-                  id="income-recurring"
-                  checked={draft.recurring}
-                  onCheckedChange={(recurring) =>
-                    setDraft({
-                      ...draft,
-                      recurring,
-                      source:
-                        draft.source.kind === "custom"
-                          ? draft.source
-                          : { kind: recurring ? "salary" : "asset_sale" },
-                    })
-                  }
-                />
-                <FieldLabel htmlFor="income-recurring">
-                  Es ingreso recurrente
-                </FieldLabel>
-              </Field>
+              {!recurringOnly && (
+                <Field orientation="horizontal">
+                  <Switch
+                    id="income-recurring"
+                    checked={draft.recurring}
+                    onCheckedChange={(recurring) =>
+                      setDraft({
+                        ...draft,
+                        recurring,
+                        source:
+                          draft.source.kind === "custom"
+                            ? draft.source
+                            : { kind: recurring ? "salary" : "asset_sale" },
+                      })
+                    }
+                  />
+                  <FieldLabel htmlFor="income-recurring">
+                    Es ingreso recurrente
+                  </FieldLabel>
+                </Field>
+              )}
               <IncomeSourcePicker
                 recurring={draft.recurring}
                 sources={sources}
                 value={draft.source}
                 error={validationErrors.source}
                 onChange={(source) => setDraft({ ...draft, source })}
+                showPersistenceHint={!onSaveDraft}
               />
-              <Field data-invalid={!!validationErrors.effectiveMonth}>
-                <FieldLabel htmlFor="income-month-picker">
-                  {draft.recurring ? "Desde el mes" : "Mes del ingreso"}
-                </FieldLabel>
-                <MonthPickerInput
-                  id="income-month-picker"
-                  aria-label={
-                    draft.recurring ? "Desde el mes" : "Mes del ingreso"
-                  }
-                  value={draft.effectiveMonth}
-                  onValueChange={(effectiveMonth) =>
-                    setDraft({ ...draft, effectiveMonth })
-                  }
-                />
-                {validationErrors.effectiveMonth && (
-                  <FieldError>{validationErrors.effectiveMonth}</FieldError>
-                )}
-              </Field>
+              {!recurringOnly && (
+                <Field data-invalid={!!validationErrors.effectiveMonth}>
+                  <FieldLabel htmlFor="income-month-picker">
+                    {draft.recurring ? "Desde el mes" : "Mes del ingreso"}
+                  </FieldLabel>
+                  <MonthPickerInput
+                    id="income-month-picker"
+                    aria-label={
+                      draft.recurring ? "Desde el mes" : "Mes del ingreso"
+                    }
+                    value={draft.effectiveMonth}
+                    onValueChange={(effectiveMonth) =>
+                      setDraft({ ...draft, effectiveMonth })
+                    }
+                  />
+                  {validationErrors.effectiveMonth && (
+                    <FieldError>{validationErrors.effectiveMonth}</FieldError>
+                  )}
+                </Field>
+              )}
               {error && <FieldError>{error}</FieldError>}
             </FieldSet>
           </FieldGroup>

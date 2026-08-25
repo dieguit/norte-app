@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIncome, updateIncome } from '../../../../features/financial/financial.functions'
+import type { IncomeDraft } from '../../../../features/financial/incomes.schema'
 import { IncomeSheet } from './IncomeSheet'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -31,6 +32,26 @@ describe('IncomeSheet', () => {
         month="2026-08"
         sources={sources}
         income={income}
+      />,
+    )
+  }
+
+  function renderDraftSheet({
+    draft,
+    onSaveDraft = vi.fn(),
+  }: {
+    draft?: IncomeDraft
+    onSaveDraft?: (draft: IncomeDraft) => void
+  } = {}) {
+    return render(
+      <IncomeSheet
+        open
+        onOpenChange={vi.fn()}
+        month="2026-08"
+        sources={[]}
+        draft={draft}
+        onSaveDraft={onSaveDraft}
+        recurringOnly
       />,
     )
   }
@@ -223,6 +244,73 @@ describe('IncomeSheet', () => {
     expect(updateIncome).toHaveBeenCalledWith({
       data: { incomeId: 'income_1', draft: expect.objectContaining({ source: { kind: 'custom', sourceId } }) },
     })
+  })
+
+  it('renders the reduced recurring-income variant without persistence claims', async () => {
+    const user = userEvent.setup()
+    renderDraftSheet()
+
+    expect(screen.getByRole('heading', { name: 'Nuevo ingreso recurrente' })).toBeVisible()
+    expect(screen.getByText('Indicá cuánto recibís por mes y de dónde viene.')).toBeVisible()
+    expect(screen.queryByRole('switch', { name: 'Es ingreso recurrente' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+
+    expect(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' })).toBeVisible()
+    expect(screen.queryByText('Este ingreso se va a guardar para que puedas volver a usarlo')).not.toBeInTheDocument()
+  })
+
+  it('returns a canonical recurring local draft without creating an income', async () => {
+    const user = userEvent.setup()
+    const onSaveDraft = vi.fn()
+    renderDraftSheet({ onSaveDraft })
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(onSaveDraft).toHaveBeenCalledWith({
+      source: { kind: 'salary' },
+      amount: '125000.00',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-08',
+    })
+    expect(createIncome).not.toHaveBeenCalled()
+    expect(updateIncome).not.toHaveBeenCalled()
+  })
+
+  it('populates and updates a local draft', async () => {
+    const user = userEvent.setup()
+    const onSaveDraft = vi.fn()
+    renderDraftSheet({
+      draft: {
+        source: { kind: 'custom', name: 'Consultoría' },
+        amount: '1250.50',
+        currency: 'USD',
+        recurring: true,
+        effectiveMonth: '2026-08',
+      },
+      onSaveDraft,
+    })
+
+    expect(screen.getByRole('heading', { name: 'Editar ingreso recurrente' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
+    expect(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' })).toHaveValue('Consultoría')
+
+    const amount = screen.getByRole('textbox', { name: 'Monto' })
+    await user.clear(amount)
+    await user.type(amount, '2000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(onSaveDraft).toHaveBeenCalledWith(expect.objectContaining({
+      source: { kind: 'custom', name: 'Consultoría' },
+      amount: '2000.00',
+      currency: 'USD',
+      recurring: true,
+      effectiveMonth: '2026-08',
+    }))
   })
 
   it('does not render native monthly inputs', () => {
