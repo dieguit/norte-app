@@ -12,8 +12,6 @@ function createBaseWorkspaceSource(): GoalsWorkspaceSource {
     profile: {
       userId: 'user-1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '2000000.00',
-      approximateMonthlyExpenses: '1500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       goalDedicationPercentage: '90.00',

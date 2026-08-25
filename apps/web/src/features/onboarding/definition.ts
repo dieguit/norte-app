@@ -938,7 +938,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
           {
             id: `t${n}_resumen_usd`,
             type: "number",
-            label: "En dólares (US$)",
+            label: "En dólares (USD)",
             helpText: "Cargá el total en dólares si aparece en tu resumen.",
             visibleWhen: manualMode,
           },

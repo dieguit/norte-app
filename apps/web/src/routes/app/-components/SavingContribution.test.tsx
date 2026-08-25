@@ -269,7 +269,7 @@ describe('SavingContribution component', () => {
       })
 
       expect((await screen.findAllByText('Colchón financiero'))[0]).toBeVisible()
-      expect(screen.getByText('US$ 100,00')).toBeVisible()
+      expect(screen.getByText('USD 100,00')).toBeVisible()
     })
 
     it('derives rate when USD and ARS spent are entered', async () => {
@@ -485,7 +485,7 @@ describe('SavingContribution component', () => {
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: /ahorré usd/i }))
 
-      expect(screen.getByText('US$ 30,00')).toBeInTheDocument()
+      expect(screen.getByText('USD 30,00')).toBeInTheDocument()
     })
 
     it('renders fulfilled message when monthly saving target is 0.00', () => {

@@ -622,8 +622,6 @@ export function serializeGoalLifecycleState(
       ? {
           userId: source.profile.userId,
           baseCurrency: source.profile.baseCurrency,
-          approximateMonthlyIncome: source.profile.approximateMonthlyIncome,
-          approximateMonthlyExpenses: source.profile.approximateMonthlyExpenses ?? null,
           expensesKnowledge: source.profile.expensesKnowledge,
           plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
           onboardingCompleted: source.profile.onboardingCompleted,

@@ -4,6 +4,7 @@ import {
   type Money,
   calculateAllocationAmounts,
   createMoney,
+  isPositiveMoney,
   parseMoneyInput,
 } from '../../lib/money'
 import {
@@ -11,6 +12,7 @@ import {
   convertCommitmentToDestination,
   deriveEmergencyFundTarget,
 } from '../financial/financial'
+import { getExpenseTotalArs } from '../financial/expenses'
 import {
   type GoalPriority,
   type GoalProjection,
@@ -312,15 +314,23 @@ export function buildGoalCreationProposal(input: {
   let targetAmount: Money | undefined
 
   if (type === 'emergency_fund') {
-    emergencyFundMonths = 6
+    emergencyFundMonths = 3
     if (
       state.source.profile?.expensesKnowledge === 'known' &&
-      state.source.profile.approximateMonthlyExpenses
+      state.source.expenses
     ) {
-      targetAmount = deriveEmergencyFundTarget(
-        createMoney(state.source.profile.approximateMonthlyExpenses, 'ARS'),
-        6,
+      const expensesTotal = getExpenseTotalArs(
+        state.source.expenses.map((row) => ({
+          amount: createMoney(row.amount, row.currency),
+          recurring: row.recurring,
+          effectiveMonth: row.effectiveMonth,
+          endMonth: row.endMonth,
+        })),
+        currentMonth,
       )
+      if (isPositiveMoney(expensesTotal)) {
+        targetAmount = deriveEmergencyFundTarget(expensesTotal, emergencyFundMonths)
+      }
     }
   } else if (draft.targetAmount) {
     targetAmount = parseMoneyInput(draft.targetAmount, currency) ?? undefined
@@ -776,8 +786,6 @@ export function serializeGoalCreationState(
       ? {
           userId: source.profile.userId,
           baseCurrency: source.profile.baseCurrency,
-          approximateMonthlyIncome: source.profile.approximateMonthlyIncome,
-          approximateMonthlyExpenses: source.profile.approximateMonthlyExpenses ?? null,
           expensesKnowledge: source.profile.expensesKnowledge,
           plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
           onboardingCompleted: source.profile.onboardingCompleted,
@@ -900,8 +908,6 @@ export function serializeGoalEditState(
       ? {
           userId: source.profile.userId,
           baseCurrency: source.profile.baseCurrency,
-          approximateMonthlyIncome: source.profile.approximateMonthlyIncome,
-          approximateMonthlyExpenses: source.profile.approximateMonthlyExpenses ?? null,
           expensesKnowledge: source.profile.expensesKnowledge,
           plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
           onboardingCompleted: source.profile.onboardingCompleted,

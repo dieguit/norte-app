@@ -150,8 +150,6 @@ function createMockWorkspaceSource(overrides: Partial<GoalsWorkspaceSource> = {}
     profile: {
       userId: 'user-1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '600000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '100000.00',
       goalDedicationPercentage: '100.00',
@@ -221,8 +219,6 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '150000.00',
         goalDedicationPercentage: '100.00',
@@ -276,8 +272,6 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '0.00',
         goalDedicationPercentage: '0.00',
@@ -484,8 +478,6 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
         profile: {
           userId: 'user-1',
           baseCurrency: 'ARS',
-          approximateMonthlyIncome: '1000000.00',
-          approximateMonthlyExpenses: '600000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '100.00',
           goalDedicationPercentage: '100.00',
@@ -535,8 +527,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '100000.00',
         goalDedicationPercentage: '90.00',
@@ -644,8 +634,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '100000.00',
         goalDedicationPercentage: '100.00',
@@ -684,8 +672,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '20000.00',
         goalDedicationPercentage: '100.00',
@@ -727,8 +713,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '10000.00',
         goalDedicationPercentage: '100.00',
@@ -779,8 +763,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '20000.00',
         goalDedicationPercentage: '100.00',
@@ -896,8 +878,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '0.00',
         goalDedicationPercentage: '0.00',
@@ -937,8 +917,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '50000.00',
         goalDedicationPercentage: '100.00',
@@ -979,8 +957,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '10000.00',
         goalDedicationPercentage: '100.00',
@@ -1021,8 +997,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '10000.00',
         goalDedicationPercentage: '100.00',
@@ -1064,8 +1038,6 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '100.00',
         goalDedicationPercentage: '100.00',
@@ -1105,17 +1077,19 @@ describe('buildGoalsWorkspace - projection monthly simulation', () => {
 describe('buildGoalsWorkspace - emergency-fund target derivation', () => {
   const currentMonth = '2026-08'
 
-  it('derives target amount for emergency fund with known expenses and 6 months', () => {
+  it('derives target amount for emergency fund with known expenses and 3 months default', () => {
     const source = createMockWorkspaceSource({
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '600000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '100000.00',
         onboardingCompleted: true,
       },
+      expenses: [
+        recurringExpense('250000.00', '2026-01'),
+        recurringExpense('100000.00', '2026-09'),
+      ],
       goals: [
         {
           id: 'goal-ef',
@@ -1133,17 +1107,59 @@ describe('buildGoalsWorkspace - emergency-fund target derivation', () => {
         {
           id: 'sav-ef',
           goalId: 'goal-ef',
-          amount: '600.00',
+          amount: '125.00',
           currency: 'USD',
         },
       ],
     })
 
-    // 600,000 ARS * 6 / 1500 = 2400 USD
+    // 250,000 ARS * 3 / 1500 = 500 USD (recurring expense for 2026-09 is excluded for 2026-08)
     const workspace = buildGoalsWorkspace(source, currentMonth)
     const goal = workspace.groups[0].goals[0]
-    expect(goal.targetAmount).toEqual({ amount: '2400.00', currency: 'USD' })
-    expect(goal.progressPercentage).toBe('25.00') // 600 / 2400 = 25%
+    expect(goal.targetAmount).toEqual({ amount: '500.00', currency: 'USD' })
+    expect(goal.progressPercentage).toBe('25.00') // 125 / 500 = 25%
+    expect(goal.usesPlanningRate).toBe(true)
+  })
+
+  it('derives target amount for emergency fund with custom emergencyFundMonths', () => {
+    const source = createMockWorkspaceSource({
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '100000.00',
+        onboardingCompleted: true,
+      },
+      expenses: [recurringExpense('200000.00', '2026-01')],
+      goals: [
+        {
+          id: 'goal-ef',
+          name: 'Colchón financiero',
+          type: 'emergency_fund',
+          targetAmount: null,
+          currency: 'USD',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          emergencyFundMonths: 6,
+          createdAt: '2026-08-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [
+        {
+          id: 'sav-ef',
+          goalId: 'goal-ef',
+          amount: '200.00',
+          currency: 'USD',
+        },
+      ],
+    })
+
+    // 200,000 ARS * 6 / 1500 = 800 USD
+    const workspace = buildGoalsWorkspace(source, currentMonth)
+    const goal = workspace.groups[0].goals[0]
+    expect(goal.targetAmount).toEqual({ amount: '800.00', currency: 'USD' })
+    expect(goal.progressPercentage).toBe('25.00') // 200 / 800 = 25%
     expect(goal.usesPlanningRate).toBe(true)
   })
 
@@ -1152,12 +1168,11 @@ describe('buildGoalsWorkspace - emergency-fund target derivation', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
         plannedMonthlyContribution: '100000.00',
         onboardingCompleted: true,
       },
+      expenses: [],
       goals: [
         {
           id: 'goal-ef-unk',
@@ -1168,7 +1183,7 @@ describe('buildGoalsWorkspace - emergency-fund target derivation', () => {
           priority: 'high',
           strategy: 'save',
           status: 'active',
-          emergencyFundMonths: 6,
+          emergencyFundMonths: 3,
           createdAt: '2026-08-01T00:00:00.000Z',
         },
       ],

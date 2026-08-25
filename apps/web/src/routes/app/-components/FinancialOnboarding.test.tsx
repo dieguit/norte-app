@@ -2,12 +2,31 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { completeFinancialOnboarding } from '../../../features/financial/financial.functions'
 import { FinancialOnboarding } from './FinancialOnboarding'
+
+const mockInvalidate = vi.fn().mockResolvedValue(undefined)
+const mockNavigate = vi.fn().mockResolvedValue(undefined)
+
+vi.mock('@tanstack/react-router', () => ({
+  useRouter: () => ({
+    invalidate: mockInvalidate,
+    navigate: mockNavigate,
+  }),
+}))
+
+vi.mock('../../../features/financial/financial.functions', () => ({
+  completeFinancialOnboarding: vi.fn(),
+}))
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+})
+
+beforeEach(() => {
+  vi.clearAllMocks()
 })
 
 describe('FinancialOnboarding', () => {
@@ -19,6 +38,12 @@ describe('FinancialOnboarding', () => {
 
   async function addSalary(user: ReturnType<typeof userEvent.setup>, amount = '125000') {
     await user.click(screen.getByRole('button', { name: 'Agregar ingreso' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), amount)
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+  }
+
+  async function addHousingExpense(user: ReturnType<typeof userEvent.setup>, amount = '100000') {
+    await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), amount)
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
   }
@@ -53,7 +78,7 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByLabelText('Tipo de objetivo')).toHaveTextContent('Colchón financiero')
     expect(screen.queryByLabelText('Nombre del objetivo')).not.toBeInTheDocument()
     expect(screen.getByText('Dólares (USD)')).toBeVisible()
-    expect(screen.getByText('El colchón equivale a 6 meses de gastos y se calculará automáticamente.')).toBeVisible()
+    expect(screen.getByText('El colchón equivale a 3 meses de gastos y se calculará automáticamente.')).toBeVisible()
     expect(screen.queryByLabelText('Monto objetivo')).not.toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'Ahorrar' })).not.toBeInTheDocument()
     expect(screen.queryByText(/distribución/i)).not.toBeInTheDocument()
@@ -105,7 +130,7 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByText('Sueldo')).toBeVisible()
     expect(screen.getByText('USD 100,00')).toBeVisible()
     expect(screen.getByText('Total mensual estimado')).toBeVisible()
-    expect(screen.getByText('ARS 150.000,00')).toBeVisible()
+    expect(screen.getByText('$ 150.000,00')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
@@ -126,7 +151,7 @@ describe('FinancialOnboarding', () => {
     await user.type(amount, '200000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    expect(screen.getAllByText('ARS 200.000,00')).toHaveLength(2)
+    expect(screen.getAllByText('$ 200.000,00')).toHaveLength(2)
 
     await user.click(screen.getByRole('button', { name: 'Eliminar ingreso Sueldo' }))
     expect(window.confirm).toHaveBeenCalledWith('¿Eliminar este ingreso?')
@@ -181,7 +206,7 @@ describe('FinancialOnboarding', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     expect(screen.getByText('Alquiler / vivienda')).toBeVisible()
-    expect(screen.getAllByText('ARS 75.000,00')).toHaveLength(2)
+    expect(screen.getAllByText('$ 75.000,00')).toHaveLength(2)
   })
 
   it('edits and removes a local expense', async () => {
@@ -199,7 +224,7 @@ describe('FinancialOnboarding', () => {
     await user.clear(amount)
     await user.type(amount, '200000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
-    expect(screen.getAllByText('ARS 200.000,00')).toHaveLength(2)
+    expect(screen.getAllByText('$ 200.000,00')).toHaveLength(2)
 
     await user.click(screen.getByRole('button', { name: 'Eliminar gasto Alquiler / vivienda' }))
     expect(window.confirm).toHaveBeenCalledWith('¿Eliminar este gasto?')
@@ -253,7 +278,81 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByText('Alquiler / vivienda')).toBeVisible()
     expect(screen.getByText('USD 100,00')).toBeVisible()
     expect(screen.getByText('Total mensual estimado')).toBeVisible()
-    expect(screen.getByText('ARS 150.000,00')).toBeVisible()
+    expect(screen.getByText('$ 150.000,00')).toBeVisible()
+  })
+
+  it('submits the four-step onboarding plan, invalidates the router, and navigates to /app', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeFinancialOnboarding).mockResolvedValue({ created: true })
+
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+
+    const submit = screen.getByRole('button', {
+      name: 'Listo, continuar al plan',
+    })
+    expect(submit).toBeDisabled()
+
+    await addHousingExpense(user)
+    expect(submit).toBeEnabled()
+    await user.click(submit)
+
+    expect(completeFinancialOnboarding).toHaveBeenCalledWith({
+      data: {
+        goal: expect.objectContaining({
+          type: 'emergency_fund',
+          name: 'Colchón financiero',
+        }),
+        incomes: [expect.objectContaining({ recurring: true })],
+        expenses: [expect.objectContaining({ recurring: true })],
+      },
+    })
+    expect(mockInvalidate).toHaveBeenCalledOnce()
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/app' })
+  })
+
+  it('shows a retry message and stays on step 4 when a plan already exists', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeFinancialOnboarding).mockResolvedValueOnce({ created: false })
+
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+    await addHousingExpense(user)
+
+    const submit = screen.getByRole('button', {
+      name: 'Listo, continuar al plan',
+    })
+    expect(submit).toBeEnabled()
+    await user.click(submit)
+
+    expect(
+      screen.getByText('Ya existe un plan para tu cuenta. Recargá la página para continuarlo.'),
+    ).toBeVisible()
+    expect(screen.getByText('Paso 4 de 4')).toBeVisible()
+    expect(submit).toBeEnabled()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('shows an error message and stays on step 4 if onboarding submission fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeFinancialOnboarding).mockRejectedValueOnce(new Error('Network error'))
+
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+    await addHousingExpense(user)
+
+    const submit = screen.getByRole('button', {
+      name: 'Listo, continuar al plan',
+    })
+    expect(submit).toBeEnabled()
+    await user.click(submit)
+
+    expect(
+      screen.getByText('No pudimos guardar tu plan. Revisá tu conexión e intentá de nuevo.'),
+    ).toBeVisible()
+    expect(screen.getByText('Paso 4 de 4')).toBeVisible()
+    expect(submit).toBeEnabled()
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 })
 

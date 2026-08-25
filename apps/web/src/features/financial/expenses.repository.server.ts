@@ -73,22 +73,31 @@ function expenseValues(
   }
 }
 
+export async function insertExpenseWithExecutor(
+  tx: any,
+  userId: string,
+  draft: ExpenseDraft,
+  effectiveMonth: string,
+) {
+  const source = await resolveSource(tx, userId, draft.source)
+  const [expense] = await tx
+    .insert(expenses)
+    .values({
+      ...expenseValues(userId, draft, source),
+      effectiveMonth: `${effectiveMonth}-01`,
+      endMonth: null,
+    })
+    .returning()
+  return expense
+}
+
 export async function createExpenseInRepository(
   userId: string,
   draft: ExpenseDraft,
   effectiveMonth: string,
 ) {
   return db.transaction(async (tx) => {
-    const source = await resolveSource(tx, userId, draft.source)
-    const [expense] = await tx
-      .insert(expenses)
-      .values({
-        ...expenseValues(userId, draft, source),
-        effectiveMonth: `${effectiveMonth}-01`,
-        endMonth: null,
-      })
-      .returning()
-    return expense
+    return insertExpenseWithExecutor(tx, userId, draft, effectiveMonth)
   })
 }
 

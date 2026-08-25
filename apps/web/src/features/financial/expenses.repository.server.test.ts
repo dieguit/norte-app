@@ -5,6 +5,7 @@ import {
   createExpenseInRepository,
   deleteExpenseInRepository,
   getExpensesWorkspaceState,
+  insertExpenseWithExecutor,
   updateExpenseInRepository,
 } from './expenses.repository.server'
 import type { ExpenseDraft } from './expenses.schema'
@@ -141,6 +142,99 @@ describe('expenses.repository.server', () => {
           },
         ],
       })
+    })
+  })
+
+  describe('insertExpenseWithExecutor', () => {
+    it('uses the supplied transaction without opening another', async () => {
+      const housingDraft: ExpenseDraft = {
+        source: { kind: 'housing' },
+        amount: '200000.00',
+        currency: 'ARS',
+        recurring: true,
+      }
+      const insertedExpense = {
+        id: 'exp_housing',
+        userId: 'user_1',
+        sourceKind: 'housing',
+        sourceId: null,
+        amount: '200000.00',
+        currency: 'ARS',
+        recurring: true,
+        effectiveMonth: '2026-08-01',
+        endMonth: null,
+      }
+
+      mockTx.insert.mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([insertedExpense]),
+        }),
+      })
+
+      const result = await insertExpenseWithExecutor(mockTx, 'user_1', housingDraft, '2026-08')
+
+      expect(db.transaction).not.toHaveBeenCalled()
+      expect(mockTx.insert).toHaveBeenCalledWith(expenses)
+      expect(result).toEqual(insertedExpense)
+    })
+
+    it('handles custom concept resolution and row insertion through the same executor', async () => {
+      const customDraft: ExpenseDraft = {
+        source: { kind: 'custom', name: '  Clases De Inglés  ' },
+        amount: '35000.00',
+        currency: 'ARS',
+        recurring: true,
+      }
+      const createdSource = {
+        id: 'src_eng',
+        userId: 'user_1',
+        name: 'Clases De Inglés',
+        normalizedName: 'clases de inglés',
+      }
+      const insertedExpense = {
+        id: 'exp_eng',
+        userId: 'user_1',
+        sourceKind: 'custom',
+        sourceId: 'src_eng',
+        amount: '35000.00',
+        currency: 'ARS',
+        recurring: true,
+        effectiveMonth: '2026-08-01',
+        endMonth: null,
+      }
+
+      const mockOnConflictDoNothing = vi.fn().mockResolvedValue(undefined)
+      const mockSourceValues = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflictDoNothing })
+      const mockExpenseReturning = vi.fn().mockResolvedValue([insertedExpense])
+      const mockExpenseValues = vi.fn().mockReturnValue({ returning: mockExpenseReturning })
+
+      mockTx.insert.mockImplementation((table) => {
+        if (table === expenseSources) return { values: mockSourceValues }
+        if (table === expenses) return { values: mockExpenseValues }
+        throw new Error('Unexpected table')
+      })
+
+      mockTx.query.expenseSources.findFirst.mockResolvedValue(createdSource)
+
+      const result = await insertExpenseWithExecutor(mockTx, 'user_1', customDraft, '2026-08')
+
+      expect(db.transaction).not.toHaveBeenCalled()
+      expect(mockSourceValues).toHaveBeenCalledWith({
+        userId: 'user_1',
+        name: 'Clases De Inglés',
+        normalizedName: 'clases de inglés',
+      })
+      expect(mockExpenseValues).toHaveBeenCalledWith({
+        userId: 'user_1',
+        sourceKind: 'custom',
+        sourceId: 'src_eng',
+        amount: '35000.00',
+        currency: 'ARS',
+        recurring: true,
+        effectiveMonth: '2026-08-01',
+        endMonth: null,
+      })
+      expect(result).toEqual(insertedExpense)
     })
   })
 

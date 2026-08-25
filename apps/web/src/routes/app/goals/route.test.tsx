@@ -53,7 +53,6 @@ vi.mock('../../../features/goals/goals.functions', () => ({
 
 vi.mock('../../../features/financial/financial.functions', () => ({
   getFinancialAppState: vi.fn().mockResolvedValue({ profile: 'present' }),
-  completeInitialPlan: vi.fn(),
 }))
 
 const sampleGoal: GoalWorkspaceItem = {

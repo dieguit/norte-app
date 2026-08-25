@@ -1,11 +1,17 @@
 import { useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
+import { formatMoney } from "../../../lib/format";
+import { createMoney } from "../../../lib/money";
 import {
   FIXED_EXPENSE_SOURCES,
   getExpenseTotalArs,
 } from "../../../features/financial/expenses";
 import type { ExpenseDraft } from "../../../features/financial/expenses.schema";
+import {
+  completeFinancialOnboarding,
+} from "../../../features/financial/financial.functions";
 import {
   FIXED_INCOME_SOURCES,
   getIncomeTotalArs,
@@ -30,13 +36,6 @@ type OnboardingExpense = {
   draft: ExpenseDraft;
 };
 
-function formatAmount(amount: string, currency: "ARS" | "USD") {
-  return `${currency} ${Number(amount).toLocaleString("es-AR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
 function incomeSourceLabel(draft: IncomeDraft) {
   if (draft.source.kind === "custom") {
     return "name" in draft.source ? draft.source.name : "Fuente personalizada";
@@ -56,6 +55,7 @@ function expenseSourceLabel(draft: ExpenseDraft) {
 const STEP_LABELS = ["Bienvenida", "Objetivo", "Ingresos", "Gastos"] as const;
 
 export function FinancialOnboarding() {
+  const router = useRouter();
   const [step, setStep] = useState<OnboardingStep>(1);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
@@ -66,6 +66,8 @@ export function FinancialOnboarding() {
   const [expenseDrafts, setExpenseDrafts] = useState<OnboardingExpense[]>([]);
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const objectiveForm = useGoalCreationForm({
@@ -168,6 +170,34 @@ export function FinancialOnboarding() {
     setExpenseDrafts((current) =>
       current.filter((expense) => expense.id !== id),
     );
+  }
+
+  async function handleSubmit() {
+    setIsSubmitting(true);
+    setSubmissionError(null);
+    try {
+      const result = await completeFinancialOnboarding({
+        data: {
+          goal: objectiveForm.state.values,
+          incomes: incomeDrafts.map(({ draft }) => draft),
+          expenses: expenseDrafts.map(({ draft }) => draft),
+        },
+      })
+      if (!result.created) {
+        setSubmissionError(
+          "Ya existe un plan para tu cuenta. Recargá la página para continuarlo.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+      await router.invalidate();
+      await router.navigate({ to: "/app" });
+    } catch {
+      setSubmissionError(
+        "No pudimos guardar tu plan. Revisá tu conexión e intentá de nuevo.",
+      );
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -332,9 +362,11 @@ export function FinancialOnboarding() {
                               {label}
                             </p>
                             <p className="mt-1 text-sm tabular-nums text-[var(--sea-ink-soft)]">
-                              {formatAmount(
-                                income.draft.amount,
-                                income.draft.currency,
+                              {formatMoney(
+                                createMoney(
+                                  income.draft.amount,
+                                  income.draft.currency,
+                                ),
                               )}
                             </p>
                           </div>
@@ -372,7 +404,7 @@ export function FinancialOnboarding() {
                       Total mensual estimado
                     </span>
                     <span className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                      {formatAmount(incomeTotal.amount, "ARS")}
+                      {formatMoney(createMoney(incomeTotal.amount, "ARS"))}
                     </span>
                   </div>
                 </div>
@@ -476,9 +508,11 @@ export function FinancialOnboarding() {
                               {label}
                             </p>
                             <p className="mt-1 text-sm tabular-nums text-[var(--sea-ink-soft)]">
-                              {formatAmount(
-                                expense.draft.amount,
-                                expense.draft.currency,
+                              {formatMoney(
+                                createMoney(
+                                  expense.draft.amount,
+                                  expense.draft.currency,
+                                ),
                               )}
                             </p>
                           </div>
@@ -516,7 +550,7 @@ export function FinancialOnboarding() {
                       Total mensual estimado
                     </span>
                     <span className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                      {formatAmount(expenseTotal.amount, "ARS")}
+                      {formatMoney(createMoney(expenseTotal.amount, "ARS"))}
                     </span>
                   </div>
                 </div>
@@ -524,8 +558,19 @@ export function FinancialOnboarding() {
             )}
 
             <div className="flex flex-col gap-3">
+              {submissionError && (
+                <p
+                  id="expense-submission-error"
+                  className="text-sm text-right text-destructive"
+                >
+                  {submissionError}
+                </p>
+              )}
               {expenseDrafts.length === 0 && (
-                <p className="text-sm text-right text-[var(--sea-ink-soft)]">
+                <p
+                  id="expense-requirement"
+                  className="text-sm text-right text-[var(--sea-ink-soft)]"
+                >
                   Agregá al menos un gasto recurrente para completar este paso.
                 </p>
               )}
@@ -534,8 +579,23 @@ export function FinancialOnboarding() {
                   type="button"
                   variant="outline"
                   onClick={() => setStep(3)}
+                  disabled={isSubmitting}
                 >
                   Volver
+                </Button>
+                <Button
+                  type="button"
+                  disabled={expenseDrafts.length === 0 || isSubmitting}
+                  aria-describedby={
+                    submissionError
+                      ? "expense-submission-error"
+                      : expenseDrafts.length === 0
+                        ? "expense-requirement"
+                        : undefined
+                  }
+                  onClick={handleSubmit}
+                >
+                  {isSubmitting ? "Guardando..." : "Listo, continuar al plan"}
                 </Button>
               </div>
             </div>

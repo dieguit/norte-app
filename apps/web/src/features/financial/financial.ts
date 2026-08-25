@@ -3,57 +3,13 @@ import {
   type CurrencyCode,
   type Money,
   createMoney,
-  isPositiveMoney,
-  parseMoneyInput,
 } from '../../lib/money'
 import type { PreviousMonthShortfall } from '../contributions/saving-contribution'
-
-export type InitialGoalKind = 'emergency_fund' | 'fixed_savings' | 'car'
-
-export const INITIAL_GOAL_NAMES: Record<InitialGoalKind, string> = {
-  emergency_fund: 'Colchón financiero',
-  fixed_savings: 'Quiero ahorrar cierta suma de dinero',
-  car: 'Quiero cambiar el auto',
-}
 
 export const PLANNING_ARS_PER_USD = '1500'
 export const PROJECTION_HORIZON_MONTHS = 720
 
 export type FundingMethod = 'save' | 'invest'
-
-export interface InitialPlanInput {
-  goalKind: InitialGoalKind | string
-  income: string
-  expensesKnowledge: 'known' | 'unknown' | string
-  expenses?: string
-  plannedContribution: string
-  fixedTarget?: string
-}
-
-export interface InitialPlan {
-  goalKind: InitialGoalKind
-  income: Money
-  expensesKnowledge: 'known' | 'unknown'
-  expenses?: Money
-  plannedContribution: Money
-  fixedTarget?: Money
-}
-
-export interface DerivedInitialGoal {
-  type: InitialGoalKind
-  name: string
-  targetAmount?: Money
-  currency: CurrencyCode
-  emergencyFundMonths?: number
-  strategy: 'save' | 'invest'
-}
-
-export interface DerivedInitialChannel {
-  fundingMethod: FundingMethod
-  destinationCurrency: CurrencyCode
-  monthlyCommitment: Money
-  effectiveMonth: string
-}
 
 export type CompletionProjection =
   | { status: 'available'; completionMonth: string }
@@ -83,52 +39,6 @@ export interface InitialHomeState {
   previousMonthShortfalls: PreviousMonthShortfall[]
 }
 
-export function parseInitialPlan(input: InitialPlanInput): InitialPlan {
-  const goalKind = input.goalKind as InitialGoalKind
-  if (goalKind !== 'emergency_fund' && goalKind !== 'fixed_savings' && goalKind !== 'car') {
-    throw new Error('Tipo de objetivo inválido.')
-  }
-
-  const income = parseMoneyInput(input.income, 'ARS')
-  if (!income) {
-    throw new Error('Ingresá tus ingresos mensuales aproximados.')
-  }
-
-  const expensesKnowledge = input.expensesKnowledge === 'known' ? 'known' : 'unknown'
-  let expenses: Money | undefined
-
-  if (expensesKnowledge === 'known') {
-    const parsedExpenses = parseMoneyInput(input.expenses ?? '', 'ARS')
-    if (!parsedExpenses) {
-      throw new Error('Ingresá tus gastos mensuales aproximados.')
-    }
-    expenses = parsedExpenses
-  }
-
-  const plannedContribution = parseMoneyInput(input.plannedContribution, 'ARS')
-  if (!plannedContribution) {
-    throw new Error('Ingresá un aporte mensual mayor a cero.')
-  }
-
-  let fixedTarget: Money | undefined
-  if (goalKind === 'fixed_savings' || goalKind === 'car') {
-    const parsedFixedTarget = parseMoneyInput(input.fixedTarget ?? '', 'ARS')
-    if (!parsedFixedTarget || !isPositiveMoney(parsedFixedTarget)) {
-      throw new Error('Ingresá un monto objetivo mayor a cero.')
-    }
-    fixedTarget = parsedFixedTarget
-  }
-
-  return {
-    goalKind,
-    income,
-    expensesKnowledge,
-    expenses,
-    plannedContribution,
-    fixedTarget,
-  }
-}
-
 export function getNextCalendarMonth(now: Date): string {
   const year = now.getUTCFullYear()
   const month = now.getUTCMonth() + 1
@@ -141,28 +51,6 @@ export function getPreviousCalendarMonth(now: Date = new Date()): string {
   const month = now.getUTCMonth() - 1
   const prev = new Date(Date.UTC(year, month, 1))
   return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}`
-}
-
-export function deriveInitialGoal(plan: InitialPlan): DerivedInitialGoal {
-  const isEmergency = plan.goalKind === 'emergency_fund'
-
-  return {
-    type: plan.goalKind,
-    name: INITIAL_GOAL_NAMES[plan.goalKind],
-    targetAmount: isEmergency ? undefined : plan.fixedTarget,
-    currency: isEmergency ? 'USD' : 'ARS',
-    emergencyFundMonths: isEmergency ? 6 : undefined,
-    strategy: 'save',
-  }
-}
-
-export function deriveInitialChannel(plan: InitialPlan, now: Date): DerivedInitialChannel {
-  return {
-    fundingMethod: 'save',
-    destinationCurrency: plan.goalKind === 'emergency_fund' ? 'USD' : 'ARS',
-    monthlyCommitment: plan.plannedContribution,
-    effectiveMonth: getNextCalendarMonth(now),
-  }
 }
 
 export function convertCommitmentToDestination(

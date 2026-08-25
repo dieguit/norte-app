@@ -32,8 +32,6 @@ function createBaseWorkspaceSource(): GoalsWorkspaceSource {
     profile: {
       userId: 'user-1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '2000000.00',
-      approximateMonthlyExpenses: '1500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
@@ -325,12 +323,23 @@ describe('buildGoalCreationProposal', () => {
       source.profile = {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '2000000.00',
-        approximateMonthlyExpenses: '1500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
       }
+      source.expenses = [
+        {
+          id: 'exp-1',
+          sourceKind: 'housing',
+          sourceId: null,
+          sourceName: 'Alquiler',
+          amount: '250000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+          endMonth: null,
+        },
+      ]
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const draft = createBaseDraft({
@@ -346,9 +355,9 @@ describe('buildGoalCreationProposal', () => {
         currentMonth: '2026-08',
       })
 
-      // 1.500.000 * 6 / 1500 = 6000 USD
-      expect(proposal.normalizedGoal.targetAmount).toEqual({ amount: '6000.00', currency: 'USD' })
-      expect(proposal.normalizedGoal.emergencyFundMonths).toBe(6)
+      // 250.000 * 3 / 1500 = 500 USD
+      expect(proposal.normalizedGoal.targetAmount).toEqual({ amount: '500.00', currency: 'USD' })
+      expect(proposal.normalizedGoal.emergencyFundMonths).toBe(3)
     })
 
     it('leaves targetAmount undefined when profile expenses knowledge is unknown', () => {
@@ -356,12 +365,11 @@ describe('buildGoalCreationProposal', () => {
       source.profile = {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '2000000.00',
-        approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
       }
+      source.expenses = []
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
       const draft = createBaseDraft({
@@ -378,6 +386,7 @@ describe('buildGoalCreationProposal', () => {
       })
 
       expect(proposal.normalizedGoal.targetAmount).toBeUndefined()
+      expect(proposal.normalizedGoal.emergencyFundMonths).toBe(3)
     })
   })
 

@@ -111,8 +111,6 @@ describe('saving-contribution.repository.server', () => {
   const mockProfile = {
     userId,
     baseCurrency: 'ARS',
-    approximateMonthlyIncome: '1000000.00',
-    approximateMonthlyExpenses: '500000.00',
     expensesKnowledge: 'known',
     plannedMonthlyContribution: '100000.00',
     onboardingCompleted: true,

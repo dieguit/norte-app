@@ -180,7 +180,7 @@ describe("FinancesWorkspace", () => {
       within(recurringSection).getByText("Alquiler / vivienda"),
     ).toBeInTheDocument();
     expect(
-      within(recurringSection).getByText("ARS 200,000.00"),
+      within(recurringSection).getByText("$ 200.000,00"),
     ).toBeInTheDocument();
     expect(
       within(recurringSection).getByText("Todos los meses desde Junio de 2026"),
@@ -191,7 +191,7 @@ describe("FinancesWorkspace", () => {
 
     const oneOffSection = screen.getByLabelText("Gastos únicos");
     expect(within(oneOffSection).getByText("Vuelo")).toBeInTheDocument();
-    expect(within(oneOffSection).getByText("USD 200.00")).toBeInTheDocument();
+    expect(within(oneOffSection).getByText("USD 200,00")).toBeInTheDocument();
     expect(
       within(oneOffSection).getByText("Equivale a ARS 300.000"),
     ).toBeInTheDocument();
@@ -279,7 +279,7 @@ describe("FinancesWorkspace", () => {
     ).toBeInTheDocument();
     expect(within(recurringSection).getByText("Servicios")).toBeInTheDocument();
     expect(
-      within(recurringSection).getByText("ARS 50,000.00"),
+      within(recurringSection).getByText("$ 50.000,00"),
     ).toBeInTheDocument();
 
     const oneOffSection = screen.getByLabelText("Gastos únicos");

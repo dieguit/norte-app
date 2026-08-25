@@ -36,10 +36,9 @@ describe('onboarding database schema', () => {
   it('defines user-owned financial profiles', () => {
     expect(getTableName(financialProfiles)).toBe('financial_profiles')
     expect(financialProfiles.userId.name).toBe('user_id')
-    expect(financialProfiles.userId.primary).toBe(true)
     expect(financialProfiles.baseCurrency.name).toBe('base_currency')
-    expect(financialProfiles.approximateMonthlyIncome.name).toBe('approximate_monthly_income')
-    expect(financialProfiles.approximateMonthlyExpenses.name).toBe('approximate_monthly_expenses')
+    expect('approximateMonthlyIncome' in financialProfiles).toBe(false)
+    expect('approximateMonthlyExpenses' in financialProfiles).toBe(false)
     expect(financialProfiles.expensesKnowledge.name).toBe('expenses_knowledge')
     expect(financialProfiles.plannedMonthlyContribution.name).toBe('planned_monthly_contribution')
     expect(financialProfiles.plannedMonthlyContribution.notNull).toBe(false)

@@ -2,13 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { auth } from '@clerk/tanstack-react-start/server'
 import { db } from '../../db/client'
 import {
-  allocationPlanEntries,
-  allocationPlanSnapshots,
-  financialGoals,
-  financialProfiles,
-} from '../../db/schema'
-import {
-  completeInitialPlan,
+  completeFinancialOnboarding,
   createExpense,
   deleteExpense,
   getFinancesWorkspace,
@@ -40,81 +34,8 @@ vi.mock('@clerk/tanstack-react-start/server', () => ({
   auth: vi.fn(),
 }))
 
-const mockCommittedState = {
-  profiles: [] as unknown[],
-  goals: [] as unknown[],
-  snapshots: [] as unknown[],
-  allocations: [] as unknown[],
-}
-
-let stagedState = {
-  profiles: [] as unknown[],
-  goals: [] as unknown[],
-  snapshots: [] as unknown[],
-  allocations: [] as unknown[],
-}
-
-const mockProfileReturning = vi.fn().mockImplementation(async () => [{ userId: 'user_1' }])
-const mockProfileValues = vi.fn().mockImplementation((val) => {
-  return {
-    onConflictDoNothing: vi.fn().mockReturnValue({
-      returning: vi.fn().mockImplementation(async () => {
-        const ret = await mockProfileReturning()
-        if (ret.length > 0) stagedState.profiles.push(val)
-        return ret
-      }),
-    }),
-  }
-})
-const mockGoalReturning = vi.fn().mockImplementation(async () => [{ id: 'goal_1' }])
-const mockGoalValues = vi.fn().mockImplementation((val) => {
-  return {
-    returning: vi.fn().mockImplementation(async () => {
-      stagedState.goals.push(val)
-      return mockGoalReturning()
-    }),
-  }
-})
-const mockSnapshotReturning = vi.fn().mockImplementation(async () => [{ id: 'snapshot_1' }])
-const mockSnapshotValues = vi.fn().mockImplementation((val) => {
-  return {
-    returning: vi.fn().mockImplementation(async () => {
-      stagedState.snapshots.push(val)
-      return mockSnapshotReturning()
-    }),
-  }
-})
-const mockAllocationValues = vi.fn().mockImplementation(async (val) => {
-  stagedState.allocations.push(val)
-  return undefined
-})
-
-const mockTx = {
-  insert: vi.fn((table) => {
-    if (table === financialProfiles) return { values: mockProfileValues }
-    if (table === financialGoals) return { values: mockGoalValues }
-    if (table === allocationPlanSnapshots) return { values: mockSnapshotValues }
-    if (table === allocationPlanEntries) return { values: mockAllocationValues }
-    throw new Error('Unexpected table')
-  }),
-}
-
 vi.mock('../../db/client', () => ({
   db: {
-    transaction: vi.fn().mockImplementation(async (callback) => {
-      stagedState = { profiles: [], goals: [], snapshots: [], allocations: [] }
-      try {
-        const result = await callback(mockTx)
-        mockCommittedState.profiles.push(...stagedState.profiles)
-        mockCommittedState.goals.push(...stagedState.goals)
-        mockCommittedState.snapshots.push(...stagedState.snapshots)
-        mockCommittedState.allocations.push(...stagedState.allocations)
-        return result
-      } catch (err) {
-        stagedState = { profiles: [], goals: [], snapshots: [], allocations: [] }
-        throw err
-      }
-    }),
     query: {
       financialProfiles: {
         findFirst: vi.fn(),
@@ -161,109 +82,6 @@ vi.mock('../../db/client', () => ({
 describe('financial.server boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCommittedState.profiles = []
-    mockCommittedState.goals = []
-    mockCommittedState.snapshots = []
-    mockCommittedState.allocations = []
-    stagedState = { profiles: [], goals: [], snapshots: [], allocations: [] }
-    mockProfileReturning.mockResolvedValue([{ userId: 'user_1' }])
-    mockGoalReturning.mockResolvedValue([{ id: 'goal_1' }])
-    mockSnapshotReturning.mockResolvedValue([{ id: 'snapshot_1' }])
-    mockAllocationValues.mockImplementation(async (val) => {
-      stagedState.allocations.push(val)
-      return undefined
-    })
-  })
-
-  const validInitialPlan = {
-    goalKind: 'emergency_fund',
-    income: '500.000',
-    expensesKnowledge: 'known',
-    expenses: '250.000',
-    plannedContribution: '50.000',
-    fixedTarget: '',
-  }
-
-  describe('completeInitialPlan', () => {
-    it('redirects when user is not authenticated', async () => {
-      vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
-
-      await expect(completeInitialPlan({ data: validInitialPlan })).rejects.toMatchObject({
-        options: expect.objectContaining({ to: '/sign-in/$' }),
-      })
-    })
-
-    it('creates the complete emergency-fund Plan in one transaction', async () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
-      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
-
-      await expect(completeInitialPlan({ data: validInitialPlan })).resolves.toEqual({ created: true })
-
-      expect(db.transaction).toHaveBeenCalledOnce()
-      expect(mockTx.insert).toHaveBeenCalledTimes(4)
-      expect(mockProfileValues).toHaveBeenCalledWith({
-        userId: 'user_1',
-        baseCurrency: 'ARS',
-        approximateMonthlyIncome: '500000.00',
-        approximateMonthlyExpenses: '250000.00',
-        expensesKnowledge: 'known',
-        plannedMonthlyContribution: '50000.00',
-        onboardingCompleted: true,
-      })
-      expect(mockGoalValues).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user_1',
-          name: 'Colchón financiero',
-          type: 'emergency_fund',
-          targetAmount: null,
-          currency: 'USD',
-          emergencyFundMonths: 6,
-          strategy: 'save',
-        }),
-      )
-      expect(mockSnapshotValues).toHaveBeenCalledWith({
-        userId: 'user_1',
-        effectiveMonth: '2026-09-01',
-        plannedMonthlyContribution: '50000.00',
-      })
-      expect(mockAllocationValues).toHaveBeenCalledWith({
-        snapshotId: 'snapshot_1',
-        goalId: 'goal_1',
-        percentage: '100.00',
-      })
-
-      expect(mockCommittedState.profiles).toHaveLength(1)
-      expect(mockCommittedState.goals).toHaveLength(1)
-      expect(mockCommittedState.snapshots).toHaveLength(1)
-      expect(mockCommittedState.allocations).toHaveLength(1)
-
-      vi.useRealTimers()
-    })
-
-    it('returns the existing completion without creating duplicate Plan records', async () => {
-      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
-      mockProfileReturning.mockResolvedValueOnce([])
-
-      await expect(completeInitialPlan({ data: validInitialPlan })).resolves.toEqual({ created: false })
-
-      expect(mockTx.insert).toHaveBeenCalledTimes(1)
-      expect(mockGoalValues).not.toHaveBeenCalled()
-      expect(mockSnapshotValues).not.toHaveBeenCalled()
-      expect(mockCommittedState.profiles).toHaveLength(0)
-    })
-
-    it('rolls back all records and leaves no partial state persisted when any Plan write fails', async () => {
-      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
-      mockAllocationValues.mockRejectedValueOnce(new Error('database unavailable'))
-
-      await expect(completeInitialPlan({ data: validInitialPlan })).rejects.toThrow('database unavailable')
-      expect(db.transaction).toHaveBeenCalledOnce()
-      expect(mockCommittedState.profiles).toHaveLength(0)
-      expect(mockCommittedState.goals).toHaveLength(0)
-      expect(mockCommittedState.snapshots).toHaveLength(0)
-      expect(mockCommittedState.allocations).toHaveLength(0)
-    })
   })
 
   describe('getInitialHomeState', () => {
@@ -275,11 +93,12 @@ describe('financial.server boundary', () => {
     })
 
     it('derives the USD emergency target and completion from the canonical Plan', async () => {
+      vi.mocked(db.query.expenses.findMany).mockResolvedValue([
+        { amount: '250000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-01-01', endMonth: null },
+      ] as never)
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '500000.00',
-        approximateMonthlyExpenses: '250000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '50000.00',
       } as never)
@@ -332,8 +151,6 @@ describe('financial.server boundary', () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '500000.00',
-        approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
         plannedMonthlyContribution: '50000.00',
       } as never)
@@ -386,8 +203,6 @@ describe('financial.server boundary', () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '500000.00',
-        approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
         plannedMonthlyContribution: '50000.00',
       } as never)
@@ -440,8 +255,6 @@ describe('financial.server boundary', () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '500000.00',
-        approximateMonthlyExpenses: null,
         expensesKnowledge: 'unknown',
         plannedMonthlyContribution: '0.00',
       } as never)
@@ -642,6 +455,113 @@ describe('financial.server boundary', () => {
           },
         }),
       ).rejects.toThrow()
+    })
+  })
+
+  describe('completeFinancialOnboarding', () => {
+    const validGoal = {
+      type: 'emergency_fund' as const,
+      name: 'Fondo de emergencia',
+      targetAmount: '0',
+      currency: 'USD' as const,
+      desiredMonth: '',
+      priority: 'high' as const,
+      strategy: 'save' as const,
+      annualReturnRate: '0',
+      availability: 'available_now' as const,
+      availableFromMonth: '',
+      allocations: [],
+    }
+
+    const validIncomes = [
+      {
+        source: { kind: 'salary' as const },
+        amount: '500000.00',
+        currency: 'ARS' as const,
+        recurring: true,
+        effectiveMonth: '2026-08',
+      },
+    ]
+
+    const validExpenses = [
+      {
+        source: { kind: 'housing' as const },
+        amount: '250000.00',
+        currency: 'ARS' as const,
+        recurring: true,
+      },
+    ]
+
+    it('rejects when unauthenticated', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+      await expect(
+        completeFinancialOnboarding({
+          data: {
+            goal: validGoal,
+            incomes: validIncomes,
+            expenses: validExpenses,
+          },
+        }),
+      ).rejects.toMatchObject({
+        options: expect.objectContaining({ to: '/sign-in/$' }),
+      })
+    })
+
+    it('rejects when incomes array is empty', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+
+      await expect(
+        completeFinancialOnboarding({
+          data: {
+            goal: validGoal,
+            incomes: [],
+            expenses: validExpenses,
+          },
+        }),
+      ).rejects.toThrow('Agregá al menos un ingreso recurrente.')
+    })
+
+    it('rejects when expenses array is empty', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+
+      await expect(
+        completeFinancialOnboarding({
+          data: {
+            goal: validGoal,
+            incomes: validIncomes,
+            expenses: [],
+          },
+        }),
+      ).rejects.toThrow('Agregá al menos un gasto recurrente.')
+    })
+
+    it('rejects when income is not recurring', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+
+      await expect(
+        completeFinancialOnboarding({
+          data: {
+            goal: validGoal,
+            incomes: [{ ...validIncomes[0], recurring: false }],
+            expenses: validExpenses,
+          },
+        }),
+      ).rejects.toThrow('Los ingresos deben ser recurrentes.')
+    })
+
+    it('rejects when expense is not recurring', async () => {
+      vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_1' } as never)
+
+      await expect(
+        completeFinancialOnboarding({
+          data: {
+            goal: validGoal,
+            incomes: validIncomes,
+            expenses: [{ ...validExpenses[0], recurring: false }],
+          },
+        }),
+      ).rejects.toThrow('Los gastos deben ser recurrentes.')
     })
   })
 })

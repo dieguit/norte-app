@@ -15,8 +15,6 @@ function createMockState(goals: GoalCreationState['source']['goals'] = []): Goal
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -86,8 +84,6 @@ describe('mapAllocationChangeContext', () => {
         profile: {
           userId: 'user-1',
           baseCurrency: 'ARS',
-          approximateMonthlyIncome: '1000000.00',
-          approximateMonthlyExpenses: '500000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '75000.00',
           goalDedicationPercentage: '90.00',
@@ -199,8 +195,6 @@ describe('mapGoalLifecycleContext', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '80000.00',
         onboardingCompleted: true,
@@ -309,8 +303,6 @@ describe('mapGoalEditContext', () => {
       profile: {
         userId: 'user-1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '80000.00',
         onboardingCompleted: true,

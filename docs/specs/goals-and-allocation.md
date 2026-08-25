@@ -30,6 +30,10 @@ User-facing copy is natural Argentine Spanish with voseo. The feature supports t
 
 ## Domain rules
 
+- Recurring income and expense records are the source of monthly totals.
+- Financial profiles do not duplicate approximate monthly income or expense totals.
+- An emergency fund defaults to three months of recurring expenses.
+
 ### Goal model
 
 Each goal has an id, name, type, optional fixed target amount, currency, optional desired date, priority, allocation percentage, strategy (`save` or one investment), status, and timestamps. New goals default to `active`; editing must preserve the goal id and history. The allocation percentage always represents a share of the global ARS monthly plan, including for USD goals.
@@ -38,7 +42,7 @@ Priority is qualitative only. It must never change allocation without an explici
 
 ### Emergency fund
 
-- Default `emergencyFundMonths` is 6.
+- Default `emergencyFundMonths` is 3.
 - When monthly expenses are known, `targetAmount = monthlyExpenses * emergencyFundMonths`.
 - When expenses are unknown, target and completion date are unavailable; show `Fecha por calcular` and prompt for major expenses.
 - Never infer an emergency-fund target from income, contribution, or a guessed expense value.
@@ -145,7 +149,7 @@ Every screen and flow defines:
 ## Acceptance criteria
 
 - A user can create, list, open, edit, pause, resume, and complete a goal on mobile and desktop.
-- Emergency fund defaults to six months; known expenses calculate the target, while unknown expenses never produce a guessed target or date.
+- Emergency fund defaults to three months; known expenses calculate the target, while unknown expenses never produce a guessed target or date.
 - No persisted active allocation plan can total anything other than 100%.
 - Adding, editing, pausing, resuming, or completing a goal cannot silently redistribute allocations.
 - Every confirmed plan change creates an effective-dated allocation snapshot and a roadmap event.

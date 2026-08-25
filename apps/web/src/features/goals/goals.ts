@@ -118,8 +118,6 @@ export interface GoalsWorkspaceSource {
   profile?: {
     userId: string
     baseCurrency: CurrencyCode
-    approximateMonthlyIncome: string
-    approximateMonthlyExpenses?: string | null
     expensesKnowledge: 'known' | 'unknown' | string
     plannedMonthlyContribution?: string | null
     goalDedicationPercentage?: string
@@ -420,15 +418,10 @@ export function buildGoalsWorkspace(
     let usesPlanningRate = false
     let targetAmount = goal.targetAmount ? createMoney(goal.targetAmount, goal.currency) : undefined
 
-    if (
-      !targetAmount &&
-      goal.type === 'emergency_fund' &&
-      rows.profile?.expensesKnowledge === 'known' &&
-      rows.profile?.approximateMonthlyExpenses
-    ) {
+    if (!targetAmount && goal.type === 'emergency_fund' && rows.profile?.expensesKnowledge === 'known') {
       targetAmount = deriveEmergencyFundTarget(
-        createMoney(rows.profile.approximateMonthlyExpenses, 'ARS'),
-        goal.emergencyFundMonths ?? 6,
+        currentFinancials.expenses,
+        goal.emergencyFundMonths ?? 3,
       )
       usesPlanningRate = true
     }

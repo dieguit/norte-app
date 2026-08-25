@@ -157,8 +157,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
@@ -339,8 +337,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       goalDedicationPercentage: '85.00',
@@ -440,8 +436,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: null,
       expensesKnowledge: 'unknown',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
@@ -496,8 +490,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: null,
       expensesKnowledge: 'unknown',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
@@ -533,8 +525,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
@@ -615,8 +605,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
@@ -809,8 +797,6 @@ describe('goals.repository.server', () => {
       const mockProfile = {
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -996,8 +982,6 @@ describe('goals.repository.server', () => {
           profile: {
             userId: 'user_1',
             baseCurrency: 'ARS' as const,
-            approximateMonthlyIncome: '1000000.00',
-            approximateMonthlyExpenses: '500000.00',
             expensesKnowledge: 'known',
             plannedMonthlyContribution: '60000.00',
             onboardingCompleted: true,
@@ -1031,8 +1015,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
@@ -1375,8 +1357,6 @@ describe('goals.repository.server', () => {
       const mockProfile = {
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -1541,8 +1521,6 @@ describe('goals.repository.server', () => {
           profile: {
             userId: 'user_1',
             baseCurrency: 'ARS' as const,
-            approximateMonthlyIncome: '1000000.00',
-            approximateMonthlyExpenses: '500000.00',
             expensesKnowledge: 'known',
             plannedMonthlyContribution: '60000.00',
             onboardingCompleted: true,
@@ -1582,8 +1560,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       goalDedicationPercentage: '90.00',
@@ -1943,8 +1919,6 @@ describe('goals.repository.server', () => {
       const mockProfile = {
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -2007,8 +1981,6 @@ describe('goals.repository.server', () => {
       const mockProfile = {
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -2053,8 +2025,6 @@ describe('goals.repository.server', () => {
           profile: {
             userId: 'user_1',
             baseCurrency: 'ARS' as const,
-            approximateMonthlyIncome: '1000000.00',
-            approximateMonthlyExpenses: '500000.00',
             expensesKnowledge: 'known',
             plannedMonthlyContribution: '60000.00',
             onboardingCompleted: true,
@@ -2111,8 +2081,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,
@@ -2536,8 +2504,6 @@ describe('goals.repository.server', () => {
       const mockProfile = {
         userId: 'user_1',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -2664,8 +2630,6 @@ describe('goals.repository.server', () => {
           profile: {
             userId: 'user_1',
             baseCurrency: 'ARS' as const,
-            approximateMonthlyIncome: '1000000.00',
-            approximateMonthlyExpenses: '500000.00',
             expensesKnowledge: 'known',
             plannedMonthlyContribution: '60000.00',
             onboardingCompleted: true,
@@ -2711,8 +2675,6 @@ describe('goals.repository.server', () => {
     const mockProfile = {
       userId: 'user_1',
       baseCurrency: 'ARS',
-      approximateMonthlyIncome: '1000000.00',
-      approximateMonthlyExpenses: '500000.00',
       expensesKnowledge: 'known',
       plannedMonthlyContribution: '60000.00',
       onboardingCompleted: true,

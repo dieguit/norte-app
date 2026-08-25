@@ -44,6 +44,10 @@ The implementation must preserve NORTE's central distinction:
 
 ## Domain rules
 
+- Recurring income and expense records are the source of monthly totals.
+- Financial profiles do not duplicate approximate monthly income or expense totals.
+- An emergency fund defaults to three months of recurring expenses.
+
 ### Money and currency
 
 Use English identifiers in code and this shape as the authoritative value:
@@ -86,10 +90,9 @@ interface Money {
 interface FinancialProfile {
   id: string;
   baseCurrency: CurrencyCode;
-  approximateMonthlyIncome?: Money;
-  approximateMonthlyExpenses?: Money;
   expensesKnowledge: "known" | "unknown";
   plannedMonthlyContribution: Money;
+  goalDedicationPercentage?: string;
   onboardingCompleted: boolean;
   createdAt: string;
   updatedAt: string;
@@ -98,12 +101,10 @@ interface FinancialProfile {
 
 - `baseCurrency` is `ARS`; all profile money values, including the global plan,
   use ARS.
-- Onboarding values are approximate planning inputs, not recorded income or
-  expenses. Later records are the source for more accurate monthly cash flow.
+- Recurring records are the source of monthly totals. Financial profiles do not
+  duplicate approximate monthly income or expense totals.
 - `plannedMonthlyContribution` is required and positive. It is intent, not
   actual progress.
-- `approximateMonthlyIncome` and known expenses are non-negative. Expenses are
-  absent or explicitly unknown when `expensesKnowledge` is `"unknown"`.
 - A new profile starts with the emergency-fund goal selected by default.
 - With unknown expenses, the emergency-fund target and completion date are
   unavailable. The UI must show **Fecha por calcular**, not a guessed target.

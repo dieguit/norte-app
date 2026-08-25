@@ -238,8 +238,6 @@ describe('saving-contribution domain', () => {
         profile: {
           userId: 'u1',
           baseCurrency: 'ARS',
-          approximateMonthlyIncome: '1000000.00',
-          approximateMonthlyExpenses: '500000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '100000.00',
           onboardingCompleted: true,
@@ -497,7 +495,6 @@ describe('saving-contribution domain', () => {
         profile: {
           userId: 'u1',
           baseCurrency: 'USD',
-          approximateMonthlyIncome: '5000.00',
           expensesKnowledge: 'known',
           onboardingCompleted: true,
         },

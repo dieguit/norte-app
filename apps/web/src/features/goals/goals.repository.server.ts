@@ -915,8 +915,6 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
     profile: {
       userId: rows.profile.userId,
       baseCurrency: rows.profile.baseCurrency as CurrencyCode,
-      approximateMonthlyIncome: rows.profile.approximateMonthlyIncome,
-      approximateMonthlyExpenses: rows.profile.approximateMonthlyExpenses,
       expensesKnowledge: rows.profile.expensesKnowledge,
       plannedMonthlyContribution: rows.profile.plannedMonthlyContribution,
       goalDedicationPercentage: rows.profile.goalDedicationPercentage,

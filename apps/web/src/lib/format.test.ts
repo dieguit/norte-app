@@ -14,48 +14,50 @@ describe("es-AR Presentation Boundary", () => {
   it("formats ARS money according to es-AR rules", () => {
     const ars = createMoney("1250.50", "ARS");
     const formatted = formatMoney(ars);
-    expect(formatted).toMatch(/\$\s?1\.250,50/);
+    expect(formatted).toBe("$ 1.250,50");
   });
 
-  it("formats USD money with explicit US$ context", () => {
+  it("formats USD money with explicit USD context", () => {
     const usd = createMoney("1250.50", "USD");
     const formatted = formatMoney(usd);
-    expect(formatted).toMatch(/US\$\s?1\.250,50/);
+    expect(formatted).toBe("USD 1.250,50");
   });
 
   it("formats zero amounts correctly", () => {
     const zeroArs = createMoney("0", "ARS");
-    expect(formatMoney(zeroArs)).toMatch(/\$\s?0,00/);
+    expect(formatMoney(zeroArs)).toBe("$ 0,00");
 
     const zeroUsd = createMoney("0", "USD");
-    expect(formatMoney(zeroUsd)).toMatch(/US\$\s?0,00/);
+    expect(formatMoney(zeroUsd)).toBe("USD 0,00");
   });
 
   describe("formatCompactMoney", () => {
     it("formats compact money for millions", () => {
       const m = createMoney("1500000.00", "ARS");
       const formatted = formatCompactMoney(m);
-      expect(formatted).toMatch(/\$\s?1,5\s?M/i);
+      expect(formatted).toBe("$ 1,5 M");
     });
 
     it("formats compact money for thousands", () => {
       const k = createMoney("25000.00", "ARS");
       const formatted = formatCompactMoney(k);
-      expect(formatted).toMatch(/\$\s?25\s?k/i);
+      expect(formatted).toBe("$ 25 k");
     });
 
     it("formats compact money for values under 1000 using full formatMoney", () => {
       const small = createMoney("450.50", "ARS");
       const formatted = formatCompactMoney(small);
-      expect(formatted).toMatch(/\$\s?450,50/);
+      expect(formatted).toBe("$ 450,50");
     });
 
     it("formats compact money for USD", () => {
       const usdMillions = createMoney("2500000.00", "USD");
-      expect(formatCompactMoney(usdMillions)).toMatch(/US\$\s?2,5\s?M/i);
+      expect(formatCompactMoney(usdMillions)).toBe("USD 2,5 M");
 
       const usdThousands = createMoney("10000.00", "USD");
-      expect(formatCompactMoney(usdThousands)).toMatch(/US\$\s?10\s?k/i);
+      expect(formatCompactMoney(usdThousands)).toBe("USD 10 k");
+
+      expect(formatCompactMoney(createMoney("1250000", "USD"))).toBe("USD 1,3 M");
     });
   });
 

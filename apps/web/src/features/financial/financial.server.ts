@@ -1,10 +1,5 @@
 import '@tanstack/react-start/server-only'
-import {
-  deriveInitialChannel,
-  deriveInitialGoal,
-  parseInitialPlan,
-  type InitialHomeState,
-} from './financial'
+import type { InitialHomeState } from './financial'
 import { requireFinancialUser } from './auth.server'
 import { getExpensesWorkspaceState } from './expenses.repository.server'
 import type { ExpensesWorkspace } from './expenses'
@@ -13,8 +8,10 @@ import type { IncomesWorkspace } from './incomes'
 import {
   getGoalDedicationPercentage,
   getInitialHomeState,
-  persistInitialPlan,
+  persistFinancialOnboarding,
 } from './repository.server'
+import { parseGoalCreationSubmission } from '../goals/goal-creation.schema'
+import type { CompleteFinancialOnboardingInput } from './financial.functions'
 
 export type FinancialAppState =
   | { profile: 'missing' }
@@ -48,15 +45,12 @@ export async function getFinancesWorkspaceServer(): Promise<FinancesWorkspaceSta
   return { goalDedicationPercentage, incomes, expenses }
 }
 
-export async function completeInitialPlanServer(input: Parameters<typeof parseInitialPlan>[0]) {
+export async function completeFinancialOnboardingServer(
+  input: CompleteFinancialOnboardingInput,
+) {
   const userId = await requireFinancialUser()
-  const plan = parseInitialPlan(input)
-
-  return persistInitialPlan(
-    userId,
-    plan,
-    deriveInitialGoal(plan),
-    deriveInitialChannel(plan, new Date()),
-  )
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const goal = parseGoalCreationSubmission(input.goal, currentMonth)
+  return persistFinancialOnboarding(userId, { ...input, goal }, currentMonth)
 }
 

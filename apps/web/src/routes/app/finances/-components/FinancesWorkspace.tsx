@@ -8,7 +8,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../../../components/ui/tabs";
-import { formatCalendarMonth } from "../../../../lib/format";
+import { formatCalendarMonth, formatMoney } from "../../../../lib/format";
+import { createMoney } from "../../../../lib/money";
 import {
   getIncomeTotalArs,
   isIncomeIncludedInMonth,
@@ -26,10 +27,6 @@ import { IncomeSheet } from "./IncomeSheet";
 import { ExpenseSheet } from "./ExpenseSheet";
 import { FinancialSummaryCards } from "../../../../components/FinancialSummaryCards";
 import { getGoalContributionArs } from "../../../../features/financial/monthly-plan";
-
-function formatMoneyWithCurrency(amount: string, currency: string) {
-  return `${currency} ${Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 function formatArs(amount: string) {
   return Number(amount).toLocaleString("es-AR", { maximumFractionDigits: 0 });
@@ -104,7 +101,7 @@ export function FinancesWorkspace({
         </div>
         <div className="text-right">
           <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
-            {formatMoneyWithCurrency(income.amount, income.currency)}
+            {formatMoney(createMoney(income.amount, income.currency))}
           </p>
           {income.currency === "USD" && (
             <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
@@ -335,9 +332,11 @@ export function FinancesWorkspace({
                             </div>
                             <div className="text-right">
                               <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                                {formatMoneyWithCurrency(
-                                  expense.amount,
-                                  expense.currency,
+                                {formatMoney(
+                                  createMoney(
+                                    expense.amount,
+                                    expense.currency,
+                                  ),
                                 )}
                               </p>
                               {expense.currency === "USD" && (
@@ -426,9 +425,11 @@ export function FinancesWorkspace({
                             </div>
                             <div className="text-right">
                               <p className="font-semibold tabular-nums text-[var(--sea-ink)]">
-                                {formatMoneyWithCurrency(
-                                  expense.amount,
-                                  expense.currency,
+                                {formatMoney(
+                                  createMoney(
+                                    expense.amount,
+                                    expense.currency,
+                                  ),
                                 )}
                               </p>
                               {expense.currency === "USD" && (

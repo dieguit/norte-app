@@ -157,7 +157,7 @@ export function GoalObjectiveFields({
             <FieldDescription className="text-sm text-[var(--sea-ink-soft)]">
               {context.expensesKnowledge === "unknown"
                 ? "Vamos a calcular el monto sugerido una vez que definas tus gastos mensuales."
-                : "El colchón equivale a 6 meses de gastos y se calculará automáticamente."}
+                : "El colchón equivale a 3 meses de gastos y se calculará automáticamente."}
             </FieldDescription>
           </div>
         ) : (

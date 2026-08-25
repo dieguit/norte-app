@@ -86,8 +86,6 @@ vi.mock('./goals.repository.server', async (importOriginal) => {
       profile: {
         userId: rows.profile.userId,
         baseCurrency: rows.profile.baseCurrency,
-        approximateMonthlyIncome: rows.profile.approximateMonthlyIncome,
-        approximateMonthlyExpenses: rows.profile.approximateMonthlyExpenses,
         expensesKnowledge: rows.profile.expensesKnowledge,
         plannedMonthlyContribution: rows.profile.plannedMonthlyContribution,
         onboardingCompleted: rows.profile.onboardingCompleted,
@@ -141,8 +139,6 @@ describe('getGoalsWorkspace', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -263,8 +259,6 @@ describe('getGoalCreationContext', () => {
         profile: {
           userId: 'user_456',
           baseCurrency: 'ARS',
-          approximateMonthlyIncome: '1000000.00',
-          approximateMonthlyExpenses: '500000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '60000.00',
           onboardingCompleted: true,
@@ -376,8 +370,6 @@ describe('previewGoalCreation', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -517,8 +509,6 @@ describe('confirmGoalCreation', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -685,8 +675,6 @@ describe('getAllocationChangeContext', () => {
         profile: {
           userId: 'user_456',
           baseCurrency: 'ARS',
-          approximateMonthlyIncome: '1000000.00',
-          approximateMonthlyExpenses: '500000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '60000.00',
           goalDedicationPercentage: '90.00',
@@ -858,8 +846,6 @@ describe('previewAllocationChange', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         goalDedicationPercentage: '90.00',
@@ -1030,8 +1016,6 @@ describe('confirmAllocationChange', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         goalDedicationPercentage: '90.00',
@@ -1213,8 +1197,6 @@ describe('getGoalEditContext', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -1386,8 +1368,6 @@ describe('previewGoalEdit', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -1555,8 +1535,6 @@ describe('confirmGoalEdit', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -1713,8 +1691,6 @@ describe('getGoalLifecycleContext', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -1825,8 +1801,6 @@ describe('previewGoalLifecycle', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,
@@ -1928,8 +1902,6 @@ describe('confirmGoalLifecycle', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,

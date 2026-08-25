@@ -97,8 +97,6 @@ describe('getSavingContributionContext', () => {
         profile: {
           userId: 'user_456',
           baseCurrency: 'ARS',
-          approximateMonthlyIncome: '1000000.00',
-          approximateMonthlyExpenses: '500000.00',
           expensesKnowledge: 'known',
           plannedMonthlyContribution: '60000.00',
           onboardingCompleted: true,
@@ -206,8 +204,6 @@ describe('previewSavingContribution', () => {
       profile: {
         userId: 'user_456',
         baseCurrency: 'ARS',
-        approximateMonthlyIncome: '1000000.00',
-        approximateMonthlyExpenses: '500000.00',
         expensesKnowledge: 'known',
         plannedMonthlyContribution: '60000.00',
         onboardingCompleted: true,

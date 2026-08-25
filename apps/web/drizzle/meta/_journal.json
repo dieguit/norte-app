@@ -113,6 +113,13 @@
       "when": 1787611722970,
       "tag": "0015_goal_dedication_percentage",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787675062174,
+      "tag": "0016_remove-profile-approximations",
+      "breakpoints": true
     }
   ]
 }

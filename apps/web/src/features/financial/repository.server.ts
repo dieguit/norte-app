@@ -5,14 +5,12 @@ import {
   allocationPlanSnapshots,
   financialGoals,
   financialProfiles,
+  goalInvestmentPositions,
 } from '../../db/schema'
-import { type CurrencyCode, createMoney } from '../../lib/money'
+import { type CurrencyCode, createMoney, parseMoneyInput } from '../../lib/money'
 import type {
-  DerivedInitialChannel,
-  DerivedInitialGoal,
   FundingMethod,
   InitialHomeState,
-  InitialPlan,
 } from './financial'
 import {
   convertCommitmentToDestination,
@@ -20,66 +18,15 @@ import {
   getPreviousCalendarMonth,
   projectCompletionMonth,
 } from './financial'
-import {
-  derivePreviousMonthShortfalls,
-  type PreviousMonthShortfall,
-} from '../contributions/saving-contribution'
+import { derivePreviousMonthShortfalls, type PreviousMonthShortfall } from '../contributions/saving-contribution'
 import { getIncomeTotalArs } from './incomes'
-
-export async function persistInitialPlan(
-  userId: string,
-  plan: InitialPlan,
-  goal: DerivedInitialGoal,
-  channel: DerivedInitialChannel,
-) {
-  return db.transaction(async (tx) => {
-    const insertedProfiles = await tx
-      .insert(financialProfiles)
-      .values({
-        userId,
-        baseCurrency: 'ARS',
-        approximateMonthlyIncome: plan.income.amount,
-        approximateMonthlyExpenses: plan.expenses?.amount ?? null,
-        expensesKnowledge: plan.expensesKnowledge,
-        plannedMonthlyContribution: plan.plannedContribution.amount,
-        onboardingCompleted: true,
-      })
-      .onConflictDoNothing({ target: financialProfiles.userId })
-      .returning({ userId: financialProfiles.userId })
-
-    if (insertedProfiles.length === 0) return { created: false }
-
-    const [insertedGoal] = await tx
-      .insert(financialGoals)
-      .values({
-        userId,
-        name: goal.name,
-        type: goal.type,
-        targetAmount: goal.targetAmount?.amount ?? null,
-        currency: goal.currency,
-        emergencyFundMonths: goal.emergencyFundMonths ?? null,
-        strategy: goal.strategy,
-      })
-      .returning({ id: financialGoals.id })
-
-    const [insertedSnapshot] = await tx
-      .insert(allocationPlanSnapshots)
-      .values({
-        userId,
-        effectiveMonth: `${channel.effectiveMonth}-01`,
-        plannedMonthlyContribution: plan.plannedContribution.amount,
-      })
-      .returning({ id: allocationPlanSnapshots.id })
-
-    await tx.insert(allocationPlanEntries).values({
-      snapshotId: insertedSnapshot.id,
-      goalId: insertedGoal.id,
-      percentage: '100.00',
-    })
-
-    return { created: true }
-  })
-}
+import { getExpenseTotalArs, getMonthlyBalanceArs } from './expenses'
+import { getGoalContributionArs } from './monthly-plan'
+import { insertIncomeWithExecutor } from './incomes.repository.server'
+import { insertExpenseWithExecutor } from './expenses.repository.server'
+import type { GoalCreationDraft } from '../goals/goal-creation.schema'
+import type { IncomeDraft } from './incomes.schema'
+import type { ExpenseDraft } from './expenses.schema'
 
 export async function getInitialHomeState(
   userId: string,
@@ -91,9 +38,14 @@ export async function getInitialHomeState(
   if (!profile) return null
 
   const currentMonth = now.toISOString().slice(0, 7)
-  const incomeRows = await db.query.incomes.findMany({
-    where: (incomes, { eq }) => eq(incomes.userId, userId),
-  })
+  const [incomeRows, expenseRows] = await Promise.all([
+    db.query.incomes.findMany({
+      where: (incomes, { eq }) => eq(incomes.userId, userId),
+    }),
+    db.query.expenses.findMany({
+      where: (expenses, { eq }) => eq(expenses.userId, userId),
+    }),
+  ])
   const income = getIncomeTotalArs(
     incomeRows.filter((row) => row.recurring).map((row) => ({
       amount: createMoney(row.amount, row.currency as CurrencyCode),
@@ -124,13 +76,23 @@ export async function getInitialHomeState(
   if (!allocation) return null
 
   const expensesKnowledge = profile.expensesKnowledge === 'known' ? 'known' : 'unknown'
-  const expenses = profile.approximateMonthlyExpenses
-    ? createMoney(profile.approximateMonthlyExpenses, 'ARS')
+  const expenses = profile.expensesKnowledge === 'known'
+    ? getExpenseTotalArs(
+        expenseRows.map((row) => ({
+          amount: createMoney(row.amount, row.currency as CurrencyCode),
+          recurring: row.recurring,
+          effectiveMonth: row.effectiveMonth,
+          endMonth: row.endMonth,
+        })),
+        currentMonth,
+      )
     : undefined
   const targetAmount = goal.type === 'emergency_fund'
-    ? expenses
-      ? deriveEmergencyFundTarget(expenses, goal.emergencyFundMonths ?? 6)
-      : undefined
+    ? goal.targetAmount
+      ? createMoney(goal.targetAmount, goal.currency as CurrencyCode)
+      : expenses
+        ? deriveEmergencyFundTarget(expenses, goal.emergencyFundMonths ?? 3)
+        : undefined
     : goal.targetAmount
       ? createMoney(goal.targetAmount, goal.currency as CurrencyCode)
       : undefined
@@ -205,7 +167,7 @@ export async function getInitialHomeState(
       name: goal.name,
       targetAmount,
       currentAmount: createMoney('0', goal.currency as CurrencyCode),
-      emergencyFundMonths: goal.emergencyFundMonths ?? undefined,
+      emergencyFundMonths: goal.emergencyFundMonths ?? (goal.type === 'emergency_fund' ? 3 : undefined),
     },
     projection,
     previousMonthShortfalls,
@@ -220,4 +182,121 @@ export async function getGoalDedicationPercentage(
   })
 
   return profile?.goalDedicationPercentage ?? null
+}
+
+export interface PersistFinancialOnboardingInput {
+  goal: GoalCreationDraft
+  incomes: IncomeDraft[]
+  expenses: ExpenseDraft[]
+}
+
+export async function persistFinancialOnboarding(
+  userId: string,
+  input: PersistFinancialOnboardingInput,
+  currentMonth: string,
+): Promise<{ created: boolean }> {
+  const incomeTotal = getIncomeTotalArs(
+    input.incomes.map((inc) => ({
+      amount: createMoney(inc.amount, inc.currency as CurrencyCode),
+      recurring: inc.recurring,
+      effectiveMonth: `${currentMonth}-01`,
+    })),
+    currentMonth,
+  )
+
+  const expenseTotal = getExpenseTotalArs(
+    input.expenses.map((exp) => ({
+      amount: createMoney(exp.amount, exp.currency as CurrencyCode),
+      recurring: exp.recurring,
+      effectiveMonth: `${currentMonth}-01`,
+    })),
+    currentMonth,
+  )
+
+  const monthlyBalance = getMonthlyBalanceArs(incomeTotal, expenseTotal)
+  const plannedMonthlyContribution = getGoalContributionArs(monthlyBalance, '90.00')
+
+  const targetAmount =
+    input.goal.type === 'emergency_fund'
+      ? deriveEmergencyFundTarget(expenseTotal, 3)
+      : input.goal.targetAmount
+        ? parseMoneyInput(input.goal.targetAmount, input.goal.currency as CurrencyCode) ?? undefined
+        : undefined
+
+  return db.transaction(async (tx) => {
+    const [profile] = await tx
+      .insert(financialProfiles)
+      .values({
+        userId,
+        baseCurrency: 'ARS',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: plannedMonthlyContribution.amount,
+        goalDedicationPercentage: '90.00',
+        onboardingCompleted: true,
+      })
+      .onConflictDoNothing()
+      .returning()
+
+    if (!profile) {
+      return { created: false }
+    }
+
+    for (const income of input.incomes) {
+      await insertIncomeWithExecutor(tx, userId, income, currentMonth)
+    }
+
+    for (const expense of input.expenses) {
+      await insertExpenseWithExecutor(tx, userId, expense, currentMonth)
+    }
+
+    const [goal] = await tx
+      .insert(financialGoals)
+      .values({
+        userId,
+        name: input.goal.name.trim(),
+        type: input.goal.type,
+        targetAmount: targetAmount?.amount ?? null,
+        currency: input.goal.currency,
+        priority: input.goal.priority,
+        strategy: input.goal.strategy,
+        status: 'active',
+        desiredDate:
+          input.goal.desiredMonth && input.goal.desiredMonth.trim() !== ''
+            ? `${input.goal.desiredMonth.slice(0, 7)}-01`
+            : null,
+        emergencyFundMonths: input.goal.type === 'emergency_fund' ? 3 : null,
+      })
+      .returning({ id: financialGoals.id })
+
+    if (input.goal.strategy === 'invest') {
+      await tx.insert(goalInvestmentPositions).values({
+        goalId: goal.id,
+        currentValue: '0.00',
+        currency: input.goal.currency,
+        annualReturnRate: input.goal.annualReturnRate || '8.000',
+        availability: input.goal.availability || 'available_now',
+        availableFrom:
+          input.goal.availability === 'available_from' && input.goal.availableFromMonth
+            ? `${input.goal.availableFromMonth.slice(0, 7)}-01`
+            : null,
+      })
+    }
+
+    const [snapshot] = await tx
+      .insert(allocationPlanSnapshots)
+      .values({
+        userId,
+        effectiveMonth: `${currentMonth.slice(0, 7)}-01`,
+        plannedMonthlyContribution: plannedMonthlyContribution.amount,
+      })
+      .returning({ id: allocationPlanSnapshots.id })
+
+    await tx.insert(allocationPlanEntries).values({
+      snapshotId: snapshot.id,
+      goalId: goal.id,
+      percentage: '100.00',
+    })
+
+    return { created: true }
+  })
 }

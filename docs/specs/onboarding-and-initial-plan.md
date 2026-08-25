@@ -16,7 +16,7 @@ The experience must communicate the core loop without requiring a full financial
   3. Approximate monthly expenses, including `No sé todavía`.
   4. Planned monthly contribution.
 - Create the first `Goal` and `FinancialProfile` on completion.
-- Use the emergency-fund rule from the PRD when that is the selected goal: six months of known monthly expenses.
+- Use the emergency-fund rule from the PRD when that is the selected goal: three months of recurring expenses.
 - Route the completed user to `/app` Home.
 - New-user Home experience after onboarding:
   - `Tu plan está empezando a tomar forma`.
@@ -41,6 +41,9 @@ The experience must communicate the core loop without requiring a full financial
 
 ## Rules
 
+- Recurring income and expense records are the source of monthly totals.
+- Financial profiles do not duplicate approximate monthly income or expense totals.
+- An emergency fund defaults to three months of recurring expenses.
 - All user-facing text is natural Argentine Spanish with voseo. Code and contracts remain English.
 - Preserve this onboarding copy exactly:
   - Title: `Vamos a construir tu perfil financiero`
@@ -48,7 +51,7 @@ The experience must communicate the core loop without requiring a full financial
   - Expense option: `No sé todavía`
   - Final CTA: `Ver mi plan`
 - The first-goal choices are `Colchón financiero`, selected by default, `Quiero ahorrar cierta suma de dinero`, and `Quiero cambiar el auto`. Display `Podés cambiar o agregar objetivos más adelante.` The fixed-target choices use ARS.
-- `Colchón financiero` has a target of `monthly expenses × emergencyFundMonths`, with `emergencyFundMonths = 6`. The other two choices collect one positive ARS target amount and create fixed-target savings Goals; changing a car does not collect vehicle details, a target date, or an allocation.
+- `Colchón financiero` has a target of `monthly expenses × emergencyFundMonths`, with `emergencyFundMonths = 3`. The other two choices collect one positive ARS target amount and create fixed-target savings Goals; changing a car does not collect vehicle details, a target date, or an allocation.
 - Income and expenses collected here are approximate planning inputs. They must not be presented as recorded income, expenses, or actual contributions.
 - Approximate monthly income is required but may be zero.
 - Planned monthly contribution is intent, not actual progress. It must be greater than zero.
@@ -72,7 +75,7 @@ validation errors.
 
 - Present `Colchón financiero` as the default, plus `Quiero ahorrar cierta suma de dinero` and `Quiero cambiar el auto`.
 - Display `Podés cambiar o agregar objetivos más adelante.` No additional-goal creation is available in this MVP.
-- An emergency fund uses `emergencyFundMonths: 6`. The other choices require one positive ARS target amount and create fixed-target savings Goals without custom names or vehicle details.
+- An emergency fund uses `emergencyFundMonths: 3`. The other choices require one positive ARS target amount and create fixed-target savings Goals without custom names or vehicle details.
 
 #### Step 2: Approximate monthly income
 
@@ -155,7 +158,7 @@ An incomplete emergency-fund projection remains visible as a valid state. It mus
 - `Ver mi plan` persists the profile and goal, sets `onboardingCompleted`, and
   renders Home at `/app` only after success.
 - A failed persistence attempt keeps the form state and allows retry.
-- With known expenses, the emergency-fund target equals six times monthly expenses and is available to the shared goal/projection foundations.
+- With known expenses, the emergency-fund target equals three times monthly expenses and is available to the shared goal/projection foundations.
 - With unknown expenses, an emergency fund has no target or completion date; Home shows `Todavía no sabemos` and `Fecha por calcular`. A fixed-target savings Goal retains its target and projected date.
 - New-user Home shows `Tu plan está empezando a tomar forma`, the three summary labels, the selected-goal card, relevant incomplete emergency-fund guidance, and the visible roadmap state.
 - The Home experience does not claim actual progress or actual savings merely because a plan was created.

@@ -57,7 +57,11 @@ async function resolveSource(tx: any, userId: string, source: IncomeDraft['sourc
   return { sourceKind: 'custom' as const, sourceId: created.id }
 }
 
-function incomeValues(userId: string, draft: IncomeDraft, source: { sourceKind: string; sourceId: string | null }) {
+function incomeValues(
+  userId: string,
+  draft: IncomeDraft,
+  source: { sourceKind: string; sourceId: string | null },
+) {
   return {
     userId,
     sourceKind: source.sourceKind,
@@ -65,15 +69,29 @@ function incomeValues(userId: string, draft: IncomeDraft, source: { sourceKind: 
     amount: draft.amount,
     currency: draft.currency,
     recurring: draft.recurring,
-    effectiveMonth: `${draft.effectiveMonth}-01`,
   }
+}
+
+export async function insertIncomeWithExecutor(
+  tx: any,
+  userId: string,
+  draft: IncomeDraft,
+  effectiveMonth: string,
+) {
+  const source = await resolveSource(tx, userId, draft.source)
+  const [income] = await tx
+    .insert(incomes)
+    .values({
+      ...incomeValues(userId, draft, source),
+      effectiveMonth: `${effectiveMonth}-01`,
+    })
+    .returning()
+  return income
 }
 
 export async function createIncomeInRepository(userId: string, draft: IncomeDraft) {
   return db.transaction(async (tx) => {
-    const source = await resolveSource(tx, userId, draft.source)
-    const [income] = await tx.insert(incomes).values(incomeValues(userId, draft, source)).returning()
-    return income
+    return insertIncomeWithExecutor(tx, userId, draft, draft.effectiveMonth)
   })
 }
 
@@ -86,7 +104,10 @@ export async function updateIncomeInRepository(userId: string, incomeId: string,
     const source = await resolveSource(tx, userId, draft.source)
     const [income] = await tx
       .update(incomes)
-      .set(incomeValues(userId, draft, source))
+      .set({
+        ...incomeValues(userId, draft, source),
+        effectiveMonth: `${draft.effectiveMonth}-01`,
+      })
       .where(and(eq(incomes.id, incomeId), eq(incomes.userId, userId)))
       .returning()
     return income
