@@ -225,28 +225,33 @@ describe('buildAllocationChangeProposal', () => {
     ).toThrowError(/percentages must sum to 100%/)
   })
 
-  it('yields no impacts when draft matches the baseline allocation and dedication percentage', () => {
+  it('includes every active goal with equal before and after projections when the draft matches the baseline', () => {
     const source = createBaseWorkspaceSource()
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
     }
-    const draft: AllocationChangeDraft = {
-      dedicationPercentage: 90,
-      allocations: [
-        { goalId: 'goal-1', percentage: '60.00' },
-        { goalId: 'goal-2', percentage: '40.00' },
-      ],
-    }
 
     const proposal = buildAllocationChangeProposal({
-      draft,
+      draft: {
+        dedicationPercentage: 90,
+        allocations: [
+          { goalId: 'goal-1', percentage: '60.00' },
+          { goalId: 'goal-2', percentage: '40.00' },
+        ],
+      },
       state,
       currentMonth: '2026-08',
     })
 
-    expect(proposal.impacts).toHaveLength(0)
+    expect(proposal.impacts.map((impact) => impact.goalId)).toEqual(['goal-1', 'goal-2'])
+    for (const impact of proposal.impacts) {
+      expect(impact.before.status).toBe('existing')
+      if (impact.before.status === 'existing') {
+        expect(impact.after).toEqual(impact.before.projection)
+      }
+    }
   })
 
   it('creates impacts when changing only the dedication percentage', () => {
@@ -275,6 +280,67 @@ describe('buildAllocationChangeProposal', () => {
       currency: 'ARS',
     })
     expect(proposal.impacts.length).toBeGreaterThan(0)
+  })
+
+  it('uses the pending plan for the before projection', () => {
+    const source = createBaseWorkspaceSource()
+    source.allocations = [
+      {
+        id: 'allocation-current-1',
+        snapshotId: 'snap-global-aug',
+        goalId: 'goal-1',
+        percentage: '100.00',
+      },
+      {
+        id: 'allocation-current-2',
+        snapshotId: 'snap-global-aug',
+        goalId: 'goal-2',
+        percentage: '0.00',
+      },
+    ]
+    const state: AllocationChangeState = {
+      source,
+      pendingSnapshots: [
+        { id: 'snap-global-sep', userId: 'user-1', effectiveMonth: '2026-09-01' },
+      ],
+      pendingAllocations: [
+        {
+          id: 'allocation-pending-1',
+          snapshotId: 'snap-global-sep',
+          goalId: 'goal-1',
+          percentage: '0.00',
+        },
+        {
+          id: 'allocation-pending-2',
+          snapshotId: 'snap-global-sep',
+          goalId: 'goal-2',
+          percentage: '100.00',
+        },
+      ],
+    }
+
+    const proposal = buildAllocationChangeProposal({
+      draft: {
+        dedicationPercentage: 90,
+        allocations: [
+          { goalId: 'goal-1', percentage: '0.00' },
+          { goalId: 'goal-2', percentage: '100.00' },
+        ],
+      },
+      state,
+      currentMonth: '2026-08',
+    })
+
+    const impact = proposal.impacts.find((candidate) => candidate.goalId === 'goal-2')
+    expect(impact?.before).toMatchObject({
+      status: 'existing',
+      projection: { status: 'available' },
+      allocatedMonthlyAmounts: [{ amount: '450000.00', currency: 'ARS' }],
+    })
+    expect(proposal.allocation.effectiveMonth).toBe('2026-09-01')
+    for (const candidate of proposal.impacts) {
+      expect(candidate.after).toEqual(candidate.before.projection)
+    }
   })
 })
 

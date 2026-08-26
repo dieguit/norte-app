@@ -9,6 +9,7 @@ import {
   type GoalsFinancialSummary,
   type GoalsWorkspaceSource,
   buildGoalsWorkspace,
+  buildCurrentGoalsPlanWorkspace,
 } from './goals'
 import {
   type GoalCreationAllocation,
@@ -32,6 +33,7 @@ export interface AllocationChangeContext {
     id: string
     name: string
     currency: CurrencyCode
+    projection: GoalProjection
   }>
   currentAllocation?: {
     effectiveMonth: string
@@ -77,15 +79,19 @@ export function buildAllocationChangeProposal(
 ): AllocationChangeProposal {
   const { draft, state, currentMonth } = input
 
-  const effectiveMonth = `${currentMonth.slice(0, 7)}-01`
+  const pendingSnapshot = state.pendingSnapshots[0]
+  const effectiveMonth =
+    pendingSnapshot?.effectiveMonth ?? `${currentMonth.slice(0, 7)}-01`
   const activeGoals = (state.source.goals ?? []).filter((g) => g.status === 'active')
 
-  const selectedSnapshot = (state.source.snapshots ?? [])
-    .filter((snapshot) => snapshot.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
-    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
+  const selectedSnapshot =
+    pendingSnapshot ??
+    (state.source.snapshots ?? [])
+      .filter((snapshot) => snapshot.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
+      .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
 
   const sourceAllocs = selectedSnapshot
-    ? (state.source.allocations ?? []).filter(
+    ? (pendingSnapshot ? state.pendingAllocations : state.source.allocations ?? []).filter(
         (a) => a.snapshotId === selectedSnapshot.id,
       )
     : []
@@ -170,8 +176,14 @@ export function buildAllocationChangeProposal(
       }
     : null
 
-  const proposedSnapshots = [...(state.source.snapshots ?? [])]
-  const proposedAllocations = [...(state.source.allocations ?? [])]
+  const proposedSnapshots = [
+    ...(state.source.snapshots ?? []),
+    ...(pendingSnapshot ? [pendingSnapshot] : []),
+  ]
+  const proposedAllocations = [
+    ...(state.source.allocations ?? []),
+    ...(pendingSnapshot ? state.pendingAllocations : []),
+  ]
 
   const snapshotId = selectedSnapshot?.id ?? `snap-allocation-${currentMonth.slice(0, 7)}`
 
@@ -182,7 +194,7 @@ export function buildAllocationChangeProposal(
   }
 
   const existingSnapIndex = proposedSnapshots.findIndex(
-    (s) => s.effectiveMonth.slice(0, 7) === currentMonth.slice(0, 7),
+    (s) => s.effectiveMonth.slice(0, 7) === effectiveMonth.slice(0, 7),
   )
   if (existingSnapIndex >= 0) {
     proposedSnapshots[existingSnapIndex] = newSnapshot
@@ -214,7 +226,7 @@ export function buildAllocationChangeProposal(
     savingContributions: state.source.savingContributions,
   }
 
-  const beforeWorkspace = buildGoalsWorkspace(state.source, currentMonth)
+  const beforeWorkspace = buildCurrentGoalsPlanWorkspace(state, currentMonth)
   const afterWorkspace = buildGoalsWorkspace(proposedSource, currentMonth)
 
   const monthlyContribution = afterWorkspace.financialSummary.contribution
@@ -256,7 +268,7 @@ export function buildAllocationChangeProposal(
 
   const impacts: AllocationChangeProposal['impacts'] = []
 
-  for (const goal of state.source.goals ?? []) {
+  for (const goal of activeGoals) {
     const beforeGoal = beforeGoals.find((g) => g.id === goal.id)
     const afterGoal = afterGoals.find((g) => g.id === goal.id)
 
@@ -266,43 +278,23 @@ export function buildAllocationChangeProposal(
     const afterProjection: GoalProjection = afterGoal?.projection ?? {
       status: 'target_unavailable',
     }
+    const beforeFundingRow =
+      beforeGoal?.funding?.find(
+        (funding) => funding.effectiveMonth === selectedSnapshot?.effectiveMonth,
+      ) ?? beforeGoal?.funding?.[0]
 
-    const beforeAllocatedAmounts: Money[] = []
-    let amountsChanged = false
-
-    const beforeFundingRow = beforeGoal?.funding?.find(
-      (f) => f.effectiveMonth.slice(0, 7) === currentMonth.slice(0, 7),
-    ) ?? beforeGoal?.funding?.[0]
-
-    if (beforeFundingRow?.allocatedDestinationAmount) {
-      beforeAllocatedAmounts.push(beforeFundingRow.allocatedDestinationAmount)
-    }
-
-    const afterEntry = allocation.entries.find((e) => e.goalId === goal.id)
-    const afterDestAmount = afterEntry?.allocatedDestinationAmount
-
-    if (
-      beforeFundingRow?.allocatedDestinationAmount?.amount !== afterDestAmount?.amount ||
-      beforeFundingRow?.allocatedDestinationAmount?.currency !== afterDestAmount?.currency
-    ) {
-      amountsChanged = true
-    }
-
-    const projectionChanged =
-      JSON.stringify(beforeProjection) !== JSON.stringify(afterProjection)
-
-    if (projectionChanged || amountsChanged) {
-      impacts.push({
-        goalId: goal.id,
-        goalName: goal.name,
-        before: {
-          status: 'existing',
-          projection: beforeProjection,
-          allocatedMonthlyAmounts: beforeAllocatedAmounts,
-        },
-        after: afterProjection,
-      })
-    }
+    impacts.push({
+      goalId: goal.id,
+      goalName: goal.name,
+      before: {
+        status: 'existing',
+        projection: beforeProjection,
+        allocatedMonthlyAmounts: beforeFundingRow?.allocatedDestinationAmount
+          ? [beforeFundingRow.allocatedDestinationAmount]
+          : [],
+      },
+      after: afterProjection,
+    })
   }
 
   return {

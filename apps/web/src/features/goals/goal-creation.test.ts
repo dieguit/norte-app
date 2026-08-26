@@ -408,22 +408,29 @@ describe('buildGoalCreationProposal', () => {
       expect(pendingImpact?.after).toBeDefined()
     })
 
-    it('returns only existing goals whose monthly amount or projection changed', () => {
+    it('returns the pending goal and every active existing goal, including unchanged projections', () => {
       const source = createBaseWorkspaceSource()
       const state: GoalCreationState = { source, pendingSnapshots: [], pendingAllocations: [] }
 
-      // When seeded with defaults, pending goal gets 0%, goal-1 gets 60%, goal-2 gets 40%.
-      // Neither goal-1 nor goal-2 amounts or projections change!
       const defaultProposal = buildGoalCreationProposal({
         draft: createBaseDraft(),
         state,
         currentMonth: '2026-08',
       })
 
-      expect(defaultProposal.impacts).toHaveLength(1)
-      expect(defaultProposal.impacts[0].goalId).toBe(PENDING_GOAL_ID)
+      expect(defaultProposal.impacts.map((impact) => impact.goalId)).toEqual([
+        PENDING_GOAL_ID,
+        'goal-1',
+        'goal-2',
+      ])
+      for (const impact of defaultProposal.impacts.filter(
+        (candidate) => candidate.before.status === 'existing',
+      )) {
+        if (impact.before.status === 'existing') {
+          expect(impact.after).toEqual(impact.before.projection)
+        }
+      }
 
-      // When user reduces goal-1 from 60% to 20% to give 40% to pending goal:
       const changedProposal = buildGoalCreationProposal({
         draft: createBaseDraft({
           allocations: [
@@ -436,16 +443,60 @@ describe('buildGoalCreationProposal', () => {
         currentMonth: '2026-08',
       })
 
-      // goal-1 changed (60% -> 20%), goal-2 did not change (40% -> 40%)
-      const impactIds = changedProposal.impacts.map((i) => i.goalId)
-      expect(impactIds).toContain(PENDING_GOAL_ID)
-      expect(impactIds).toContain('goal-1')
-      expect(impactIds).not.toContain('goal-2')
+      expect(changedProposal.impacts.map((impact) => impact.goalId)).toEqual([
+        PENDING_GOAL_ID,
+        'goal-1',
+        'goal-2',
+      ])
+    })
 
-      const goal1Impact = changedProposal.impacts.find((i) => i.goalId === 'goal-1')
-      expect(goal1Impact?.before).toMatchObject({
+    it('uses the pending plan for existing goals in before projections', () => {
+      const source = createBaseWorkspaceSource()
+      source.allocations = [
+        {
+          id: 'allocation-current-1',
+          snapshotId: 'snap-global-aug',
+          goalId: 'goal-1',
+          percentage: '100.00',
+        },
+        {
+          id: 'allocation-current-2',
+          snapshotId: 'snap-global-aug',
+          goalId: 'goal-2',
+          percentage: '0.00',
+        },
+      ]
+      const state: GoalCreationState = {
+        source,
+        pendingSnapshots: [
+          { id: 'snap-global-sep', userId: 'user-1', effectiveMonth: '2026-09-01' },
+        ],
+        pendingAllocations: [
+          {
+            id: 'allocation-pending-1',
+            snapshotId: 'snap-global-sep',
+            goalId: 'goal-1',
+            percentage: '0.00',
+          },
+          {
+            id: 'allocation-pending-2',
+            snapshotId: 'snap-global-sep',
+            goalId: 'goal-2',
+            percentage: '100.00',
+          },
+        ],
+      }
+
+      const proposal = buildGoalCreationProposal({
+        draft: createBaseDraft(),
+        state,
+        currentMonth: '2026-08',
+      })
+
+      const impact = proposal.impacts.find((candidate) => candidate.goalId === 'goal-2')
+      expect(impact?.before).toMatchObject({
         status: 'existing',
-        allocatedMonthlyAmounts: [{ amount: '24.00', currency: 'USD' }],
+        projection: { status: 'available' },
       })
     })
   })

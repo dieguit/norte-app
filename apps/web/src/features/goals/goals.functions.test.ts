@@ -804,8 +804,8 @@ describe('getAllocationChangeContext', () => {
         },
         plannedMonthlyContribution: { amount: '60000.00', currency: 'ARS' },
         activeGoals: [
-          { id: 'g1', name: 'Reserva', currency: 'USD' },
-          { id: 'g2', name: 'Vacaciones', currency: 'USD' },
+          { id: 'g1', name: 'Reserva', currency: 'USD', projection: { status: 'available', completionMonth: '2027-05' } },
+          { id: 'g2', name: 'Vacaciones', currency: 'USD', projection: { status: 'available', completionMonth: '2027-02' } },
         ],
         currentAllocation: {
           effectiveMonth: '2026-08-01',

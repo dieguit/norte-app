@@ -317,7 +317,7 @@ describe('GoalCreation component (2-step flow)', () => {
 
       expect(screen.getByText('Completá la distribución para calcular el impacto')).toBeVisible()
       expect(screen.getByRole('button', { name: 'Crear objetivo y actualizar Plan' })).toBeDisabled()
-      expect(screen.queryByText('Con este cambio')).not.toBeInTheDocument()
+      expect(screen.getAllByText('Con este cambio').length).toBeGreaterThanOrEqual(1)
     })
 
     it('handles stale preview on confirmation, displays alert, merges allocations, and stays on Step 2', async () => {

@@ -10,6 +10,7 @@ import {
   type GoalStatus,
   type GoalsWorkspaceSource,
   buildGoalsWorkspace,
+  buildCurrentGoalsPlanWorkspace,
 } from './goals'
 import {
   type GoalCreationAllocation,
@@ -411,34 +412,7 @@ export function buildGoalLifecycleProposal(
   }
 
   // 5. Workspaces: Before & After
-  const baselineSnapshots = [...(state.source.snapshots ?? [])]
-  const baselineAllocations = [...(state.source.allocations ?? [])]
-
-  if (pendingNextSnapshot) {
-    const existingIndex = baselineSnapshots.findIndex((s) => s.id === pendingNextSnapshot.id)
-    if (existingIndex >= 0) {
-      baselineSnapshots[existingIndex] = pendingNextSnapshot
-    } else {
-      baselineSnapshots.push(pendingNextSnapshot)
-    }
-
-    const pendingAllocsForSnap = (state.pendingAllocations ?? []).filter(
-      (a) => a.snapshotId === pendingNextSnapshot.id,
-    )
-    const filteredBaselineAllocations = baselineAllocations.filter(
-      (a) => a.snapshotId !== pendingNextSnapshot.id,
-    )
-    baselineAllocations.length = 0
-    baselineAllocations.push(...filteredBaselineAllocations, ...pendingAllocsForSnap)
-  }
-
-  const baselineSource: GoalsWorkspaceSource = {
-    ...state.source,
-    snapshots: baselineSnapshots,
-    allocations: baselineAllocations,
-  }
-
-  const beforeWorkspace = buildGoalsWorkspace(baselineSource, currentMonth)
+  const beforeWorkspace = buildCurrentGoalsPlanWorkspace(state, currentMonth)
 
   // Build proposed source
   const proposedSnapshots = [...(state.source.snapshots ?? [])]

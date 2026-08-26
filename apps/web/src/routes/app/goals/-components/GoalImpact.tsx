@@ -200,13 +200,15 @@ export function GoalImpact({
           )}
         </div>
 
-        {!isAllocationsValid ? (
+        {!isAllocationsValid && (
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-4 text-center">
             <p className="text-sm text-[var(--sea-ink-soft)] font-medium">
               {impactLabels.invalid}
             </p>
           </div>
-        ) : impactsToDisplay.length > 0 ? (
+        )}
+
+        {impactsToDisplay.length > 0 && (
           <div
             className={`transition-opacity ${
               isPreviewPending ? 'opacity-50' : 'opacity-100'
@@ -217,7 +219,7 @@ export function GoalImpact({
               beforeNotCreatedLabel={impactLabels.pendingGoalBefore}
             />
           </div>
-        ) : null}
+        )}
       </section>
     </div>
   )

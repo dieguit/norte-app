@@ -290,7 +290,9 @@ describe('GoalImpact component', () => {
     )
 
     expect(screen.getByText('Completá la distribución para calcular el impacto')).toBeVisible()
-    expect(screen.queryByText('Objetivo todavía no creado')).not.toBeInTheDocument()
+    expect(screen.getByText('Objetivo todavía no creado')).toBeVisible()
+    expect(screen.getAllByText('Antes')).toHaveLength(2)
+    expect(screen.getAllByText('Con este cambio')).toHaveLength(2)
   })
 })
 

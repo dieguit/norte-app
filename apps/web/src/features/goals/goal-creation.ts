@@ -21,6 +21,7 @@ import {
   type GoalsWorkspaceSource,
   type InvestmentAvailability,
   buildGoalsWorkspace,
+  buildCurrentGoalsPlanWorkspace,
 } from './goals'
 import type { GoalCreationDraft } from './goal-creation.schema'
 
@@ -639,7 +640,7 @@ export function buildGoalCreationProposal(input: {
   }
 
   // 10. Build before workspace from current source
-  const beforeWorkspace = buildGoalsWorkspace(state.source, currentMonth)
+  const beforeWorkspace = buildCurrentGoalsPlanWorkspace(state, currentMonth)
 
   // 11. Build proposed source and after workspace
   const proposedSnapshots = [...(state.source.snapshots ?? [])]
@@ -704,54 +705,34 @@ export function buildGoalCreationProposal(input: {
 
   // Existing goals impact
   for (const goal of state.source.goals ?? []) {
+    if (goal.status !== 'active' && goal.id !== subjectGoalId) continue
+
     const beforeGoal = beforeGoals.find((g) => g.id === goal.id)
     const afterGoal = afterGoals.find((g) => g.id === goal.id)
-
     const beforeProjection: GoalProjection = beforeGoal?.projection ?? {
       status: 'target_unavailable',
     }
     const afterProjection: GoalProjection = afterGoal?.projection ?? {
       status: 'target_unavailable',
     }
-
-    const beforeAllocatedAmounts: Money[] = []
-    let amountsChanged = false
-
-    const beforeFundingRow = beforeGoal?.funding?.find(
-      (f) => f.effectiveMonth === selectedSnapshot?.effectiveMonth,
-    ) ?? beforeGoal?.funding?.[0]
-
-    if (beforeFundingRow?.allocatedDestinationAmount) {
-      beforeAllocatedAmounts.push(beforeFundingRow.allocatedDestinationAmount)
-    }
-
-    const afterEntry = allocation.entries.find((e) => e.goalId === goal.id)
-    const afterDestAmount = afterEntry?.allocatedDestinationAmount
-
-    if (
-      beforeFundingRow?.allocatedDestinationAmount?.amount !== afterDestAmount?.amount ||
-      beforeFundingRow?.allocatedDestinationAmount?.currency !== afterDestAmount?.currency
-    ) {
-      amountsChanged = true
-    }
-
-    const projectionChanged =
-      JSON.stringify(beforeProjection) !== JSON.stringify(afterProjection)
-
+    const beforeFundingRow =
+      beforeGoal?.funding?.find(
+        (funding) => funding.effectiveMonth === selectedSnapshot?.effectiveMonth,
+      ) ?? beforeGoal?.funding?.[0]
     const isSubject = isEditing && goal.id === subjectGoalId
 
-    if (isSubject || projectionChanged || amountsChanged) {
-      impacts.push({
-        goalId: goal.id,
-        goalName: isSubject ? normalizedGoal.name : goal.name,
-        before: {
-          status: 'existing',
-          projection: beforeProjection,
-          allocatedMonthlyAmounts: beforeAllocatedAmounts,
-        },
-        after: afterProjection,
-      })
-    }
+    impacts.push({
+      goalId: goal.id,
+      goalName: isSubject ? normalizedGoal.name : goal.name,
+      before: {
+        status: 'existing',
+        projection: beforeProjection,
+        allocatedMonthlyAmounts: beforeFundingRow?.allocatedDestinationAmount
+          ? [beforeFundingRow.allocatedDestinationAmount]
+          : [],
+      },
+      after: afterProjection,
+    })
   }
 
   return {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createMoney } from '../../lib/money'
 import {
   buildGoalsWorkspace,
+  buildCurrentGoalsPlanWorkspace,
   groupGoals,
   projectGoalCompletion,
   type GoalsWorkspaceSource,
@@ -167,6 +168,72 @@ function createMockWorkspaceSource(overrides: Partial<GoalsWorkspaceSource> = {}
     ...overrides,
   }
 }
+
+describe('buildCurrentGoalsPlanWorkspace', () => {
+  it('includes a pending next-month allocation without mutating the current source', () => {
+    const source: GoalsWorkspaceSource = {
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '100000.00',
+        onboardingCompleted: true,
+      },
+      goals: [
+        {
+          id: 'goal-1',
+          userId: 'user-1',
+          name: 'Viaje',
+          type: 'purchase',
+          targetAmount: '200000.00',
+          currency: 'ARS',
+          priority: 'medium',
+          strategy: 'save',
+          status: 'active',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [],
+      investmentPositions: [],
+      snapshots: [
+        { id: 'snapshot-current', userId: 'user-1', effectiveMonth: '2026-08-01' },
+      ],
+      allocations: [
+        {
+          id: 'allocation-current',
+          snapshotId: 'snapshot-current',
+          goalId: 'goal-1',
+          percentage: '0.00',
+        },
+      ],
+    }
+    const state = {
+      source,
+      pendingSnapshots: [
+        { id: 'snapshot-pending', userId: 'user-1', effectiveMonth: '2026-09-01' },
+      ],
+      pendingAllocations: [
+        {
+          id: 'allocation-pending',
+          snapshotId: 'snapshot-pending',
+          goalId: 'goal-1',
+          percentage: '100.00',
+        },
+      ],
+    }
+
+    const workspace = buildCurrentGoalsPlanWorkspace(state, '2026-08')
+    const goal = workspace.groups.flatMap((group) => group.goals)[0]
+
+    expect(goal.funding.map(({ effectiveMonth, percentage }) => ({ effectiveMonth, percentage }))).toEqual([
+      { effectiveMonth: '2026-08-01', percentage: '0.00' },
+      { effectiveMonth: '2026-09-01', percentage: '100.00' },
+    ])
+    expect(goal.projection).toEqual({ status: 'available', completionMonth: '2026-10' })
+    expect(source.snapshots).toHaveLength(1)
+    expect(source.allocations).toHaveLength(1)
+  })
+})
 
 describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
   it('calculates ARS 25% of ARS 100,000 gives ARS 25,000', () => {

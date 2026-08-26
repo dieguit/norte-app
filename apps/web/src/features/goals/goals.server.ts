@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js'
 import { createMoney } from '../../lib/money'
 import { getNextCalendarMonth } from '../financial/financial'
 import { requireFinancialUser } from '../financial/auth.server'
-import { buildGoalsWorkspace, type GoalsAppState } from './goals'
+import { buildGoalsWorkspace, buildCurrentGoalsPlanWorkspace, type GoalsAppState } from './goals'
 import {
   confirmAllocationChangeInRepository,
   confirmGoalCreationInRepository,
@@ -383,15 +383,19 @@ export function mapAllocationChangeContext(
       ? createMoney(profile.plannedMonthlyContribution, profile.baseCurrency ?? 'ARS')
       : undefined
 
-  const workspace = buildGoalsWorkspace(state.source, currentMonth)
+  const workspace = buildCurrentGoalsPlanWorkspace(state, currentMonth)
   const financialSummary = workspace.financialSummary
 
+  const workspaceGoals = workspace.groups.flatMap((group) => group.goals)
   const activeGoals = (state.source.goals ?? [])
     .filter((g) => g.status === 'active')
     .map((g) => ({
       id: g.id,
       name: g.name,
       currency: g.currency,
+      projection:
+        workspaceGoals.find((workspaceGoal) => workspaceGoal.id === g.id)?.projection ??
+        ({ status: 'target_unavailable' } as const),
     }))
 
   const winningSnapshot = state.source.snapshots?.[0]

@@ -531,3 +531,37 @@ export function buildGoalsWorkspace(
     groups: groupGoals(goalItems),
   }
 }
+
+export function buildCurrentGoalsPlanWorkspace(
+  state: {
+    source: GoalsWorkspaceSource
+    pendingSnapshots: GoalsWorkspaceSource['snapshots']
+    pendingAllocations: GoalsWorkspaceSource['allocations']
+  },
+  currentMonth: string,
+): GoalsWorkspace {
+  const pendingSnapshotIds = new Set(
+    state.pendingSnapshots.map((snapshot) => snapshot.id),
+  )
+
+  return buildGoalsWorkspace(
+    {
+      ...state.source,
+      snapshots: [
+        ...(state.source.snapshots ?? []).filter(
+          (snapshot) => !pendingSnapshotIds.has(snapshot.id),
+        ),
+        ...state.pendingSnapshots,
+      ],
+      allocations: [
+        ...(state.source.allocations ?? []).filter(
+          (allocation) => !pendingSnapshotIds.has(allocation.snapshotId),
+        ),
+        ...state.pendingAllocations.filter((allocation) =>
+          pendingSnapshotIds.has(allocation.snapshotId),
+        ),
+      ],
+    },
+    currentMonth,
+  )
+}

@@ -63,8 +63,8 @@ describe("AllocationChange and AllocationChangeSheet", () => {
     },
     plannedMonthlyContribution: { amount: "99000.00", currency: "ARS" },
     activeGoals: [
-      { id: "goal-1", name: "Fondo de emergencia", currency: "ARS" },
-      { id: "goal-2", name: "Viaje a Japón", currency: "USD" },
+      { id: "goal-1", name: "Fondo de emergencia", currency: "ARS", projection: { status: "available", completionMonth: "2026-12" } },
+      { id: "goal-2", name: "Viaje a Japón", currency: "USD", projection: { status: "available", completionMonth: "2027-08" } },
     ],
     currentAllocation: {
       effectiveMonth: "2026-08-01",
@@ -247,6 +247,24 @@ describe("AllocationChange and AllocationChangeSheet", () => {
   });
 
   describe("AllocationChange interactions", () => {
+    it('shows current goal dates while the initial preview is pending', () => {
+      vi.mocked(previewAllocationChange).mockReturnValue(new Promise(() => {}))
+
+      render(
+        <AllocationChange
+          context={sampleContext}
+          onCancel={vi.fn()}
+          onUpdated={vi.fn()}
+        />,
+      )
+
+      expect(screen.getAllByText('Antes')).toHaveLength(2)
+      expect(screen.getAllByText('Con este cambio')).toHaveLength(2)
+      expect(screen.getAllByText('Diciembre de 2026')).toHaveLength(2)
+      expect(screen.getAllByText('Agosto de 2027')).toHaveLength(2)
+      expect(screen.getByText('Actualizando impacto...')).toBeVisible()
+    })
+
     it('opening the Sheet loads "Distribución e impacto", dedication slider at 90%, and renders active goals', async () => {
       vi.mocked(previewAllocationChange).mockResolvedValue(makeMockPreview());
 
@@ -507,6 +525,9 @@ describe("AllocationChange and AllocationChangeSheet", () => {
       expect(
         screen.getByText("Proyección pendiente de actualización"),
       ).toBeInTheDocument();
+      expect(screen.getByText('Completá la distribución para calcular el impacto')).toBeVisible()
+      expect(screen.getAllByText('Antes')).toHaveLength(2)
+      expect(screen.getAllByText('Con este cambio')).toHaveLength(2)
     });
 
     it('a valid blur generates a preview with "Antes" and "Con este cambio"', async () => {

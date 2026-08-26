@@ -202,6 +202,22 @@ export function AllocationChange({
 
   const isPreviewOutdated = !preview || !isPreviewSynced;
 
+  const impactsToDisplay = useMemo(
+    () =>
+      preview?.proposal.impacts ??
+      context.activeGoals.map((goal) => ({
+        goalId: goal.id,
+        goalName: goal.name,
+        before: {
+          status: 'existing' as const,
+          projection: goal.projection,
+          allocatedMonthlyAmounts: [],
+        },
+        after: goal.projection,
+      })),
+    [context.activeGoals, preview?.proposal.impacts],
+  )
+
   const handlePercentageChange = (goalId: string, nextPercentage: string) => {
     const rebalanced = rebalanceAllocationEntries(
       entries,
@@ -432,22 +448,23 @@ export function AllocationChange({
             )}
           </div>
 
-          {!isAllocationsValid ? (
+          {!isAllocationsValid && (
             <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-4 text-center">
               <p className="text-sm text-[var(--sea-ink-soft)] font-medium">
                 Completá la distribución para calcular el impacto
               </p>
             </div>
-          ) : preview?.proposal.impacts &&
-            preview.proposal.impacts.length > 0 ? (
+          )}
+
+          {impactsToDisplay.length > 0 && (
             <div
               className={`transition-opacity ${
                 isPreviewPending ? "opacity-50" : "opacity-100"
               }`}
             >
-              <AllocationImpactComparison impacts={preview.proposal.impacts} />
+              <AllocationImpactComparison impacts={impactsToDisplay} />
             </div>
-          ) : null}
+          )}
         </section>
       </div>
 

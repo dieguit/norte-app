@@ -150,7 +150,7 @@ describe('mapAllocationChangeContext', () => {
           { id: 'snap-1', userId: 'user-1', effectiveMonth: '2026-08-01' },
         ],
         allocations: [
-          { id: 'alloc-1', snapshotId: 'snap-1', goalId: 'g1', percentage: '100.00' },
+          { id: 'alloc-1', snapshotId: 'snap-1', goalId: 'g1', percentage: '0.00' },
         ],
       },
       pendingSnapshots: [
@@ -175,11 +175,19 @@ describe('mapAllocationChangeContext', () => {
       },
       plannedMonthlyContribution: { amount: '75000.00', currency: 'ARS' },
       activeGoals: [
-        { id: 'g1', name: 'Reserva', currency: 'USD' },
+        {
+          id: 'g1',
+          name: 'Reserva',
+          currency: 'USD',
+          projection: {
+            status: 'available',
+            completionMonth: expect.any(String),
+          },
+        },
       ],
       currentAllocation: {
         effectiveMonth: '2026-08-01',
-        entries: [{ goalId: 'g1', percentage: '100.00' }],
+        entries: [{ goalId: 'g1', percentage: '0.00' }],
       },
       pendingAllocation: {
         effectiveMonth: '2026-09-01',
