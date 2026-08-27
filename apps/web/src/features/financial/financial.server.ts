@@ -11,6 +11,8 @@ import {
   persistFinancialOnboarding,
 } from './repository.server'
 import { parseGoalCreationSubmission } from '../goals/goal-creation.schema'
+import { getSavingsPlacesWorkspaceState } from '../savings-places/savings-places.repository.server'
+import type { SavingsPlacesWorkspace } from '../savings-places/savings-places'
 import type { CompleteFinancialOnboardingInput } from './financial.functions'
 
 export type FinancialAppState =
@@ -21,6 +23,7 @@ export interface FinancesWorkspaceState {
   goalDedicationPercentage: string
   incomes: IncomesWorkspace
   expenses: ExpensesWorkspace
+  savings: SavingsPlacesWorkspace
 }
 
 export async function getFinancialAppStateServer(): Promise<FinancialAppState> {
@@ -34,15 +37,16 @@ export async function getFinancialAppStateServer(): Promise<FinancialAppState> {
 
 export async function getFinancesWorkspaceServer(): Promise<FinancesWorkspaceState | null> {
   const userId = await requireFinancialUser()
-  const [incomes, expenses, goalDedicationPercentage] = await Promise.all([
+  const [incomes, expenses, goalDedicationPercentage, savings] = await Promise.all([
     getIncomesWorkspaceState(userId),
     getExpensesWorkspaceState(userId),
     getGoalDedicationPercentage(userId),
+    getSavingsPlacesWorkspaceState(userId),
   ])
   if (!incomes || !expenses || goalDedicationPercentage === null) {
     return null
   }
-  return { goalDedicationPercentage, incomes, expenses }
+  return { goalDedicationPercentage, incomes, expenses, savings }
 }
 
 export async function completeFinancialOnboardingServer(
