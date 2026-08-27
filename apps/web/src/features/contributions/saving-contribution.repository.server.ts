@@ -333,7 +333,7 @@ export async function createSavingContributionInRepository(input: {
         userId,
         amount: normalizedDraft.amount.amount,
         currency: normalizedDraft.currency,
-        location: normalizedDraft.location || null,
+        placeId: '00000000-0000-0000-0000-000000000000',
         arsSpent: normalizedDraft.arsSpent ? normalizedDraft.arsSpent.amount : null,
         effectiveRate: normalizedDraft.effectiveRate ?? null,
         ...(createdAt ? { createdAt } : {}),
@@ -348,7 +348,6 @@ export async function createSavingContributionInRepository(input: {
             goalId: allocation.goalId,
             amount: allocation.amount.amount,
             currency: allocation.amount.currency,
-            location: normalizedDraft.location || null,
           })
           .returning({ id: goalSavingsPositions.id }),
       ),
@@ -406,7 +405,6 @@ export async function updateSavingContributionInRepository(input: {
           .update(goalSavingsPositions)
           .set({
             amount: newAllocated.amount.amount,
-            location: parsedDraft.location || null,
           })
           .where(eq(goalSavingsPositions.id, alloc.savingPositionId))
 
@@ -422,7 +420,6 @@ export async function updateSavingContributionInRepository(input: {
         .update(savingContributions)
         .set({
           amount: parsedDraft.amount.amount,
-          location: parsedDraft.location || null,
           arsSpent: parsedDraft.arsSpent ? parsedDraft.arsSpent.amount : null,
           effectiveRate: parsedDraft.effectiveRate ?? null,
         })

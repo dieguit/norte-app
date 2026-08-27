@@ -191,7 +191,6 @@ describe('saving-contribution.repository.server', () => {
     goalId: 'g_ars_1',
     amount: '50000.00',
     currency: 'ARS',
-    location: 'Santander',
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
   }
@@ -523,7 +522,6 @@ describe('saving-contribution.repository.server', () => {
       const draftArs: SavingDraftInput = {
         currency: 'ARS',
         amount: '10000.00',
-        location: 'Santander',
       }
 
       const token1 = createSavingContributionPreviewToken(state, currentMonth, draftArs)
@@ -544,13 +542,11 @@ describe('saving-contribution.repository.server', () => {
     const draftArs: SavingDraftInput = {
       currency: 'ARS',
       amount: '10000.00',
-      location: 'Santander',
     }
 
     const draftUsd: SavingDraftInput = {
       currency: 'USD',
       amount: '100.00',
-      location: 'Efectivo',
       arsSpent: '150000.00',
       effectiveRate: '1500.00',
     }
@@ -806,7 +802,6 @@ describe('saving-contribution.repository.server', () => {
       userId,
       amount: '10000.00',
       currency: 'ARS',
-      location: 'Santander',
       arsSpent: null,
       effectiveRate: null,
       createdAt: new Date('2026-08-01T00:00:00Z'),
@@ -843,7 +838,6 @@ describe('saving-contribution.repository.server', () => {
       const updatedDraft: SavingDraftInput = {
         currency: 'ARS',
         amount: '20000.00',
-        location: 'Galicia',
       }
 
       await updateSavingContributionInRepository({
@@ -966,7 +960,6 @@ describe('saving-contribution.repository.server', () => {
       userId,
       amount: '10000.00',
       currency: 'ARS',
-      location: 'Santander',
       arsSpent: null,
       effectiveRate: null,
       createdAt: new Date('2026-08-01T00:00:00Z'),

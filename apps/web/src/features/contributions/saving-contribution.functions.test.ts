@@ -188,13 +188,11 @@ describe('previewSavingContribution', () => {
   const validArsDraft: SavingContributionDraft = {
     currency: 'ARS',
     amount: '10000.00',
-    location: 'Santander',
   }
 
   const validUsdDraft: SavingContributionDraft = {
     currency: 'USD',
     amount: '100.00',
-    location: 'Efectivo',
     arsSpent: '150000.00',
     effectiveRate: '1500.00',
   }
@@ -420,7 +418,6 @@ describe('confirmSavingContribution', () => {
   const validDraft: SavingContributionDraft = {
     currency: 'ARS',
     amount: '10000.00',
-    location: 'Santander',
   }
   const validToken = 'a'.repeat(64)
   const staleToken = 'b'.repeat(64)
@@ -653,7 +650,6 @@ describe('updateSavingContribution', () => {
   const validDraft: SavingContributionDraft = {
     currency: 'ARS',
     amount: '15000.00',
-    location: 'BBVA',
   }
   const validId = '550e8400-e29b-41d4-a716-446655440000'
 
@@ -699,7 +695,7 @@ describe('updateSavingContribution', () => {
     expect(updateSavingContributionInRepository).toHaveBeenCalledWith({
       userId: 'user_456',
       contributionId: validId,
-      draft: expect.objectContaining({ currency: 'ARS', amount: '15000.00', location: 'BBVA' }),
+      draft: expect.objectContaining({ currency: 'ARS', amount: '15000.00' }),
     })
     expect(result).toEqual({ status: 'updated' })
 

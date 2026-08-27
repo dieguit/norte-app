@@ -200,7 +200,6 @@ describe('goals.repository.server', () => {
       goalId: 'g1',
       amount: '500.00',
       currency: 'USD',
-      location: 'Caja de ahorro',
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
     }
@@ -555,7 +554,6 @@ describe('goals.repository.server', () => {
       userId: 'user_1',
       amount: '100.00',
       currency: 'USD',
-      location: 'Banco Santander',
       arsSpent: '150000.00',
       effectiveRate: '1500.00',
       createdAt: new Date('2026-08-15T12:00:00Z'),
@@ -588,7 +586,6 @@ describe('goals.repository.server', () => {
         userId: 'user_1',
         amount: '100.00',
         currency: 'USD',
-        location: 'Banco Santander',
         arsSpent: '150000.00',
         effectiveRate: '1500.00',
         createdAt: mockContribution.createdAt,
@@ -652,7 +649,6 @@ describe('goals.repository.server', () => {
       userId: 'user_1',
       amount: '50000.00',
       currency: 'ARS',
-      location: 'Banco Santander',
       arsSpent: null,
       effectiveRate: null,
       createdAt: new Date('2026-08-10T12:00:00Z'),
@@ -746,7 +742,6 @@ describe('goals.repository.server', () => {
         userId: 'user_1',
         amount: '50000.00',
         currency: 'ARS',
-        location: 'Banco Santander',
         arsSpent: null,
         effectiveRate: null,
         createdAt: mockSavingContrib.createdAt,
@@ -861,7 +856,6 @@ describe('goals.repository.server', () => {
         goalId: 'g1',
         amount: '1000.00',
         currency: 'USD',
-        location: 'Banco',
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }
@@ -1421,7 +1415,6 @@ describe('goals.repository.server', () => {
         goalId: 'g1',
         amount: '1000.00',
         currency: 'USD',
-        location: 'Banco',
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }
@@ -2568,7 +2561,6 @@ describe('goals.repository.server', () => {
         goalId: 'g1',
         amount: '1000.00',
         currency: 'USD',
-        location: 'Banco',
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
       }

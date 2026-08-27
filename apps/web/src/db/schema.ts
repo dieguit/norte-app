@@ -134,7 +134,6 @@ export const goalSavingsPositions = pgTable(
       .references(() => financialGoals.id, { onDelete: 'cascade' }),
     amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
     currency: varchar('currency', { length: 3 }).notNull().default('ARS'),
-    location: text('location'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
@@ -190,7 +189,9 @@ export const savingContributions = pgTable(
       .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
     amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
     currency: varchar('currency', { length: 3 }).notNull(),
-    location: text('location'),
+    placeId: uuid('place_id')
+      .notNull()
+      .references(() => savingsPlaces.id, { onDelete: 'restrict' }),
     arsSpent: numeric('ars_spent', { precision: 12, scale: 2 }),
     effectiveRate: numeric('effective_rate', { precision: 12, scale: 2 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -201,6 +202,7 @@ export const savingContributions = pgTable(
   },
   (table) => [
     index('saving_contributions_user_id_idx').on(table.userId),
+    index('saving_contributions_place_id_idx').on(table.placeId),
     check('saving_contributions_amount_check', sql`${table.amount} > 0`),
     check('saving_contributions_currency_check', sql`${table.currency} in ('ARS', 'USD')`),
     check(
@@ -304,6 +306,8 @@ export type SavingContribution = typeof savingContributions.$inferSelect
 export type SavingContributionAllocation = typeof savingContributionAllocations.$inferSelect
 export type InvestmentContribution = typeof investmentContributions.$inferSelect
 export type InvestmentContributionAllocation = typeof investmentContributionAllocations.$inferSelect
+export type SavingsPlace = typeof savingsPlaces.$inferSelect
+export type SavingsPlaceTransfer = typeof savingsPlaceTransfers.$inferSelect
 
 export const incomeSources = pgTable(
   'income_sources',
@@ -377,6 +381,53 @@ export const expenseSources = pgTable(
       table.userId,
       table.normalizedName,
     ),
+  ],
+)
+
+export const savingsPlaces = pgTable(
+  'savings_places',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 120 }).notNull(),
+    normalizedName: varchar('normalized_name', { length: 120 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => sql`now()`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('savings_places_user_normalized_name_uidx').on(table.userId, table.normalizedName),
+  ],
+)
+
+export const savingsPlaceTransfers = pgTable(
+  'savings_place_transfers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
+    fromPlaceId: uuid('from_place_id')
+      .notNull()
+      .references(() => savingsPlaces.id, { onDelete: 'restrict' }),
+    toPlaceId: uuid('to_place_id')
+      .notNull()
+      .references(() => savingsPlaces.id, { onDelete: 'restrict' }),
+    amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull().default('ARS'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('savings_place_transfers_user_id_idx').on(table.userId),
+    index('savings_place_transfers_from_place_id_idx').on(table.fromPlaceId),
+    index('savings_place_transfers_to_place_id_idx').on(table.toPlaceId),
+    check('savings_place_transfers_amount_check', sql`${table.amount} > 0`),
+    check('savings_place_transfers_currency_check', sql`${table.currency} in ('ARS', 'USD')`),
+    check('savings_place_transfers_places_check', sql`${table.fromPlaceId} <> ${table.toPlaceId}`),
   ],
 )
 

@@ -4,7 +4,6 @@ export const contributionDraftInputSchema = z.object({
   kind: z.enum(['saving', 'investment']).optional().default('saving'),
   currency: z.enum(['ARS', 'USD']),
   amount: z.string(),
-  location: z.string().nullish(),
   arsSpent: z.string().nullish(),
   effectiveRate: z.string().nullish(),
 })

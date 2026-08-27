@@ -966,7 +966,6 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
       goalId: p.goalId,
       amount: p.amount,
       currency: p.currency as CurrencyCode,
-      location: p.location,
     })),
     investmentPositions: rows.investmentPositions.map((p) => ({
       id: p.id,
@@ -985,7 +984,6 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
       userId: c.userId,
       amount: c.amount,
       currency: c.currency as CurrencyCode,
-      location: c.location,
       arsSpent: c.arsSpent,
       effectiveRate: c.effectiveRate,
       createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),

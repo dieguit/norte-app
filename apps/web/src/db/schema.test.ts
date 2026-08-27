@@ -17,6 +17,8 @@ import {
   onboardingDrafts,
   savingContributionAllocations,
   savingContributions,
+  savingsPlaces,
+  savingsPlaceTransfers,
 } from './schema'
 
 describe('onboarding database schema', () => {
@@ -88,7 +90,7 @@ describe('onboarding database schema', () => {
     expect(financialGoals.completedAt.name).toBe('completed_at')
     expect(getTableName(goalSavingsPositions)).toBe('goal_savings_positions')
     expect(goalSavingsPositions.goalId.name).toBe('goal_id')
-    expect(goalSavingsPositions.location.name).toBe('location')
+    expect('location' in goalSavingsPositions).toBe(false)
     expect(getTableName(goalInvestmentPositions)).toBe('goal_investment_positions')
     expect(goalInvestmentPositions.annualReturnRate.name).toBe('annual_return_rate')
     expect(goalInvestmentPositions.availability.name).toBe('availability')
@@ -160,6 +162,16 @@ describe('onboarding database schema', () => {
     expect(expenses.endMonth.name).toBe('end_month')
     expect(expenses.createdAt.name).toBe('created_at')
     expect(expenses.updatedAt.name).toBe('updated_at')
+  })
+
+  it('defines savings places and transfers with required place on contributions', () => {
+    expect(getTableName(savingsPlaces)).toBe('savings_places')
+    expect(getTableName(savingsPlaceTransfers)).toBe('savings_place_transfers')
+    expect(savingsPlaces.name.notNull).toBe(true)
+    expect(savingsPlaces.normalizedName.notNull).toBe(true)
+    expect(savingContributions.placeId.notNull).toBe(true)
+    expect('location' in savingContributions).toBe(false)
+    expect('location' in goalSavingsPositions).toBe(false)
   })
 })
 

@@ -93,7 +93,6 @@ export function SavingContribution({
         ? formatDerivedMoney(initialAmount)
         : "",
   );
-  const [location, setLocation] = useState(initialContribution?.location ?? "");
   const [arsSpent, setArsSpent] = useState(
     initialContribution?.arsSpent
       ? formatDerivedMoney(initialContribution.arsSpent)
@@ -143,7 +142,6 @@ export function SavingContribution({
     if (newCurrency === currency) return;
     setCurrency(newCurrency);
     setAmount("");
-    setLocation("");
     setArsSpent("");
     setEffectiveRate(
       newCurrency === "USD" ? formatDerivedMoney(PLANNING_ARS_PER_USD) : "",
@@ -292,11 +290,6 @@ export function SavingContribution({
     }
   };
 
-  const handleLocationChange = (raw: string) => {
-    setLocation(raw);
-    setPreview(null);
-  };
-
   // Debounced preview calculation
   useEffect(() => {
     if (!hasEligibleGoals) {
@@ -319,7 +312,6 @@ export function SavingContribution({
               kind,
               currency: "ARS",
               amount,
-              location: kind === "saving" ? location.trim() || null : null,
             },
             eligibleGoals,
           });
@@ -343,7 +335,6 @@ export function SavingContribution({
             kind,
             currency: "ARS",
             amount,
-            location: kind === "saving" ? location.trim() || null : null,
           },
         })
           .then((res) => {
@@ -401,7 +392,6 @@ export function SavingContribution({
               kind,
               currency: "USD",
               amount,
-              location: kind === "saving" ? location.trim() || null : null,
               arsSpent: derivation?.arsSpent ?? (arsSpent || null),
               effectiveRate:
                 derivation?.effectiveRate ?? (effectiveRate || null),
@@ -428,7 +418,6 @@ export function SavingContribution({
             kind,
             currency: "USD",
             amount,
-            location: kind === "saving" ? location.trim() || null : null,
             arsSpent: derivation?.arsSpent ?? (arsSpent || null),
             effectiveRate: derivation?.effectiveRate ?? (effectiveRate || null),
           },
@@ -458,7 +447,6 @@ export function SavingContribution({
     kind,
     currency,
     amount,
-    location,
     arsSpent,
     effectiveRate,
     hasEligibleGoals,
@@ -479,7 +467,6 @@ export function SavingContribution({
         kind,
         currency,
         amount,
-        location: kind === "saving" ? location.trim() || null : null,
         arsSpent: currency === "USD" ? arsSpent || null : null,
         effectiveRate: currency === "USD" ? effectiveRate || null : null,
       };
@@ -724,20 +711,6 @@ export function SavingContribution({
               </div>
             )}
 
-            {kind === "saving" && (
-              <Field>
-                <FieldLabel htmlFor="saving-location-input">
-                  ¿Dónde está guardado? (opcional)
-                </FieldLabel>
-                <Input
-                  id="saving-location-input"
-                  aria-label="¿Dónde está guardado? (opcional)"
-                  placeholder="Ej: Banco Santander, En efectivo..."
-                  value={location}
-                  onChange={(e) => handleLocationChange(e.target.value)}
-                />
-              </Field>
-            )}
           </FieldSet>
         </FieldGroup>
 

@@ -1356,7 +1356,6 @@ describe('buildGoalsWorkspace - contributions history', () => {
           kind: 'saving',
           amount: '10000.00',
           currency: 'ARS',
-          location: 'Banco',
           createdAt: '2026-08-10T12:00:00.000Z',
           allocations: [
             {
@@ -1438,7 +1437,6 @@ describe('buildGoalsWorkspace - contributions history', () => {
         kind: 'saving',
         amount: '10000.00',
         currency: 'ARS',
-        location: 'Banco',
         createdAt: '2026-08-10T12:00:00.000Z',
       }),
     ])

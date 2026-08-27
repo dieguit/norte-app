@@ -109,7 +109,7 @@ describe('saving-contribution domain', () => {
   })
   describe('buildSavingPreview', () => {
     it('allocates ARS amount proportionally among eligible goals matching brief example', () => {
-      const draft: SavingDraftInput = { currency: 'ARS', amount: '100.00', location: '' }
+      const draft: SavingDraftInput = { currency: 'ARS', amount: '100.00' }
       const eligibleGoals: EligibleGoal[] = [
         { id: 'ars-a', name: 'Viaje', percentage: '30.00' },
         { id: 'ars-b', name: 'Auto', percentage: '70.00' },
@@ -229,7 +229,7 @@ describe('saving-contribution domain', () => {
     })
 
     it('computes in-memory before/after progress and projected date when workspaceSource and currentMonth are provided', () => {
-      const draft: SavingDraftInput = { currency: 'ARS', amount: '300.00', location: 'Santander' }
+      const draft: SavingDraftInput = { currency: 'ARS', amount: '300.00' }
       const eligibleGoals: EligibleGoal[] = [
         { id: 'goal-1', name: 'Viaje', percentage: '100.00' },
       ]
@@ -262,7 +262,6 @@ describe('saving-contribution domain', () => {
             goalId: 'goal-1',
             amount: '200.00',
             currency: 'ARS',
-            location: 'Efectivo',
           },
         ],
         investmentPositions: [],
@@ -377,12 +376,10 @@ describe('saving-contribution domain', () => {
       const parsed = parseSavingDraft({
         currency: 'ARS',
         amount: '12.500,50',
-        location: ' Santander Rio ',
       })
       expect(parsed).toEqual({
         currency: 'ARS',
         amount: { amount: '12500.50', currency: 'ARS' },
-        location: 'Santander Rio',
       })
     })
 

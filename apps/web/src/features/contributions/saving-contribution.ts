@@ -41,7 +41,6 @@ export interface SavingDraftInput {
   kind?: ContributionKind
   currency: CurrencyCode
   amount: string
-  location?: string | null
   arsSpent?: string | null
   effectiveRate?: string | null
 }
@@ -50,7 +49,6 @@ export interface SavingDraft {
   kind?: ContributionKind
   currency: CurrencyCode
   amount: Money
-  location?: string
   arsSpent?: Money
   effectiveRate?: string
 }
@@ -234,8 +232,6 @@ export function parseSavingDraft(input: SavingDraftInput | SavingDraft): SavingD
     throw new Error('Contribution amount must be positive')
   }
 
-  const location = input.location ? input.location.trim() || undefined : undefined
-
   if (input.currency === 'USD') {
     let arsSpentMoney: Money | undefined
     let effectiveRateStr: string | undefined
@@ -270,7 +266,6 @@ export function parseSavingDraft(input: SavingDraftInput | SavingDraft): SavingD
       ...(input.kind ? { kind: input.kind } : {}),
       currency: 'USD',
       amount: amountMoney,
-      ...(location ? { location } : {}),
       arsSpent: arsSpentMoney,
       effectiveRate: effectiveRateStr,
     }
@@ -280,7 +275,6 @@ export function parseSavingDraft(input: SavingDraftInput | SavingDraft): SavingD
     ...(input.kind ? { kind: input.kind } : {}),
     currency: 'ARS',
     amount: amountMoney,
-    ...(location ? { location } : {}),
   }
 }
 
@@ -410,7 +404,6 @@ export function buildSavingPreview(input: BuildSavingPreviewInput): SavingPrevie
         goalId: alloc.goalId,
         amount: alloc.amount.amount,
         currency: alloc.amount.currency,
-        location: draft.location ?? null,
       }))
       proposedSource = {
         ...input.workspaceSource,
@@ -472,7 +465,6 @@ export function serializeContributionState(input: SerializeContributionStateInpu
     draft: {
       currency: normalizedDraft.currency,
       amount: normalizedDraft.amount.amount,
-      location: normalizedDraft.location ?? null,
       arsSpent: normalizedDraft.arsSpent ? normalizedDraft.arsSpent.amount : null,
       effectiveRate: normalizedDraft.effectiveRate ?? null,
     },
