@@ -97,9 +97,9 @@ export function SavingContributionActions({
                   <span className="rounded-md bg-[var(--foam)] px-2 py-0.5 text-xs font-semibold text-[var(--sea-ink)] border border-[var(--line)]">
                     {kindLabel}
                   </span>
-                  {item.location && (
+                  {item.placeName && (
                     <span className="text-xs text-[var(--sea-ink-soft)]">
-                      {item.location}
+                      {item.placeName}
                     </span>
                   )}
                 </div>

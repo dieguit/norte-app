@@ -75,6 +75,12 @@ vi.mock('../../db/client', () => ({
         findMany: vi.fn().mockResolvedValue([]),
         findFirst: vi.fn(),
       },
+      savingsPlaces: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      savingsPlaceTransfers: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
     },
   },
 }))
@@ -389,6 +395,7 @@ describe('financial.server boundary', () => {
             },
           ],
         },
+        savings: { places: [], movements: [] },
       })
     })
   })

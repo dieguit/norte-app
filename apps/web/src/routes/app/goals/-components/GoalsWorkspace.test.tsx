@@ -973,7 +973,7 @@ describe("GoalsWorkspace component", () => {
           kind: "saving",
           amount: "50000.00",
           currency: "ARS",
-          location: "Banco Santander",
+          placeName: "Banco Santander",
           createdAt: "2026-08-15T10:00:00Z",
           allocations: [
             {
@@ -1028,7 +1028,7 @@ describe("GoalsWorkspace component", () => {
           kind: "saving",
           amount: "50000.00",
           currency: "ARS",
-          location: "Banco Santander",
+          placeName: "Banco Santander",
           createdAt: "2026-08-15T10:00:00Z",
           allocations: [
             {
@@ -1098,7 +1098,7 @@ describe("GoalsWorkspace component", () => {
           kind: "saving",
           amount: "50000.00",
           currency: "ARS",
-          location: "Banco Santander",
+          placeName: "Banco Santander",
           createdAt: "2026-08-15T10:00:00Z",
           allocations: [
             {

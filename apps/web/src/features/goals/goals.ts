@@ -63,7 +63,8 @@ export interface ContributionSummary {
   userId?: string
   amount: string
   currency: CurrencyCode
-  location?: string | null
+  placeId?: string
+  placeName?: string
   arsSpent?: string | null
   effectiveRate?: string | null
   createdAt: string
