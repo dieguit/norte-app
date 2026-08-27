@@ -31,6 +31,7 @@ afterEach(cleanup);
 
 const sampleWorkspace = {
   goalDedicationPercentage: "90",
+          savings: { places: [], movements: [] },
   incomes: {
     sources: [],
     incomes: [
@@ -209,6 +210,7 @@ describe("FinancesWorkspace", () => {
       <FinancesWorkspace
         workspace={{
           goalDedicationPercentage: "90",
+          savings: { places: [], movements: [] },
           incomes: { sources: [], incomes: [] },
           expenses: { sources: [], expenses: [] },
         }}
@@ -294,6 +296,7 @@ describe("FinancesWorkspace", () => {
       <FinancesWorkspace
         workspace={{
           goalDedicationPercentage: "90",
+          savings: { places: [], movements: [] },
           incomes: { sources: [], incomes: [] },
           expenses: { sources: [], expenses: [] },
         }}
@@ -320,6 +323,7 @@ describe("FinancesWorkspace", () => {
       <FinancesWorkspace
         workspace={{
           goalDedicationPercentage: "90",
+          savings: { places: [], movements: [] },
           incomes: {
             sources: [],
             incomes: [

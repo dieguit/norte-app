@@ -27,6 +27,8 @@ import { IncomeSheet } from "./IncomeSheet";
 import { ExpenseSheet } from "./ExpenseSheet";
 import { FinancialSummaryCards } from "../../../../components/FinancialSummaryCards";
 import { getGoalContributionArs } from "../../../../features/financial/monthly-plan";
+import { SavingsPlacesTab } from "./SavingsPlacesTab";
+import type { SavingsPlacesWorkspace } from "../../../../features/savings-places/savings-places";
 
 function formatArs(amount: string) {
   return Number(amount).toLocaleString("es-AR", { maximumFractionDigits: 0 });
@@ -36,6 +38,7 @@ export interface FinancesWorkspaceData {
   goalDedicationPercentage: string;
   incomes: IncomesWorkspace;
   expenses: ExpensesWorkspace;
+  savings: SavingsPlacesWorkspace;
 }
 
 export function FinancesWorkspace({
@@ -181,6 +184,9 @@ export function FinancesWorkspace({
           </TabsTrigger>
           <TabsTrigger className="px-3 py-1 text-base" value="expenses">
             Gastos
+          </TabsTrigger>
+          <TabsTrigger className="px-3 py-1 text-base" value="savings">
+            Ahorros
           </TabsTrigger>
         </TabsList>
         <TabsContent value="incomes">
@@ -480,6 +486,9 @@ export function FinancesWorkspace({
               )}
             />
           </div>
+        </TabsContent>
+        <TabsContent value="savings">
+          <SavingsPlacesTab workspace={workspace.savings} />
         </TabsContent>
       </Tabs>
     </div>
