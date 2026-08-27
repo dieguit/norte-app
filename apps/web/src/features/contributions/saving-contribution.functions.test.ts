@@ -60,6 +60,10 @@ vi.mock('./saving-contribution.repository.server', async (importOriginal) => {
   }
 })
 
+vi.mock('../savings-places/savings-places.repository.server', () => ({
+  getSavingsPlacesWorkspaceState: vi.fn().mockResolvedValue({ places: [], movements: [] }),
+}))
+
 describe('getSavingContributionContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -187,12 +191,14 @@ describe('getSavingContributionContext', () => {
 describe('previewSavingContribution', () => {
   const validArsDraft: SavingContributionDraft = {
     currency: 'ARS',
-    amount: '10000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '10000.00',
   }
 
   const validUsdDraft: SavingContributionDraft = {
     currency: 'USD',
-    amount: '100.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '100.00',
     arsSpent: '150000.00',
     effectiveRate: '1500.00',
   }
@@ -377,7 +383,8 @@ describe('previewSavingContribution', () => {
       data: {
         kind: 'investment',
         currency: 'ARS',
-        amount: '50000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '50000.00',
       },
     })
 
@@ -405,7 +412,8 @@ describe('previewSavingContribution', () => {
         data: {
           kind: 'investment',
           currency: 'ARS',
-          amount: '50000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '50000.00',
         },
       }),
     ).rejects.toThrow('No hay objetivos activos para distribuir la inversión en ARS.')
@@ -417,7 +425,8 @@ describe('previewSavingContribution', () => {
 describe('confirmSavingContribution', () => {
   const validDraft: SavingContributionDraft = {
     currency: 'ARS',
-    amount: '10000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '10000.00',
   }
   const validToken = 'a'.repeat(64)
   const staleToken = 'b'.repeat(64)
@@ -534,7 +543,8 @@ describe('confirmSavingContribution', () => {
         draft: {
           kind: 'investment',
           currency: 'ARS',
-          amount: '50000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '50000.00',
         },
         previewToken: validToken,
       },
@@ -546,7 +556,8 @@ describe('confirmSavingContribution', () => {
       draft: expect.objectContaining({
         kind: 'investment',
         currency: 'ARS',
-        amount: '50000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '50000.00',
       }),
       previewToken: validToken,
     })
@@ -649,7 +660,8 @@ describe('confirmSavingContribution', () => {
 describe('updateSavingContribution', () => {
   const validDraft: SavingContributionDraft = {
     currency: 'ARS',
-    amount: '15000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '15000.00',
   }
   const validId = '550e8400-e29b-41d4-a716-446655440000'
 

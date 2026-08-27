@@ -18,6 +18,7 @@ import {
   mapRowsToGoalsWorkspaceSource,
   selectWinningSnapshots,
 } from '../goals/goals.repository.server'
+import { resolveSavingsPlaceWithExecutor } from '../savings-places/savings-places.repository.server'
 import type { Money } from '../../lib/money'
 import {
   buildSavingPreview,
@@ -327,13 +328,19 @@ export async function createSavingContributionInRepository(input: {
       return { contributionId: contribution.id }
     }
 
+    if (!normalizedDraft.place) {
+      throw new Error('Elegí un lugar para tu ahorro.')
+    }
+
+    const resolvedPlace = await resolveSavingsPlaceWithExecutor(tx, userId, normalizedDraft.place)
+
     const [contribution] = await tx
       .insert(savingContributions)
       .values({
         userId,
         amount: normalizedDraft.amount.amount,
         currency: normalizedDraft.currency,
-        placeId: '00000000-0000-0000-0000-000000000000',
+        placeId: resolvedPlace.id,
         arsSpent: normalizedDraft.arsSpent ? normalizedDraft.arsSpent.amount : null,
         effectiveRate: normalizedDraft.effectiveRate ?? null,
         ...(createdAt ? { createdAt } : {}),

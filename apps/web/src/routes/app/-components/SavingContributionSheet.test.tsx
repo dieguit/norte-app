@@ -29,10 +29,9 @@ const sampleContext: SavingContributionContext = {
   eligibleGoals: [
     { id: 'goal-ars-1', name: 'Viaje a Bariloche', percentage: '100.00' },
   ],
-  eligibleGoalsUsd: [
-    { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
-  ],
-}
+  eligibleGoalsUsd: [],
+      places: [],
+    }
 
 describe('SavingContributionSheet', () => {
   it('does not render sheet contents when open is false', () => {

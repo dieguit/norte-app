@@ -41,6 +41,7 @@ export interface SavingDraftInput {
   kind?: ContributionKind
   currency: CurrencyCode
   amount: string
+  place?: { kind: 'existing'; placeId: string } | { kind: 'new'; name: string }
   arsSpent?: string | null
   effectiveRate?: string | null
 }
@@ -49,6 +50,7 @@ export interface SavingDraft {
   kind?: ContributionKind
   currency: CurrencyCode
   amount: Money
+  place?: { kind: 'existing'; placeId: string } | { kind: 'new'; name: string }
   arsSpent?: Money
   effectiveRate?: string
 }
@@ -90,6 +92,7 @@ export interface SavingContributionContext {
   monthlyTargetUsd?: Money | null
   monthlyInvestmentTargetArs?: Money | null
   monthlyInvestmentTargetUsd?: Money | null
+  places: Array<{ id: string; name: string }>
 }
 
 export type SavingContributionContextState =
@@ -266,6 +269,7 @@ export function parseSavingDraft(input: SavingDraftInput | SavingDraft): SavingD
       ...(input.kind ? { kind: input.kind } : {}),
       currency: 'USD',
       amount: amountMoney,
+      place: input.place,
       arsSpent: arsSpentMoney,
       effectiveRate: effectiveRateStr,
     }
@@ -275,6 +279,7 @@ export function parseSavingDraft(input: SavingDraftInput | SavingDraft): SavingD
     ...(input.kind ? { kind: input.kind } : {}),
     currency: 'ARS',
     amount: amountMoney,
+    place: input.place,
   }
 }
 

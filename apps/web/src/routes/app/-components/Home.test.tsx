@@ -103,10 +103,9 @@ describe('Home component', () => {
         eligibleInvestmentGoals: [
           { id: 'goal-inv-ars', name: 'CEDEARs ARS', percentage: '100.00' },
         ],
-        eligibleInvestmentGoalsUsd: [
-          { id: 'goal-inv-usd', name: 'S&P 500 USD', percentage: '100.00' },
-        ],
-      },
+        eligibleInvestmentGoalsUsd: [],
+      places: [],
+    },
     })
     const shortfalls: PreviousMonthShortfall[] = [
       {
@@ -172,10 +171,9 @@ describe('Home component', () => {
         eligibleInvestmentGoals: [
           { id: 'goal-inv-ars', name: 'CEDEARs ARS', percentage: '100.00' },
         ],
-        eligibleInvestmentGoalsUsd: [
-          { id: 'goal-inv-usd', name: 'S&P 500 USD', percentage: '100.00' },
-        ],
-      },
+        eligibleInvestmentGoalsUsd: [],
+      places: [],
+    },
     })
 
     render(<Home home={fixedSavingsHome} roadmap={emptyRoadmap} />)

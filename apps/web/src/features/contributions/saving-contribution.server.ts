@@ -1,6 +1,7 @@
 import '@tanstack/react-start/server-only'
 import { requireFinancialUser } from '../financial/auth.server'
 import { getPreviousCalendarMonth } from '../financial/financial'
+import { getSavingsPlacesWorkspaceState } from '../savings-places/savings-places.repository.server'
 import {
   buildSavingPreview,
   type SavingContributionContext,
@@ -37,7 +38,10 @@ function getCatchUpCreatedAt(catchUpMonth: string | undefined, now: Date): Date 
 export async function getSavingContributionContextServer(): Promise<SavingContributionContextState> {
   const userId = await requireFinancialUser()
   const currentMonth = new Date().toISOString().slice(0, 7)
-  const state = await getSavingContributionState(userId, currentMonth)
+  const [state, savingsWorkspace] = await Promise.all([
+    getSavingContributionState(userId, currentMonth),
+    getSavingsPlacesWorkspaceState(userId),
+  ])
   if (!state) {
     return { profile: 'missing' }
   }
@@ -53,6 +57,7 @@ export async function getSavingContributionContextServer(): Promise<SavingContri
       monthlyTargetUsd: state.monthlyTargetUsd,
       monthlyInvestmentTargetArs: state.monthlyInvestmentTargetArs,
       monthlyInvestmentTargetUsd: state.monthlyInvestmentTargetUsd,
+      places: savingsWorkspace.places.map((p) => ({ id: p.id, name: p.name })),
     },
   }
 }

@@ -50,10 +50,9 @@ describe('SavingContribution component', () => {
       { id: 'goal-ars-1', name: 'Viaje a Bariloche', percentage: '60.00' },
       { id: 'goal-ars-2', name: 'Auto nuevo', percentage: '40.00' },
     ],
-    eligibleGoalsUsd: [
-      { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
-    ],
-  }
+    eligibleGoalsUsd: [],
+      places: [],
+    }
 
   const mockArsPreview: SavingContributionPreviewResult = {
     previewToken: 'a'.repeat(64),
@@ -61,7 +60,6 @@ describe('SavingContribution component', () => {
       draft: {
         currency: 'ARS',
         amount: { amount: '100000.00', currency: 'ARS' },
-        location: 'Banco Santander',
       },
       allocations: [
         {
@@ -149,7 +147,6 @@ describe('SavingContribution component', () => {
           data: expect.objectContaining({
             currency: 'ARS',
             amount: '100.000',
-            location: 'Banco Santander',
           }),
         })
       })
@@ -229,7 +226,6 @@ describe('SavingContribution component', () => {
             kind: 'saving',
             amount: '100.00',
             currency: 'ARS',
-            location: 'Banco Santander',
             createdAt: '2026-08-01T00:00:00.000Z',
             allocations: [
               {
@@ -405,10 +401,9 @@ describe('SavingContribution component', () => {
       const emptyArsContext: SavingContributionContext = {
         currentMonth: '2026-08',
         eligibleGoals: [],
-        eligibleGoalsUsd: [
-          { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
-        ],
-      }
+        eligibleGoalsUsd: [],
+      places: [],
+    }
 
       render(
         <SavingContribution
@@ -638,15 +633,8 @@ describe('SavingContribution component', () => {
       eligibleGoals: [
         { id: 'goal-ars-1', name: 'Viaje a Bariloche', percentage: '100.00' },
       ],
-      eligibleGoalsUsd: [
-        { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
-      ],
-      eligibleInvestmentGoals: [
-        { id: 'goal-inv-ars', name: 'CEDEARs ARS', percentage: '100.00' },
-      ],
-      eligibleInvestmentGoalsUsd: [
-        { id: 'goal-inv-usd', name: 'S&P 500 USD', percentage: '100.00' },
-      ],
+      eligibleGoalsUsd: [],
+      places: [],
     }
 
     const mockInvUsdPreview: SavingContributionPreviewResult = {
@@ -753,7 +741,8 @@ describe('SavingContribution component', () => {
       const contextNoInvUsd: SavingContributionContext = {
         ...investmentContext,
         eligibleInvestmentGoalsUsd: [],
-      }
+      places: [],
+    }
 
       render(
         <SavingContribution

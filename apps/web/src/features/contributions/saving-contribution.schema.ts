@@ -1,12 +1,24 @@
 import { z } from 'zod'
+import { savingsPlaceSelectionSchema } from '../savings-places/savings-places.schema'
 
-export const contributionDraftInputSchema = z.object({
-  kind: z.enum(['saving', 'investment']).optional().default('saving'),
-  currency: z.enum(['ARS', 'USD']),
-  amount: z.string(),
-  arsSpent: z.string().nullish(),
-  effectiveRate: z.string().nullish(),
-})
+export const contributionDraftInputSchema = z
+  .object({
+    kind: z.enum(['saving', 'investment']).optional().default('saving'),
+    currency: z.enum(['ARS', 'USD']),
+    amount: z.string(),
+    place: savingsPlaceSelectionSchema.optional(),
+    arsSpent: z.string().nullish(),
+    effectiveRate: z.string().nullish(),
+  })
+  .superRefine((data, ctx) => {
+    if ((data.kind ?? 'saving') === 'saving' && !data.place) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Elegí un lugar para tu ahorro.',
+        path: ['place'],
+      })
+    }
+  })
 
 export const savingDraftInputSchema = contributionDraftInputSchema
 
