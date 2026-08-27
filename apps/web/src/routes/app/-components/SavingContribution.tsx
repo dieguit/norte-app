@@ -32,6 +32,7 @@ import {
   updateSavingContribution,
 } from "../../../features/contributions/saving-contribution.functions";
 import type { SavingContributionSummary } from "../../../features/goals/goals";
+import { SavingsPlacePicker } from "../../../features/savings-places/SavingsPlacePicker";
 import { formatGoalProjection } from "../goals/-components/AllocationImpactComparison";
 
 export interface SavingContributionProps {
@@ -108,6 +109,12 @@ export function SavingContribution({
   const [derivedField, setDerivedField] = useState<
     "arsSpent" | "effectiveRate" | "amount" | null
   >(initialCurrency === "USD" ? "arsSpent" : null);
+
+  const [place, setPlace] = useState<
+    | { kind: "existing"; placeId: string }
+    | { kind: "new"; name: string }
+    | null
+  >(null);
 
   const [preview, setPreview] =
     useState<SavingContributionPreviewResult | null>(null);
@@ -467,6 +474,7 @@ export function SavingContribution({
         kind,
         currency,
         amount,
+        place: kind === "saving" ? place : undefined,
         arsSpent: currency === "USD" ? arsSpent || null : null,
         effectiveRate: currency === "USD" ? effectiveRate || null : null,
       };
@@ -711,8 +719,20 @@ export function SavingContribution({
               </div>
             )}
 
-          </FieldSet>
+           </FieldSet>
         </FieldGroup>
+
+        {/* Place Picker for Savings */}
+        {kind === "saving" && (
+          <Field>
+            <FieldLabel>Lugar de ahorro</FieldLabel>
+            <SavingsPlacePicker
+              places={context?.places ?? []}
+              value={place}
+              onChange={setPlace}
+            />
+          </Field>
+        )}
 
         {/* Empty Eligible Goals Banner */}
         {!hasEligibleGoals && (
