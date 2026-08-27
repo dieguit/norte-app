@@ -100,7 +100,8 @@ export interface GoalsWorkspaceRows {
     userId?: string
     amount: string
     currency: string
-    location?: string | null
+    placeId?: string
+    placeName?: string
     arsSpent?: string | null
     effectiveRate?: string | null
     createdAt: Date | string
@@ -117,7 +118,8 @@ export interface GoalsWorkspaceRows {
     userId?: string
     amount: string
     currency: string
-    location?: string | null
+    placeId?: string
+    placeName?: string
     arsSpent?: string | null
     effectiveRate?: string | null
     createdAt: Date | string
@@ -238,6 +240,11 @@ export async function getGoalsWorkspaceRows(
         })
       : []
 
+  const savingsPlaces = await db.query.savingsPlaces.findMany({
+    where: (placeTable: any, { eq }: any) => eq(placeTable.userId, userId),
+  })
+  const placeNameMap = new Map<string, string>(savingsPlaces.map((p: any) => [p.id, p.name]))
+
   const userInvestmentContributions = await db.query.investmentContributions.findMany({
     where: (contribTable: any, { eq }: any) => eq(contribTable.userId, userId),
   })
@@ -258,7 +265,8 @@ export async function getGoalsWorkspaceRows(
     userId: contrib.userId,
     amount: contrib.amount,
     currency: contrib.currency,
-    location: contrib.location,
+    placeId: contrib.placeId,
+    placeName: placeNameMap.get(contrib.placeId) ?? '',
     arsSpent: contrib.arsSpent,
     effectiveRate: contrib.effectiveRate,
     createdAt: contrib.createdAt,
@@ -278,7 +286,6 @@ export async function getGoalsWorkspaceRows(
     userId: contrib.userId,
     amount: contrib.amount,
     currency: contrib.currency,
-    location: null,
     arsSpent: contrib.arsSpent,
     effectiveRate: contrib.effectiveRate,
     createdAt: contrib.createdAt,
@@ -984,6 +991,8 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
       userId: c.userId,
       amount: c.amount,
       currency: c.currency as CurrencyCode,
+      placeId: c.placeId,
+      placeName: c.placeName,
       arsSpent: c.arsSpent,
       effectiveRate: c.effectiveRate,
       createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),
@@ -1000,7 +1009,8 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
       userId: c.userId,
       amount: c.amount,
       currency: c.currency as CurrencyCode,
-      location: c.location,
+      placeId: c.placeId,
+      placeName: c.placeName,
       arsSpent: c.arsSpent,
       effectiveRate: c.effectiveRate,
       createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),

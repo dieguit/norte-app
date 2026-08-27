@@ -120,6 +120,9 @@ vi.mock('../../db/client', () => ({
         findMany: vi.fn(),
         findFirst: vi.fn(),
       },
+      savingsPlaces: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       investmentContributions: {
         findMany: vi.fn(),
         findFirst: vi.fn(),
@@ -717,7 +720,8 @@ describe('goals.repository.server', () => {
         userId: 'user_1',
         amount: '100.00',
         currency: 'USD',
-        location: null,
+        placeId: undefined,
+        placeName: undefined,,
         arsSpent: '150000.00',
         effectiveRate: '1500.00',
         createdAt: mockInvestmentContrib.createdAt,
