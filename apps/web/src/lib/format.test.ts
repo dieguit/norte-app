@@ -20,7 +20,7 @@ describe("es-AR Presentation Boundary", () => {
   it("formats USD money with explicit USD context", () => {
     const usd = createMoney("1250.50", "USD");
     const formatted = formatMoney(usd);
-    expect(formatted).toBe("USD 1.250,50");
+    expect(formatted).toBe("US$ 1.250,50");
   });
 
   it("formats zero amounts correctly", () => {
@@ -28,7 +28,7 @@ describe("es-AR Presentation Boundary", () => {
     expect(formatMoney(zeroArs)).toBe("$ 0,00");
 
     const zeroUsd = createMoney("0", "USD");
-    expect(formatMoney(zeroUsd)).toBe("USD 0,00");
+    expect(formatMoney(zeroUsd)).toBe("US$ 0,00");
   });
 
   describe("formatCompactMoney", () => {
@@ -52,12 +52,12 @@ describe("es-AR Presentation Boundary", () => {
 
     it("formats compact money for USD", () => {
       const usdMillions = createMoney("2500000.00", "USD");
-      expect(formatCompactMoney(usdMillions)).toBe("USD 2,5 M");
+      expect(formatCompactMoney(usdMillions)).toBe("US$ 2,5 M");
 
       const usdThousands = createMoney("10000.00", "USD");
-      expect(formatCompactMoney(usdThousands)).toBe("USD 10 k");
+      expect(formatCompactMoney(usdThousands)).toBe("US$ 10 k");
 
-      expect(formatCompactMoney(createMoney("1250000", "USD"))).toBe("USD 1,3 M");
+      expect(formatCompactMoney(createMoney("1250000", "USD"))).toBe("US$ 1,3 M");
     });
   });
 

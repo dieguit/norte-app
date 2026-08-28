@@ -188,9 +188,9 @@ describe("GoalsWorkspace component", () => {
     const actualValueEl = screen.getByLabelText(
       "Valor actual de Colchón financiero",
     );
-    expect(actualValueEl).toHaveTextContent("USD 200,00");
+    expect(actualValueEl).toHaveTextContent("US$ 200,00");
     expect(actualValueEl).not.toHaveTextContent("Plan:");
-    expect(actualValueEl).not.toHaveTextContent("USD 33,33");
+    expect(actualValueEl).not.toHaveTextContent("US$ 33,33");
 
     const pausedDisclosure = screen.getByRole("button", { name: /Pausados/i });
     expect(pausedDisclosure).toHaveAttribute("aria-expanded", "false");
@@ -436,7 +436,7 @@ describe("GoalsWorkspace component", () => {
       screen.getByRole("heading", { name: "Tus avances hasta hoy" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
-    expect(screen.getByText("Ahorrar USD 33,33 por mes")).toBeInTheDocument();
+    expect(screen.getByText("Ahorrar US$ 33,33 por mes")).toBeInTheDocument();
     expect(
       screen.getByText("(100% de tu capacidad mensual)"),
     ).toBeInTheDocument();
@@ -511,10 +511,10 @@ describe("GoalsWorkspace component", () => {
         .getAllByRole("heading", { level: 4 })
         .map((heading) => heading.textContent),
     ).toEqual(["Plan", "Tus avances hasta hoy"]);
-    expect(within(details).getByText("USD 125,00")).toBeInTheDocument();
-    expect(within(details).getByText("USD 75,00")).toBeInTheDocument();
+    expect(within(details).getByText("US$ 125,00")).toBeInTheDocument();
+    expect(within(details).getByText("US$ 75,00")).toBeInTheDocument();
     expect(
-      within(details).getByText("Ahorrar USD 33,33 por mes"),
+      within(details).getByText("Ahorrar US$ 33,33 por mes"),
     ).toBeInTheDocument();
     expect(
       within(details).getByText("(100% de tu capacidad mensual)"),
@@ -614,7 +614,7 @@ describe("GoalsWorkspace component", () => {
       }),
     );
     expect(
-      within(pausedArticle).getByText("Ahorrar USD 0,67 por mes"),
+      within(pausedArticle).getByText("Ahorrar US$ 0,67 por mes"),
     ).toBeInTheDocument();
     expect(
       within(pausedArticle).getByText("(10% de tu capacidad mensual)"),
@@ -640,7 +640,7 @@ describe("GoalsWorkspace component", () => {
     expect(
       screen.getAllByText("Objetivo por calcular").length,
     ).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("USD 150,00")).toBeInTheDocument();
+    expect(screen.getByText("US$ 150,00")).toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
@@ -749,11 +749,11 @@ describe("GoalsWorkspace component", () => {
       }),
     );
 
-    expect(screen.getByText("Ahorrar USD 40,00 por mes")).toBeInTheDocument();
+    expect(screen.getByText("Ahorrar US$ 40,00 por mes")).toBeInTheDocument();
     expect(
       screen.getByText("(60% de tu capacidad mensual)"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Ahorrar USD 26,67 por mes")).toBeInTheDocument();
+    expect(screen.getByText("Ahorrar US$ 26,67 por mes")).toBeInTheDocument();
     expect(
       screen.getByText("(40% de tu capacidad mensual)"),
     ).toBeInTheDocument();
@@ -1187,7 +1187,7 @@ describe("GoalsWorkspace component", () => {
     const detailRegion = screen.getByRole("region", {
       name: "Detalles de Fondo de Inversión",
     });
-    expect(within(detailRegion).getByText("USD 100,00")).toBeInTheDocument();
+    expect(within(detailRegion).getByText("US$ 100,00")).toBeInTheDocument();
     expect(within(detailRegion).getByText("Inversión")).toBeVisible();
     expect(
       within(detailRegion).getByRole("button", {

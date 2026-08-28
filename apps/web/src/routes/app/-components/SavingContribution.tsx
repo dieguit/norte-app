@@ -32,7 +32,7 @@ import {
   updateSavingContribution,
 } from "../../../features/contributions/saving-contribution.functions";
 import type { SavingContributionSummary } from "../../../features/goals/goals";
-import { SavingsPlacePicker } from "../../../features/savings-places/SavingsPlacePicker";
+import { SavingsPlacePicker } from "./SavingsPlacePicker";
 import { formatGoalProjection } from "../goals/-components/AllocationImpactComparison";
 
 export interface SavingContributionProps {
@@ -114,7 +114,9 @@ export function SavingContribution({
     | { kind: "existing"; placeId: string }
     | { kind: "new"; name: string }
     | null
-  >(null);
+  >(initialContribution?.placeId && kind === "saving"
+    ? { kind: "existing", placeId: initialContribution.placeId }
+    : null);
 
   const [preview, setPreview] =
     useState<SavingContributionPreviewResult | null>(null);
@@ -342,6 +344,7 @@ export function SavingContribution({
             kind,
             currency: "ARS",
             amount,
+            ...(kind === "saving" ? { place } : {}),
           },
         })
           .then((res) => {
@@ -425,6 +428,7 @@ export function SavingContribution({
             kind,
             currency: "USD",
             amount,
+            ...(kind === "saving" ? { place } : {}),
             arsSpent: derivation?.arsSpent ?? (arsSpent || null),
             effectiveRate: derivation?.effectiveRate ?? (effectiveRate || null),
           },
@@ -461,6 +465,8 @@ export function SavingContribution({
     isEdit,
     initialContribution,
     eligibleGoals,
+    place?.kind,
+    place?.kind === "existing" ? place.placeId : place?.name,
   ]);
 
   const handleConfirm = async () => {
@@ -474,7 +480,7 @@ export function SavingContribution({
         kind,
         currency,
         amount,
-        place: kind === "saving" ? place : undefined,
+        ...(kind === "saving" ? { place } : {}),
         arsSpent: currency === "USD" ? arsSpent || null : null,
         effectiveRate: currency === "USD" ? effectiveRate || null : null,
       };
@@ -543,6 +549,11 @@ export function SavingContribution({
 
   const actionNoun = kind === "investment" ? "inversión" : "ahorro";
   const actionVerb = kind === "investment" ? "Invertí" : "Ahorré";
+  const placeError =
+    serverError === "Elegí un lugar para tu ahorro." ||
+    serverError === "Escribí un nombre para el lugar."
+      ? serverError
+      : undefined;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -620,7 +631,7 @@ export function SavingContribution({
           })()}
 
         {/* Server & Stale Alert Summaries */}
-        {serverError && (
+        {serverError && !placeError && (
           <div
             ref={alertRef}
             tabIndex={-1}
@@ -724,14 +735,13 @@ export function SavingContribution({
 
         {/* Place Picker for Savings */}
         {kind === "saving" && (
-          <Field>
-            <FieldLabel>Lugar de ahorro</FieldLabel>
-            <SavingsPlacePicker
-              places={context?.places ?? []}
-              value={place}
-              onChange={setPlace}
-            />
-          </Field>
+          <SavingsPlacePicker
+            places={context?.places ?? []}
+            value={place}
+            onChange={setPlace}
+            disabled={isSubmitting}
+            error={placeError}
+          />
         )}
 
         {/* Empty Eligible Goals Banner */}

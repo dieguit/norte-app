@@ -133,7 +133,7 @@ describe('FinancialOnboarding', () => {
 
     expect(screen.getByRole('heading', { name: 'Ingresos recurrentes' })).toBeVisible()
     expect(screen.getByText('Sueldo')).toBeVisible()
-    expect(screen.getByText('USD 100,00')).toBeVisible()
+    expect(screen.getByText('US$ 100,00')).toBeVisible()
     expect(screen.getByText('Total mensual estimado')).toBeVisible()
     expect(screen.getByText('$ 150.000,00')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
@@ -281,7 +281,7 @@ describe('FinancialOnboarding', () => {
 
     expect(screen.getByRole('heading', { name: 'Gastos recurrentes' })).toBeVisible()
     expect(screen.getByText('Alquiler / vivienda')).toBeVisible()
-    expect(screen.getByText('USD 100,00')).toBeVisible()
+    expect(screen.getByText('US$ 100,00')).toBeVisible()
     expect(screen.getByText('Total mensual estimado')).toBeVisible()
     expect(screen.getByText('$ 150.000,00')).toBeVisible()
   })
@@ -364,4 +364,3 @@ describe('FinancialOnboarding', () => {
     expect(posthogCapture).not.toHaveBeenCalled()
   })
 })
-

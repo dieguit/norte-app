@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isPositiveMoney, parseMoneyInput } from '../../lib/money'
 
 export const savingsPlaceSelectionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('existing'), placeId: z.string().uuid('Elegí un lugar válido.') }),
@@ -28,7 +29,14 @@ export const transferSavingsSchema = z
     fromPlaceId: z.string().uuid(),
     toPlaceId: z.string().uuid(),
     currency: z.enum(['ARS', 'USD']),
-    amount: z.string(),
+    amount: z.string().transform((value, ctx) => {
+      const parsed = parseMoneyInput(value, 'ARS')
+      if (!parsed || !isPositiveMoney(parsed)) {
+        ctx.addIssue({ code: 'custom', message: 'Ingresá un monto mayor a cero.' })
+        return z.NEVER
+      }
+      return parsed.amount
+    }),
   })
   .refine((data) => data.fromPlaceId !== data.toPlaceId, {
     message: 'El origen y el destino deben ser distintos.',

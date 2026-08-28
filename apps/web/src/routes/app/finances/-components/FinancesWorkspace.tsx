@@ -49,6 +49,7 @@ export function FinancesWorkspace({
   initialMonth?: string;
 }) {
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
+  const [activeTab, setActiveTab] = useState("incomes");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
@@ -150,7 +151,6 @@ export function FinancesWorkspace({
     balance,
     workspace.goalDedicationPercentage,
   );
-
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -177,7 +177,7 @@ export function FinancesWorkspace({
         }}
       />
 
-      <Tabs defaultValue="incomes">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="h-10 p-1">
           <TabsTrigger className="px-3 py-1 text-base" value="incomes">
             Ingresos

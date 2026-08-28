@@ -557,6 +557,7 @@ describe('goals.repository.server', () => {
       userId: 'user_1',
       amount: '100.00',
       currency: 'USD',
+      placeId: null,
       arsSpent: '150000.00',
       effectiveRate: '1500.00',
       createdAt: new Date('2026-08-15T12:00:00Z'),
@@ -589,6 +590,8 @@ describe('goals.repository.server', () => {
         userId: 'user_1',
         amount: '100.00',
         currency: 'USD',
+        placeId: null,
+        placeName: '',
         arsSpent: '150000.00',
         effectiveRate: '1500.00',
         createdAt: mockContribution.createdAt,
@@ -652,6 +655,7 @@ describe('goals.repository.server', () => {
       userId: 'user_1',
       amount: '50000.00',
       currency: 'ARS',
+      placeId: 'place-1',
       arsSpent: null,
       effectiveRate: null,
       createdAt: new Date('2026-08-10T12:00:00Z'),
@@ -708,6 +712,9 @@ describe('goals.repository.server', () => {
       mockInvestAlloc1,
       mockInvestAlloc2,
     ] as never)
+    vi.mocked(db.query.savingsPlaces.findMany).mockResolvedValue([
+      { id: 'place-1', name: 'Banco Nación' },
+    ] as never)
 
     const result = await getGoalsWorkspaceRows('user_1', '2026-08')
 
@@ -721,7 +728,7 @@ describe('goals.repository.server', () => {
         amount: '100.00',
         currency: 'USD',
         placeId: undefined,
-        placeName: undefined,,
+        placeName: undefined,
         arsSpent: '150000.00',
         effectiveRate: '1500.00',
         createdAt: mockInvestmentContrib.createdAt,
@@ -746,6 +753,8 @@ describe('goals.repository.server', () => {
         userId: 'user_1',
         amount: '50000.00',
         currency: 'ARS',
+        placeId: 'place-1',
+        placeName: 'Banco Nación',
         arsSpent: null,
         effectiveRate: null,
         createdAt: mockSavingContrib.createdAt,

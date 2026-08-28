@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
 import { Button } from '../../../../components/ui/button'
@@ -8,7 +8,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '../../../../components/ui/sheet'
@@ -22,40 +21,52 @@ import type { SavingsPlaceSummary } from '../../../../features/savings-places/sa
 interface SavingsPlaceSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  placeId?: string | null
-  places?: SavingsPlaceSummary[]
+  place?: SavingsPlaceSummary
 }
 
 export function SavingsPlaceSheet({
   open,
   onOpenChange,
-  placeId,
-  places = [],
+  place,
 }: SavingsPlaceSheetProps) {
   const router = useRouter()
-  const isEdit = Boolean(placeId)
-  const existingPlace = places.find((p) => p.id === placeId)
+  const isEdit = Boolean(place)
 
-  const [name, setName] = useState(existingPlace?.name ?? '')
+  const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 
+  useEffect(() => {
+    if (!open) return
+    setName(place?.name ?? '')
+    setError(null)
+  }, [open, place?.id, place?.name])
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isPending) return
+    onOpenChange(nextOpen)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setError('Escribí un nombre para el lugar.')
+      return
+    }
 
     setIsPending(true)
     setError(null)
 
     try {
-      if (isEdit && placeId) {
+      if (place) {
         await renameSavingsPlace({
-          data: { placeId, name: name.trim() },
+          data: { placeId: place.id, name: trimmedName },
         })
         toast.success('Lugar renombrado.')
       } else {
         await createSavingsPlace({
-          data: { name: name.trim() },
+          data: { name: trimmedName },
         })
         toast.success('Lugar creado.')
       }
@@ -70,14 +81,14 @@ export function SavingsPlaceSheet({
   }
 
   const handleDelete = async () => {
-    if (!placeId) return
+    if (!place || !window.confirm('¿Eliminar este lugar?')) return
 
     setIsPending(true)
     setError(null)
 
     try {
       await deleteSavingsPlace({
-        data: { placeId },
+        data: { placeId: place.id },
       })
       toast.success('Lugar eliminado.')
       await router.invalidate()
@@ -90,10 +101,15 @@ export function SavingsPlaceSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>{isEdit ? 'Editar lugar' : 'Nuevo lugar'}</SheetTitle>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
+      >
+        <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
+          <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
+            {isEdit ? 'Editar lugar' : 'Nuevo lugar'}
+          </SheetTitle>
           <SheetDescription>
             {isEdit
               ? 'Modificá el nombre del lugar de ahorro.'
@@ -101,22 +117,27 @@ export function SavingsPlaceSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col gap-5 overflow-y-auto p-6"
+        >
           <FieldGroup>
-            <Field>
+            <Field data-invalid={!!error}>
               <FieldLabel htmlFor="place-name">Nombre del lugar</FieldLabel>
               <Input
                 id="place-name"
+                aria-invalid={!!error}
+                aria-describedby={error ? 'place-name-error' : undefined}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ej: Banco Nación"
                 disabled={isPending}
               />
+              {error && <FieldError id="place-name-error">{error}</FieldError>}
             </Field>
-            {error && <FieldError>{error}</FieldError>}
           </FieldGroup>
 
-          <SheetFooter>
+          <div className="mt-auto flex gap-3 pt-4">
             {isEdit && (
               <Button
                 type="button"
@@ -127,10 +148,10 @@ export function SavingsPlaceSheet({
                 Eliminar
               </Button>
             )}
-            <Button type="submit" disabled={isPending || !name.trim()}>
-              {isEdit ? 'Guardar' : 'Crear'}
+            <Button type="submit" disabled={isPending} className="flex-1">
+              {isPending ? 'Guardando...' : 'Guardar'}
             </Button>
-          </SheetFooter>
+          </div>
         </form>
       </SheetContent>
     </Sheet>

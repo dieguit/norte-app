@@ -1,37 +1,29 @@
-import { useState } from 'react'
-import { Button } from '../../../../components/ui/button'
-import { formatMoney } from '../../../../lib/format'
-import { createMoney } from '../../../../lib/money'
-import type { SavingsPlacesWorkspace } from '../../../../features/savings-places/savings-places'
-import { SavingsPlaceSheet } from './SavingsPlaceSheet'
-import { SavingsTransferSheet } from './SavingsTransferSheet'
+import { useState } from "react";
+import { ArrowRightLeft, Pencil, Search } from "lucide-react";
+import { Button } from "../../../../components/ui/button";
+import { formatMoney } from "../../../../lib/format";
+import { createMoney } from "../../../../lib/money";
+import type { SavingsPlacesWorkspace } from "../../../../features/savings-places/savings-places";
+import { getSavingsPlaceEntries } from "../../../../features/savings-places/savings-places";
+import { SavingsPlaceSheet } from "./SavingsPlaceSheet";
+import { SavingsTransferSheet } from "./SavingsTransferSheet";
+import { SavingsMovementsSheet } from "./SavingsMovementsSheet";
 
 interface SavingsPlacesTabProps {
-  workspace: SavingsPlacesWorkspace
+  workspace: SavingsPlacesWorkspace;
 }
 
 export function SavingsPlacesTab({ workspace }: SavingsPlacesTabProps) {
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingPlaceId, setEditingPlaceId] = useState<string | null>(null)
-  const [isTransferOpen, setIsTransferOpen] = useState(false)
-
-  if (workspace.places.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-        <p className="text-lg font-medium text-[var(--sea-ink)]">
-          Todavía no tenés lugares de ahorro.
-        </p>
-        <p className="text-sm text-[var(--sea-ink-soft)]">
-          Creá un lugar para empezar a registrar dónde guardás tu dinero.
-        </p>
-        <Button onClick={() => setIsCreateOpen(true)}>Nuevo lugar</Button>
-        <SavingsPlaceSheet
-          open={isCreateOpen}
-          onOpenChange={setIsCreateOpen}
-        />
-      </div>
-    )
-  }
+  const [editingPlace, setEditingPlace] = useState<
+    SavingsPlacesWorkspace["places"][number] | null
+  >(null);
+  const [transferPlace, setTransferPlace] = useState<
+    SavingsPlacesWorkspace["places"][number] | null
+  >(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<
+    SavingsPlacesWorkspace["places"][number] | null
+  >(null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,93 +34,117 @@ export function SavingsPlacesTab({ workspace }: SavingsPlacesTabProps) {
           </h2>
         </div>
         <div className="flex gap-2 sm:ml-auto">
-          <Button variant="outline" onClick={() => setIsTransferOpen(true)}>
-            Transferir entre lugares
+          <Button type="button" onClick={() => setIsCreateOpen(true)}>
+            Nuevo lugar
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>Nuevo lugar</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {workspace.places.map((place) => (
-          <button
-            key={place.id}
-            type="button"
-            onClick={() => setEditingPlaceId(place.id)}
-            className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 text-left transition-colors hover:border-[var(--sea)]"
-          >
-            <h3 className="font-serif text-lg font-bold text-[var(--sea-ink)]">
-              {place.name}
-            </h3>
-            <div className="flex gap-4">
-              <div>
-                <p className="text-xs text-[var(--sea-ink-soft)]">ARS</p>
-                <p className="font-medium text-[var(--sea-ink)]">
-                  {formatMoney(createMoney(place.balances.ARS, 'ARS'))}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--sea-ink-soft)]">USD</p>
-                <p className="font-medium text-[var(--sea-ink)]">
-                  {formatMoney(createMoney(place.balances.USD, 'USD'))}
-                </p>
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {workspace.movements.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h3 className="font-serif text-lg font-bold text-[var(--sea-ink)]">
-            Movimientos
-          </h3>
-          <ul className="flex flex-col gap-2">
-            {workspace.movements.map((movement) => (
+      {workspace.places.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+          <p className="text-lg font-medium text-[var(--sea-ink)]">
+            Todavía no tenés lugares de ahorro.
+          </p>
+          <p className="text-sm text-[var(--sea-ink-soft)]">
+            Creá un lugar para empezar a registrar dónde guardás tu dinero.
+          </p>
+        </div>
+      ) : (
+        <section
+          aria-label="Lugares de ahorro"
+          className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
+        >
+          <ul className="divide-y divide-[var(--line)]">
+            {workspace.places.map((place) => (
               <li
-                key={movement.id}
-                className="flex items-center justify-between gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3"
+                key={place.id}
+                className="flex flex-col items-stretch justify-between gap-5 p-5 sm:flex-row sm:items-center"
               >
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-[var(--sea-ink)]">
-                    {movement.kind === 'contribution'
-                      ? `Ahorro en ${movement.placeName}`
-                      : `Transferencia de ${movement.fromPlaceName} a ${movement.toPlaceName}`}
-                  </span>
-                  <span className="text-xs text-[var(--sea-ink-soft)]">
-                    {new Date(movement.createdAt).toLocaleDateString('es-AR')}
-                  </span>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-[var(--sea-ink)]">
+                      {place.name}
+                    </h3>
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Editar lugar ${place.name}`}
+                        onClick={() => setEditingPlace(place)}
+                      >
+                        <Pencil data-icon="inline-start" aria-hidden="true" />
+                        Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Transferir desde ${place.name}`}
+                        onClick={() => setTransferPlace(place)}
+                      >
+                        <ArrowRightLeft
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
+                        Transferir
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Ver movimientos de ${place.name}`}
+                        onClick={() => setSelectedPlace(place)}
+                      >
+                        <Search data-icon="inline-start" aria-hidden="true" />
+                        Movimientos
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <span className="font-medium text-[var(--sea-ink)]">
-                  {movement.currency} {formatMoney(createMoney(movement.amount, movement.currency))}
-                </span>
+                <p className="whitespace-nowrap text-right font-medium tabular-nums text-[var(--sea-ink)]">
+                  {formatMoney(createMoney(place.balances.ARS, "ARS"))} ·{" "}
+                  {formatMoney(createMoney(place.balances.USD, "USD"))}
+                </p>
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {workspace.movements.length === 0 && workspace.places.length > 0 && (
-        <p className="text-sm text-[var(--sea-ink-soft)]">
-          No hay movimientos todavía.
-        </p>
+        </section>
       )}
 
       <SavingsPlaceSheet
-        open={isCreateOpen || editingPlaceId !== null}
+        open={isCreateOpen || editingPlace !== null}
         onOpenChange={(open: boolean) => {
           if (!open) {
-            setIsCreateOpen(false)
-            setEditingPlaceId(null)
+            setIsCreateOpen(false);
+            setEditingPlace(null);
           }
         }}
-        placeId={editingPlaceId}
+        place={editingPlace ?? undefined}
       />
-      <SavingsTransferSheet
-        open={isTransferOpen}
-        onOpenChange={setIsTransferOpen}
-        places={workspace.places}
-      />
+      {transferPlace && (
+        <SavingsTransferSheet
+          open
+          onOpenChange={(open) => {
+            if (!open) setTransferPlace(null);
+          }}
+          fromPlace={transferPlace}
+          places={workspace.places}
+        />
+      )}
+      {selectedPlace && (
+        <SavingsMovementsSheet
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedPlace(null);
+          }}
+          placeName={selectedPlace.name}
+          movements={getSavingsPlaceEntries(
+            workspace.movements,
+            selectedPlace.id,
+          )}
+        />
+      )}
     </div>
-  )
+  );
 }

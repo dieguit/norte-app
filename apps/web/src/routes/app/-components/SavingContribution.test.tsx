@@ -16,6 +16,11 @@ import type {
 } from '../../../features/contributions/saving-contribution'
 import { SavingContribution } from './SavingContribution'
 
+async function selectSavingsPlace(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('combobox'))
+  await user.click(await screen.findByRole('option', { name: 'Banco Santander' }))
+}
+
 vi.mock('@tanstack/react-router', () => ({
   useRouter: vi.fn(),
 }))
@@ -50,9 +55,11 @@ describe('SavingContribution component', () => {
       { id: 'goal-ars-1', name: 'Viaje a Bariloche', percentage: '60.00' },
       { id: 'goal-ars-2', name: 'Auto nuevo', percentage: '40.00' },
     ],
-    eligibleGoalsUsd: [],
-      places: [],
-    }
+    eligibleGoalsUsd: [
+      { id: 'goal-usd-1', name: 'Colchón financiero', percentage: '100.00' },
+    ],
+    places: [{ id: 'place-1', name: 'Banco Santander' }],
+  }
 
   const mockArsPreview: SavingContributionPreviewResult = {
     previewToken: 'a'.repeat(64),
@@ -136,17 +143,17 @@ describe('SavingContribution component', () => {
       const amountInput = screen.getByLabelText(/monto en pesos/i)
       expect(amountInput).toHaveAttribute('inputMode', 'decimal')
 
-      const locationInput = screen.getByLabelText(/dónde está guardado/i)
-      expect(locationInput).toBeVisible()
+      expect(screen.getByRole('combobox', { name: '¿Dónde está este ahorro?' })).toBeVisible()
+      await selectSavingsPlace(user)
 
       await user.type(amountInput, '100000')
-      await user.type(locationInput, 'Banco Santander')
 
       await waitFor(() => {
         expect(previewSavingContribution).toHaveBeenCalledWith({
           data: expect.objectContaining({
             currency: 'ARS',
             amount: '100.000',
+            place: { kind: 'existing', placeId: 'place-1' },
           }),
         })
       })
@@ -163,6 +170,73 @@ describe('SavingContribution component', () => {
       expect(screen.getAllByText('Con este aporte').length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('Junio de 2027')).toBeVisible()
       expect(screen.getByText('Febrero de 2027')).toBeVisible()
+    })
+
+    it('refreshes the preview when the selected savings place changes', async () => {
+      const user = userEvent.setup()
+      vi.mocked(previewSavingContribution).mockResolvedValue(mockArsPreview)
+
+      render(
+        <SavingContribution
+          context={{
+            ...defaultContext,
+            places: [
+              ...defaultContext.places,
+              { id: 'place-2', name: 'Caja de ahorro' },
+            ],
+          }}
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      const combobox = screen.getByRole('combobox', { name: '¿Dónde está este ahorro?' })
+      await user.click(combobox)
+      await user.click(await screen.findByRole('option', { name: 'Banco Santander' }))
+      await user.type(screen.getByLabelText(/monto en pesos/i), '100000')
+
+      await waitFor(() => {
+        expect(previewSavingContribution).toHaveBeenLastCalledWith({
+          data: expect.objectContaining({
+            place: { kind: 'existing', placeId: 'place-1' },
+          }),
+        })
+      })
+
+      await user.click(combobox)
+      await user.click(await screen.findByRole('option', { name: 'Caja de ahorro' }))
+
+      await waitFor(() => {
+        expect(previewSavingContribution).toHaveBeenLastCalledWith({
+          data: expect.objectContaining({
+            place: { kind: 'existing', placeId: 'place-2' },
+          }),
+        })
+      })
+    })
+
+    it('shows an invalid new-place name inline without duplicating the global error', async () => {
+      const user = userEvent.setup()
+      const error = 'Escribí un nombre para el lugar.'
+      vi.mocked(previewSavingContribution).mockRejectedValue(new Error(error))
+
+      render(
+        <SavingContribution
+          context={defaultContext}
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: '¿Dónde está este ahorro?' }))
+      await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
+      await user.type(screen.getByLabelText(/monto en pesos/i), '100000')
+
+      const input = await screen.findByRole('textbox', { name: 'Nombre del lugar nuevo' })
+      expect(await screen.findByText(error)).toHaveAttribute('data-slot', 'field-error')
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(input).toHaveAttribute('aria-describedby', 'new-savings-place-error')
+      expect(screen.getAllByText(error)).toHaveLength(1)
     })
 
     it('submits confirmation and calls onSuccess with toast', async () => {
@@ -183,6 +257,7 @@ describe('SavingContribution component', () => {
       )
 
       const amountInput = screen.getByLabelText(/monto en pesos/i)
+      await selectSavingsPlace(user)
       await user.type(amountInput, '100000')
 
       expect(await screen.findByText('Así se distribuye tu ahorro')).toBeVisible()
@@ -198,6 +273,7 @@ describe('SavingContribution component', () => {
             draft: expect.objectContaining({
               currency: 'ARS',
               amount: '100.000',
+              place: { kind: 'existing', placeId: 'place-1' },
             }),
             previewToken: mockArsPreview.previewToken,
           },
@@ -226,6 +302,7 @@ describe('SavingContribution component', () => {
             kind: 'saving',
             amount: '100.00',
             currency: 'ARS',
+            placeId: 'place-1',
             createdAt: '2026-08-01T00:00:00.000Z',
             allocations: [
               {
@@ -260,7 +337,11 @@ describe('SavingContribution component', () => {
         expect(updateSavingContribution).toHaveBeenCalledWith({
           data: {
             contributionId: 'contribution-1',
-            draft: expect.objectContaining({ kind: 'saving', currency: 'ARS' }),
+            draft: expect.objectContaining({
+              kind: 'saving',
+              currency: 'ARS',
+              place: { kind: 'existing', placeId: 'place-1' },
+            }),
           },
         })
       })
@@ -284,6 +365,7 @@ describe('SavingContribution component', () => {
       )
 
       const amountInput = screen.getByLabelText(/monto en pesos/i)
+      await selectSavingsPlace(user)
       await user.type(amountInput, '100000')
 
       expect(await screen.findByText('Así se distribuye tu ahorro')).toBeVisible()
@@ -312,6 +394,7 @@ describe('SavingContribution component', () => {
 
       // Switch to USD
       await user.click(screen.getByRole('button', { name: 'Ahorré USD' }))
+      await selectSavingsPlace(user)
 
       const rateInput = screen.getByLabelText(/tipo de cambio/i)
       expect(rateInput).toHaveValue('1.500')
@@ -337,7 +420,7 @@ describe('SavingContribution component', () => {
       })
 
       expect((await screen.findAllByText('Colchón financiero'))[0]).toBeVisible()
-      expect(screen.getByText('USD 100,00')).toBeVisible()
+      expect(screen.getByText('US$ 100,00')).toBeVisible()
     })
 
     it('derives rate when USD and ARS spent are entered', async () => {
@@ -353,6 +436,7 @@ describe('SavingContribution component', () => {
       )
 
       await user.click(screen.getByRole('button', { name: 'Ahorré USD' }))
+      await selectSavingsPlace(user)
 
       const usdInput = screen.getByLabelText(/monto en dólares/i)
       const arsSpentInput = screen.getByLabelText(/pesos gastados/i)
@@ -379,6 +463,7 @@ describe('SavingContribution component', () => {
       )
 
       await user.click(screen.getByRole('button', { name: 'Ahorré USD' }))
+      await selectSavingsPlace(user)
 
       const usdInput = screen.getByLabelText(/monto en dólares/i)
       const arsSpentInput = screen.getByLabelText(/pesos gastados/i)
@@ -402,8 +487,8 @@ describe('SavingContribution component', () => {
         currentMonth: '2026-08',
         eligibleGoals: [],
         eligibleGoalsUsd: [],
-      places: [],
-    }
+        places: [],
+      }
 
       render(
         <SavingContribution
@@ -458,6 +543,7 @@ describe('SavingContribution component', () => {
       )
 
       const amountInput = screen.getByLabelText(/monto en pesos/i)
+      await selectSavingsPlace(user)
       await user.type(amountInput, '100000')
 
       expect(await screen.findByText('Así se distribuye tu ahorro')).toBeVisible()
@@ -513,6 +599,7 @@ describe('SavingContribution component', () => {
       )
 
       const amountInput = screen.getByLabelText(/monto en pesos/i)
+      await selectSavingsPlace(user)
       await user.type(amountInput, '100000')
 
       expect(await screen.findByText('Así se distribuye tu ahorro')).toBeVisible()
@@ -554,7 +641,7 @@ describe('SavingContribution component', () => {
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: /ahorré usd/i }))
 
-      expect(screen.getByText('USD 30,00')).toBeInTheDocument()
+      expect(screen.getByText('US$ 30,00')).toBeInTheDocument()
     })
 
     it('renders fulfilled message when monthly saving target is 0.00', () => {
@@ -634,7 +721,10 @@ describe('SavingContribution component', () => {
         { id: 'goal-ars-1', name: 'Viaje a Bariloche', percentage: '100.00' },
       ],
       eligibleGoalsUsd: [],
-      places: [],
+      eligibleInvestmentGoalsUsd: [
+        { id: 'goal-inv-usd', name: 'S&P 500 USD', percentage: '100.00' },
+      ],
+      places: [{ id: 'place-1', name: 'Banco Santander' }],
     }
 
     const mockInvUsdPreview: SavingContributionPreviewResult = {
@@ -685,7 +775,7 @@ describe('SavingContribution component', () => {
       expect(screen.queryByRole('button', { name: 'Ahorré USD' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Invertí ARS' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Invertí USD' })).not.toBeInTheDocument()
-      expect(screen.queryByLabelText(/dónde está guardado/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: '¿Dónde está este ahorro?' })).not.toBeInTheDocument()
 
       const usdInput = screen.getByLabelText(/monto en dólares/i)
       const arsSpentInput = screen.getByLabelText(/pesos gastados/i)
@@ -741,8 +831,8 @@ describe('SavingContribution component', () => {
       const contextNoInvUsd: SavingContributionContext = {
         ...investmentContext,
         eligibleInvestmentGoalsUsd: [],
-      places: [],
-    }
+        places: [],
+      }
 
       render(
         <SavingContribution
@@ -771,7 +861,7 @@ describe('SavingContribution component', () => {
         />,
       )
 
-      expect(screen.queryByLabelText(/dónde está guardado/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: '¿Dónde está este ahorro?' })).not.toBeInTheDocument()
       expect(screen.getByLabelText(/monto en pesos/i)).toBeVisible()
       expect(screen.getByRole('button', { name: 'Confirmar inversión' })).toBeDisabled()
     })
@@ -787,9 +877,44 @@ describe('SavingContribution component', () => {
         />,
       )
 
-      expect(screen.getByLabelText(/dónde está guardado/i)).toBeVisible()
+      expect(screen.getByRole('combobox', { name: '¿Dónde está este ahorro?' })).toBeVisible()
       expect(screen.getByLabelText(/monto en pesos/i)).toBeVisible()
       expect(screen.getByRole('button', { name: 'Confirmar ahorro' })).toBeDisabled()
+    })
+
+    it('omits the savings place from investment confirmation payloads', async () => {
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+      vi.mocked(previewSavingContribution).mockResolvedValue(mockArsPreview)
+      vi.mocked(confirmSavingContribution).mockResolvedValue({
+        status: 'created',
+        contributionId: 'investment-1',
+      })
+
+      render(
+        <SavingContribution
+          kind="investment"
+          currency="ARS"
+          context={{
+            ...investmentContext,
+            eligibleGoals: [],
+            eligibleInvestmentGoals: [
+              { id: 'investment-goal', name: 'Cedears', percentage: '100.00' },
+            ],
+          }}
+          onCancel={vi.fn()}
+          onSuccess={onSuccess}
+        />,
+      )
+
+      await user.type(screen.getByLabelText(/monto en pesos/i), '200')
+      expect(await screen.findByText('Así se distribuye tu inversión')).toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'Confirmar inversión' }))
+
+      await waitFor(() => {
+        const [call] = vi.mocked(confirmSavingContribution).mock.calls
+        expect((call as any)[0].data.draft).not.toHaveProperty('place')
+      })
     })
   })
 
@@ -824,6 +949,7 @@ describe('SavingContribution component', () => {
       expect(screen.queryByRole('button', { name: 'Ahorré USD' })).not.toBeInTheDocument()
 
       const amountInput = screen.getByLabelText(/monto en pesos/i)
+      await selectSavingsPlace(user)
       await user.clear(amountInput)
       await user.type(amountInput, '30000')
 
@@ -841,6 +967,7 @@ describe('SavingContribution component', () => {
               kind: 'saving',
               currency: 'ARS',
               amount: '30.000',
+              place: { kind: 'existing', placeId: 'place-1' },
             }),
             previewToken: mockArsPreview.previewToken,
             catchUpMonth: '2026-07',

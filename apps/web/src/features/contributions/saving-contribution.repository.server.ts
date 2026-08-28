@@ -1,6 +1,6 @@
 import '@tanstack/react-start/server-only'
 import { createHash } from 'node:crypto'
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import BigNumber from 'bignumber.js'
 import { db } from '../../db/client'
 import {
@@ -11,6 +11,7 @@ import {
   investmentContributions,
   savingContributionAllocations,
   savingContributions,
+  savingsPlaces,
 } from '../../db/schema'
 import { calculateAllocationAmounts } from '../../lib/money'
 import type { GoalsWorkspaceSource } from '../goals/goals'
@@ -401,6 +402,23 @@ export async function updateSavingContributionInRepository(input: {
         throw new Error('Cannot change contribution currency on update.')
       }
 
+      if (!parsedDraft.place) {
+        throw new Error('Elegí un lugar para tu ahorro.')
+      }
+
+      const resolvedPlace = await resolveSavingsPlaceWithExecutor(tx, userId, parsedDraft.place)
+      const placeIds = [...new Set([savingContribution.placeId, resolvedPlace.id].filter(Boolean))].sort()
+      for (const placeId of placeIds) {
+        const [lockedPlace] = await tx
+          .select()
+          .from(savingsPlaces)
+          .where(and(eq(savingsPlaces.id, placeId), eq(savingsPlaces.userId, userId)))
+          .for('update')
+        if (!lockedPlace) {
+          throw new Error('Lugar de ahorro no encontrado.')
+        }
+      }
+
       const allocatedMoneyList = calculateAllocationAmounts(
         parsedDraft.amount,
         allocations.map((a: any) => ({ id: a.id, percentage: a.percentage })),
@@ -427,6 +445,7 @@ export async function updateSavingContributionInRepository(input: {
         .update(savingContributions)
         .set({
           amount: parsedDraft.amount.amount,
+          placeId: resolvedPlace.id,
           arsSpent: parsedDraft.arsSpent ? parsedDraft.arsSpent.amount : null,
           effectiveRate: parsedDraft.effectiveRate ?? null,
         })
@@ -557,4 +576,3 @@ export async function deleteSavingContributionInRepository(input: {
     throw new Error('Contribution not found or not owned by user.')
   })
 }
-

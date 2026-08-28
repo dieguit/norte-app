@@ -1,5 +1,6 @@
 import '@tanstack/react-start/server-only'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
+import BigNumber from 'bignumber.js'
 import { db } from '../../db/client'
 import { savingsPlaceTransfers, savingsPlaces } from '../../db/schema'
 import { normalizeSavingsPlaceName, calculateSavingsPlacesWorkspace } from './savings-places'
@@ -141,18 +142,17 @@ export async function transferSavingsInRepository(input: {
   const { userId, fromPlaceId, toPlaceId, currency, amount } = input
 
   return db.transaction(async (tx) => {
-    const [placeA, placeB] = await Promise.all(
-      [fromPlaceId, toPlaceId]
-        .sort()
-        .map((id) =>
-          tx.query.savingsPlaces.findFirst({
-            where: (table: any, { and, eq }: any) =>
-              and(eq(table.id, id), eq(table.userId, userId)),
-          }),
-        ),
-    )
+    const lockedPlaces: any[] = []
+    for (const id of [fromPlaceId, toPlaceId].sort()) {
+      const [place] = await tx
+        .select()
+        .from(savingsPlaces)
+        .where(and(eq(savingsPlaces.id, id), eq(savingsPlaces.userId, userId)))
+        .for('update')
+      lockedPlaces.push(place)
+    }
 
-    if (!placeA || !placeB) {
+    if (lockedPlaces.some((place) => !place)) {
       throw new Error('Lugar de ahorro no encontrado.')
     }
 
@@ -164,22 +164,23 @@ export async function transferSavingsInRepository(input: {
       where: (table: any, { eq }: any) => eq(table.userId, userId),
     })
 
-    let sourceBalance = '0'
+    let sourceBalance = new BigNumber(0)
     for (const c of contributions) {
       if (c.placeId === fromPlaceId && c.currency === currency) {
-        sourceBalance = String(Number(sourceBalance) + Number(c.amount))
+        sourceBalance = sourceBalance.plus(c.amount)
       }
     }
     for (const t of outgoingTransfers) {
       if (t.fromPlaceId === fromPlaceId && t.currency === currency) {
-        sourceBalance = String(Number(sourceBalance) - Number(t.amount))
+        sourceBalance = sourceBalance.minus(t.amount)
       }
       if (t.toPlaceId === fromPlaceId && t.currency === currency) {
-        sourceBalance = String(Number(sourceBalance) + Number(t.amount))
+        sourceBalance = sourceBalance.plus(t.amount)
       }
     }
 
-    if (Number(sourceBalance) < Number(amount)) {
+    const transferAmount = new BigNumber(amount)
+    if (sourceBalance.isLessThan(transferAmount)) {
       throw new Error('No tenés saldo suficiente en ese lugar.')
     }
 
@@ -190,7 +191,7 @@ export async function transferSavingsInRepository(input: {
         fromPlaceId,
         toPlaceId,
         currency,
-        amount,
+        amount: transferAmount.toFixed(2),
       })
       .returning({ id: savingsPlaceTransfers.id })
 

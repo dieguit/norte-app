@@ -59,14 +59,25 @@ describe('transferSavingsSchema', () => {
         fromPlaceId: uuid1,
         toPlaceId: uuid2,
         currency: 'ARS',
-        amount: '10.00',
+        amount: '1.250,5',
       }),
     ).toEqual({
       fromPlaceId: uuid1,
       toPlaceId: uuid2,
       currency: 'ARS',
-      amount: '10.00',
+      amount: '1250.50',
     })
+  })
+
+  it.each(['invalid', '0', '0,00', '-1'])('rejects non-positive amount %s', (amount) => {
+    expect(() =>
+      transferSavingsSchema.parse({
+        fromPlaceId: uuid1,
+        toPlaceId: uuid2,
+        currency: 'ARS',
+        amount,
+      }),
+    ).toThrow('Ingresá un monto mayor a cero.')
   })
 })
 

@@ -18,6 +18,18 @@ allocations are retained as part of the action; an explicit correction may
 update that action without applying the current Plan retroactively.
 _Avoid_: Planned contribution, estimated margin
 
+**Savings place**:
+A user-owned container that identifies where saved money is held. Its ARS and
+USD balances are derived from recorded saving contributions and transfers; it
+does not determine how that money is allocated across Goals.
+_Avoid_: Goal, allocation bucket, bank account integration
+
+**Savings transfer**:
+An immutable movement of saved money between two Savings places in the same
+currency. It changes where the money is held without changing Goal progress or
+historical contribution allocations.
+_Avoid_: Contribution, expense, Goal completion
+
 **Trajectory**:
 The projected path from current financial state and the current plan to each goal's completion state.
 _Avoid_: Budget, financial health score

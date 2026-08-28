@@ -129,7 +129,7 @@ describe('Home component', () => {
     )
 
     expect(screen.getByText('No cumpliste todos tus objetivos de abril.')).toBeVisible()
-    expect(screen.getByText('En abril te faltaron ahorrar USD USD 20,00.')).toBeVisible()
+    expect(screen.getByText('En abril te faltaron ahorrar USD US$ 20,00.')).toBeVisible()
     expect(screen.getByText('En abril te faltaron invertir ARS $ 25.000,00.')).toBeVisible()
 
     const section = screen.getByRole('region', { name: 'No cumpliste todos tus objetivos de abril.' })

@@ -190,24 +190,10 @@ describe('GoalCreation component (2-step flow)', () => {
       expect(screen.queryByLabelText(/rendimiento anual estimado/i)).not.toBeInTheDocument()
     })
 
-    it('requires future desired month when specified', async () => {
-      const user = userEvent.setup()
-
+    it('does not render desired month until the field is enabled', async () => {
       render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
 
-      await user.type(screen.getByLabelText(/nombre/i), 'Auto nuevo')
-      await user.type(screen.getByLabelText(/monto objetivo/i), '5000000')
-
-      // Open month picker
-      await user.click(screen.getByRole('button', { name: /mes objetivo/i }))
-
-      // Current month (August 2026) is disabled
-      expect(screen.getByRole('button', { name: 'Ago' })).toBeDisabled()
-
-      // Select a future month (September 2026)
-      await user.click(screen.getByRole('button', { name: 'Sep' }))
-
-      expect(screen.getByRole('button', { name: /mes objetivo/i })).toHaveTextContent(/septiembre de 2026/i)
+      expect(screen.queryByRole('button', { name: /mes objetivo/i })).not.toBeInTheDocument()
     })
 
     it('emergency fund prefills name, locks USD, and explains unknown expenses', async () => {
@@ -426,7 +412,7 @@ describe('GoalCreation component (2-step flow)', () => {
       // Prefilled values
       expect(screen.getByLabelText(/nombre del objetivo/i)).toHaveValue('Viaje a Japón')
       expect(screen.getByLabelText(/monto objetivo/i)).toHaveValue('5.000.000')
-      expect(screen.getByRole('button', { name: /mes objetivo/i })).toHaveTextContent(/octubre de 2027/i)
+      expect(screen.queryByRole('button', { name: /mes objetivo/i })).not.toBeInTheDocument()
       expect(screen.getByLabelText(/rendimiento anual estimado/i)).toHaveValue('12')
       expect(screen.getByRole('button', { name: /mes a partir del cual estará disponible/i })).toHaveTextContent(
         /enero de 2027/i,

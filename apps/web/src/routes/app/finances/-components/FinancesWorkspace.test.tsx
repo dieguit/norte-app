@@ -31,7 +31,17 @@ afterEach(cleanup);
 
 const sampleWorkspace = {
   goalDedicationPercentage: "90",
-          savings: { places: [], movements: [] },
+          savings: {
+            places: [
+              {
+                id: "bank",
+                name: "Banco Nación",
+                balances: { ARS: "125000.00", USD: "2345.67" },
+                hasMovements: true,
+              },
+            ],
+            movements: [],
+          },
   incomes: {
     sources: [],
     incomes: [
@@ -151,6 +161,66 @@ describe("FinancesWorkspace", () => {
       screen.getByRole("heading", { name: "Recurrentes" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Únicos" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Ahorros" }));
+
+    expect(screen.getByLabelText("Mes de finanzas")).toBeInTheDocument();
+    const savingsSummary = screen.getByRole("region", {
+      name: "Resumen mensual para objetivos",
+    });
+    expect(
+      within(savingsSummary).getByRole("heading", {
+        name: "Finanzas de Agosto de 2026",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(savingsSummary).getByRole("heading", {
+        name: "Aporte mensual a objetivos",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$ 125.000,00 · US$ 2.345,67")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Ingresos" }));
+
+    expect(screen.getByLabelText("Mes de finanzas")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Ingresos de Agosto de 2026" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps savings balances independent of the selected month and restores monthly context", async () => {
+    const user = userEvent.setup();
+    render(
+      <FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Mes de finanzas" }));
+    await user.click(screen.getByRole("button", { name: "Jul" }));
+    await user.click(screen.getByRole("tab", { name: "Ahorros" }));
+
+    expect(screen.getByText("$ 125.000,00 · US$ 2.345,67")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mes de finanzas")).toHaveTextContent(
+      "Julio de 2026",
+    );
+    expect(
+      within(
+        screen.getByRole("region", {
+          name: "Resumen mensual para objetivos",
+        }),
+      ).getByRole("heading", { name: "Finanzas de Julio de 2026" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Gastos" }));
+
+    expect(screen.getByLabelText("Mes de finanzas")).toHaveTextContent(
+      "Julio de 2026",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Gastos de Julio de 2026" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Finanzas de Julio de 2026" }),
+    ).toBeInTheDocument();
   });
 
   it("renders one-time incomes before recurring incomes", () => {
@@ -192,7 +262,7 @@ describe("FinancesWorkspace", () => {
 
     const oneOffSection = screen.getByLabelText("Gastos únicos");
     expect(within(oneOffSection).getByText("Vuelo")).toBeInTheDocument();
-    expect(within(oneOffSection).getByText("USD 200,00")).toBeInTheDocument();
+    expect(within(oneOffSection).getByText("US$ 200,00")).toBeInTheDocument();
     expect(
       within(oneOffSection).getByText("Equivale a ARS 300.000"),
     ).toBeInTheDocument();

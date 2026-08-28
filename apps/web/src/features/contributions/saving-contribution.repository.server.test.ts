@@ -62,6 +62,19 @@ const mockTx = {
   },
 }
 
+function getSqlParamValues(query: any): string[] {
+  const values: string[] = []
+  const visit = (node: any) => {
+    if (node?.constructor?.name === 'Param') {
+      values.push(node.value)
+      return
+    }
+    if (Array.isArray(node?.queryChunks)) node.queryChunks.forEach(visit)
+  }
+  visit(query)
+  return values
+}
+
 vi.mock('../../db/client', () => ({
   db: {
     transaction: vi.fn().mockImplementation((callback) => callback(mockTx)),
@@ -99,6 +112,9 @@ vi.mock('../../db/client', () => ({
       },
       investmentContributionAllocations: {
         findMany: vi.fn(),
+      },
+      savingsPlaces: {
+        findFirst: vi.fn(),
       },
     },
   },
@@ -395,6 +411,7 @@ describe('saving-contribution.repository.server', () => {
     db.query.investmentContributions.findFirst = vi.fn().mockResolvedValue(investmentContribution)
     db.query.investmentContributions.findMany = vi.fn().mockResolvedValue(investmentContribution ? [investmentContribution] : [])
     db.query.investmentContributionAllocations.findMany = vi.fn().mockResolvedValue(investmentAllocations)
+    db.query.savingsPlaces.findFirst = vi.fn().mockResolvedValue({ id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Banco Nación' })
 
     mockTx.query = db.query as any
 
@@ -521,7 +538,8 @@ describe('saving-contribution.repository.server', () => {
 
       const draftArs: SavingDraftInput = {
         currency: 'ARS',
-        amount: '10000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '10000.00',
       }
 
       const token1 = createSavingContributionPreviewToken(state, currentMonth, draftArs)
@@ -541,11 +559,13 @@ describe('saving-contribution.repository.server', () => {
   describe('createSavingContributionInRepository', () => {
     const draftArs: SavingDraftInput = {
       currency: 'ARS',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
       amount: '10000.00',
     }
 
     const draftUsd: SavingDraftInput = {
       currency: 'USD',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
       amount: '100.00',
       arsSpent: '150000.00',
       effectiveRate: '1500.00',
@@ -606,7 +626,8 @@ describe('saving-contribution.repository.server', () => {
       const draftInvestArs: SavingDraftInput = {
         kind: 'investment',
         currency: 'ARS',
-        amount: '20000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '20000.00',
       }
       const previewToken = createSavingContributionPreviewToken(state, currentMonth, draftInvestArs)
 
@@ -637,7 +658,8 @@ describe('saving-contribution.repository.server', () => {
       const draftInvestUsd: SavingDraftInput = {
         kind: 'investment',
         currency: 'USD',
-        amount: '100.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '100.00',
         arsSpent: '150000.00',
         effectiveRate: '1500.00',
       }
@@ -679,7 +701,8 @@ describe('saving-contribution.repository.server', () => {
       const draftInvestArs: SavingDraftInput = {
         kind: 'investment',
         currency: 'ARS',
-        amount: '20000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '20000.00',
       }
       const previewToken = createSavingContributionPreviewToken(state, currentMonth, draftInvestArs)
       const createdAt = new Date('2026-07-31T12:00:00.000Z')
@@ -703,7 +726,8 @@ describe('saving-contribution.repository.server', () => {
       const draftInvestArs: SavingDraftInput = {
         kind: 'investment',
         currency: 'ARS',
-        amount: '20000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '20000.00',
       }
       const previewToken = createSavingContributionPreviewToken(state, currentMonth, draftInvestArs)
 
@@ -781,7 +805,8 @@ describe('saving-contribution.repository.server', () => {
       const draftInvestArs: SavingDraftInput = {
         kind: 'investment',
         currency: 'ARS',
-        amount: '10000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '10000.00',
       }
       const token = createSavingContributionPreviewToken(state, currentMonth, draftInvestArs)
 
@@ -804,6 +829,7 @@ describe('saving-contribution.repository.server', () => {
       currency: 'ARS',
       arsSpent: null,
       effectiveRate: null,
+      placeId: 'old-place',
       createdAt: new Date('2026-08-01T00:00:00Z'),
       updatedAt: new Date('2026-08-01T00:00:00Z'),
     }
@@ -837,7 +863,8 @@ describe('saving-contribution.repository.server', () => {
 
       const updatedDraft: SavingDraftInput = {
         currency: 'ARS',
-        amount: '20000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '20000.00',
       }
 
       await updateSavingContributionInRepository({
@@ -853,6 +880,76 @@ describe('saving-contribution.repository.server', () => {
       // Never touch allocationPlanEntries
       expect(mockTx.delete).not.toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.update).not.toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
+    it('resolves and persists a corrected saving place without changing allocation percentages', async () => {
+      setupDbMocks({
+        contribution: existingContribution,
+        contributionAllocations: existingAllocations,
+      })
+      vi.mocked(db.query.savingsPlaces.findFirst)
+        .mockResolvedValueOnce({ id: 'new-place', name: 'Nueva Caja' } as any)
+
+      await updateSavingContributionInRepository({
+        userId,
+        contributionId: 'contrib_1',
+        draft: {
+          currency: 'ARS',
+          place: { kind: 'existing', placeId: 'new-place' },
+          amount: '20000.00',
+        },
+      })
+
+      expect(db.query.savingsPlaces.findFirst).toHaveBeenCalled()
+      expect(mockTx.update).toHaveBeenCalledWith(savingContributions)
+      expect(mockTx.update.mock.results.at(-1)?.value.set).toHaveBeenCalledWith(
+        expect.objectContaining({ placeId: 'new-place', amount: '20000.00' }),
+      )
+      expect(mockTx.update.mock.results[0]?.value.set).toHaveBeenCalledWith({ amount: '12000.00' })
+      expect(mockTx.update.mock.results[2]?.value.set).toHaveBeenCalledWith({ amount: '8000.00' })
+      expect(mockTx.update.mock.results[1]?.value.set).toHaveBeenCalledWith({ amount: '12000.00' })
+      expect(mockTx.update.mock.results[3]?.value.set).toHaveBeenCalledWith({ amount: '8000.00' })
+      expect(mockTx.update).not.toHaveBeenCalledWith(goalSavingsPositions, expect.objectContaining({ placeId: expect.anything() }))
+    })
+
+    it('locks the old and corrected owned places in sorted order before changing the contribution', async () => {
+      setupDbMocks({
+        contribution: existingContribution,
+        contributionAllocations: existingAllocations,
+      })
+      vi.mocked(db.query.savingsPlaces.findFirst).mockResolvedValue({
+        id: 'a-place',
+        name: 'Nueva Caja',
+      } as any)
+
+      const lock = vi.fn().mockResolvedValue([{ id: 'locked-place' }])
+      const whereConditions: any[] = []
+      mockTx.select.mockImplementation(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockImplementation((condition: any) => {
+            whereConditions.push(condition)
+            return { for: lock }
+          }),
+        }),
+      }))
+
+      await updateSavingContributionInRepository({
+        userId,
+        contributionId: 'contrib_1',
+        draft: {
+          currency: 'ARS',
+          place: { kind: 'existing', placeId: 'a-place' },
+          amount: '20000.00',
+        },
+      })
+
+      expect(whereConditions).toHaveLength(2)
+      expect(lock.mock.calls).toHaveLength(2)
+      expect(whereConditions.map(getSqlParamValues)).toEqual([
+        ['a-place', userId],
+        ['old-place', userId],
+      ])
+      expect(lock.mock.invocationCallOrder[1]).toBeLessThan(mockTx.update.mock.invocationCallOrder[0])
     })
 
     it('throws error when contribution is not found or user ownership fails', async () => {
@@ -927,7 +1024,8 @@ describe('saving-contribution.repository.server', () => {
       const updatedDraft: SavingDraftInput = {
         kind: 'investment',
         currency: 'ARS',
-        amount: '20000.00',
+      place: { kind: 'existing', placeId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },
+      amount: '20000.00',
       }
 
       await updateSavingContributionInRepository({

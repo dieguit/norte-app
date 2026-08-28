@@ -9,13 +9,13 @@ export function formatMoney(money: Money): string {
     maximumFractionDigits: 2,
   }).format(num);
 
-  const prefix = money.currency === "USD" ? "USD " : "$ ";
+  const prefix = money.currency === "USD" ? "US$ " : "$ ";
   return `${prefix}${formattedNumber}`;
 }
 
 export function formatCompactMoney(money: Money): string {
   const num = Number(money.amount);
-  const prefix = money.currency === "USD" ? "USD " : "$ ";
+  const prefix = money.currency === "USD" ? "US$ " : "$ ";
 
   if (num >= 1_000_000) {
     const millions = (num / 1_000_000).toLocaleString(ES_AR_LOCALE, {
@@ -77,4 +77,3 @@ export function formatMonthName(month: string): string {
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
 }
-

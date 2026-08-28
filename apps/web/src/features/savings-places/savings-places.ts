@@ -42,6 +42,20 @@ export function normalizeSavingsPlaceName(name: string): string {
   return name.trim().toLocaleLowerCase('es-AR')
 }
 
+export function getSavingsPlaceEntries(
+  movements: SavingsMovement[],
+  placeId: string,
+): SavingsMovement[] {
+  return movements
+    .filter((movement) =>
+      movement.kind === 'contribution'
+        ? movement.placeId === placeId
+        : movement.toPlaceId === placeId,
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 20)
+}
+
 export function calculateSavingsPlacesWorkspace(input: {
   places: Array<{ id: string; name: string }>
   contributions: Pick<SavingContribution, 'id' | 'placeId' | 'amount' | 'currency' | 'createdAt'>[]
@@ -123,7 +137,6 @@ export function calculateSavingsPlacesWorkspace(input: {
 
   const allMovements = [...contributionMovements, ...transferMovements]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 20)
 
   return {
     places: placeSummaries,
