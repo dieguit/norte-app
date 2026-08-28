@@ -14,6 +14,8 @@ const amountSchema = z.string().refine(
   'Ingresá un monto mayor a cero.',
 )
 
+const conceptSchema = z.string().trim().min(1, 'Ingresá un concepto.').max(120, 'Máximo 120 caracteres.')
+
 const fixedSourceSchema = z.object({
   kind: z.enum(
     Object.keys(FIXED_EXPENSE_SOURCES) as [
@@ -27,11 +29,12 @@ const customSourceSchema = z.union([
   z.object({ kind: z.literal('custom'), sourceId: z.string().uuid() }),
   z.object({
     kind: z.literal('custom'),
-    name: z.string().trim().min(1, 'Ingresá un concepto.').max(120, 'Máximo 120 caracteres.'),
+    name: z.string().trim().min(1, 'Ingresá una categoría.').max(120, 'Máximo 120 caracteres.'),
   }),
 ])
 
 export const expenseDraftSchema = z.object({
+  concept: conceptSchema,
   source: z.union([fixedSourceSchema, customSourceSchema]),
   amount: amountSchema,
   currency: z.enum(['ARS', 'USD']),

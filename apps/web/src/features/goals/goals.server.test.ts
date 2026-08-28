@@ -95,6 +95,7 @@ describe('mapAllocationChangeContext', () => {
             sourceKind: 'salary',
             sourceId: null,
             sourceName: 'salary',
+            concept: null,
             amount: '1000000.00',
             currency: 'ARS',
             recurring: true,
@@ -107,6 +108,7 @@ describe('mapAllocationChangeContext', () => {
             sourceKind: 'housing',
             sourceId: null,
             sourceName: 'housing',
+            concept: null,
             amount: '500000.00',
             currency: 'ARS',
             recurring: true,
@@ -395,4 +397,3 @@ describe('mapGoalEditContext', () => {
     )
   })
 })
-

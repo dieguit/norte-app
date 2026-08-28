@@ -333,6 +333,7 @@ describe('buildGoalCreationProposal', () => {
           sourceKind: 'housing',
           sourceId: null,
           sourceName: 'Alquiler',
+          concept: null,
           amount: '250000.00',
           currency: 'ARS',
           recurring: true,
@@ -975,5 +976,4 @@ describe('rebalanceAllocationEntries', () => {
     ])
   })
 })
-
 

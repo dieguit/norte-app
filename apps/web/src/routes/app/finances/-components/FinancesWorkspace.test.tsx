@@ -50,6 +50,7 @@ const sampleWorkspace = {
         sourceKind: "salary",
         sourceId: null,
         sourceName: "salary",
+        concept: "Sueldo mensual",
         amount: "600000.00",
         currency: "ARS" as const,
         recurring: true,
@@ -60,6 +61,7 @@ const sampleWorkspace = {
         sourceKind: "custom",
         sourceId: null,
         sourceName: "Bono",
+        concept: null,
         amount: "100000.00",
         currency: "ARS" as const,
         recurring: false,
@@ -75,6 +77,7 @@ const sampleWorkspace = {
         sourceKind: "housing",
         sourceId: null,
         sourceName: "housing",
+        concept: "Alquiler mensual",
         amount: "200000.00",
         currency: "ARS" as const,
         recurring: true,
@@ -86,6 +89,7 @@ const sampleWorkspace = {
         sourceKind: "utilities",
         sourceId: null,
         sourceName: "utilities",
+        concept: null,
         amount: "50000.00",
         currency: "ARS" as const,
         recurring: true,
@@ -97,6 +101,7 @@ const sampleWorkspace = {
         sourceKind: "custom",
         sourceId: "src_flight",
         sourceName: "Vuelo",
+        concept: "Pasaje aéreo",
         amount: "200.00",
         currency: "USD" as const,
         recurring: false,
@@ -232,10 +237,124 @@ describe("FinancesWorkspace", () => {
     const recurringSection = screen.getByLabelText("Ingresos recurrentes");
 
     expect(within(oneOffSection).getByText("Bono")).toBeInTheDocument();
-    expect(within(recurringSection).getByText("Sueldo")).toBeInTheDocument();
+    expect(
+      within(recurringSection).getByText("Sueldo mensual"),
+    ).toBeInTheDocument();
     expect(oneOffSection.compareDocumentPosition(recurringSection)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it("shows concepts first and legacy categories once in finance rows", async () => {
+    const user = userEvent.setup();
+    render(
+      <FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />,
+    );
+
+    const recurringIncomeSection = screen.getByLabelText("Ingresos recurrentes");
+    const incomeLabel = within(recurringIncomeSection).getByText(
+      "Sueldo mensual",
+    );
+    const incomeCategory = within(recurringIncomeSection).getByText("Sueldo");
+    expect(incomeLabel).toBeInTheDocument();
+    expect(incomeCategory).toBeInTheDocument();
+    expect(
+      incomeLabel.compareDocumentPosition(incomeCategory) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(incomeLabel).toHaveClass(
+      "break-words",
+      "[overflow-wrap:anywhere]",
+    );
+    expect(incomeLabel.closest("li")?.firstElementChild).toHaveClass(
+      "min-w-0",
+    );
+    expect(
+      within(recurringIncomeSection).getByRole("button", {
+        name: "Editar ingreso Sueldo mensual",
+      }),
+    ).toBeInTheDocument();
+
+    const oneOffIncomeSection = screen.getByLabelText("Ingresos únicos");
+    expect(within(oneOffIncomeSection).getAllByText("Bono")).toHaveLength(1);
+    expect(
+      within(oneOffIncomeSection).getByRole("button", {
+        name: "Editar ingreso Bono",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Gastos" }));
+
+    const recurringExpenseSection = screen.getByLabelText("Gastos recurrentes");
+    const recurringExpenseLabel = within(recurringExpenseSection).getByText(
+      "Alquiler mensual",
+    );
+    const recurringExpenseCategory = within(recurringExpenseSection).getByText(
+      "Alquiler / vivienda",
+    );
+    expect(recurringExpenseLabel).toBeInTheDocument();
+    expect(recurringExpenseCategory).toBeInTheDocument();
+    expect(
+      recurringExpenseLabel.compareDocumentPosition(recurringExpenseCategory) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(recurringExpenseLabel).toHaveClass(
+      "break-words",
+      "[overflow-wrap:anywhere]",
+    );
+    expect(
+      recurringExpenseLabel.closest("li")?.firstElementChild,
+    ).toHaveClass("min-w-0");
+    expect(
+      within(recurringExpenseSection).getByRole("button", {
+        name: "Editar gasto Alquiler mensual",
+      }),
+    ).toBeInTheDocument();
+
+    const oneOffExpenseSection = screen.getByLabelText("Gastos únicos");
+    const oneOffExpenseLabel = within(oneOffExpenseSection).getByText(
+      "Pasaje aéreo",
+    );
+    const oneOffExpenseCategory = within(oneOffExpenseSection).getByText(
+      "Vuelo",
+    );
+    expect(oneOffExpenseLabel).toBeInTheDocument();
+    expect(oneOffExpenseCategory).toBeInTheDocument();
+    expect(
+      oneOffExpenseLabel.compareDocumentPosition(oneOffExpenseCategory) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(oneOffExpenseLabel).toHaveClass(
+      "break-words",
+      "[overflow-wrap:anywhere]",
+    );
+    expect(oneOffExpenseLabel.closest("li")?.firstElementChild).toHaveClass(
+      "min-w-0",
+    );
+    expect(
+      within(oneOffExpenseSection).getByRole("button", {
+        name: "Editar gasto Pasaje aéreo",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("uses the category once for a legacy expense without a concept", async () => {
+    const user = userEvent.setup();
+    render(
+      <FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-07" />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Gastos" }));
+
+    const recurringExpenseSection = screen.getByLabelText("Gastos recurrentes");
+    expect(
+      within(recurringExpenseSection).getAllByText("Servicios"),
+    ).toHaveLength(1);
+    expect(
+      within(recurringExpenseSection).getByRole("button", {
+        name: "Editar gasto Servicios",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("shows monthly-filtered expense lists, excludes closed recurrences, and calculates USD equivalents", async () => {
@@ -261,6 +380,9 @@ describe("FinancesWorkspace", () => {
     ).not.toBeInTheDocument();
 
     const oneOffSection = screen.getByLabelText("Gastos únicos");
+    expect(
+      within(oneOffSection).getByText("Pasaje aéreo"),
+    ).toBeInTheDocument();
     expect(within(oneOffSection).getByText("Vuelo")).toBeInTheDocument();
     expect(within(oneOffSection).getByText("US$ 200,00")).toBeInTheDocument();
     expect(
@@ -402,6 +524,7 @@ describe("FinancesWorkspace", () => {
                 sourceKind: "salary",
                 sourceId: null,
                 sourceName: "Sueldo",
+                concept: null,
                 amount: "100.00",
                 currency: "ARS" as const,
                 recurring: true,
@@ -449,7 +572,7 @@ describe("FinancesWorkspace", () => {
 
     await user.click(screen.getByRole("tab", { name: "Gastos" }));
     await user.click(
-      screen.getByRole("button", { name: "Editar gasto Alquiler / vivienda" }),
+      screen.getByRole("button", { name: "Editar gasto Alquiler mensual" }),
     );
 
     expect(

@@ -112,6 +112,7 @@ function recurringIncome(amount: string, effectiveMonth: string) {
     sourceKind: 'salary',
     sourceId: null,
     sourceName: 'Sueldo',
+    concept: null,
     amount,
     currency: 'ARS' as const,
     recurring: true,
@@ -125,6 +126,7 @@ function oneTimeIncome(amount: string, effectiveMonth: string) {
     sourceKind: 'bonus',
     sourceId: null,
     sourceName: 'Bono',
+    concept: null,
     amount,
     currency: 'ARS' as const,
     recurring: false,
@@ -138,6 +140,7 @@ function recurringExpense(amount: string, effectiveMonth: string, endMonth: stri
     sourceKind: 'housing',
     sourceId: null,
     sourceName: 'Alquiler',
+    concept: null,
     amount,
     currency: 'ARS' as const,
     recurring: true,
@@ -1455,4 +1458,3 @@ describe('buildGoalsWorkspace - contributions history', () => {
     expect(goal3.contributions![0].id).toBe('saving-2')
   })
 })
-

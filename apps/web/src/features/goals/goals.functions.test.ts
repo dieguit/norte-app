@@ -686,6 +686,7 @@ describe('getAllocationChangeContext', () => {
             sourceKind: 'salary',
             sourceId: null,
             sourceName: 'salary',
+            concept: null,
             amount: '1000000.00',
             currency: 'ARS',
             recurring: true,
@@ -698,6 +699,7 @@ describe('getAllocationChangeContext', () => {
             sourceKind: 'housing',
             sourceId: null,
             sourceName: 'housing',
+            concept: null,
             amount: '500000.00',
             currency: 'ARS',
             recurring: true,
@@ -857,6 +859,7 @@ describe('previewAllocationChange', () => {
           sourceKind: 'salary',
           sourceId: null,
           sourceName: 'salary',
+          concept: null,
           amount: '1000000.00',
           currency: 'ARS',
           recurring: true,
@@ -869,6 +872,7 @@ describe('previewAllocationChange', () => {
           sourceKind: 'housing',
           sourceId: null,
           sourceName: 'housing',
+          concept: null,
           amount: '500000.00',
           currency: 'ARS',
           recurring: true,
@@ -1027,6 +1031,7 @@ describe('confirmAllocationChange', () => {
           sourceKind: 'salary',
           sourceId: null,
           sourceName: 'salary',
+          concept: null,
           amount: '1000000.00',
           currency: 'ARS',
           recurring: true,
@@ -1039,6 +1044,7 @@ describe('confirmAllocationChange', () => {
           sourceKind: 'housing',
           sourceId: null,
           sourceName: 'housing',
+          concept: null,
           amount: '500000.00',
           currency: 'ARS',
           recurring: true,
@@ -2060,6 +2066,5 @@ describe('confirmGoalLifecycle', () => {
     vi.useRealTimers()
   })
 })
-
 
 

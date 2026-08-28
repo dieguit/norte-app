@@ -334,6 +334,7 @@ describe('financial.server boundary', () => {
           userId: 'user_1',
           sourceKind: 'custom',
           sourceId: 'inc_src_1',
+          concept: 'Sueldo Principal',
           amount: '800000.00',
           currency: 'ARS',
           recurring: true,
@@ -349,6 +350,7 @@ describe('financial.server boundary', () => {
           userId: 'user_1',
           sourceKind: 'housing',
           sourceId: null,
+          concept: 'Alquiler',
           amount: '200000.00',
           currency: 'ARS',
           recurring: true,
@@ -370,6 +372,7 @@ describe('financial.server boundary', () => {
               sourceKind: 'custom',
               sourceId: 'inc_src_1',
               sourceName: 'Sueldo Principal',
+              concept: 'Sueldo Principal',
               amount: '800000.00',
               currency: 'ARS',
               recurring: true,
@@ -387,6 +390,7 @@ describe('financial.server boundary', () => {
               sourceKind: 'housing',
               sourceId: null,
               sourceName: 'housing',
+              concept: 'Alquiler',
               amount: '200000.00',
               currency: 'ARS',
               recurring: true,
@@ -415,7 +419,7 @@ describe('financial.server boundary', () => {
       await expect(
         createExpense({
           data: {
-            draft: { source: { kind: 'housing' }, amount: '100000', currency: 'ARS', recurring: true },
+            draft: { source: { kind: 'housing' }, concept: 'Alquiler', amount: '100000', currency: 'ARS', recurring: true },
             effectiveMonth: '2026-08',
           },
         }),
@@ -430,7 +434,7 @@ describe('financial.server boundary', () => {
       await expect(
         createExpense({
           data: {
-            draft: { source: { kind: 'housing' }, amount: '-500', currency: 'ARS', recurring: true },
+            draft: { source: { kind: 'housing' }, concept: 'Alquiler', amount: '-500', currency: 'ARS', recurring: true },
             effectiveMonth: '2026-08',
           },
         }),
@@ -444,7 +448,7 @@ describe('financial.server boundary', () => {
         updateExpense({
           data: {
             expenseId: 'not-a-uuid',
-            draft: { source: { kind: 'housing' }, amount: '100000', currency: 'ARS', recurring: true },
+            draft: { source: { kind: 'housing' }, concept: 'Alquiler', amount: '100000', currency: 'ARS', recurring: true },
             effectiveMonth: '2026-08',
           },
         }),
@@ -483,6 +487,7 @@ describe('financial.server boundary', () => {
     const validIncomes = [
       {
         source: { kind: 'salary' as const },
+        concept: 'Sueldo principal',
         amount: '500000.00',
         currency: 'ARS' as const,
         recurring: true,
@@ -493,6 +498,7 @@ describe('financial.server boundary', () => {
     const validExpenses = [
       {
         source: { kind: 'housing' as const },
+        concept: 'Alquiler',
         amount: '250000.00',
         currency: 'ARS' as const,
         recurring: true,

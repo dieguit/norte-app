@@ -44,12 +44,14 @@ describe('FinancialOnboarding', () => {
   async function addSalary(user: ReturnType<typeof userEvent.setup>, amount = '125000') {
     await user.click(screen.getByRole('button', { name: 'Agregar ingreso' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), amount)
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo principal')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
   }
 
   async function addHousingExpense(user: ReturnType<typeof userEvent.setup>, amount = '100000') {
     await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), amount)
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
   }
 
@@ -129,6 +131,7 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
     await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo principal')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(screen.getByRole('heading', { name: 'Ingresos recurrentes' })).toBeVisible()
@@ -151,6 +154,7 @@ describe('FinancialOnboarding', () => {
     await addSalary(user)
 
     await user.click(screen.getByRole('button', { name: 'Editar ingreso Sueldo' }))
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Sueldo principal')
     const amount = screen.getByRole('textbox', { name: 'Monto' })
     await user.clear(amount)
     await user.type(amount, '200000')
@@ -164,21 +168,25 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
   })
 
-  it('renders a named custom recurring income', async () => {
+  it('retains a distinct concept when editing a custom recurring income', async () => {
     const user = userEvent.setup()
     render(<FinancialOnboarding />)
     await reachIncomeStep(user)
 
     await user.click(screen.getByRole('button', { name: 'Agregar ingreso' }))
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
-    await user.type(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' }), 'Consultoría')
+    await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Consultoría')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '50000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Honorarios')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(screen.getByText('Consultoría')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Editar ingreso Consultoría' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Eliminar ingreso Consultoría' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Editar ingreso Consultoría' }))
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Honorarios')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
   })
 
   it('retains the objective and incomes while navigating within the wizard', async () => {
@@ -196,11 +204,18 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '75000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
+    await user.click(screen.getByRole('button', { name: 'Editar gasto Alquiler / vivienda' }))
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Alquiler')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await user.click(screen.getByRole('button', { name: 'Volver' }))
     expect(screen.getByText('Sueldo')).toBeVisible()
 
+    await user.click(screen.getByRole('button', { name: 'Editar ingreso Sueldo' }))
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Sueldo principal')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await user.click(screen.getByRole('button', { name: 'Volver' }))
     expect(screen.getByLabelText('Nombre del objetivo')).toHaveValue('Viaje al sur')
     expect(screen.getByLabelText('Monto objetivo')).toHaveValue('2.000.000')
@@ -222,9 +237,11 @@ describe('FinancialOnboarding', () => {
 
     await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     await user.click(screen.getByRole('button', { name: 'Editar gasto Alquiler / vivienda' }))
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Alquiler')
     const amount = screen.getByRole('textbox', { name: 'Monto' })
     await user.clear(amount)
     await user.type(amount, '200000')
@@ -237,21 +254,25 @@ describe('FinancialOnboarding', () => {
     expect(screen.getByText('Agregá al menos un gasto recurrente para completar este paso.')).toBeVisible()
   })
 
-  it('renders a named custom recurring expense', async () => {
+  it('retains a distinct concept when editing a custom recurring expense', async () => {
     const user = userEvent.setup()
     render(<FinancialOnboarding />)
     await reachExpenseStep(user)
 
     await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
-    await user.type(screen.getByRole('textbox', { name: 'Nombre del gasto nuevo' }), 'Gimnasio')
+    await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Gimnasio')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '50000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Cuota mensual')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(screen.getByText('Gimnasio')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Editar gasto Gimnasio' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Eliminar gasto Gimnasio' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Editar gasto Gimnasio' }))
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Cuota mensual')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
   })
 
   it('asks for at least one recurring expense', async () => {
@@ -277,6 +298,7 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
     await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(screen.getByRole('heading', { name: 'Gastos recurrentes' })).toBeVisible()
@@ -308,8 +330,8 @@ describe('FinancialOnboarding', () => {
           type: 'emergency_fund',
           name: 'Colchón financiero',
         }),
-        incomes: [expect.objectContaining({ recurring: true })],
-        expenses: [expect.objectContaining({ recurring: true })],
+        incomes: [expect.objectContaining({ recurring: true, concept: 'Sueldo principal' })],
+        expenses: [expect.objectContaining({ recurring: true, concept: 'Alquiler' })],
       },
     })
     expect(mockInvalidate).toHaveBeenCalledOnce()

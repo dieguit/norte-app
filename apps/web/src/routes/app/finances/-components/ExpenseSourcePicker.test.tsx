@@ -13,7 +13,7 @@ describe('ExpenseSourcePicker', () => {
     const user = userEvent.setup()
     render(<ExpenseSourcePicker recurring sources={[{ id: 'source_1', name: 'Gimnasio' }]} value={{ kind: 'housing' }} onChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
 
     expect(await screen.findByRole('option', { name: 'Alquiler / vivienda' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Compra de ropa' })).not.toBeInTheDocument()
@@ -25,7 +25,7 @@ describe('ExpenseSourcePicker', () => {
     const user = userEvent.setup()
     render(<ExpenseSourcePicker recurring={false} sources={[{ id: 'source_1', name: 'Gimnasio' }]} value={{ kind: 'clothing' }} onChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
 
     expect(await screen.findByRole('option', { name: 'Compra de ropa' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Alquiler / vivienda' })).not.toBeInTheDocument()
@@ -44,12 +44,12 @@ describe('ExpenseSourcePicker', () => {
 
     render(<ControlledPicker />)
 
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
-    await user.type(screen.getByRole('textbox', { name: 'Nombre del gasto nuevo' }), 'Gimnasio')
+    await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Gimnasio')
 
-    expect(screen.getByRole('combobox', { name: 'Concepto del gasto' })).toHaveTextContent('Otro (agregar nuevo)')
-    expect(screen.getByText('Este gasto se va a guardar para que puedas volver a usarlo')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveTextContent('Otro (agregar nuevo)')
+    expect(screen.getByText('Esta categoría se va a guardar para que puedas volver a usarla')).toBeInTheDocument()
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'custom', name: 'Gimnasio' })
   })
 
@@ -61,14 +61,14 @@ describe('ExpenseSourcePicker', () => {
       <ExpenseSourcePicker recurring sources={[]} value={{ kind: 'housing' }} onChange={onChange} />,
     )
 
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
     rerender(<ExpenseSourcePicker recurring sources={[]} value={{ kind: 'custom', name: '' }} onChange={onChange} />)
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Servicios' }))
     rerender(<ExpenseSourcePicker recurring sources={[]} value={{ kind: 'utilities' }} onChange={onChange} />)
 
-    expect(screen.queryByRole('textbox', { name: 'Nombre del gasto nuevo' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Nombre de la categoría nueva' })).not.toBeInTheDocument()
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'utilities' })
   })
 
@@ -86,10 +86,41 @@ describe('ExpenseSourcePicker', () => {
       />,
     )
 
-    expect(screen.getByRole('combobox', { name: 'Concepto del gasto' })).toHaveTextContent('Gimnasio')
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveTextContent('Gimnasio')
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Gimnasio' }))
 
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'custom', sourceId })
+  })
+
+  it('associates category errors with the trigger and custom category input', () => {
+    const { rerender } = render(
+      <ExpenseSourcePicker
+        recurring
+        sources={[]}
+        value={{ kind: 'housing' }}
+        error="Ingresá una categoría."
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveAttribute('aria-describedby', 'expense-source-error')
+    expect(screen.getByRole('alert')).toHaveAttribute('id', 'expense-source-error')
+
+    rerender(
+      <ExpenseSourcePicker
+        recurring
+        sources={[]}
+        value={{ kind: 'custom', name: '' }}
+        error="Ingresá una categoría."
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).not.toHaveAttribute('aria-describedby')
+    expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toHaveAttribute('aria-describedby', 'expense-source-error')
   })
 })

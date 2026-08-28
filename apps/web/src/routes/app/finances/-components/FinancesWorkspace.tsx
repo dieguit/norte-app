@@ -71,21 +71,24 @@ export function FinancesWorkspace({
   );
 
   const renderIncomeRow = (income: IncomesWorkspace["incomes"][number]) => {
-    const label =
+    const categoryLabel =
       income.sourceKind === "custom"
         ? income.sourceName
         : FIXED_INCOME_SOURCES[
             income.sourceKind as keyof typeof FIXED_INCOME_SOURCES
           ];
+    const label = income.concept ?? categoryLabel;
 
     return (
       <li
         key={income.id}
         className="flex flex-col items-stretch justify-between gap-5 p-5 sm:flex-row sm:items-center"
       >
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-semibold text-[var(--sea-ink)]">{label}</p>
+            <p className="break-words [overflow-wrap:anywhere] font-semibold text-[var(--sea-ink)]">
+              {label}
+            </p>
             <Button
               type="button"
               variant="ghost"
@@ -97,6 +100,11 @@ export function FinancesWorkspace({
               Editar ingreso
             </Button>
           </div>
+          {income.concept !== null && (
+            <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+              {categoryLabel}
+            </p>
+          )}
           <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
             {income.recurring
               ? `Todos los meses desde ${formatCalendarMonth(income.effectiveMonth.slice(0, 7))}`
@@ -298,20 +306,21 @@ export function FinancesWorkspace({
                   ) : (
                     <ul className="divide-y divide-[var(--line)]">
                       {oneOffExpenses.map((expense) => {
-                        const label =
+                        const categoryLabel =
                           expense.sourceKind === "custom"
                             ? expense.sourceName
                             : FIXED_EXPENSE_SOURCES[
                                 expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES
                               ];
+                        const label = expense.concept ?? categoryLabel;
                         return (
                           <li
                             key={expense.id}
                             className="flex flex-col items-stretch justify-between gap-5 p-5 sm:flex-row sm:items-center"
                           >
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-semibold text-[var(--sea-ink)]">
+                                <p className="break-words [overflow-wrap:anywhere] font-semibold text-[var(--sea-ink)]">
                                   {label}
                                 </p>
                                 <Button
@@ -330,6 +339,11 @@ export function FinancesWorkspace({
                                   Editar gasto
                                 </Button>
                               </div>
+                              {expense.concept !== null && (
+                                <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+                                  {categoryLabel}
+                                </p>
+                              )}
                               <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
                                 {formatCalendarMonth(
                                   expense.effectiveMonth.slice(0, 7),
@@ -390,20 +404,21 @@ export function FinancesWorkspace({
                   ) : (
                     <ul className="divide-y divide-[var(--line)]">
                       {recurringExpenses.map((expense) => {
-                        const label =
+                        const categoryLabel =
                           expense.sourceKind === "custom"
                             ? expense.sourceName
                             : FIXED_EXPENSE_SOURCES[
                                 expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES
                               ];
+                        const label = expense.concept ?? categoryLabel;
                         return (
                           <li
                             key={expense.id}
                             className="flex flex-col items-stretch justify-between gap-5 p-5 sm:flex-row sm:items-center"
                           >
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-semibold text-[var(--sea-ink)]">
+                                <p className="break-words [overflow-wrap:anywhere] font-semibold text-[var(--sea-ink)]">
                                   {label}
                                 </p>
                                 <Button
@@ -422,6 +437,11 @@ export function FinancesWorkspace({
                                   Editar gasto
                                 </Button>
                               </div>
+                              {expense.concept !== null && (
+                                <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+                                  {categoryLabel}
+                                </p>
+                              )}
                               <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
                                 Todos los meses desde{" "}
                                 {formatCalendarMonth(

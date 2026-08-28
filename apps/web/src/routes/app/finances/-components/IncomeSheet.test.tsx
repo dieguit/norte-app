@@ -81,12 +81,13 @@ describe('IncomeSheet', () => {
     const user = userEvent.setup()
     renderSheet()
 
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(createIncome).toHaveBeenCalledWith({
       data: {
-        draft: expect.objectContaining({ amount: '125000.00' }),
+        draft: expect.objectContaining({ amount: '125000.00', concept: 'Sueldo' }),
       },
     })
     expect(posthogCapture).toHaveBeenCalledWith('income_created', {
@@ -104,6 +105,7 @@ describe('IncomeSheet', () => {
       sourceId: null,
       sourceName: 'Sueldo',
       amount: '100.00',
+      concept: 'Sueldo mensual',
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-08-01',
@@ -117,7 +119,7 @@ describe('IncomeSheet', () => {
     expect(updateIncome).toHaveBeenCalledWith({
       data: {
         incomeId: 'income_1',
-        draft: expect.objectContaining({ amount: '125.50' }),
+        draft: expect.objectContaining({ amount: '125.50', concept: 'Sueldo mensual' }),
       },
     })
     expect(posthogCapture).toHaveBeenCalledWith('income_updated', {
@@ -129,7 +131,7 @@ describe('IncomeSheet', () => {
 
   it('captures a deletion event after a confirmed persisted-income delete', async () => {
     const user = userEvent.setup()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     vi.mocked(deleteIncome).mockResolvedValue(undefined)
     renderSheet({
       id: 'income_1',
@@ -137,6 +139,7 @@ describe('IncomeSheet', () => {
       sourceId: null,
       sourceName: 'Sueldo',
       amount: '100.00',
+      concept: null,
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-08-01',
@@ -150,6 +153,8 @@ describe('IncomeSheet', () => {
       currency: 'ARS',
       source_kind: 'salary',
     })
+
+    confirmSpy.mockRestore()
   })
 
   it('uses a currency Select and shows the USD equivalent', async () => {
@@ -181,12 +186,30 @@ describe('IncomeSheet', () => {
       sourceId: null,
       sourceName: 'Sueldo',
       amount: '1250.50',
+      concept: 'Sueldo mensual',
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-08-01',
     })
 
     expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Sueldo mensual')
+  })
+
+  it('initializes a legacy income without a concept as empty', () => {
+    renderSheet({
+      id: 'income_1',
+      sourceKind: 'salary',
+      sourceId: null,
+      sourceName: 'Sueldo',
+      amount: '100.00',
+      concept: null,
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-08-01',
+    })
+
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('')
   })
 
   it('uses the recurrence Switch to show the one-time month picker', async () => {
@@ -198,17 +221,17 @@ describe('IncomeSheet', () => {
     expect(screen.getByRole('button', { name: 'Mes del ingreso' })).toBeInTheDocument()
   })
 
-  it('shows the concept selector after recurrence and resets a fixed source for one-time incomes', async () => {
+  it('shows the category selector after recurrence and resets a fixed source for one-time incomes', async () => {
     const user = userEvent.setup()
     renderSheet()
 
     const recurrence = screen.getByRole('switch', { name: 'Es ingreso recurrente' })
-    const concept = screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })
-    expect(recurrence.compareDocumentPosition(concept) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const category = screen.getByRole('combobox', { name: 'Categoría del ingreso' })
+    expect(recurrence.compareDocumentPosition(category) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     await user.click(recurrence)
-    expect(concept).toHaveTextContent('Venta de bienes / usados')
-    await user.click(concept)
+    expect(category).toHaveTextContent('Venta de bienes / usados')
+    await user.click(category)
     expect(await screen.findByRole('option', { name: 'Bono / aguinaldo / premio' })).toBeInTheDocument()
   })
 
@@ -216,25 +239,26 @@ describe('IncomeSheet', () => {
     const user = userEvent.setup()
     renderSheet(undefined, [{ id: '00000000-0000-4000-8000-000000000001', name: 'Consultoría' }])
 
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(await screen.findByRole('option', { name: 'Consultoría' }))
     await user.click(screen.getByRole('switch', { name: 'Es ingreso recurrente' }))
 
-    expect(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })).toHaveTextContent('Consultoría')
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveTextContent('Consultoría')
   })
 
   it('submits a named custom source', async () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
-    await user.type(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' }), 'Consultoría')
+    await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Consultoría')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Honorarios')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(createIncome).toHaveBeenCalledWith({
-      data: { draft: expect.objectContaining({ source: { kind: 'custom', name: 'Consultoría' }, amount: '125000.00' }) },
+      data: { draft: expect.objectContaining({ source: { kind: 'custom', name: 'Consultoría' }, concept: 'Honorarios', amount: '125000.00' }) },
     })
   })
 
@@ -242,14 +266,14 @@ describe('IncomeSheet', () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    const sourceField = screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }).closest('[data-slot="field"]')
+    const sourceField = screen.getByRole('combobox', { name: 'Categoría del ingreso' }).closest('[data-slot="field"]')
     expect(sourceField).toHaveAttribute('data-invalid', 'true')
-    expect(sourceField).toHaveTextContent('Ingresá una fuente.')
+    expect(sourceField).toHaveTextContent('Ingresá una categoría.')
     expect(createIncome).not.toHaveBeenCalled()
   })
 
@@ -264,6 +288,22 @@ describe('IncomeSheet', () => {
     expect(amountField).toHaveTextContent('Ingresá un monto mayor a cero.')
   })
 
+  it('rejects a missing concept without creating an income', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const conceptField = screen.getByRole('textbox', { name: 'Concepto' }).closest('[data-slot="field"]')
+    expect(conceptField).toHaveAttribute('data-invalid', 'true')
+    expect(conceptField).toHaveTextContent('Ingresá un concepto.')
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveAttribute('aria-describedby', 'income-concept-error')
+    expect(screen.getByRole('alert')).toHaveAttribute('id', 'income-concept-error')
+    expect(createIncome).not.toHaveBeenCalled()
+  })
+
   it('updates a persisted custom source without showing the new-source input', async () => {
     const user = userEvent.setup()
     const sourceId = '00000000-0000-4000-8000-000000000001'
@@ -273,17 +313,18 @@ describe('IncomeSheet', () => {
       sourceId,
       sourceName: 'Consultoría',
       amount: '100.00',
+      concept: 'Honorarios',
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-08-01',
     }, [{ id: sourceId, name: 'Consultoría' }])
 
-    expect(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })).toHaveTextContent('Consultoría')
-    expect(screen.queryByRole('textbox', { name: 'Nombre del ingreso nuevo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveTextContent('Consultoría')
+    expect(screen.queryByRole('textbox', { name: 'Nombre de la categoría nueva' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(updateIncome).toHaveBeenCalledWith({
-      data: { incomeId: 'income_1', draft: expect.objectContaining({ source: { kind: 'custom', sourceId } }) },
+      data: { incomeId: 'income_1', draft: expect.objectContaining({ source: { kind: 'custom', sourceId }, concept: 'Honorarios' }) },
     })
   })
 
@@ -296,11 +337,11 @@ describe('IncomeSheet', () => {
     expect(screen.queryByRole('switch', { name: 'Es ingreso recurrente' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
 
-    expect(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' })).toBeVisible()
-    expect(screen.queryByText('Este ingreso se va a guardar para que puedas volver a usarlo')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toBeVisible()
+    expect(screen.queryByText('Esta categoría se va a guardar para que puedas volver a usarla')).not.toBeInTheDocument()
   })
 
   it('returns a canonical recurring local draft without creating an income', async () => {
@@ -309,11 +350,13 @@ describe('IncomeSheet', () => {
     renderDraftSheet({ onSaveDraft })
 
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(onSaveDraft).toHaveBeenCalledWith({
       source: { kind: 'salary' },
       amount: '125000.00',
+      concept: 'Sueldo',
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-08',
@@ -330,6 +373,7 @@ describe('IncomeSheet', () => {
       draft: {
         source: { kind: 'custom', name: 'Consultoría' },
         amount: '1250.50',
+        concept: 'Honorarios',
         currency: 'USD',
         recurring: true,
         effectiveMonth: '2026-08',
@@ -339,7 +383,8 @@ describe('IncomeSheet', () => {
 
     expect(screen.getByRole('heading', { name: 'Editar ingreso recurrente' })).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
-    expect(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' })).toHaveValue('Consultoría')
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Honorarios')
+    expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toHaveValue('Consultoría')
 
     const amount = screen.getByRole('textbox', { name: 'Monto' })
     await user.clear(amount)
@@ -349,6 +394,7 @@ describe('IncomeSheet', () => {
     expect(onSaveDraft).toHaveBeenCalledWith(expect.objectContaining({
       source: { kind: 'custom', name: 'Consultoría' },
       amount: '2000.00',
+      concept: 'Honorarios',
       currency: 'USD',
       recurring: true,
       effectiveMonth: '2026-08',

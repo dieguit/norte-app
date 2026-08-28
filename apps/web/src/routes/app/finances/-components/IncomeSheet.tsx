@@ -48,6 +48,7 @@ type IncomeRow = {
   sourceId: string | null;
   sourceName: string;
   amount: string;
+  concept: string | null;
   currency: "ARS" | "USD";
   recurring: boolean;
   effectiveMonth: string;
@@ -57,6 +58,7 @@ function defaultDraft(month: string): IncomeDraft {
   return {
     source: { kind: "salary" },
     amount: "",
+    concept: "",
     currency: "ARS",
     recurring: true,
     effectiveMonth: month,
@@ -105,6 +107,7 @@ export function IncomeSheet({
                     kind: income.sourceKind as keyof typeof FIXED_INCOME_SOURCES,
                   },
             amount: formatMoneyInput(income.amount.replace(".", ",")),
+            concept: income.concept ?? "",
             currency: income.currency,
             recurring: income.recurring,
             effectiveMonth: income.effectiveMonth.slice(0, 7),
@@ -315,6 +318,27 @@ export function IncomeSheet({
                 onChange={(source) => setDraft({ ...draft, source })}
                 showPersistenceHint={!onSaveDraft}
               />
+              <Field data-invalid={!!validationErrors.concept}>
+                <FieldLabel htmlFor="income-concept">Concepto</FieldLabel>
+                <Input
+                  id="income-concept"
+                  aria-label="Concepto"
+                  aria-invalid={!!validationErrors.concept}
+                  aria-describedby={
+                    validationErrors.concept ? "income-concept-error" : undefined
+                  }
+                  maxLength={120}
+                  value={draft.concept}
+                  onChange={(event) =>
+                    setDraft({ ...draft, concept: event.target.value })
+                  }
+                />
+                {validationErrors.concept && (
+                  <FieldError id="income-concept-error">
+                    {validationErrors.concept}
+                  </FieldError>
+                )}
+              </Field>
               {!recurringOnly && (
                 <Field data-invalid={!!validationErrors.effectiveMonth}>
                   <FieldLabel htmlFor="income-month-picker">

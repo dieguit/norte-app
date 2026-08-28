@@ -61,10 +61,16 @@ export function IncomeSourcePicker({
 
   return (
     <Field data-invalid={!!error}>
-      <FieldLabel htmlFor="income-source-trigger">¿De dónde viene este ingreso?</FieldLabel>
+      <FieldLabel htmlFor="income-source-trigger">Categoría del ingreso</FieldLabel>
       <Select items={selectItems} value={selectedValue} onValueChange={handleSourceChange}>
-        <SelectTrigger id="income-source-trigger" aria-label="¿De dónde viene este ingreso?" className="w-full">
-          <SelectValue placeholder="Seleccionar fuente" />
+        <SelectTrigger
+          id="income-source-trigger"
+          aria-label="Categoría del ingreso"
+          aria-invalid={error && !isOtherSource ? 'true' : undefined}
+          aria-describedby={error && !isOtherSource ? 'income-source-error' : undefined}
+          className="w-full"
+        >
+          <SelectValue placeholder="Seleccionar categoría" />
         </SelectTrigger>
         <SelectContent>
           {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
@@ -73,21 +79,23 @@ export function IncomeSourcePicker({
       </Select>
       {isOtherSource && (
         <Field>
-          <FieldLabel htmlFor="new-income-name">Nombre del ingreso nuevo</FieldLabel>
+          <FieldLabel htmlFor="new-income-name">Nombre de la categoría nueva</FieldLabel>
           <Input
             id="new-income-name"
-            aria-label="Nombre del ingreso nuevo"
+            aria-label="Nombre de la categoría nueva"
+            aria-invalid={!!error}
+            aria-describedby={error ? 'income-source-error' : undefined}
             value={value.kind === 'custom' && 'name' in value ? value.name : ''}
             onChange={(event) => {
               onChange({ kind: 'custom', name: event.target.value })
             }}
           />
           {showPersistenceHint && (
-            <FieldDescription>Este ingreso se va a guardar para que puedas volver a usarlo</FieldDescription>
+            <FieldDescription>Esta categoría se va a guardar para que puedas volver a usarla</FieldDescription>
           )}
         </Field>
       )}
-      {error && <FieldError>{error}</FieldError>}
+      {error && <FieldError id="income-source-error">{error}</FieldError>}
     </Field>
   )
 }

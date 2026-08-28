@@ -21,7 +21,7 @@ describe('IncomeSourcePicker', () => {
       />,
     )
 
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
 
     expect(await screen.findByRole('option', { name: 'Sueldo' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Venta de bienes / usados' })).not.toBeInTheDocument()
@@ -41,7 +41,7 @@ describe('IncomeSourcePicker', () => {
       />,
     )
 
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
 
     expect(await screen.findByRole('option', { name: 'Venta de bienes / usados' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Sueldo' })).not.toBeInTheDocument()
@@ -60,12 +60,12 @@ describe('IncomeSourcePicker', () => {
 
     render(<ControlledPicker />)
 
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
-    await user.type(screen.getByRole('textbox', { name: 'Nombre del ingreso nuevo' }), 'Consultoría')
+    await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Consultoría')
 
-    expect(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })).toHaveTextContent('Otro (agregar nuevo)')
-    expect(screen.getByText('Este ingreso se va a guardar para que puedas volver a usarlo')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveTextContent('Otro (agregar nuevo)')
+    expect(screen.getByText('Esta categoría se va a guardar para que puedas volver a usarla')).toBeInTheDocument()
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'custom', name: 'Consultoría' })
   })
 
@@ -77,14 +77,14 @@ describe('IncomeSourcePicker', () => {
       <IncomeSourcePicker recurring sources={[]} value={{ kind: 'salary' }} onChange={onChange} />,
     )
 
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
     rerender(<IncomeSourcePicker recurring sources={[]} value={{ kind: 'custom', name: '' }} onChange={onChange} />)
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(await screen.findByRole('option', { name: 'Trabajo independiente' }))
     rerender(<IncomeSourcePicker recurring sources={[]} value={{ kind: 'independent' }} onChange={onChange} />)
 
-    expect(screen.queryByRole('textbox', { name: 'Nombre del ingreso nuevo' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Nombre de la categoría nueva' })).not.toBeInTheDocument()
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'independent' })
   })
 
@@ -102,11 +102,42 @@ describe('IncomeSourcePicker', () => {
       />,
     )
 
-    expect(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' })).toHaveTextContent('Consultoría')
-    await user.click(screen.getByRole('combobox', { name: '¿De dónde viene este ingreso?' }))
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveTextContent('Consultoría')
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(await screen.findByRole('option', { name: 'Consultoría' }))
 
     expect(onChange).toHaveBeenLastCalledWith({ kind: 'custom', sourceId })
+  })
+
+  it('associates category errors with the trigger and custom category input', () => {
+    const { rerender } = render(
+      <IncomeSourcePicker
+        recurring
+        sources={[]}
+        value={{ kind: 'salary' }}
+        error="Ingresá una categoría."
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveAttribute('aria-describedby', 'income-source-error')
+    expect(screen.getByRole('alert')).toHaveAttribute('id', 'income-source-error')
+
+    rerender(
+      <IncomeSourcePicker
+        recurring
+        sources={[]}
+        value={{ kind: 'custom', name: '' }}
+        error="Ingresá una categoría."
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).not.toHaveAttribute('aria-describedby')
+    expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toHaveAttribute('aria-describedby', 'income-source-error')
   })
 
 })

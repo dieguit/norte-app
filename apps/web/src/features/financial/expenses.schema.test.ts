@@ -7,6 +7,7 @@ import {
 
 describe('expense payloads', () => {
   const validDraft = {
+    concept: 'Alquiler',
     source: { kind: 'housing' as const },
     amount: '100000',
     currency: 'ARS' as const,
@@ -70,10 +71,48 @@ describe('expense payloads', () => {
           draft: { ...validDraft, source: { kind: 'custom', name: '' } },
           effectiveMonth: '2026-09',
         }),
-      ).toThrow()
+      ).toThrow('Ingresá una categoría.')
       expect(() =>
         createExpenseSchema.parse({
           draft: { ...validDraft, source: { kind: 'custom', name: '   ' } },
+          effectiveMonth: '2026-09',
+        }),
+      ).toThrow('Ingresá una categoría.')
+    })
+
+    it('trims the concept', () => {
+      expect(
+        createExpenseSchema.parse({
+          draft: { ...validDraft, concept: '  Alquiler  ' },
+          effectiveMonth: '2026-09',
+        }).draft.concept,
+      ).toBe('Alquiler')
+    })
+
+    it('rejects missing, empty, whitespace-only, and overly long concepts', () => {
+      const draftWithoutConcept = Object.fromEntries(
+        Object.entries(validDraft).filter(([key]) => key !== 'concept'),
+      )
+
+      expect(() =>
+        createExpenseSchema.parse({ draft: draftWithoutConcept, effectiveMonth: '2026-09' }),
+      ).toThrow()
+      for (const concept of ['', '   ']) {
+        expect(() =>
+          createExpenseSchema.parse({
+            draft: { ...validDraft, concept },
+            effectiveMonth: '2026-09',
+          }),
+        ).toThrow('Ingresá un concepto.')
+      }
+      const maxConcept = createExpenseSchema.parse({
+        draft: { ...validDraft, concept: 'a'.repeat(120) },
+        effectiveMonth: '2026-09',
+      }).draft.concept
+      expect(maxConcept).toHaveLength(120)
+      expect(() =>
+        createExpenseSchema.parse({
+          draft: { ...validDraft, concept: 'a'.repeat(121) },
           effectiveMonth: '2026-09',
         }),
       ).toThrow()

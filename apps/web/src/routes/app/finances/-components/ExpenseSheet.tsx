@@ -48,6 +48,7 @@ type ExpenseRow = {
   sourceId: string | null
   sourceName: string
   amount: string
+  concept: string | null
   currency: 'ARS' | 'USD'
   recurring: boolean
   effectiveMonth: string
@@ -60,6 +61,7 @@ function defaultDraft(month: string): ExpenseFormDraft {
   return {
     source: { kind: 'housing' },
     amount: '',
+    concept: '',
     currency: 'ARS',
     recurring: true,
     effectiveMonth: month,
@@ -106,6 +108,7 @@ export function ExpenseSheet({
                     kind: expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES,
                   },
             amount: formatMoneyInput(expense.amount.replace('.', ',')),
+            concept: expense.concept ?? '',
             currency: expense.currency,
             recurring: expense.recurring,
             effectiveMonth: expense.effectiveMonth.slice(0, 7),
@@ -126,6 +129,7 @@ export function ExpenseSheet({
       draft: {
         source: draft.source,
         amount: draft.amount,
+        concept: draft.concept,
         currency: draft.currency,
         recurring: draft.recurring,
       },
@@ -342,6 +346,27 @@ export function ExpenseSheet({
                 onChange={(source) => setDraft({ ...draft, source })}
                 showPersistenceHint={!onSaveDraft}
               />
+              <Field data-invalid={!!validationErrors.concept}>
+                <FieldLabel htmlFor="expense-concept">Concepto</FieldLabel>
+                <Input
+                  id="expense-concept"
+                  aria-label="Concepto"
+                  aria-invalid={!!validationErrors.concept}
+                  aria-describedby={
+                    validationErrors.concept ? 'expense-concept-error' : undefined
+                  }
+                  maxLength={120}
+                  value={draft.concept}
+                  onChange={(event) =>
+                    setDraft({ ...draft, concept: event.target.value })
+                  }
+                />
+                {validationErrors.concept && (
+                  <FieldError id="expense-concept-error">
+                    {validationErrors.concept}
+                  </FieldError>
+                )}
+              </Field>
               {!recurringOnly && (
                 <Field data-invalid={!!validationErrors.effectiveMonth}>
                   <FieldLabel htmlFor="expense-month-picker">

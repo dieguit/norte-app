@@ -40,6 +40,7 @@ export interface IncomesWorkspace {
     sourceKind: string
     sourceId: string | null
     sourceName: string
+    concept: string | null
     amount: string
     currency: 'ARS' | 'USD'
     recurring: boolean

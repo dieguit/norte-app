@@ -50,11 +50,11 @@ const month = (value: string): RoadmapMonth => ({
 
 const roadmap: RoadmapData = {
   undatedObjectives: [{ ...goal, id: 'goal-2', name: 'Viaje', projection: { status: 'commitment_absent' } }],
-  futureMonths: [{ ...month('2026-09'), objectives: [goal], recurringExpenses: [{ id: 'rent', sourceKind: 'housing', sourceId: null, sourceName: 'Vivienda', amount: '900000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08', endMonth: null }] }],
+  futureMonths: [{ ...month('2026-09'), objectives: [goal], recurringExpenses: [{ id: 'rent', sourceKind: 'housing', sourceId: null, sourceName: 'Vivienda', concept: null, amount: '900000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08', endMonth: null }] }],
   currentMonth: {
     ...month('2026-08'),
-    recurringExpenses: [{ id: 'rent', sourceKind: 'housing', sourceId: null, sourceName: 'Vivienda', amount: '900000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08', endMonth: null }],
-    recurringIncomes: [{ id: 'salary', sourceKind: 'salary', sourceId: null, sourceName: 'Sueldo', amount: '3000000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08' }],
+    recurringExpenses: [{ id: 'rent', sourceKind: 'housing', sourceId: null, sourceName: 'Vivienda', concept: null, amount: '900000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08', endMonth: null }],
+    recurringIncomes: [{ id: 'salary', sourceKind: 'salary', sourceId: null, sourceName: 'Sueldo', concept: null, amount: '3000000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08' }],
   },
   historyMonths: [month('2026-07'), month('2026-06')],
 }

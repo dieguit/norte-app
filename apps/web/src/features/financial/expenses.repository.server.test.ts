@@ -72,6 +72,7 @@ describe('expenses.repository.server', () => {
           userId: 'user_1',
           sourceKind: 'housing',
           sourceId: null,
+          concept: 'Alquiler',
           amount: '150000.00',
           currency: 'ARS',
           recurring: true,
@@ -83,6 +84,7 @@ describe('expenses.repository.server', () => {
           userId: 'user_1',
           sourceKind: 'custom',
           sourceId: 'src_custom_1',
+          concept: 'Gimnasio',
           amount: '25000.00',
           currency: 'ARS',
           recurring: true,
@@ -94,6 +96,7 @@ describe('expenses.repository.server', () => {
           userId: 'user_1',
           sourceKind: 'custom',
           sourceId: 'src_deleted',
+          concept: null,
           amount: '10000.00',
           currency: 'ARS',
           recurring: false,
@@ -112,6 +115,7 @@ describe('expenses.repository.server', () => {
             sourceKind: 'housing',
             sourceId: null,
             sourceName: 'housing',
+            concept: 'Alquiler',
             amount: '150000.00',
             currency: 'ARS',
             recurring: true,
@@ -123,6 +127,7 @@ describe('expenses.repository.server', () => {
             sourceKind: 'custom',
             sourceId: 'src_custom_1',
             sourceName: 'Gimnasio',
+            concept: 'Gimnasio',
             amount: '25000.00',
             currency: 'ARS',
             recurring: true,
@@ -134,6 +139,7 @@ describe('expenses.repository.server', () => {
             sourceKind: 'custom',
             sourceId: 'src_deleted',
             sourceName: 'Concepto eliminado',
+            concept: null,
             amount: '10000.00',
             currency: 'ARS',
             recurring: false,
@@ -149,6 +155,7 @@ describe('expenses.repository.server', () => {
     it('uses the supplied transaction without opening another', async () => {
       const housingDraft: ExpenseDraft = {
         source: { kind: 'housing' },
+        concept: 'Alquiler',
         amount: '200000.00',
         currency: 'ARS',
         recurring: true,
@@ -158,6 +165,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'housing',
         sourceId: null,
+        concept: 'Alquiler',
         amount: '200000.00',
         currency: 'ARS',
         recurring: true,
@@ -181,6 +189,7 @@ describe('expenses.repository.server', () => {
     it('handles custom concept resolution and row insertion through the same executor', async () => {
       const customDraft: ExpenseDraft = {
         source: { kind: 'custom', name: '  Clases De Inglés  ' },
+        concept: 'Clases De Inglés',
         amount: '35000.00',
         currency: 'ARS',
         recurring: true,
@@ -196,6 +205,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'custom',
         sourceId: 'src_eng',
+        concept: 'Clases De Inglés',
         amount: '35000.00',
         currency: 'ARS',
         recurring: true,
@@ -228,6 +238,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'custom',
         sourceId: 'src_eng',
+        concept: 'Clases De Inglés',
         amount: '35000.00',
         currency: 'ARS',
         recurring: true,
@@ -242,6 +253,7 @@ describe('expenses.repository.server', () => {
     it('creates a fixed concept expense for user', async () => {
       const draft: ExpenseDraft = {
         source: { kind: 'housing' },
+        concept: 'Alquiler',
         amount: '200000.00',
         currency: 'ARS',
         recurring: true,
@@ -251,6 +263,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'housing',
         sourceId: null,
+        concept: 'Alquiler',
         amount: '200000.00',
         currency: 'ARS',
         recurring: true,
@@ -273,6 +286,7 @@ describe('expenses.repository.server', () => {
     it('normalizes custom concept name with es-AR and inserts source if not existing', async () => {
       const draft: ExpenseDraft = {
         source: { kind: 'custom', name: '  Clases De Inglés  ' },
+        concept: 'Clases De Inglés',
         amount: '35000.00',
         currency: 'ARS',
         recurring: true,
@@ -288,6 +302,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'custom',
         sourceId: 'src_eng',
+        concept: 'Clases De Inglés',
         amount: '35000.00',
         currency: 'ARS',
         recurring: true,
@@ -320,6 +335,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'custom',
         sourceId: 'src_eng',
+        concept: 'Clases De Inglés',
         amount: '35000.00',
         currency: 'ARS',
         recurring: true,
@@ -331,6 +347,7 @@ describe('expenses.repository.server', () => {
     it('reuses existing custom source on duplicate name', async () => {
       const draft: ExpenseDraft = {
         source: { kind: 'custom', name: 'Gimnasio' },
+        concept: 'Gimnasio',
         amount: '20000.00',
         currency: 'ARS',
         recurring: false,
@@ -346,6 +363,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'custom',
         sourceId: 'src_gym',
+        concept: 'Gimnasio',
         amount: '20000.00',
         currency: 'ARS',
         recurring: false,
@@ -369,6 +387,7 @@ describe('expenses.repository.server', () => {
     it('throws error when custom sourceId does not exist for the user', async () => {
       const draft: ExpenseDraft = {
         source: { kind: 'custom', sourceId: 'src_non_existent' },
+        concept: 'Alquiler',
         amount: '10000.00',
         currency: 'ARS',
         recurring: false,
@@ -385,6 +404,7 @@ describe('expenses.repository.server', () => {
 
       const draft: ExpenseDraft = {
         source: { kind: 'housing' },
+        concept: 'Alquiler',
         amount: '220000.00',
         currency: 'ARS',
         recurring: true,
@@ -402,6 +422,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'housing',
         sourceId: null,
+        concept: 'Alquiler',
         amount: '150000.00',
         currency: 'ARS',
         recurring: true,
@@ -412,6 +433,7 @@ describe('expenses.repository.server', () => {
 
       const draft: ExpenseDraft = {
         source: { kind: 'housing' },
+        concept: 'Alquiler actualizado',
         amount: '180000.00',
         currency: 'ARS',
         recurring: true,
@@ -422,6 +444,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'housing',
         sourceId: null,
+        concept: 'Alquiler actualizado',
         amount: '180000.00',
         currency: 'ARS',
         recurring: true,
@@ -442,6 +465,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'housing',
         sourceId: null,
+        concept: 'Alquiler actualizado',
         amount: '180000.00',
         currency: 'ARS',
         recurring: true,
@@ -458,6 +482,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'housing',
         sourceId: null,
+        concept: 'Alquiler',
         amount: '150000.00',
         currency: 'ARS',
         recurring: true,
@@ -468,6 +493,7 @@ describe('expenses.repository.server', () => {
 
       const draft: ExpenseDraft = {
         source: { kind: 'housing' },
+        concept: 'Alquiler actualizado',
         amount: '170000.00',
         currency: 'ARS',
         recurring: true,
@@ -475,6 +501,7 @@ describe('expenses.repository.server', () => {
 
       const updatedExpense = {
         ...existingExpense,
+        concept: 'Alquiler actualizado',
         amount: '170000.00',
       }
 
@@ -490,6 +517,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'housing',
         sourceId: null,
+        concept: 'Alquiler actualizado',
         amount: '170000.00',
         currency: 'ARS',
         recurring: true,
@@ -506,6 +534,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'utilities',
         sourceId: null,
+        concept: 'Servicios',
         amount: '30000.00',
         currency: 'ARS',
         recurring: false,
@@ -516,6 +545,7 @@ describe('expenses.repository.server', () => {
 
       const draft: ExpenseDraft = {
         source: { kind: 'utilities' },
+        concept: 'Servicios actualizados',
         amount: '35000.00',
         currency: 'ARS',
         recurring: false,
@@ -523,6 +553,7 @@ describe('expenses.repository.server', () => {
 
       const updatedExpense = {
         ...existingExpense,
+        concept: 'Servicios actualizados',
         amount: '35000.00',
       }
 
@@ -554,6 +585,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'school',
         sourceId: null,
+        concept: 'Colegio',
         amount: '80000.00',
         currency: 'ARS',
         recurring: true,
@@ -580,6 +612,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'school',
         sourceId: null,
+        concept: 'Colegio',
         amount: '80000.00',
         currency: 'ARS',
         recurring: true,
@@ -604,6 +637,7 @@ describe('expenses.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'school',
         sourceId: null,
+        concept: 'Colegio',
         amount: '80000.00',
         currency: 'ARS',
         recurring: false,

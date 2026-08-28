@@ -73,6 +73,7 @@ describe('incomes.repository.server', () => {
           userId: 'user_1',
           sourceKind: 'salary',
           sourceId: null,
+          concept: 'Sueldo principal',
           amount: '500000.00',
           currency: 'ARS',
           recurring: true,
@@ -83,6 +84,7 @@ describe('incomes.repository.server', () => {
           userId: 'user_1',
           sourceKind: 'custom',
           sourceId: 'src_custom_1',
+          concept: 'Freelance Design',
           amount: '1000.00',
           currency: 'USD',
           recurring: true,
@@ -93,6 +95,7 @@ describe('incomes.repository.server', () => {
           userId: 'user_1',
           sourceKind: 'custom',
           sourceId: 'src_deleted',
+          concept: null,
           amount: '50000.00',
           currency: 'ARS',
           recurring: false,
@@ -110,6 +113,7 @@ describe('incomes.repository.server', () => {
             sourceKind: 'salary',
             sourceId: null,
             sourceName: 'salary',
+            concept: 'Sueldo principal',
             amount: '500000.00',
             currency: 'ARS',
             recurring: true,
@@ -120,6 +124,7 @@ describe('incomes.repository.server', () => {
             sourceKind: 'custom',
             sourceId: 'src_custom_1',
             sourceName: 'Freelance Design',
+            concept: 'Freelance Design',
             amount: '1000.00',
             currency: 'USD',
             recurring: true,
@@ -130,6 +135,7 @@ describe('incomes.repository.server', () => {
             sourceKind: 'custom',
             sourceId: 'src_deleted',
             sourceName: 'Fuente eliminada',
+            concept: null,
             amount: '50000.00',
             currency: 'ARS',
             recurring: false,
@@ -144,6 +150,7 @@ describe('incomes.repository.server', () => {
     it('uses the supplied transaction without opening another', async () => {
       const salaryDraft: IncomeDraft = {
         source: { kind: 'salary' },
+        concept: 'Sueldo principal',
         amount: '500000.00',
         currency: 'ARS',
         recurring: true,
@@ -154,6 +161,7 @@ describe('incomes.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'salary',
         sourceId: null,
+        concept: 'Sueldo principal',
         amount: '500000.00',
         currency: 'ARS',
         recurring: true,
@@ -176,6 +184,7 @@ describe('incomes.repository.server', () => {
     it('handles custom source resolution and row insertion through the same executor', async () => {
       const customDraft: IncomeDraft = {
         source: { kind: 'custom', name: '  Consultoría TI  ' },
+        concept: 'Consultoría TI',
         amount: '2000.00',
         currency: 'USD',
         recurring: true,
@@ -192,6 +201,7 @@ describe('incomes.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'custom',
         sourceId: 'src_ti',
+        concept: 'Consultoría TI',
         amount: '2000.00',
         currency: 'USD',
         recurring: true,
@@ -223,6 +233,7 @@ describe('incomes.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'custom',
         sourceId: 'src_ti',
+        concept: 'Consultoría TI',
         amount: '2000.00',
         currency: 'USD',
         recurring: true,
@@ -236,6 +247,7 @@ describe('incomes.repository.server', () => {
     it('opens a transaction and creates income for user', async () => {
       const salaryDraft: IncomeDraft = {
         source: { kind: 'salary' },
+        concept: 'Sueldo nuevo',
         amount: '600000.00',
         currency: 'ARS',
         recurring: true,
@@ -246,6 +258,7 @@ describe('incomes.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'salary',
         sourceId: null,
+        concept: 'Sueldo nuevo',
         amount: '600000.00',
         currency: 'ARS',
         recurring: true,
@@ -271,6 +284,7 @@ describe('incomes.repository.server', () => {
       mockTx.query.incomes.findFirst.mockResolvedValue(undefined)
       const draft: IncomeDraft = {
         source: { kind: 'salary' },
+        concept: 'Sueldo actualizado',
         amount: '700000.00',
         currency: 'ARS',
         recurring: true,
@@ -288,6 +302,7 @@ describe('incomes.repository.server', () => {
         userId: 'user_1',
         sourceKind: 'salary',
         sourceId: null,
+        concept: 'Sueldo principal',
         amount: '500000.00',
         currency: 'ARS',
         recurring: true,
@@ -297,6 +312,7 @@ describe('incomes.repository.server', () => {
 
       const draft: IncomeDraft = {
         source: { kind: 'salary' },
+        concept: 'Sueldo actualizado',
         amount: '700000.00',
         currency: 'ARS',
         recurring: true,
@@ -304,17 +320,29 @@ describe('incomes.repository.server', () => {
       }
       const updatedIncome = {
         ...existingIncome,
+        concept: 'Sueldo actualizado',
         amount: '700000.00',
         effectiveMonth: '2026-08-01',
       }
 
       const mockUpdateWhere = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([updatedIncome]) })
-      mockTx.update.mockReturnValue({ set: vi.fn().mockReturnValue({ where: mockUpdateWhere }) })
+      const mockUpdateSet = vi.fn().mockReturnValue({ where: mockUpdateWhere })
+      mockTx.update.mockReturnValue({ set: mockUpdateSet })
 
       const result = await updateIncomeInRepository('user_1', 'inc_1', draft)
 
       expect(db.transaction).toHaveBeenCalledOnce()
       expect(mockTx.update).toHaveBeenCalledWith(incomes)
+      expect(mockUpdateSet).toHaveBeenCalledWith({
+        userId: 'user_1',
+        sourceKind: 'salary',
+        sourceId: null,
+        concept: 'Sueldo actualizado',
+        amount: '700000.00',
+        currency: 'ARS',
+        recurring: true,
+        effectiveMonth: '2026-08-01',
+      })
       expect(result).toEqual(updatedIncome)
     })
   })

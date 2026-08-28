@@ -134,6 +134,8 @@ describe('onboarding database schema', () => {
     expect(incomes.userId.name).toBe('user_id')
     expect(incomes.sourceKind.name).toBe('source_kind')
     expect(incomes.sourceId.name).toBe('source_id')
+    expect(incomes.concept.name).toBe('concept')
+    expect(incomes.concept.notNull).toBe(false)
     expect(incomes.amount.name).toBe('amount')
     expect(incomes.currency.name).toBe('currency')
     expect(incomes.recurring.name).toBe('recurring')
@@ -155,6 +157,8 @@ describe('onboarding database schema', () => {
     expect(expenses.userId.name).toBe('user_id')
     expect(expenses.sourceKind.name).toBe('source_kind')
     expect(expenses.sourceId.name).toBe('source_id')
+    expect(expenses.concept.name).toBe('concept')
+    expect(expenses.concept.notNull).toBe(false)
     expect(expenses.amount.name).toBe('amount')
     expect(expenses.currency.name).toBe('currency')
     expect(expenses.recurring.name).toBe('recurring')
@@ -174,4 +178,3 @@ describe('onboarding database schema', () => {
     expect('location' in goalSavingsPositions).toBe(false)
   })
 })
-

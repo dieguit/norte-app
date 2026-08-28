@@ -62,10 +62,16 @@ export function ExpenseSourcePicker({
 
   return (
     <Field data-invalid={!!error}>
-      <FieldLabel htmlFor="expense-source-trigger">Concepto del gasto</FieldLabel>
+      <FieldLabel htmlFor="expense-source-trigger">Categoría del gasto</FieldLabel>
       <Select items={selectItems} value={selectedValue} onValueChange={handleSourceChange}>
-        <SelectTrigger id="expense-source-trigger" aria-label="Concepto del gasto" className="w-full">
-          <SelectValue placeholder="Seleccionar concepto" />
+        <SelectTrigger
+          id="expense-source-trigger"
+          aria-label="Categoría del gasto"
+          aria-invalid={error && !isOtherSource ? 'true' : undefined}
+          aria-describedby={error && !isOtherSource ? 'expense-source-error' : undefined}
+          className="w-full"
+        >
+          <SelectValue placeholder="Seleccionar categoría" />
         </SelectTrigger>
         <SelectContent>
           {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
@@ -74,21 +80,23 @@ export function ExpenseSourcePicker({
       </Select>
       {isOtherSource && (
         <Field>
-          <FieldLabel htmlFor="new-expense-name">Nombre del gasto nuevo</FieldLabel>
+          <FieldLabel htmlFor="new-expense-name">Nombre de la categoría nueva</FieldLabel>
           <Input
             id="new-expense-name"
-            aria-label="Nombre del gasto nuevo"
+            aria-label="Nombre de la categoría nueva"
+            aria-invalid={!!error}
+            aria-describedby={error ? 'expense-source-error' : undefined}
             value={value.kind === 'custom' && 'name' in value ? value.name : ''}
             onChange={(event) => {
               onChange({ kind: 'custom', name: event.target.value })
             }}
           />
           {showPersistenceHint && (
-            <FieldDescription>Este gasto se va a guardar para que puedas volver a usarlo</FieldDescription>
+            <FieldDescription>Esta categoría se va a guardar para que puedas volver a usarla</FieldDescription>
           )}
         </Field>
       )}
-      {error && <FieldError>{error}</FieldError>}
+      {error && <FieldError id="expense-source-error">{error}</FieldError>}
     </Field>
   )
 }

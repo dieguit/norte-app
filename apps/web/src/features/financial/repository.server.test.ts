@@ -382,6 +382,7 @@ describe('persistFinancialOnboarding', () => {
     incomes: [
       {
         source: { kind: 'salary' as const },
+        concept: 'Sueldo principal',
         amount: '500000.00',
         currency: 'ARS' as const,
         recurring: true,
@@ -391,6 +392,7 @@ describe('persistFinancialOnboarding', () => {
     expenses: [
       {
         source: { kind: 'housing' as const },
+        concept: 'Alquiler',
         amount: '250000.00',
         currency: 'ARS' as const,
         recurring: true,
@@ -433,6 +435,7 @@ describe('persistFinancialOnboarding', () => {
     expect(persistedIncomes).toHaveLength(1)
     expect(persistedIncomes[0]).toMatchObject({
       userId: 'user_1',
+      concept: 'Sueldo principal',
       amount: '500000.00',
       currency: 'ARS',
       recurring: true,
@@ -441,6 +444,7 @@ describe('persistFinancialOnboarding', () => {
     expect(persistedExpenses).toHaveLength(1)
     expect(persistedExpenses[0]).toMatchObject({
       userId: 'user_1',
+      concept: 'Alquiler',
       amount: '250000.00',
       currency: 'ARS',
       recurring: true,
@@ -455,6 +459,7 @@ describe('persistFinancialOnboarding', () => {
       incomes: [
         {
           source: { kind: 'independent' as const },
+          concept: 'Consultoría',
           amount: '200.00',
           currency: 'USD' as const,
           recurring: true,
@@ -464,6 +469,7 @@ describe('persistFinancialOnboarding', () => {
       expenses: [
         {
           source: { kind: 'subscriptions' as const },
+          concept: 'Suscripciones',
           amount: '100.00',
           currency: 'USD' as const,
           recurring: true,
@@ -516,6 +522,7 @@ describe('persistFinancialOnboarding', () => {
       incomes: [
         {
           source: { kind: 'salary' as const },
+          concept: 'Sueldo principal',
           amount: '200000.00',
           currency: 'ARS' as const,
           recurring: true,
@@ -525,6 +532,7 @@ describe('persistFinancialOnboarding', () => {
       expenses: [
         {
           source: { kind: 'housing' as const },
+          concept: 'Alquiler',
           amount: '300000.00',
           currency: 'ARS' as const,
           recurring: true,

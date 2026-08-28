@@ -127,6 +127,13 @@
       "when": 1787750000000,
       "tag": "0017_savings_places",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787875200000,
+      "tag": "0018_finance_transaction_concepts",
+      "breakpoints": true
     }
   ]
 }

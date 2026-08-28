@@ -57,17 +57,17 @@ describe('ExpenseSheet', () => {
     expect(screen.getByRole('button', { name: 'Mes del gasto' })).toBeInTheDocument()
   })
 
-  it('shows the concept selector after recurrence and resets a fixed source for one-time expenses', async () => {
+  it('shows the category selector after recurrence and resets a fixed source for one-time expenses', async () => {
     const user = userEvent.setup()
     renderSheet()
 
     const recurrence = screen.getByRole('switch', { name: 'Es gasto recurrente' })
-    const concept = screen.getByRole('combobox', { name: 'Concepto del gasto' })
-    expect(recurrence.compareDocumentPosition(concept) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const category = screen.getByRole('combobox', { name: 'Categoría del gasto' })
+    expect(recurrence.compareDocumentPosition(category) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     await user.click(recurrence)
-    expect(concept).toHaveTextContent('Compra de ropa')
-    await user.click(concept)
+    expect(category).toHaveTextContent('Compra de ropa')
+    await user.click(category)
     expect(await screen.findByRole('option', { name: 'Regalo' })).toBeInTheDocument()
   })
 
@@ -75,11 +75,11 @@ describe('ExpenseSheet', () => {
     const user = userEvent.setup()
     renderSheet(undefined, [{ id: '00000000-0000-4000-8000-000000000001', name: 'Gimnasio' }])
 
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Gimnasio' }))
     await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
 
-    expect(screen.getByRole('combobox', { name: 'Concepto del gasto' })).toHaveTextContent('Gimnasio')
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveTextContent('Gimnasio')
   })
 
   it('formats the amount while typing', async () => {
@@ -95,13 +95,17 @@ describe('ExpenseSheet', () => {
     const user = userEvent.setup()
     renderSheet()
 
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Desde el mes' }))
     await user.click(screen.getByRole('button', { name: 'Sep' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(createExpense).toHaveBeenCalledWith({
-      data: expect.objectContaining({ effectiveMonth: '2026-09' }),
+      data: expect.objectContaining({
+        draft: expect.objectContaining({ concept: 'Alquiler' }),
+        effectiveMonth: '2026-09',
+      }),
     })
     expect(posthogCapture).toHaveBeenCalledWith('expense_created', {
       recurring: true,
@@ -114,9 +118,10 @@ describe('ExpenseSheet', () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
-    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
-    await user.type(screen.getByRole('textbox', { name: 'Nombre del gasto nuevo' }), 'Gimnasio')
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Gimnasio')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Membresía')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
@@ -124,6 +129,7 @@ describe('ExpenseSheet', () => {
       data: {
         draft: expect.objectContaining({
           source: { kind: 'custom', name: 'Gimnasio' },
+          concept: 'Membresía',
           amount: '125000.00',
         }),
         effectiveMonth: '2026-08',
@@ -139,6 +145,7 @@ describe('ExpenseSheet', () => {
       sourceId: null,
       sourceName: 'Alquiler / vivienda',
       amount: '100.00',
+      concept: 'Alquiler mensual',
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-06-01',
@@ -155,7 +162,7 @@ describe('ExpenseSheet', () => {
     expect(updateExpense).toHaveBeenCalledWith({
       data: {
         expenseId: 'exp_1',
-        draft: expect.objectContaining({ amount: '125.50' }),
+        draft: expect.objectContaining({ amount: '125.50', concept: 'Alquiler mensual' }),
         effectiveMonth: '2026-09',
       },
     })
@@ -195,6 +202,7 @@ describe('ExpenseSheet', () => {
       sourceId: null,
       sourceName: 'Alquiler / vivienda',
       amount: '1250.50',
+      concept: 'Alquiler mensual',
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-06-01',
@@ -202,20 +210,38 @@ describe('ExpenseSheet', () => {
     })
 
     expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Alquiler mensual')
+  })
+
+  it('initializes a legacy expense without a concept as empty', () => {
+    renderSheet({
+      id: 'exp_1',
+      sourceKind: 'housing',
+      sourceId: null,
+      sourceName: 'Alquiler / vivienda',
+      amount: '100.00',
+      concept: null,
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-06-01',
+      endMonth: null,
+    })
+
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('')
   })
 
   it('rejects an empty new custom source without creating an expense', async () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    const sourceField = screen.getByRole('combobox', { name: 'Concepto del gasto' }).closest('[data-slot="field"]')
+    const sourceField = screen.getByRole('combobox', { name: 'Categoría del gasto' }).closest('[data-slot="field"]')
     expect(sourceField).toHaveAttribute('data-invalid', 'true')
-    expect(sourceField).toHaveTextContent('Ingresá un concepto.')
+    expect(sourceField).toHaveTextContent('Ingresá una categoría.')
     expect(createExpense).not.toHaveBeenCalled()
   })
 
@@ -230,6 +256,22 @@ describe('ExpenseSheet', () => {
     expect(amountField).toHaveTextContent('Ingresá un monto mayor a cero.')
   })
 
+  it('rejects a missing concept without creating an expense', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const conceptField = screen.getByRole('textbox', { name: 'Concepto' }).closest('[data-slot="field"]')
+    expect(conceptField).toHaveAttribute('data-invalid', 'true')
+    expect(conceptField).toHaveTextContent('Ingresá un concepto.')
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveAttribute('aria-describedby', 'expense-concept-error')
+    expect(screen.getByRole('alert')).toHaveAttribute('id', 'expense-concept-error')
+    expect(createExpense).not.toHaveBeenCalled()
+  })
+
   it('updates a persisted custom source without showing the new-source input', async () => {
     const user = userEvent.setup()
     const sourceId = '00000000-0000-4000-8000-000000000001'
@@ -239,20 +281,21 @@ describe('ExpenseSheet', () => {
       sourceId,
       sourceName: 'Gimnasio',
       amount: '100.00',
+      concept: 'Membresía',
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-06-01',
       endMonth: null,
     }, [{ id: sourceId, name: 'Gimnasio' }])
 
-    expect(screen.getByRole('combobox', { name: 'Concepto del gasto' })).toHaveTextContent('Gimnasio')
-    expect(screen.queryByRole('textbox', { name: 'Nombre del gasto nuevo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveTextContent('Gimnasio')
+    expect(screen.queryByRole('textbox', { name: 'Nombre de la categoría nueva' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(updateExpense).toHaveBeenCalledWith({
       data: {
         expenseId: 'exp_1',
-        draft: expect.objectContaining({ source: { kind: 'custom', sourceId } }),
+        draft: expect.objectContaining({ source: { kind: 'custom', sourceId }, concept: 'Membresía' }),
         effectiveMonth: '2026-06',
       },
     })
@@ -268,6 +311,7 @@ describe('ExpenseSheet', () => {
       sourceId: null,
       sourceName: 'Alquiler / vivienda',
       amount: '100.00',
+      concept: null,
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-06-01',
@@ -299,6 +343,7 @@ describe('ExpenseSheet', () => {
       sourceId: null,
       sourceName: 'Alquiler / vivienda',
       amount: '100.00',
+      concept: null,
       currency: 'ARS',
       recurring: true,
       effectiveMonth: '2026-06-01',
@@ -328,6 +373,7 @@ describe('ExpenseSheet', () => {
         draft={{
           source: { kind: 'custom', name: 'Gimnasio' },
           amount: '1250.50',
+          concept: 'Membresía',
           currency: 'ARS',
           recurring: true,
         }}
@@ -347,6 +393,7 @@ describe('ExpenseSheet', () => {
     expect(onSaveDraft).toHaveBeenCalledWith({
       source: { kind: 'custom', name: 'Gimnasio' },
       amount: '1250.50',
+      concept: 'Membresía',
       currency: 'ARS',
       recurring: true,
     })
@@ -376,10 +423,10 @@ describe('ExpenseSheet', () => {
     expect(screen.queryByRole('switch', { name: 'Es gasto recurrente' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'Concepto del gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
 
-    expect(screen.getByRole('textbox', { name: 'Nombre del gasto nuevo' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toBeVisible()
     expect(screen.queryByText(/se va a guardar para que puedas volver a usarlo/i)).not.toBeInTheDocument()
   })
 })

@@ -337,6 +337,7 @@ export const incomes = pgTable(
       .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
     sourceKind: varchar('source_kind', { length: 24 }).notNull(),
     sourceId: uuid('source_id').references(() => incomeSources.id, { onDelete: 'restrict' }),
+    concept: varchar('concept', { length: 120 }),
     amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
     currency: varchar('currency', { length: 3 }).notNull(),
     recurring: boolean('recurring').notNull(),
@@ -440,6 +441,7 @@ export const expenses = pgTable(
       .references(() => financialProfiles.userId, { onDelete: 'cascade' }),
     sourceKind: varchar('source_kind', { length: 24 }).notNull(),
     sourceId: uuid('source_id').references(() => expenseSources.id, { onDelete: 'restrict' }),
+    concept: varchar('concept', { length: 120 }),
     amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
     currency: varchar('currency', { length: 3 }).notNull(),
     recurring: boolean('recurring').notNull(),
@@ -472,4 +474,3 @@ export const expenses = pgTable(
 
 export type ExpenseSource = typeof expenseSources.$inferSelect
 export type Expense = typeof expenses.$inferSelect
-
