@@ -134,6 +134,13 @@
       "when": 1787875200000,
       "tag": "0018_finance_transaction_concepts",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788220800000,
+      "tag": "0019_goal_completion_withdrawals",
+      "breakpoints": true
     }
   ]
 }

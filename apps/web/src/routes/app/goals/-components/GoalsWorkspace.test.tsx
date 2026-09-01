@@ -110,6 +110,7 @@ function makeGoal(overrides: Partial<GoalWorkspaceItem>): GoalWorkspaceItem {
     ],
     projection: { status: "available", completionMonth: "2028-09" },
     usesPlanningRate: true,
+    completionEligible: false,
     ...overrides,
   };
 }
@@ -918,6 +919,109 @@ describe("GoalsWorkspace component", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("offers completion only for eligible active goals", async () => {
+    const user = userEvent.setup();
+    const onCompleteGoal = vi.fn();
+    const eligibleGoal = makeGoal({
+      id: "goal-eligible",
+      name: "Viaje",
+      type: "purchase",
+      completionEligible: true,
+    });
+    const pausedGoal = makeGoal({
+      id: "goal-paused",
+      name: "Pausado",
+      status: "paused",
+      completionEligible: true,
+    });
+    const completedGoal = makeGoal({
+      id: "goal-completed",
+      name: "Completado",
+      status: "completed",
+      completionEligible: false,
+    });
+
+    render(
+      <GoalsWorkspace
+        workspace={makeWorkspace({
+          groups: [
+            { status: "active", goals: [eligibleGoal] },
+            { status: "paused", goals: [pausedGoal] },
+            { status: "completed", goals: [completedGoal] },
+          ],
+        })}
+        onCompleteGoal={onCompleteGoal}
+      />,
+    );
+
+    const completeButton = screen.getByRole("button", {
+      name: "Marcar como cumplido Viaje",
+    });
+    expect(completeButton).toBeVisible();
+    await user.click(completeButton);
+    expect(onCompleteGoal).toHaveBeenCalledWith("goal-eligible");
+
+    await user.click(screen.getByRole("button", { name: /Pausados/i }));
+    expect(screen.queryByRole("button", { name: /Marcar como cumplido Pausado/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Completados/i }));
+    expect(screen.queryByRole("button", { name: /Marcar como cumplido Completado/i })).not.toBeInTheDocument();
+  });
+
+  it("shows completed goals at the target with completion details and read-only history", async () => {
+    const user = userEvent.setup();
+    const completedGoal = makeGoal({
+      id: "goal-completed-details",
+      name: "Comprar laptop",
+      type: "purchase",
+      status: "completed",
+      completedAt: "2026-03-15T00:00:00Z",
+      targetAmount: { amount: "1000.00", currency: "USD" },
+      savingsValue: { amount: "1250.00", currency: "USD" },
+      investmentValue: { amount: "900.00", currency: "USD" },
+      actualValue: { amount: "2150.00", currency: "USD" },
+      progressPercentage: "125.00",
+      funding: [],
+      completionWithdrawals: [{
+        id: "withdrawal-1",
+        placeId: "place-1",
+        placeName: "Banco Santander",
+        amount: { amount: "1000.00", currency: "USD" },
+        createdAt: "2026-03-15T00:00:00Z",
+      }],
+      contributions: [{
+        id: "contribution-1",
+        kind: "saving",
+        amount: "1250.00",
+        currency: "USD",
+        placeName: "Banco Santander",
+        createdAt: "2026-03-10T00:00:00Z",
+        allocations: [],
+      }],
+    });
+
+    render(<GoalsWorkspace workspace={makeWorkspace({ groups: [{ status: "completed", goals: [completedGoal] }] })} />);
+
+    await user.click(screen.getByRole("button", { name: /Completados/i }));
+    const article = screen.getByRole("article", { name: "Comprar laptop" });
+    expect(within(article).getByText("Objetivo completado")).toBeInTheDocument();
+    expect(within(article).queryByText("Completado")).not.toBeInTheDocument();
+    expect(within(article).getByText("Marzo de 2026")).toBeInTheDocument();
+    expect(within(article).getByText("100%")).toBeInTheDocument();
+    expect(within(article).getByLabelText("Valor cumplido de Comprar laptop")).toHaveTextContent("US$ 1.000,00");
+    expect(article).not.toHaveTextContent("US$ 1.250,00");
+    expect(within(article).queryByRole("button", { name: /editar objetivo|pausar objetivo|reanudar objetivo|marcar como cumplido/i })).not.toBeInTheDocument();
+
+    await user.click(within(article).getByRole("button", { name: "Ver detalle de Comprar laptop" }));
+    expect(within(article).getByText("Fecha de cumplimiento")).toBeInTheDocument();
+    expect(within(article).getByText(/15 de marzo de 2026/i)).toBeInTheDocument();
+    expect(within(article).getByText("Monto retirado para completar")).toBeInTheDocument();
+    expect(within(article).getByText("Banco Santander")).toBeInTheDocument();
+    expect(within(article).getByText("Excedente ahorrado")).toBeInTheDocument();
+    expect(within(article).getByText("US$ 250,00")).toBeInTheDocument();
+    expect(within(article).getAllByText("US$ 1.250,00")).toHaveLength(2);
+    expect(within(article).queryByRole("button", { name: /corregir aporte|eliminar aporte/i })).not.toBeInTheDocument();
+  });
+
   it("calls onChangeGoalLifecycle with correct lifecycle action when clicking pause or resume", async () => {
     const user = userEvent.setup();
     const onChangeGoalLifecycle = vi.fn();
@@ -1028,6 +1132,7 @@ describe("GoalsWorkspace component", () => {
           kind: "saving",
           amount: "50000.00",
           currency: "ARS",
+          placeId: "place-1",
           placeName: "Banco Santander",
           createdAt: "2026-08-15T10:00:00Z",
           allocations: [

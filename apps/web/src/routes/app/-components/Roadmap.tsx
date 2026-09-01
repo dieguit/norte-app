@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { CircleCheck } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import type {
   RoadmapData,
@@ -115,10 +116,19 @@ function MonthGroup({
           {group.objectives.map((goal) => (
             <article
               key={goal.id}
-              className="w-full rounded-2xl border border-[var(--line)] bg-white/90 p-4 text-center shadow-[var(--shadow-card)]"
+              className={`w-full rounded-2xl border p-4 text-center shadow-[var(--shadow-card)] ${
+                goal.status === "completed"
+                  ? "border-[var(--lagoon-deep)]/35 bg-[var(--lagoon)]/25"
+                  : "border-[var(--line)] bg-white/90"
+              }`}
             >
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--palm)]">
-                Objetivo proyectado
+              <p className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--palm)]">
+                {goal.status === "completed" && (
+                  <CircleCheck className="size-4 text-[var(--lagoon-deep)]" aria-hidden="true" />
+                )}
+                <span>
+                  {goal.status === "completed" ? "Objetivo completado" : "Objetivo proyectado"}
+                </span>
               </p>
               <h4
                 data-roadmap-objective="full-width"

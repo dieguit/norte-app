@@ -23,6 +23,7 @@ function makeGoal(overrides: Partial<GoalWorkspaceItem> = {}): GoalWorkspaceItem
     availability: 'available_now',
     strategy: 'save',
     usesPlanningRate: false,
+    completionEligible: false,
     ...overrides,
   }
 }

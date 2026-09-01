@@ -22,7 +22,7 @@ import type {
   GoalLifecyclePreviewResult,
 } from '../../../../features/goals/goal-lifecycle'
 import type { GoalLifecycle as GoalLifecycleType } from '../../../../features/goals/goal-lifecycle.schema'
-import { AllocationImpactComparison } from './AllocationImpactComparison'
+import { AllocationImpactComparison } from '../../../../features/goals/AllocationImpactComparison'
 
 export interface GoalLifecycleProps {
   lifecycle: GoalLifecycleType

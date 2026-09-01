@@ -11,13 +11,8 @@ import {
   type GoalCreationContext,
   type GoalCreationPreviewResult,
 } from '../../../../features/goals/goal-creation'
-import {
-  AllocationImpactComparison,
-  formatGoalProjection,
-} from './AllocationImpactComparison'
+import { AllocationImpactComparison } from '../../../../features/goals/AllocationImpactComparison'
 import type { GoalCreationFormApi } from './useGoalCreationForm'
-
-export { formatGoalProjection }
 
 export const impactLabels = {
   before: 'Antes',

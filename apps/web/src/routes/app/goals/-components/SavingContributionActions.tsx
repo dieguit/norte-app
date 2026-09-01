@@ -25,11 +25,13 @@ import { SavingContribution } from '../../-components/SavingContribution'
 export interface SavingContributionActionsProps {
   goalId: string
   contributions: ContributionSummary[]
+  readOnly?: boolean
 }
 
 export function SavingContributionActions({
   goalId: _goalId,
   contributions,
+  readOnly = false,
 }: SavingContributionActionsProps) {
   const router = useRouter()
   const posthog = usePostHog()
@@ -108,75 +110,77 @@ export function SavingContributionActions({
                 </span>
               </div>
 
-              <div className="flex items-center gap-1 self-end sm:self-center">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`Corregir aporte de ${isInvestment ? 'inversión' : 'ahorro'} del ${formattedDate}`}
-                  onClick={() => setEditingContribution(item)}
-                >
-                  <Pencil data-icon="inline-start" className="size-3.5" aria-hidden="true" />
-                  Corregir aporte
-                </Button>
+              {!readOnly && (
+                <div className="flex items-center gap-1 self-end sm:self-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Corregir aporte de ${isInvestment ? 'inversión' : 'ahorro'} del ${formattedDate}`}
+                    onClick={() => setEditingContribution(item)}
+                  >
+                    <Pencil data-icon="inline-start" className="size-3.5" aria-hidden="true" />
+                    Corregir aporte
+                  </Button>
 
-                <Popover
-                  open={deletingContributionId === item.id}
-                  onOpenChange={(open) => setDeletingContributionId(open ? item.id : null)}
-                >
-                  <PopoverTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Eliminar aporte de ${isInvestment ? 'inversión' : 'ahorro'} del ${formattedDate}`}
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 data-icon="inline-start" className="size-3.5" aria-hidden="true" />
-                        Eliminar aporte
-                      </Button>
-                    }
-                  />
-                  <PopoverContent align="end" className="w-80 p-4">
-                    <div className="flex flex-col gap-3">
-                      <div>
-                        <h4 className="font-semibold text-sm text-[var(--sea-ink)]">
-                          {isInvestment
-                            ? '¿Estás seguro de que querés eliminar esta inversión?'
-                            : '¿Estás seguro de que querés eliminar este aporte?'}
-                        </h4>
-                        <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-                          Se descontará de los objetivos en los que fue {isInvestment ? 'asignada' : 'asignado'}.
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-end gap-2">
+                  <Popover
+                    open={deletingContributionId === item.id}
+                    onOpenChange={(open) => setDeletingContributionId(open ? item.id : null)}
+                  >
+                    <PopoverTrigger
+                      render={
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          onClick={() => setDeletingContributionId(null)}
+                          aria-label={`Eliminar aporte de ${isInvestment ? 'inversión' : 'ahorro'} del ${formattedDate}`}
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
-                          Cancelar
+                          <Trash2 data-icon="inline-start" className="size-3.5" aria-hidden="true" />
+                          Eliminar aporte
                         </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          disabled={isDeleting}
-                          onClick={() => handleDelete(item)}
-                        >
-                          {isDeleting
-                            ? 'Eliminando...'
-                            : isInvestment
-                              ? 'Eliminar inversión'
-                              : 'Eliminar aporte'}
-                        </Button>
+                      }
+                    />
+                    <PopoverContent align="end" className="w-80 p-4">
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <h4 className="font-semibold text-sm text-[var(--sea-ink)]">
+                            {isInvestment
+                              ? '¿Estás seguro de que querés eliminar esta inversión?'
+                              : '¿Estás seguro de que querés eliminar este aporte?'}
+                          </h4>
+                          <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                            Se descontará de los objetivos en los que fue {isInvestment ? 'asignada' : 'asignado'}.
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeletingContributionId(null)}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            disabled={isDeleting}
+                            onClick={() => handleDelete(item)}
+                          >
+                            {isDeleting
+                              ? 'Eliminando...'
+                              : isInvestment
+                                ? 'Eliminar inversión'
+                                : 'Eliminar aporte'}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </li>
           )
         })}
@@ -217,4 +221,3 @@ export function SavingContributionActions({
     </div>
   )
 }
-

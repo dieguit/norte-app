@@ -1,19 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { auth } from '@clerk/tanstack-react-start/server'
 import {
   confirmAllocationChange,
   confirmGoalCreation,
   confirmGoalEdit,
   confirmGoalLifecycle,
+  confirmGoalCompletion,
   getAllocationChangeContext,
   getGoalCreationContext,
   getGoalEditContext,
   getGoalLifecycleContext,
   getGoalsWorkspace,
+  getGoalCompletionContext,
   previewAllocationChange,
   previewGoalCreation,
   previewGoalEdit,
   previewGoalLifecycle,
+  previewGoalCompletion,
 } from './goals.functions'
 import {
   confirmAllocationChangeInRepository,
@@ -34,6 +37,17 @@ import {
   StaleGoalEditPreviewError,
   StaleGoalLifecyclePreviewError,
 } from './goals.repository.server'
+import {
+  confirmGoalCompletionInRepository,
+  getGoalCompletionState,
+  GoalCompletionStateInvalidError,
+  StaleGoalCompletionPreviewError,
+} from './goal-completion.repository.server'
+import {
+  confirmGoalCompletionServer,
+  getGoalCompletionContextServer,
+  previewGoalCompletionServer,
+} from './goals.server'
 import { buildGoalCreationProposal, type GoalCreationState } from './goal-creation'
 import type { GoalCreationDraft } from './goal-creation.schema'
 import {
@@ -45,16 +59,31 @@ import {
   buildGoalLifecycleProposal,
   type GoalLifecycleState,
 } from './goal-lifecycle'
+import type { GoalCompletionState } from './goal-completion'
+
+const serverRegistrations = vi.hoisted(() => [] as Array<{
+  method?: string
+  validator: ((input: unknown) => unknown) | null
+  handler: unknown
+}>)
 
 vi.mock('@tanstack/react-start', () => ({
-  createServerFn: vi.fn().mockImplementation(() => {
+  createServerFn: vi.fn().mockImplementation((options?: { method?: string }) => {
     let validatorFn: ((input: unknown) => unknown) | null = null
+    const registration = {
+      method: options?.method,
+      validator: null as ((input: unknown) => unknown) | null,
+      handler: null as unknown,
+    }
     const fnObj = {
       validator: vi.fn().mockImplementation((val) => {
         validatorFn = val
+        registration.validator = val
         return fnObj
       }),
       handler: vi.fn().mockImplementation((handlerFn) => {
+        registration.handler = handlerFn
+        serverRegistrations.push(registration)
         return vi.fn(async (arg?: { data?: unknown }) => {
           const validatedData = validatorFn && arg?.data !== undefined ? validatorFn(arg.data) : arg?.data
           return handlerFn({ data: validatedData })
@@ -102,6 +131,58 @@ vi.mock('./goals.repository.server', async (importOriginal) => {
     })),
   }
 })
+
+vi.mock('./goal-completion.repository.server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./goal-completion.repository.server')>()
+  return {
+    ...actual,
+    getGoalCompletionState: vi.fn(),
+    confirmGoalCompletionInRepository: vi.fn(),
+  }
+})
+
+const completionGoalId = '11111111-1111-4111-8111-111111111111'
+const completionPlaceId = '22222222-2222-4222-8222-222222222222'
+const completionState: GoalCompletionState = {
+  source: {
+    profile: {
+      userId: 'user_456',
+      baseCurrency: 'ARS',
+      expensesKnowledge: 'known',
+      plannedMonthlyContribution: '60000.00',
+      onboardingCompleted: true,
+    },
+    goals: [{
+      id: completionGoalId,
+      userId: 'user_456',
+      name: 'Notebook',
+      type: 'purchase',
+      targetAmount: '100.00',
+      currency: 'ARS',
+      priority: 'high',
+      strategy: 'save',
+      status: 'active',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    }],
+    savingsPositions: [{ id: 'saving-1', goalId: completionGoalId, amount: '100.00', currency: 'ARS' }],
+    investmentPositions: [],
+    snapshots: [],
+    allocations: [],
+  },
+  pendingSnapshots: [],
+  pendingAllocations: [],
+  savingsPlaces: [{
+    id: completionPlaceId,
+    name: 'Banco',
+    balance: { amount: '100.00', currency: 'ARS' },
+  }],
+}
+
+const completionPreviewData = {
+  goalId: completionGoalId,
+  withdrawals: [{ placeId: completionPlaceId, amount: '100.00' }],
+  allocations: [],
+}
 
 describe('getGoalsWorkspace', () => {
   beforeEach(() => {
@@ -2067,4 +2148,180 @@ describe('confirmGoalLifecycle', () => {
   })
 })
 
+describe('goal completion functions', () => {
+  const previewToken = 'a'.repeat(64)
 
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T12:00:00Z'))
+  })
+
+  afterEach(() => vi.useRealTimers())
+
+  function registrationFor(handler: unknown) {
+    const registration = serverRegistrations.find((candidate) => candidate.handler === handler)
+    if (!registration) throw new Error('Completion server function registration not found')
+    return registration
+  }
+
+  it('registers completion handlers with the expected methods, validators, and server handlers', () => {
+    expect(registrationFor(getGoalCompletionContextServer)).toMatchObject({
+      method: 'GET',
+      handler: getGoalCompletionContextServer,
+    })
+    expect(registrationFor(previewGoalCompletionServer)).toMatchObject({
+      method: 'POST',
+      handler: previewGoalCompletionServer,
+    })
+    expect(registrationFor(confirmGoalCompletionServer)).toMatchObject({
+      method: 'POST',
+      handler: confirmGoalCompletionServer,
+    })
+
+    const contextRegistration = registrationFor(getGoalCompletionContextServer)
+    const previewRegistration = registrationFor(previewGoalCompletionServer)
+    const confirmRegistration = registrationFor(confirmGoalCompletionServer)
+
+    expect(contextRegistration.validator?.({ goalId: completionGoalId })).toEqual({ goalId: completionGoalId })
+    expect(previewRegistration.validator?.(completionPreviewData)).toEqual(completionPreviewData)
+    expect(confirmRegistration.validator?.({
+      ...completionPreviewData,
+      previewToken,
+    })).toEqual({
+      ...completionPreviewData,
+      previewToken,
+    })
+    expect(() => contextRegistration.validator?.({ goalId: 'bad' })).toThrow()
+    expect(() => previewRegistration.validator?.({ goalId: completionGoalId })).toThrow()
+    expect(() => confirmRegistration.validator?.({
+      ...completionPreviewData,
+      previewToken: 'bad',
+    })).toThrow()
+  })
+
+  it.each([
+    ['context', () => getGoalCompletionContext({ data: { goalId: completionGoalId } })],
+    ['preview', () => previewGoalCompletion({ data: completionPreviewData })],
+    ['confirm', () => confirmGoalCompletion({ data: { ...completionPreviewData, previewToken } })],
+  ])('rejects unauthenticated %s requests before calling completion repositories', async (_name, call) => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: false, userId: null } as never)
+
+    await expect(call()).rejects.toMatchObject({
+      options: expect.objectContaining({ to: '/sign-in/$' }),
+    })
+    expect(getGoalCompletionState).not.toHaveBeenCalled()
+    expect(confirmGoalCompletionInRepository).not.toHaveBeenCalled()
+  })
+
+  it('exports a GET context handler with auth, delegation, and mapped context', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalCompletionState).mockResolvedValue(completionState)
+
+    const result = await getGoalCompletionContext({ data: { goalId: completionGoalId } })
+
+    expect(getGoalCompletionState).toHaveBeenCalledWith('user_456', '2026-08', completionGoalId)
+    expect(result).toMatchObject({
+      profile: 'present',
+      context: { goalId: completionGoalId, goalName: 'Notebook', currentMonth: '2026-08' },
+    })
+  })
+
+  it('rejects invalid GET, preview, and confirm payloads through their validators', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+
+    await expect(getGoalCompletionContext({ data: { goalId: 'not-a-uuid' } })).rejects.toThrow()
+    await expect(previewGoalCompletion({ data: { ...completionPreviewData, goalId: 'not-a-uuid' } })).rejects.toThrow()
+    await expect(confirmGoalCompletion({ data: { ...completionPreviewData, previewToken: 'short' } })).rejects.toThrow()
+  })
+
+  it('exports a POST preview handler with a proposal and SHA token', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalCompletionState).mockResolvedValue(completionState)
+
+    const result = await previewGoalCompletion({ data: completionPreviewData })
+
+    expect(result.previewToken).toMatch(/^[a-f0-9]{64}$/)
+    expect(result.proposal).toMatchObject({ goalId: completionGoalId, goalName: 'Notebook' })
+  })
+
+  it('rejects preview requests with a missing profile or an unowned goal using the generic errors', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalCompletionState).mockResolvedValueOnce(null)
+
+    await expect(previewGoalCompletion({ data: completionPreviewData })).rejects.toThrow(
+      'Completá tu perfil financiero antes de completar un objetivo.',
+    )
+
+    vi.mocked(getGoalCompletionState).mockRejectedValueOnce(new Error('Objetivo no encontrado.'))
+    await expect(previewGoalCompletion({ data: completionPreviewData })).rejects.toThrow(
+      'Objetivo no encontrado.',
+    )
+  })
+
+  it('propagates domain errors while building a preview', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getGoalCompletionState).mockResolvedValue({
+      ...completionState,
+      source: {
+        ...completionState.source,
+        goals: [{ ...completionState.source.goals[0], status: 'paused' }],
+      },
+    })
+
+    await expect(previewGoalCompletion({ data: completionPreviewData })).rejects.toThrow(
+      'El objetivo no está listo para completarse.',
+    )
+  })
+
+  it('returns completed with the repository timestamp', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(confirmGoalCompletionInRepository).mockResolvedValue({
+      completedAt: '2026-08-19T12:00:00.000Z',
+    })
+
+    const result = await confirmGoalCompletion({
+      data: { ...completionPreviewData, previewToken },
+    })
+
+    expect(confirmGoalCompletionInRepository).toHaveBeenCalledWith({
+      userId: 'user_456',
+      currentMonth: '2026-08',
+      draft: completionPreviewData,
+      previewToken,
+    })
+    expect(result).toEqual({ status: 'completed', completedAt: '2026-08-19T12:00:00.000Z' })
+  })
+
+  it('maps stale and invalid repository outcomes', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    const refreshedPreview = { proposal: {}, previewToken: 'b'.repeat(64) } as never
+    vi.mocked(confirmGoalCompletionInRepository).mockRejectedValueOnce(
+      new StaleGoalCompletionPreviewError(refreshedPreview),
+    )
+
+    await expect(
+      confirmGoalCompletion({ data: { ...completionPreviewData, previewToken } }),
+    ).resolves.toEqual({ status: 'stale', preview: refreshedPreview })
+
+    vi.mocked(confirmGoalCompletionInRepository).mockRejectedValueOnce(
+      new GoalCompletionStateInvalidError(),
+    )
+    await expect(
+      confirmGoalCompletion({ data: { ...completionPreviewData, previewToken } }),
+    ).resolves.toEqual({
+      status: 'invalid',
+      message: 'No se puede completar el objetivo con el estado actual.',
+    })
+  })
+
+  it('propagates arbitrary repository and domain errors', async () => {
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    const failure = new Error('database failure')
+    vi.mocked(confirmGoalCompletionInRepository).mockRejectedValue(failure)
+
+    await expect(
+      confirmGoalCompletion({ data: { ...completionPreviewData, previewToken } }),
+    ).rejects.toBe(failure)
+  })
+})

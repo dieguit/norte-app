@@ -80,4 +80,25 @@ describe('SavingContributionActions', () => {
     })
     expect(posthogCapture).not.toHaveBeenCalled()
   })
+
+  it('renders completed history as read-only', () => {
+    render(
+      <SavingContributionActions
+        goalId="goal-1"
+        readOnly
+        contributions={[{
+          id: 'contribution-1',
+          kind: 'saving',
+          amount: '100.00',
+          currency: 'USD',
+          createdAt: '2026-08-01T00:00:00.000Z',
+          allocations: [],
+        }]}
+      />,
+    )
+
+    expect(screen.getByText('US$ 100,00')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /corregir aporte/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /eliminar aporte/i })).not.toBeInTheDocument()
+  })
 })

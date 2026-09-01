@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '../../db/client'
 import {
   allocationPlanEntries,
+  financialProfiles,
   goalInvestmentPositions,
   goalSavingsPositions,
   investmentContributionAllocations,
   investmentContributions,
   savingContributionAllocations,
   savingContributions,
+  savingsPlaces,
 } from '../../db/schema'
 import {
   createSavingContributionInRepository,
@@ -349,6 +351,7 @@ describe('saving-contribution.repository.server', () => {
 
   let savingContributionValues: any = null
   let investmentContributionValues: any = null
+  let selectTables: any[] = []
 
   function setupDbMocks(overrides?: {
     profile?: any
@@ -416,10 +419,13 @@ describe('saving-contribution.repository.server', () => {
     mockTx.query = db.query as any
 
     mockTx.select = vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
+      from: vi.fn((table: any) => {
+        selectTables.push(table)
+        return {
         where: vi.fn().mockReturnValue({
           for: vi.fn().mockResolvedValue(profile ? [{ userId }] : []),
         }),
+        }
       }),
     })
 
@@ -461,6 +467,7 @@ describe('saving-contribution.repository.server', () => {
     vi.clearAllMocks()
     savingContributionValues = null
     investmentContributionValues = null
+    selectTables = []
   })
 
   describe('getSavingContributionState', () => {
@@ -827,9 +834,9 @@ describe('saving-contribution.repository.server', () => {
       userId,
       amount: '10000.00',
       currency: 'ARS',
+      placeId: 'old-place',
       arsSpent: null,
       effectiveRate: null,
-      placeId: 'old-place',
       createdAt: new Date('2026-08-01T00:00:00Z'),
       updatedAt: new Date('2026-08-01T00:00:00Z'),
     }
@@ -943,13 +950,14 @@ describe('saving-contribution.repository.server', () => {
         },
       })
 
-      expect(whereConditions).toHaveLength(2)
-      expect(lock.mock.calls).toHaveLength(2)
+      expect(whereConditions).toHaveLength(3)
+      expect(lock.mock.calls).toHaveLength(3)
       expect(whereConditions.map(getSqlParamValues)).toEqual([
+        [userId],
         ['a-place', userId],
         ['old-place', userId],
       ])
-      expect(lock.mock.invocationCallOrder[1]).toBeLessThan(mockTx.update.mock.invocationCallOrder[0])
+      expect(lock.mock.invocationCallOrder[2]).toBeLessThan(mockTx.update.mock.invocationCallOrder[0])
     })
 
     it('throws error when contribution is not found or user ownership fails', async () => {
@@ -977,6 +985,27 @@ describe('saving-contribution.repository.server', () => {
           draft: { currency: 'USD', amount: '100.00', effectiveRate: '1500.00' },
         }),
       ).rejects.toThrow('Cannot change contribution currency on update.')
+    })
+
+    it('rejects corrections allocated to a completed goal', async () => {
+      setupDbMocks({
+        goals: [{ ...mockGoalArs1, status: 'completed' }],
+        contribution: existingContribution,
+        contributionAllocations: [existingAllocations[0]],
+      })
+
+      await expect(
+        updateSavingContributionInRepository({
+          userId,
+          contributionId: 'contrib_1',
+          draft: {
+            currency: 'ARS',
+            place: { kind: 'existing', placeId: 'new-place' },
+            amount: '20000.00',
+          },
+        }),
+      ).rejects.toThrow('No se pueden modificar aportes de objetivos completados.')
+      expect(mockTx.update).not.toHaveBeenCalled()
     })
 
     it('corrects investment contribution, preserves stored percentages, and adjusts position currentValue by delta', async () => {
@@ -1058,6 +1087,7 @@ describe('saving-contribution.repository.server', () => {
       userId,
       amount: '10000.00',
       currency: 'ARS',
+      placeId: 'place_1',
       arsSpent: null,
       effectiveRate: null,
       createdAt: new Date('2026-08-01T00:00:00Z'),
@@ -1101,6 +1131,7 @@ describe('saving-contribution.repository.server', () => {
 
       // Never touch allocationPlanEntries
       expect(mockTx.delete).not.toHaveBeenCalledWith(allocationPlanEntries)
+      expect(selectTables.slice(0, 2)).toEqual([financialProfiles, savingsPlaces])
     })
 
     it('deletes investment contribution and decrements goalInvestmentPositions currentValue without touching plan entries', async () => {
@@ -1164,6 +1195,39 @@ describe('saving-contribution.repository.server', () => {
           contributionId: 'contrib_1',
         }),
       ).rejects.toThrow('Contribution not found or not owned by user.')
+    })
+
+    it('rejects deletion of contributions allocated to a completed goal', async () => {
+      setupDbMocks({
+        goals: [{ ...mockGoalArs1, status: 'completed' }],
+        contribution: {
+          id: 'contrib_1',
+          userId,
+          amount: '10000.00',
+          currency: 'ARS',
+          placeId: 'place_1',
+          arsSpent: null,
+          effectiveRate: null,
+          createdAt: new Date('2026-08-01T00:00:00Z'),
+          updatedAt: new Date('2026-08-01T00:00:00Z'),
+        },
+        contributionAllocations: [{
+          id: 'sca_1',
+          contributionId: 'contrib_1',
+          goalId: 'g_ars_1',
+          amount: '10000.00',
+          percentage: '100.00',
+          savingPositionId: 'pos_1',
+        }],
+      })
+
+      await expect(
+        deleteSavingContributionInRepository({
+          userId,
+          contributionId: 'contrib_1',
+        }),
+      ).rejects.toThrow('No se pueden modificar aportes de objetivos completados.')
+      expect(mockTx.delete).not.toHaveBeenCalled()
     })
   })
 })

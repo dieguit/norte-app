@@ -17,6 +17,17 @@ const movements = [
     createdAt: '2026-08-20T12:00:00.000Z',
   },
   {
+    kind: 'completion' as const,
+    id: 'completion_1',
+    goalId: 'goal-1',
+    goalName: 'Vacaciones',
+    placeId: 'bank',
+    placeName: 'Banco Nación',
+    amount: '600.00',
+    currency: 'ARS' as const,
+    createdAt: '2026-08-18T12:00:00.000Z',
+  },
+  {
     kind: 'transfer' as const,
     id: 'transfer_1',
     fromPlaceId: 'cash',
@@ -41,13 +52,15 @@ describe('SavingsMovementsSheet', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Movimientos de Banco Nación' })).toBeInTheDocument()
-    expect(screen.getByText('Consultá los aportes y transferencias recibidas en este lugar.')).toBeInTheDocument()
-    const section = screen.getByRole('region', { name: 'Entradas de Banco Nación' })
+    expect(screen.getByText('Consultá los aportes, transferencias recibidas y objetivos completados en este lugar.')).toBeInTheDocument()
+    const section = screen.getByRole('region', { name: 'Movimientos de Banco Nación' })
     const list = within(section).getByRole('list')
     expect(list).toHaveClass('divide-y', 'divide-[var(--line)]')
-    expect(within(list).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(list).getAllByRole('listitem')).toHaveLength(3)
     expect(within(section).getByText('Ahorro registrado')).toBeInTheDocument()
+    expect(within(section).getByText('Objetivo completado: Vacaciones')).toBeInTheDocument()
     expect(within(section).getByText('Transferencia desde Efectivo')).toBeInTheDocument()
+    expect(within(section).getByText('- $ 600,00')).toBeInTheDocument()
     expect(within(section).getByText('20/8/2026')).toBeInTheDocument()
     expect(within(section).getByText('19/8/2026')).toBeInTheDocument()
     expect(within(section).getByText('US$ 25,00')).toBeInTheDocument()
@@ -66,8 +79,8 @@ describe('SavingsMovementsSheet', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Movimientos de Banco Nación' })).toBeInTheDocument()
-    expect(screen.getByText('Consultá los aportes y transferencias recibidas en este lugar.')).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Entradas de Banco Nación' })).toHaveTextContent(
+    expect(screen.getByText('Consultá los aportes, transferencias recibidas y objetivos completados en este lugar.')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Movimientos de Banco Nación' })).toHaveTextContent(
       'No hay movimientos todavía.',
     )
   })

@@ -10,7 +10,12 @@ export async function loadHomeRoadmap(profile: 'missing' | 'present', currentMon
   if (profile === 'missing') return null
   const [goalsState, finances] = await Promise.all([getGoalsWorkspace(), getFinancesWorkspace()])
   if (goalsState.profile !== 'present' || !finances) throw new Error('Roadmap data is unavailable.')
-  return buildRoadmap({ goals: goalsState.workspace, finances, currentMonth })
+  return {
+    roadmap: buildRoadmap({ goals: goalsState.workspace, finances, currentMonth }),
+    completionGoals: goalsState.workspace.groups
+      .flatMap((group) => group.goals)
+      .filter((goal) => goal.completionEligible),
+  }
 }
 
 export const Route = createFileRoute('/app/')({
@@ -36,10 +41,10 @@ function HomeRouteError() {
 
 function AppIndex() {
   const context = Route.useRouteContext()
-  const roadmap = Route.useLoaderData()
-  return context.profile === 'missing' || !roadmap ? (
+  const data = Route.useLoaderData()
+  return context.profile === 'missing' || !data ? (
     <FinancialOnboarding />
   ) : (
-    <Home home={context.home} roadmap={roadmap} />
+    <Home home={context.home} roadmap={data.roadmap} completionGoals={data.completionGoals} />
   )
 }

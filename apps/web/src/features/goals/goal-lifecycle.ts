@@ -94,6 +94,35 @@ export interface BuildGoalLifecycleProposalInput {
   }
 }
 
+export function selectGoalLifecycleAllocation(
+  snapshots: GoalsWorkspaceSource['snapshots'],
+  allocations: GoalsWorkspaceSource['allocations'],
+  currentMonth: string,
+  kind: 'current' | 'pending',
+): GoalLifecycleContext['currentAllocation'] {
+  const currentMonthKey = currentMonth.slice(0, 7)
+  const snapshot = snapshots
+    .filter((candidate) =>
+      kind === 'current'
+        ? candidate.effectiveMonth.slice(0, 7) <= currentMonthKey
+        : candidate.effectiveMonth.slice(0, 7) > currentMonthKey,
+    )
+    .sort((a, b) =>
+      kind === 'current'
+        ? b.effectiveMonth.localeCompare(a.effectiveMonth)
+        : a.effectiveMonth.localeCompare(b.effectiveMonth),
+    )[0]
+
+  if (!snapshot) return undefined
+
+  return {
+    effectiveMonth: snapshot.effectiveMonth,
+    entries: allocations
+      .filter((allocation) => allocation.snapshotId === snapshot.id)
+      .map(({ goalId, percentage }) => ({ goalId, percentage })),
+  }
+}
+
 function getNextCalendarMonthStr(currentMonth: string): string {
   const [year, month] = currentMonth.slice(0, 7).split('-').map(Number)
   const totalMonths = year * 12 + (month - 1) + 1
@@ -211,7 +240,7 @@ export function buildGoalLifecycleProposal(
 
         const includesTargetAtZero =
           submittedIds.has(targetGoal.id) &&
-          draft.allocations.find((e) => e.goalId === targetGoal.id)?.percentage === '0.00'
+          new BigNumber((draft.allocations.find((e) => e.goalId === targetGoal.id)?.percentage ?? '0').replace(',', '.')).isZero()
 
         const effectiveSubmittedIds = new Set(
           draft.allocations.map((e) => e.goalId).filter((id) => id !== targetGoal.id),
@@ -464,6 +493,11 @@ export function buildGoalLifecycleProposal(
     investmentPositions: state.source.investmentPositions,
     snapshots: proposedSnapshots,
     allocations: proposedAllocations,
+    incomes: state.source.incomes,
+    expenses: state.source.expenses,
+    contributions: state.source.contributions,
+    savingContributions: state.source.savingContributions,
+    completionWithdrawals: state.source.completionWithdrawals,
   }
 
   const afterWorkspace = buildGoalsWorkspace(proposedSource, currentMonth)
@@ -601,6 +635,33 @@ export function serializeGoalLifecycleState(
           onboardingCompleted: source.profile.onboardingCompleted,
         }
       : null,
+    incomes: (source.incomes ?? [])
+      .map((income) => ({
+        id: income.id,
+        sourceKind: income.sourceKind,
+        sourceId: income.sourceId ?? null,
+        sourceName: income.sourceName ?? null,
+        concept: income.concept ?? null,
+        amount: income.amount,
+        currency: income.currency,
+        recurring: income.recurring,
+        effectiveMonth: income.effectiveMonth,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    expenses: (source.expenses ?? [])
+      .map((expense) => ({
+        id: expense.id,
+        sourceKind: expense.sourceKind,
+        sourceId: expense.sourceId ?? null,
+        sourceName: expense.sourceName ?? null,
+        concept: expense.concept ?? null,
+        amount: expense.amount,
+        currency: expense.currency,
+        recurring: expense.recurring,
+        effectiveMonth: expense.effectiveMonth,
+        endMonth: expense.endMonth ?? null,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
     goals: (source.goals ?? [])
       .map((g) => ({
         id: g.id,

@@ -74,6 +74,14 @@ export interface ContributionSummary {
 export type SavingContributionAllocationSummary = ContributionAllocationSummary
 export type SavingContributionSummary = ContributionSummary
 
+export interface GoalCompletionWithdrawalSummary {
+  id: string
+  placeId: string
+  placeName: string
+  amount: Money
+  createdAt: string
+}
+
 export interface GoalWorkspaceItem {
   id: string
   name: string
@@ -97,6 +105,8 @@ export interface GoalWorkspaceItem {
   availability?: InvestmentAvailability
   availableFrom?: string
   usesPlanningRate: boolean
+  completionEligible: boolean
+  completionWithdrawals?: GoalCompletionWithdrawalSummary[]
   contributions?: ContributionSummary[]
   savingContributions?: ContributionSummary[]
 }
@@ -170,10 +180,35 @@ export interface GoalsWorkspaceSource {
   savingContributions?: SavingContributionSummary[]
   incomes?: IncomesWorkspace['incomes']
   expenses?: ExpensesWorkspace['expenses']
+  completionWithdrawals?: Array<{
+    id: string
+    goalId: string
+    placeId: string
+    placeName: string
+    amount: string
+    currency: CurrencyCode
+    createdAt: string
+  }>
 }
 
 const PRIORITY_ORDER: Record<GoalPriority, number> = { high: 0, medium: 1, low: 2 }
 const STATUS_GROUPS: GoalStatus[] = ['active', 'paused', 'completed']
+
+export function isGoalCompletionEligible(
+  goal: Pick<
+    GoalWorkspaceItem,
+    'status' | 'strategy' | 'type' | 'targetAmount' | 'savingsValue'
+  >,
+): boolean {
+  return Boolean(
+    goal.status === 'active' &&
+      goal.strategy === 'save' &&
+      (goal.type === 'purchase' || goal.type === 'other') &&
+      goal.targetAmount &&
+      new BigNumber(goal.targetAmount.amount).isGreaterThan(0) &&
+      new BigNumber(goal.savingsValue.amount).isGreaterThanOrEqualTo(goal.targetAmount.amount),
+  )
+}
 
 export function groupGoals(goals: GoalWorkspaceItem[]): GoalsWorkspace['groups'] {
   return STATUS_GROUPS.map((status) => ({
@@ -384,6 +419,19 @@ export function buildGoalsWorkspace(
       getGoalContributionArs(currentFinancials.balance, dedicationPercentage),
   }
 
+  const completionWithdrawalsByGoal = new Map<string, GoalCompletionWithdrawalSummary[]>()
+  for (const withdrawal of rows.completionWithdrawals ?? []) {
+    const summaries = completionWithdrawalsByGoal.get(withdrawal.goalId) ?? []
+    summaries.push({
+      id: withdrawal.id,
+      placeId: withdrawal.placeId,
+      placeName: withdrawal.placeName,
+      amount: createMoney(withdrawal.amount, withdrawal.currency),
+      createdAt: withdrawal.createdAt,
+    })
+    completionWithdrawalsByGoal.set(withdrawal.goalId, summaries)
+  }
+
   const goalItems: GoalWorkspaceItem[] = rows.goals.map((goal) => {
     // 1. Savings value
     const goalSavings = (rows.savingsPositions ?? []).filter((pos) => pos.goalId === goal.id)
@@ -522,6 +570,14 @@ export function buildGoalsWorkspace(
       availability,
       availableFrom,
       usesPlanningRate,
+      completionEligible: isGoalCompletionEligible({
+        status: goal.status,
+        strategy: goal.strategy,
+        type: goal.type,
+        targetAmount,
+        savingsValue,
+      }),
+      completionWithdrawals: completionWithdrawalsByGoal.get(goal.id),
       contributions: goalContributions,
       savingContributions: goalContributions,
     }

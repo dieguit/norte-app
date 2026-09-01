@@ -6,18 +6,23 @@ import {
   type InitialHomeState,
 } from '../../../features/financial/financial'
 import type { RoadmapData } from '../../../features/roadmap/roadmap'
+import type { GoalWorkspaceItem } from '../../../features/goals/goals'
 import { ContributionActionSheet, type CatchUpContribution } from './ContributionActionSheet'
+import { GoalCompletionSheet } from '../../../features/goals/GoalCompletionSheet'
+import { GoalCompletionBanner } from './GoalCompletionBanner'
 import { Roadmap } from './Roadmap'
 
 export interface HomeProps {
   home: InitialHomeState
   roadmap: RoadmapData
+  completionGoals?: GoalWorkspaceItem[]
   now?: Date
 }
 
-export function Home({ home, roadmap, now }: HomeProps) {
+export function Home({ home, roadmap, completionGoals = [], now }: HomeProps) {
   const [isContributionOpen, setIsContributionOpen] = useState(false)
   const [catchUpContribution, setCatchUpContribution] = useState<CatchUpContribution | null>(null)
+  const [completionGoalId, setCompletionGoalId] = useState<string | null>(null)
 
   const closedMonth = getPreviousCalendarMonth(now)
   const previousMonthName = formatMonthName(closedMonth)
@@ -93,6 +98,13 @@ export function Home({ home, roadmap, now }: HomeProps) {
           <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">Seguís en camino con tu plan.</p>
         </section>
       )}
+      {completionGoals.map((goal) => (
+        <GoalCompletionBanner
+          key={goal.id}
+          goal={goal}
+          onComplete={setCompletionGoalId}
+        />
+      ))}
       <Roadmap roadmap={roadmap} />
       <ContributionActionSheet
         open={isContributionOpen}
@@ -103,6 +115,13 @@ export function Home({ home, roadmap, now }: HomeProps) {
           }
         }}
         catchUpContribution={catchUpContribution}
+      />
+      <GoalCompletionSheet
+        open={completionGoalId !== null}
+        goalId={completionGoalId}
+        onOpenChange={(open) => {
+          if (!open) setCompletionGoalId(null)
+        }}
       />
     </div>
   )

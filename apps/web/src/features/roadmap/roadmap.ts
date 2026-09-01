@@ -45,6 +45,9 @@ export function buildRoadmap({
 }): RoadmapData {
   const allGoals = goals.groups.flatMap((group) => group.goals)
   const roadmapGoals = allGoals.filter((goal) => goal.status !== 'completed')
+  const completedObjectives = allGoals.filter(
+    (goal) => goal.status === 'completed' && goal.completedAt,
+  )
   const datedObjectives = roadmapGoals.filter(
     (goal) => goal.projection.status === 'available',
   )
@@ -61,9 +64,12 @@ export function buildRoadmap({
 
   const buildMonth = (month: string): RoadmapMonth => ({
     month,
-    objectives: datedObjectives.filter(
-      (goal) => goal.projection.status === 'available' && goal.projection.completionMonth === month,
-    ),
+    objectives: [
+      ...datedObjectives.filter(
+        (goal) => goal.projection.status === 'available' && goal.projection.completionMonth === month,
+      ),
+      ...completedObjectives.filter((goal) => goal.completedAt?.slice(0, 7) === month),
+    ],
     oneTimeExpenses: finances.expenses.expenses.filter(
       (expense) => !expense.recurring && isExpenseIncludedInMonth(expense, month),
     ),
@@ -90,6 +96,10 @@ export function buildRoadmap({
       futureMonthKeys.add(goal.projection.completionMonth)
     }
   }
+  for (const goal of completedObjectives) {
+    const month = goal.completedAt!.slice(0, 7)
+    if (month > currentMonth) futureMonthKeys.add(month)
+  }
   for (const income of finances.incomes.incomes) {
     const month = income.effectiveMonth.slice(0, 7)
     if (month > currentMonth) futureMonthKeys.add(month)
@@ -105,6 +115,7 @@ export function buildRoadmap({
     ...finances.incomes.incomes.map((income) => income.effectiveMonth.slice(0, 7)),
     ...finances.expenses.expenses.map((expense) => expense.effectiveMonth.slice(0, 7)),
     ...contributions.map((contribution) => contribution.createdAt.slice(0, 7)),
+    ...completedObjectives.map((goal) => goal.completedAt!.slice(0, 7)),
   ].filter((month) => month < currentMonth).sort()[0]
 
   const historyMonths: RoadmapMonth[] = []
@@ -112,7 +123,7 @@ export function buildRoadmap({
     for (let month = addMonth(currentMonth, -1); month >= earliestHistoryMonth; month = addMonth(month, -1)) {
       const group = buildMonth(month)
       if (
-        group.oneTimeExpenses.length || group.recurringExpenses.length || group.endingExpenses.length ||
+        group.objectives.length || group.oneTimeExpenses.length || group.recurringExpenses.length || group.endingExpenses.length ||
         group.oneTimeIncomes.length || group.recurringIncomes.length || group.contributions.length
       ) {
         historyMonths.push(group)

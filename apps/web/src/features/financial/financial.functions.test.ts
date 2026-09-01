@@ -78,6 +78,9 @@ vi.mock('../../db/client', () => ({
       savingsPlaces: {
         findMany: vi.fn().mockResolvedValue([]),
       },
+      goalCompletionWithdrawals: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       savingsPlaceTransfers: {
         findMany: vi.fn().mockResolvedValue([]),
       },

@@ -32,6 +32,7 @@ const goals: GoalsWorkspace = {
           funding: [],
           projection: { status: 'available', completionMonth: '2027-03' },
           usesPlanningRate: false,
+          completionEligible: false,
         },
       ],
     },
@@ -177,5 +178,60 @@ describe('buildRoadmap', () => {
     const roadmap = buildRoadmap({ goals, finances: pastFinances, currentMonth: '2026-08' })
 
     expect(roadmap.historyMonths.map(({ month }) => month)).toEqual(['2026-07', '2026-06', '2026-04'])
+  })
+
+  it('places dated completed goals in their completion month and retains completion-only history', () => {
+    const goalsWithCompletions = structuredClone(goals)
+    goalsWithCompletions.groups[2].goals = [
+      {
+        ...goals.groups[0].goals[0],
+        id: 'completed-current',
+        name: 'Objetivo actual cumplido',
+        status: 'completed',
+        completedAt: '2026-08-15T00:00:00.000Z',
+        projection: { status: 'available', completionMonth: '2027-03' },
+      },
+      {
+        ...goals.groups[0].goals[0],
+        id: 'completed-history',
+        name: 'Objetivo histórico cumplido',
+        status: 'completed',
+        completedAt: '2026-06-15T00:00:00.000Z',
+        projection: { status: 'plan_paused' },
+      },
+      {
+        ...goals.groups[0].goals[0],
+        id: 'completed-undated',
+        name: 'Objetivo sin fecha',
+        status: 'completed',
+        projection: { status: 'plan_paused' },
+      },
+      {
+        ...goals.groups[0].goals[0],
+        id: 'completed-future',
+        name: 'Objetivo futuro cumplido',
+        status: 'completed',
+        completedAt: '2026-10-15T00:00:00.000Z',
+        projection: { status: 'plan_paused' },
+      },
+    ]
+
+    const roadmap = buildRoadmap({
+      goals: goalsWithCompletions,
+      finances: { incomes: { sources: [], incomes: [] }, expenses: { sources: [], expenses: [] } },
+      currentMonth: '2026-08',
+    })
+
+    expect(roadmap.currentMonth.objectives.map(({ id }) => id)).toEqual(['completed-current'])
+    expect(roadmap.futureMonths.map(({ month }) => month)).toEqual(['2027-03', '2026-10'])
+    expect(roadmap.futureMonths[1].objectives.map(({ id }) => id)).toEqual(['completed-future'])
+    expect(roadmap.historyMonths.map(({ month }) => month)).toEqual(['2026-06'])
+    expect(roadmap.historyMonths[0].objectives.map(({ id }) => id)).toEqual(['completed-history'])
+    expect(roadmap.undatedObjectives).toEqual([])
+    expect([
+      ...roadmap.currentMonth.objectives,
+      ...roadmap.futureMonths.flatMap(({ objectives }) => objectives),
+      ...roadmap.historyMonths.flatMap(({ objectives }) => objectives),
+    ].map(({ id }) => id)).not.toContain('completed-undated')
   })
 })

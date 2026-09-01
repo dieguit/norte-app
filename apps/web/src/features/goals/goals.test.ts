@@ -4,6 +4,7 @@ import {
   buildGoalsWorkspace,
   buildCurrentGoalsPlanWorkspace,
   groupGoals,
+  isGoalCompletionEligible,
   projectGoalCompletion,
   type GoalsWorkspaceSource,
   type GoalWorkspaceItem,
@@ -43,9 +44,39 @@ function createMockGoalItem(overrides: Partial<GoalWorkspaceItem> = {}): GoalWor
     funding: [],
     projection: { status: 'no_future_allocation' },
     usesPlanningRate: false,
+    completionEligible: false,
     ...overrides,
   }
 }
+
+describe('goal completion eligibility', () => {
+  const eligibleGoal = createMockGoalItem({
+    targetAmount: createMoney('1000.00', 'ARS'),
+    savingsValue: createMoney('1050.00', 'ARS'),
+  })
+
+  it('requires an active saving purchase or other goal whose savings reach a positive target', () => {
+    expect(isGoalCompletionEligible(eligibleGoal)).toBe(true)
+    expect(isGoalCompletionEligible({ ...eligibleGoal, strategy: 'invest' })).toBe(false)
+    expect(isGoalCompletionEligible({ ...eligibleGoal, type: 'emergency_fund' })).toBe(false)
+    expect(isGoalCompletionEligible({ ...eligibleGoal, status: 'paused' })).toBe(false)
+    expect(
+      isGoalCompletionEligible({ ...eligibleGoal, type: 'retirement' }),
+    ).toBe(false)
+    expect(
+      isGoalCompletionEligible({ ...eligibleGoal, savingsValue: createMoney('999.99', 'ARS') }),
+    ).toBe(false)
+    const investmentHeavyGoal = {
+      ...eligibleGoal,
+      savingsValue: createMoney('999.99', 'ARS'),
+      investmentValue: createMoney('999999.99', 'ARS'),
+    }
+    expect(isGoalCompletionEligible(investmentHeavyGoal)).toBe(false)
+    expect(
+      isGoalCompletionEligible({ ...eligibleGoal, targetAmount: createMoney('0.00', 'ARS') }),
+    ).toBe(false)
+  })
+})
 
 describe('groupGoals', () => {
   it('groups goals by status and orders within groups by priority', () => {
@@ -282,6 +313,51 @@ describe('buildGoalsWorkspace - global allocation amounts and progress', () => {
       effectiveMonth: '2026-08-01',
     })
     expect(item.usesPlanningRate).toBe(false)
+  })
+
+  it('maps completion withdrawals and marks eligible savings goals', () => {
+    const source = createMockWorkspaceSource({
+      goals: [
+        {
+          id: 'goal-complete',
+          name: 'Notebook',
+          type: 'purchase',
+          targetAmount: '1000.00',
+          currency: 'ARS',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          createdAt: '2026-08-01T00:00:00.000Z',
+        },
+      ],
+      savingsPositions: [
+        { id: 'saving-1', goalId: 'goal-complete', amount: '1000.00', currency: 'ARS' },
+      ],
+      completionWithdrawals: [
+        {
+          id: 'withdrawal-1',
+          goalId: 'goal-complete',
+          placeId: 'place-1',
+          placeName: 'Banco',
+          amount: '100.00',
+          currency: 'ARS',
+          createdAt: '2026-08-15T12:00:00.000Z',
+        },
+      ],
+    })
+
+    const goal = buildGoalsWorkspace(source, '2026-08').groups[0].goals[0]
+
+    expect(goal.completionEligible).toBe(true)
+    expect(goal.completionWithdrawals).toEqual([
+      {
+        id: 'withdrawal-1',
+        placeId: 'place-1',
+        placeName: 'Banco',
+        amount: { amount: '100.00', currency: 'ARS' },
+        createdAt: '2026-08-15T12:00:00.000Z',
+      },
+    ])
   })
 
   it('uses planning rate when destination currency is USD', () => {

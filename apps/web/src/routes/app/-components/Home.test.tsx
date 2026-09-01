@@ -9,11 +9,19 @@ import type { PreviousMonthShortfall } from '../../../features/contributions/sav
 import { getSavingContributionContext } from '../../../features/contributions/saving-contribution.functions'
 
 import type { RoadmapData } from '../../../features/roadmap/roadmap'
+import type { GoalWorkspaceItem } from '../../../features/goals/goals'
+import { getGoalCompletionContext } from '../../../features/goals/goals.functions'
 
 vi.mock('../../../features/contributions/saving-contribution.functions', () => ({
   getSavingContributionContext: vi.fn().mockResolvedValue(null),
   previewSavingContribution: vi.fn().mockResolvedValue(null),
   confirmSavingContribution: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('../../../features/goals/goals.functions', () => ({
+  getGoalCompletionContext: vi.fn(),
+  previewGoalCompletion: vi.fn(),
+  confirmGoalCompletion: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
@@ -70,6 +78,27 @@ describe('Home component', () => {
     projection: { status: 'available', completionMonth: '2027-02' },
     previousMonthShortfalls: [],
   }
+
+  const completionGoal = (overrides: Partial<GoalWorkspaceItem> = {}): GoalWorkspaceItem => ({
+    id: 'goal-completion-1',
+    name: 'Viaje a Bariloche',
+    type: 'purchase',
+    currency: 'ARS',
+    priority: 'high',
+    strategy: 'save',
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00Z',
+    targetAmount: { amount: '500000.00', currency: 'ARS' },
+    savingsValue: { amount: '500000.00', currency: 'ARS' },
+    investmentValue: { amount: '0.00', currency: 'ARS' },
+    actualValue: { amount: '500000.00', currency: 'ARS' },
+    progressPercentage: '100.00',
+    funding: [],
+    projection: { status: 'available', completionMonth: '2026-08' },
+    usesPlanningRate: false,
+    completionEligible: true,
+    ...overrides,
+  })
 
   it('shows the success status when the last closed month has no shortfall', () => {
     render(
@@ -194,5 +223,48 @@ describe('Home component', () => {
 
     expect(await screen.findByRole('button', { name: 'Confirmar inversión' })).toBeDisabled()
     expect(screen.queryByLabelText(/dónde está guardado/i)).not.toBeInTheDocument()
+  })
+
+  it('renders one persistent success banner per eligible goal and opens the shared completion sheet', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getGoalCompletionContext).mockResolvedValue({
+      profile: 'present',
+      context: {
+        goalId: 'goal-completion-2',
+        goalName: 'Fondo de emergencia',
+        targetAmount: { amount: '750000.00', currency: 'ARS' },
+        savingsValue: { amount: '750000.00', currency: 'ARS' },
+        currentMonth: '2026-08',
+        savingsPlaces: [{ id: 'place-1', name: 'Caja', balance: { amount: '750000.00', currency: 'ARS' } }],
+        activeGoals: [{ id: 'goal-completion-2', name: 'Fondo de emergencia', currency: 'ARS' }],
+      },
+    })
+    const goals = [
+      completionGoal(),
+      completionGoal({ id: 'goal-completion-2', name: 'Fondo de emergencia', targetAmount: { amount: '750000.00', currency: 'ARS' }, savingsValue: { amount: '750000.00', currency: 'ARS' }, actualValue: { amount: '750000.00', currency: 'ARS' } }),
+    ]
+
+    render(<Home home={fixedSavingsHome} roadmap={emptyRoadmap} completionGoals={goals} />)
+
+    expect(screen.getAllByText(/Ya tenés los ahorros necesarios para/)).toHaveLength(2)
+    expect(screen.getByText('Ya tenés los ahorros necesarios para Viaje a Bariloche')).toBeVisible()
+    expect(screen.getByText('Alcanzaste el monto planificado de $ 500.000,00.')).toBeVisible()
+    expect(screen.getByText('Alcanzaste el monto planificado de $ 750.000,00.')).toBeVisible()
+    expect(screen.getAllByRole('button', { name: 'Marcar como cumplido' })).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: /descartar|cerrar/i })).not.toBeInTheDocument()
+
+    const roadmapHeading = screen.getByRole('heading', { name: 'Tu hoja de ruta' })
+    const banner = screen.getByText('Ya tenés los ahorros necesarios para Viaje a Bariloche')
+    expect(Boolean(banner.compareDocumentPosition(roadmapHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+
+    await user.click(screen.getAllByRole('button', { name: 'Marcar como cumplido' })[1])
+    expect(await screen.findByRole('heading', { name: 'Completar objetivo' })).toBeVisible()
+    expect(getGoalCompletionContext).toHaveBeenCalledWith({ data: { goalId: 'goal-completion-2' } })
+  })
+
+  it('does not render completion banners without eligible goals', () => {
+    render(<Home home={fixedSavingsHome} roadmap={emptyRoadmap} completionGoals={[]} />)
+
+    expect(screen.queryByText(/Ya tenés los ahorros necesarios para/)).not.toBeInTheDocument()
   })
 })

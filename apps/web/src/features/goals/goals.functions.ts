@@ -13,6 +13,9 @@ import {
   previewGoalCreationServer,
   previewGoalEditServer,
   previewGoalLifecycleServer,
+  confirmGoalCompletionServer,
+  getGoalCompletionContextServer,
+  previewGoalCompletionServer,
 } from './goals.server'
 import {
   confirmGoalCreationSchema,
@@ -30,6 +33,11 @@ import {
   goalLifecyclePreviewSchema,
   goalLifecycleRequestSchema,
 } from './goal-lifecycle.schema'
+import {
+  confirmGoalCompletionSchema,
+  goalCompletionPreviewSchema,
+  goalCompletionRequestSchema,
+} from './goal-completion.schema'
 
 export const getGoalsWorkspace = createServerFn({ method: 'GET' })
   .handler(getGoalsWorkspaceServer)
@@ -80,5 +88,16 @@ export const confirmGoalLifecycle = createServerFn({ method: 'POST' })
   .validator((data) => confirmGoalLifecycleSchema.parse(data))
   .handler(confirmGoalLifecycleServer)
 
+export const getGoalCompletionContext = createServerFn({ method: 'GET' })
+  .validator((data) => goalCompletionRequestSchema.parse(data))
+  .handler(getGoalCompletionContextServer)
+
+export const previewGoalCompletion = createServerFn({ method: 'POST' })
+  .validator((data) => goalCompletionPreviewSchema.parse(data))
+  .handler(previewGoalCompletionServer)
+
+export const confirmGoalCompletion = createServerFn({ method: 'POST' })
+  .validator((data) => confirmGoalCompletionSchema.parse(data))
+  .handler(confirmGoalCompletionServer)
 
 

@@ -19,6 +19,7 @@ import {
   savingContributions,
   savingsPlaces,
   savingsPlaceTransfers,
+  goalCompletionWithdrawals,
 } from './schema'
 
 describe('onboarding database schema', () => {
@@ -176,5 +177,16 @@ describe('onboarding database schema', () => {
     expect(savingContributions.placeId.notNull).toBe(true)
     expect('location' in savingContributions).toBe(false)
     expect('location' in goalSavingsPositions).toBe(false)
+  })
+
+  it('stores immutable Goal completion withdrawals by Savings place', () => {
+    expect(getTableName(goalCompletionWithdrawals)).toBe(
+      'goal_completion_withdrawals',
+    )
+    expect(goalCompletionWithdrawals.goalId.name).toBe('goal_id')
+    expect(goalCompletionWithdrawals.placeId.name).toBe('place_id')
+    expect(goalCompletionWithdrawals.amount.name).toBe('amount')
+    expect(goalCompletionWithdrawals.currency.name).toBe('currency')
+    expect(goalCompletionWithdrawals.createdAt.name).toBe('created_at')
   })
 })

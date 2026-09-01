@@ -8,6 +8,7 @@ import { GoalCreationSheet } from './-components/GoalCreationSheet'
 import { AllocationChangeSheet } from './-components/AllocationChangeSheet'
 import { GoalEditSheet } from './-components/GoalEditSheet'
 import { GoalLifecycleSheet } from './-components/GoalLifecycleSheet'
+import { GoalCompletionSheet } from '../../../features/goals/GoalCompletionSheet'
 
 export const Route = createFileRoute('/app/goals')({
   head: () => ({
@@ -45,6 +46,7 @@ function GoalsLayout() {
     goalId: string
     lifecycle: 'pause' | 'resume'
   } | null>(null)
+  const [completionGoalId, setCompletionGoalId] = useState<string | null>(null)
 
   if (data.profile === 'missing') return <FinancialOnboarding />
 
@@ -60,6 +62,7 @@ function GoalsLayout() {
           onChangeGoalLifecycle={(goalId, lifecycle) =>
             setLifecycleGoal({ goalId, lifecycle })
           }
+          onCompleteGoal={setCompletionGoalId}
         />
       ) : (
         <GoalsEmpty onNewGoal={() => setIsCreateOpen(true)} />
@@ -82,6 +85,13 @@ function GoalsLayout() {
         lifecycle={lifecycleGoal?.lifecycle ?? null}
         onOpenChange={(open) => {
           if (!open) setLifecycleGoal(null)
+        }}
+      />
+      <GoalCompletionSheet
+        open={completionGoalId !== null}
+        goalId={completionGoalId}
+        onOpenChange={(open) => {
+          if (!open) setCompletionGoalId(null)
         }}
       />
     </>

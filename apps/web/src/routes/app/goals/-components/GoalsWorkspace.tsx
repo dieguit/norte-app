@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Pause, Pencil, Play } from "lucide-react";
+import BigNumber from "bignumber.js";
+import { ChevronDown, ChevronRight, CircleCheck, Pause, Pencil, Play } from "lucide-react";
 import {
   formatCalendarMonth,
+  formatDate,
   formatMoney,
   formatPercentage,
 } from "../../../../lib/format";
@@ -24,6 +26,7 @@ export interface GoalsWorkspaceProps {
     goalId: string,
     lifecycle: "pause" | "resume",
   ) => void;
+  onCompleteGoal?: (goalId: string) => void;
 }
 
 interface GoalCardProps {
@@ -35,9 +38,15 @@ interface GoalCardProps {
     goalId: string,
     lifecycle: "pause" | "resume",
   ) => void;
+  onCompleteGoal?: (goalId: string) => void;
 }
 
 function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
+  const isCompleted = goal.status === "completed";
+  const excessSavings = goal.targetAmount
+    ? new BigNumber(goal.savingsValue.amount).minus(goal.targetAmount.amount)
+    : new BigNumber(0);
+
   return (
     <div
       id={`goal-detail-${goal.id}`}
@@ -45,6 +54,44 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
       aria-label={`Detalles de ${goal.name}`}
       className="grid grid-cols-1 gap-5 border-t border-[var(--line)] bg-[var(--foam)]/55 px-4 py-4 sm:grid-cols-3 sm:gap-0 sm:px-5"
     >
+      {isCompleted && (
+        <section className="border-b border-[var(--line)] pb-4 sm:col-span-3">
+          <h4 className="text-sm font-semibold text-[var(--sea-ink)]">Resumen de cumplimiento</h4>
+          <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-[var(--sea-ink-soft)]">Fecha de cumplimiento</dt>
+              <dd className="mt-1 font-semibold text-[var(--sea-ink)]">
+                {goal.completedAt
+                  ? formatDate(goal.completedAt, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+                  : "Fecha no disponible"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-[var(--sea-ink-soft)]">Monto retirado para completar</dt>
+              <dd className="mt-1 font-semibold text-[var(--sea-ink)]">
+                {formatMoney(goal.targetAmount ?? goal.actualValue)}
+              </dd>
+            </div>
+            {goal.completionWithdrawals?.map((withdrawal) => (
+              <div key={withdrawal.id}>
+                <dt className="text-xs text-[var(--sea-ink-soft)]">Retiro desde {withdrawal.placeName}</dt>
+                <dd className="mt-1 font-semibold text-[var(--sea-ink)]">
+                  {formatMoney(withdrawal.amount)}
+                </dd>
+              </div>
+            ))}
+            {excessSavings.isGreaterThan(0) && (
+              <div>
+                <dt className="text-xs text-[var(--sea-ink-soft)]">Excedente ahorrado</dt>
+                <dd className="mt-1 font-semibold text-[var(--sea-ink)]">
+                  {formatMoney({ amount: excessSavings.toFixed(2), currency: goal.actualValue.currency })}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </section>
+      )}
+
       <section className="sm:col-span-1 sm:pr-5">
         <h4 className="text-sm font-semibold text-[var(--sea-ink)]">Plan</h4>
         {goal.funding.length === 0 ? (
@@ -104,6 +151,7 @@ function GoalInlineDetail({ goal }: { goal: GoalWorkspaceItem }) {
         <SavingContributionActions
           goalId={goal.id}
           contributions={goal.contributions ?? goal.savingContributions ?? []}
+          readOnly={isCompleted}
         />
       </section>
     </div>
@@ -116,7 +164,9 @@ function GoalCard({
   onToggle,
   onEditGoal,
   onChangeGoalLifecycle,
+  onCompleteGoal,
 }: GoalCardProps) {
+  const isCompleted = goal.status === "completed";
   const projectionText = getGoalProjectionDisplay(goal);
   const projectionLabel =
     goal.status === "completed"
@@ -139,7 +189,7 @@ function GoalCard({
             >
               {goal.name}
             </h3>
-            {onEditGoal && (
+            {!isCompleted && onEditGoal && (
               <Button
                 type="button"
                 variant="ghost"
@@ -151,7 +201,7 @@ function GoalCard({
                 Editar objetivo
               </Button>
             )}
-            {onChangeGoalLifecycle &&
+            {!isCompleted && onChangeGoalLifecycle &&
               (goal.status === "active" || goal.status === "paused") && (
                 <Button
                   type="button"
@@ -175,9 +225,28 @@ function GoalCard({
                     : "Reanudar objetivo"}
                 </Button>
               )}
+            {!isCompleted && onCompleteGoal && goal.status === "active" && goal.completionEligible && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Marcar como cumplido ${goal.name}`}
+                onClick={() => onCompleteGoal(goal.id)}
+              >
+                <CircleCheck data-icon="inline-start" aria-hidden="true" />
+                Marcar como cumplido
+              </Button>
+            )}
           </div>
           <p className="text-xs text-[var(--sea-ink-soft)] sm:text-right">
-            {projectionLabel}
+            {isCompleted ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--lagoon-deep)]/25 bg-[var(--lagoon)]/35 px-2 py-1 text-xs font-semibold text-[var(--lagoon-deep)]">
+                <CircleCheck className="size-3.5" aria-hidden="true" />
+                Objetivo completado
+              </span>
+            ) : (
+              projectionLabel
+            )}
             <span className="mt-0.5 block font-semibold text-[var(--sea-ink)]">
               {projectionText}
             </span>
@@ -185,22 +254,22 @@ function GoalCard({
         </div>
 
         <div className="mt-4 grid grid-cols-2 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(8rem,1fr)_minmax(0,1fr)]">
-          <div aria-label={`Valor actual de ${goal.name}`}>
-            <span className="text-xs text-[var(--sea-ink-soft)]">Actual</span>
+          <div aria-label={`${isCompleted ? "Valor cumplido" : "Valor actual"} de ${goal.name}`}>
+            <span className="text-xs text-[var(--sea-ink-soft)]">{isCompleted ? "Cumplido" : "Actual"}</span>
             <strong className="mt-0.5 block text-lg text-[var(--sea-ink)]">
-              {formatMoney(goal.actualValue)}
+              {formatMoney(isCompleted && goal.targetAmount ? goal.targetAmount : goal.actualValue)}
             </strong>
           </div>
-          {goal.targetAmount && goal.progressPercentage ? (
+          {isCompleted || (goal.targetAmount && goal.progressPercentage) ? (
             <div className="col-span-2 order-last sm:col-span-1 sm:order-none">
               <progress
                 max={100}
-                value={Math.min(Number(goal.progressPercentage), 100)}
+                value={isCompleted ? 100 : Math.min(Number(goal.progressPercentage), 100)}
                 aria-label={`Progreso de ${goal.name}`}
                 className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--foam)] accent-[var(--lagoon-deep)] [&::-webkit-progress-bar]:bg-[var(--foam)] [&::-webkit-progress-value]:bg-[var(--lagoon-deep)] [&::-moz-progress-bar]:bg-[var(--lagoon-deep)]"
               />
               <span className="mt-1 block text-center text-xs font-medium text-[var(--sea-ink-soft)]">
-                {formatPercentage(goal.progressPercentage, 1)}
+                {formatPercentage(isCompleted ? 100 : goal.progressPercentage!, 1)}
               </span>
             </div>
           ) : (
@@ -243,6 +312,7 @@ export function GoalsWorkspace({
   onChangePlanning,
   onEditGoal,
   onChangeGoalLifecycle,
+  onCompleteGoal,
 }: GoalsWorkspaceProps) {
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<
@@ -303,6 +373,7 @@ export function GoalsWorkspace({
                 }}
                 onEditGoal={onEditGoal}
                 onChangeGoalLifecycle={onChangeGoalLifecycle}
+                onCompleteGoal={onCompleteGoal}
               />
             ))}
           </div>
@@ -360,6 +431,7 @@ export function GoalsWorkspace({
                       }}
                       onEditGoal={onEditGoal}
                       onChangeGoalLifecycle={onChangeGoalLifecycle}
+                      onCompleteGoal={onCompleteGoal}
                     />
                   ))}
                 </div>

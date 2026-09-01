@@ -11,3 +11,7 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+graphify-out/cost.json
+# graphify-out/cache/
+.fallow/

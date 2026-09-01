@@ -12,7 +12,7 @@ describe('normalizeSavingsPlaceName', () => {
 })
 
 describe('getSavingsPlaceEntries', () => {
-  it('includes direct contributions and incoming transfers only', () => {
+  it('includes direct contributions, incoming transfers, and completion withdrawals', () => {
     const movements = [
       {
         kind: 'contribution' as const,
@@ -46,6 +46,17 @@ describe('getSavingsPlaceEntries', () => {
         createdAt: '2026-01-03T00:00:00.000Z',
       },
       {
+        kind: 'completion' as const,
+        id: 'completion',
+        goalId: 'g1',
+        goalName: 'Vacaciones',
+        placeId: 'p1',
+        placeName: 'Banco',
+        amount: '600.00',
+        currency: 'ARS' as const,
+        createdAt: '2026-01-04T00:00:00.000Z',
+      },
+      {
         kind: 'contribution' as const,
         id: 'other-place',
         placeId: 'p2',
@@ -57,6 +68,7 @@ describe('getSavingsPlaceEntries', () => {
     ]
 
     expect(getSavingsPlaceEntries(movements, 'p1').map((movement) => movement.id)).toEqual([
+      'completion',
       'incoming',
       'direct',
     ])
@@ -114,6 +126,53 @@ describe('calculateSavingsPlacesWorkspace', () => {
     expect(banco.balances.USD).toBe('200.00')
     expect(caja.balances.ARS).toBe('750.00')
     expect(caja.balances.USD).toBe('0.00')
+  })
+
+  it('subtracts completion withdrawals and exposes them as movements', () => {
+    const result = calculateSavingsPlacesWorkspace({
+      places: [placeA],
+      contributions: [
+        { id: 'c1', placeId: 'p1', amount: '1000.00', currency: 'ARS', createdAt: new Date('2026-01-01') },
+      ],
+      transfers: [],
+      completionWithdrawals: [
+        {
+          id: 'w1',
+          goalId: 'g1',
+          goalName: 'Vacaciones',
+          placeId: 'p1',
+          placeName: 'Banco',
+          amount: '600.00',
+          currency: 'ARS',
+          createdAt: new Date('2026-01-02'),
+        },
+      ],
+    })
+
+    expect(result.places[0].balances.ARS).toBe('400.00')
+    expect(result.places[0].hasMovements).toBe(true)
+    expect(result.movements).toEqual([
+      {
+        kind: 'completion',
+        id: 'w1',
+        goalId: 'g1',
+        goalName: 'Vacaciones',
+        placeId: 'p1',
+        placeName: 'Banco',
+        amount: '600.00',
+        currency: 'ARS',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      },
+      {
+        kind: 'contribution',
+        id: 'c1',
+        placeId: 'p1',
+        placeName: 'Banco',
+        amount: '1000.00',
+        currency: 'ARS',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ])
   })
 
   it('sorts places by name', () => {

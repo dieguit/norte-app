@@ -33,7 +33,7 @@ import {
 } from "../../../features/contributions/saving-contribution.functions";
 import type { SavingContributionSummary } from "../../../features/goals/goals";
 import { SavingsPlacePicker } from "./SavingsPlacePicker";
-import { formatGoalProjection } from "../goals/-components/AllocationImpactComparison";
+import { formatGoalProjection } from "../../../features/goals/AllocationImpactComparison";
 
 export interface SavingContributionProps {
   kind?: ContributionKind;

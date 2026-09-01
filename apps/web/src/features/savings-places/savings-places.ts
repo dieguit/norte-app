@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js'
 import type { SavingContribution } from '@/db/schema'
 import type { SavingsPlaceTransfer } from '@/db/schema'
+import type { GoalCompletionWithdrawal } from '@/db/schema'
 
 export type CurrencyCode = 'ARS' | 'USD'
 
@@ -15,6 +16,17 @@ export type SavingsMovement =
   | {
       kind: 'contribution'
       id: string
+      placeId: string
+      placeName: string
+      amount: string
+      currency: CurrencyCode
+      createdAt: string
+    }
+  | {
+      kind: 'completion'
+      id: string
+      goalId: string
+      goalName: string
       placeId: string
       placeName: string
       amount: string
@@ -48,7 +60,7 @@ export function getSavingsPlaceEntries(
 ): SavingsMovement[] {
   return movements
     .filter((movement) =>
-      movement.kind === 'contribution'
+      movement.kind === 'contribution' || movement.kind === 'completion'
         ? movement.placeId === placeId
         : movement.toPlaceId === placeId,
     )
@@ -63,8 +75,12 @@ export function calculateSavingsPlacesWorkspace(input: {
     fromPlaceName: string
     toPlaceName: string
   })[]
+  completionWithdrawals?: (Pick<GoalCompletionWithdrawal, 'id' | 'goalId' | 'placeId' | 'amount' | 'currency' | 'createdAt'> & {
+    goalName: string
+    placeName: string
+  })[]
 }): SavingsPlacesWorkspace {
-  const { places, contributions, transfers } = input
+  const { places, contributions, transfers, completionWithdrawals = [] } = input
 
   const placeMap = new Map(places.map((p) => [p.id, p.name]))
 
@@ -97,6 +113,15 @@ export function calculateSavingsPlacesWorkspace(input: {
     }
   }
 
+  for (const withdrawal of completionWithdrawals) {
+    const placeBalances = balances.get(withdrawal.placeId)
+    if (placeBalances) {
+      placeBalances[withdrawal.currency as CurrencyCode] = placeBalances[
+        withdrawal.currency as CurrencyCode
+      ].minus(withdrawal.amount)
+    }
+  }
+
   const placeSummaries: SavingsPlaceSummary[] = places
     .map((place) => {
       const placeBalances = balances.get(place.id)!
@@ -108,7 +133,8 @@ export function calculateSavingsPlacesWorkspace(input: {
           USD: placeBalances.USD.toFixed(2),
         },
         hasMovements: contributions.some((c) => c.placeId === place.id) ||
-          transfers.some((t) => t.fromPlaceId === place.id || t.toPlaceId === place.id),
+          transfers.some((t) => t.fromPlaceId === place.id || t.toPlaceId === place.id) ||
+          completionWithdrawals.some((withdrawal) => withdrawal.placeId === place.id),
       }
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'es-AR'))
@@ -135,7 +161,22 @@ export function calculateSavingsPlacesWorkspace(input: {
     createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
   }))
 
-  const allMovements = [...contributionMovements, ...transferMovements]
+  const completionMovements: SavingsMovement[] = completionWithdrawals.map((withdrawal) => ({
+    kind: 'completion' as const,
+    id: withdrawal.id,
+    goalId: withdrawal.goalId,
+    goalName: withdrawal.goalName,
+    placeId: withdrawal.placeId,
+    placeName: withdrawal.placeName,
+    amount: withdrawal.amount,
+    currency: withdrawal.currency as CurrencyCode,
+    createdAt:
+      withdrawal.createdAt instanceof Date
+        ? withdrawal.createdAt.toISOString()
+        : String(withdrawal.createdAt),
+  }))
+
+  const allMovements = [...contributionMovements, ...transferMovements, ...completionMovements]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
   return {

@@ -33,13 +33,13 @@ export function SavingsMovementsSheet({
             Movimientos de {placeName}
           </SheetTitle>
           <SheetDescription>
-            Consultá los aportes y transferencias recibidas en este lugar.
+            Consultá los aportes, transferencias recibidas y objetivos completados en este lugar.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
           <section
-            aria-label={`Entradas de ${placeName}`}
+            aria-label={`Movimientos de ${placeName}`}
             className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)]"
           >
             {movements.length === 0 ? (
@@ -57,6 +57,8 @@ export function SavingsMovementsSheet({
                       <span className="text-sm font-medium text-[var(--sea-ink)]">
                         {movement.kind === 'contribution'
                           ? 'Ahorro registrado'
+                          : movement.kind === 'completion'
+                            ? `Objetivo completado: ${movement.goalName}`
                           : `Transferencia desde ${movement.fromPlaceName}`}
                       </span>
                       <span className="text-xs text-[var(--sea-ink-soft)]">
@@ -64,6 +66,7 @@ export function SavingsMovementsSheet({
                       </span>
                     </div>
                     <span className="shrink-0 font-medium tabular-nums text-[var(--sea-ink)] sm:text-right">
+                      {movement.kind === 'completion' ? '- ' : ''}
                       {formatMoney(createMoney(movement.amount, movement.currency))}
                     </span>
                   </li>

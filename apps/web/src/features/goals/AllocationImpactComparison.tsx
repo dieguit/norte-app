@@ -1,6 +1,6 @@
-import { formatCalendarMonth } from '../../../../lib/format'
-import type { GoalProjection } from '../../../../features/goals/goals'
-import type { Money } from '../../../../lib/money'
+import { formatCalendarMonth } from '../../lib/format'
+import type { GoalProjection } from './goals'
+import type { Money } from '../../lib/money'
 
 export function formatGoalProjection(projection: GoalProjection): string {
   switch (projection.status) {
@@ -65,7 +65,6 @@ export function AllocationImpactComparison({
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {/* Before */}
               <div className="flex flex-col gap-0.5 rounded-lg bg-[var(--surface)] p-2.5 border border-[var(--line)]">
                 <span className="text-xs font-semibold text-[var(--sea-ink-soft)] uppercase tracking-wider">
                   Antes
@@ -75,7 +74,6 @@ export function AllocationImpactComparison({
                 </p>
               </div>
 
-              {/* After */}
               <div className="flex flex-col gap-0.5 rounded-lg bg-[var(--foam)]/60 p-2.5 border border-[var(--line)]">
                 <span className="text-xs font-semibold text-[var(--pine)] uppercase tracking-wider">
                   Con este cambio

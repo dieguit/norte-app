@@ -25,6 +25,20 @@ import {
   StaleGoalLifecyclePreviewError,
 } from './goals.repository.server'
 import {
+  confirmGoalCompletionInRepository,
+  createGoalCompletionPreviewToken,
+  getGoalCompletionState,
+  GoalCompletionStateInvalidError,
+  StaleGoalCompletionPreviewError,
+} from './goal-completion.repository.server'
+import {
+  buildGoalCompletionContext,
+  buildGoalCompletionProposal,
+  type GoalCompletionContext,
+  type GoalCompletionDraft,
+  type GoalCompletionPreviewResult,
+} from './goal-completion'
+import {
   buildGoalCreationProposal,
   type GoalCreationContext,
   type GoalCreationPreviewResult,
@@ -51,6 +65,7 @@ import type {
 } from './allocation-change.schema'
 import {
   buildGoalLifecycleProposal,
+  selectGoalLifecycleAllocation,
   type GoalLifecycleContext,
   type GoalLifecyclePreviewResult,
   type GoalLifecycleState,
@@ -61,6 +76,11 @@ import type {
   GoalLifecyclePreviewInput,
   GoalLifecycleRequestInput,
 } from './goal-lifecycle.schema'
+import type {
+  ConfirmGoalCompletionInput,
+  GoalCompletionPreviewInput,
+  GoalCompletionRequestInput,
+} from './goal-completion.schema'
 
 export type {
   GoalsAppState,
@@ -68,6 +88,7 @@ export type {
   GoalEditContextState,
   AllocationChangeContextState,
   GoalLifecycleContextState,
+  GoalCompletionContextState,
 }
 
 type GoalCreationContextState =
@@ -85,6 +106,10 @@ type AllocationChangeContextState =
 type GoalLifecycleContextState =
   | { profile: 'missing' }
   | ({ profile: 'present' } & GoalLifecycleContext)
+
+type GoalCompletionContextState =
+  | { profile: 'missing' }
+  | { profile: 'present'; context: GoalCompletionContext }
 
 export function mapGoalCreationContext(
   state: GoalCreationState,
@@ -525,37 +550,18 @@ export function mapGoalLifecycleContext(
       currency: g.currency,
     }))
 
-  const winningSnapshot = state.source.snapshots?.[0]
-  let currentAllocation: GoalLifecycleContext['currentAllocation'] = undefined
-
-  if (winningSnapshot) {
-    const entries = (state.source.allocations ?? [])
-      .filter((a) => a.snapshotId === winningSnapshot.id)
-      .map((a) => ({
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-    currentAllocation = {
-      effectiveMonth: winningSnapshot.effectiveMonth,
-      entries,
-    }
-  }
-
-  const pendingSnapshot = state.pendingSnapshots?.[0]
-  let pendingAllocation: GoalLifecycleContext['pendingAllocation'] = undefined
-
-  if (pendingSnapshot) {
-    const entries = (state.pendingAllocations ?? [])
-      .filter((a) => a.snapshotId === pendingSnapshot.id)
-      .map((a) => ({
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-    pendingAllocation = {
-      effectiveMonth: pendingSnapshot.effectiveMonth,
-      entries,
-    }
-  }
+  const currentAllocation = selectGoalLifecycleAllocation(
+    state.source.snapshots,
+    state.source.allocations,
+    currentMonth,
+    'current',
+  )
+  const pendingAllocation = selectGoalLifecycleAllocation(
+    state.pendingSnapshots,
+    state.pendingAllocations,
+    currentMonth,
+    'pending',
+  )
 
   return {
     goalId,
@@ -644,3 +650,71 @@ export async function confirmGoalLifecycleServer({
   }
 }
 
+export async function getGoalCompletionContextServer({
+  data,
+}: {
+  data: GoalCompletionRequestInput
+}): Promise<GoalCompletionContextState> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const state = await getGoalCompletionState(userId, currentMonth, data.goalId)
+  if (!state) {
+    return { profile: 'missing' }
+  }
+  return {
+    profile: 'present',
+    context: buildGoalCompletionContext(state, currentMonth, data.goalId),
+  }
+}
+
+export async function previewGoalCompletionServer({
+  data,
+}: {
+  data: GoalCompletionPreviewInput
+}): Promise<GoalCompletionPreviewResult> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const state = await getGoalCompletionState(userId, currentMonth, data.goalId)
+  if (!state) {
+    throw new Error('Completá tu perfil financiero antes de completar un objetivo.')
+  }
+
+  const draft: GoalCompletionDraft = data
+  const proposal = buildGoalCompletionProposal({ state, currentMonth, draft })
+  return {
+    proposal,
+    previewToken: createGoalCompletionPreviewToken(state, currentMonth, draft),
+  }
+}
+
+export async function confirmGoalCompletionServer({
+  data,
+}: {
+  data: ConfirmGoalCompletionInput
+}): Promise<
+  | { status: 'completed'; completedAt: string }
+  | { status: 'stale'; preview: GoalCompletionPreviewResult }
+  | { status: 'invalid'; message: string }
+> {
+  const userId = await requireFinancialUser()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const { previewToken, ...draft } = data
+
+  try {
+    const result = await confirmGoalCompletionInRepository({
+      userId,
+      currentMonth,
+      draft,
+      previewToken,
+    })
+    return { status: 'completed', completedAt: result.completedAt }
+  } catch (error) {
+    if (error instanceof StaleGoalCompletionPreviewError) {
+      return { status: 'stale', preview: error.refreshedPreview }
+    }
+    if (error instanceof GoalCompletionStateInvalidError) {
+      return { status: 'invalid', message: error.message }
+    }
+    throw error
+  }
+}

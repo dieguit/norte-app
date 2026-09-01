@@ -15,6 +15,7 @@ import {
   getGoalEditContext,
   getGoalLifecycleContext,
   previewGoalLifecycle,
+  getGoalCompletionContext,
 } from '../../../features/goals/goals.functions'
 import type { GoalsWorkspace, GoalWorkspaceItem } from '../../../features/goals/goals'
 import { Route as rootRoute } from '../../__root'
@@ -59,6 +60,9 @@ vi.mock('../../../features/goals/goals.functions', () => ({
   getGoalLifecycleContext: vi.fn(),
   previewGoalLifecycle: vi.fn(),
   confirmGoalLifecycle: vi.fn(),
+  getGoalCompletionContext: vi.fn(),
+  previewGoalCompletion: vi.fn(),
+  confirmGoalCompletion: vi.fn(),
 }))
 
 vi.mock('../../../features/financial/financial.functions', () => ({
@@ -96,6 +100,7 @@ const sampleGoal: GoalWorkspaceItem = {
   annualReturnRate: '8.000',
   availability: 'available_now',
   usesPlanningRate: false,
+  completionEligible: false,
 }
 
 const sampleFinancialSummary = {
@@ -304,7 +309,7 @@ describe('Goals routes and workspace', () => {
       expect(screen.queryByLabelText('Nombre del objetivo')).not.toBeInTheDocument()
     })
 
-    it('opens GoalLifecycleSheet when clicking Pausar objetivo on active goal', async () => {
+  it('opens GoalLifecycleSheet when clicking Pausar objetivo on active goal', async () => {
       vi.mocked(getGoalsWorkspace).mockResolvedValue({
         profile: 'present',
         workspace: sampleWorkspace,
@@ -470,5 +475,34 @@ describe('Goals routes and workspace', () => {
       expect(await screen.findByRole('heading', { level: 2, name: 'Pausar objetivo' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { level: 2, name: 'Editar objetivo' })).not.toBeInTheDocument()
     })
+  })
+
+  it('mounts the shared completion sheet for an eligible goal action', async () => {
+    vi.mocked(getGoalsWorkspace).mockResolvedValue({
+      profile: 'present',
+      workspace: {
+        ...sampleWorkspace,
+        groups: [{ status: 'active', goals: [{ ...sampleGoal, type: 'purchase', completionEligible: true }] }],
+      },
+    })
+    vi.mocked(getGoalCompletionContext).mockResolvedValue({
+      profile: 'present',
+      context: {
+        goalId: 'goal-1',
+        goalName: 'Colchón financiero',
+        targetAmount: { amount: '1000.00', currency: 'USD' },
+        savingsValue: { amount: '1000.00', currency: 'USD' },
+        currentMonth: '2026-08',
+        savingsPlaces: [{ id: 'place-1', name: 'Caja', balance: { amount: '1000.00', currency: 'USD' } }],
+        activeGoals: [{ id: 'goal-1', name: 'Colchón financiero', currency: 'USD' }],
+      },
+    })
+
+    const router = createTestRouter()
+    render(<RouterProvider router={router} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como cumplido Colchón financiero' }))
+    expect(await screen.findByRole('heading', { name: 'Completar objetivo' })).toBeInTheDocument()
+    expect(getGoalCompletionContext).toHaveBeenCalledWith({ data: { goalId: 'goal-1' } })
   })
 })

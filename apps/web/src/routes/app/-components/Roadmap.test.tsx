@@ -35,6 +35,7 @@ const goal = {
   funding: [],
   projection: { status: 'available', completionMonth: '2026-09' },
   usesPlanningRate: false,
+  completionEligible: false,
 } satisfies GoalWorkspaceItem
 
 const month = (value: string): RoadmapMonth => ({
@@ -111,5 +112,33 @@ describe('Roadmap component', () => {
     expect(screen.getByText('Tu hoja de ruta empieza hoy')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Ir a Finanzas' })).toHaveAttribute('href', '/app/finances')
     expect(screen.getByRole('link', { name: 'Ir a Objetivos' })).toHaveAttribute('href', '/app/goals')
+  })
+
+  it('distinguishes completed milestones with explicit success text and icon', () => {
+    const completedGoal = {
+      ...goal,
+      id: 'completed-goal',
+      name: 'Viaje cumplido',
+      status: 'completed' as const,
+      completedAt: '2026-08-15T00:00:00.000Z',
+    }
+
+    render(
+      <Roadmap
+        roadmap={{
+          ...roadmap,
+          currentMonth: { ...roadmap.currentMonth, objectives: [completedGoal] },
+        }}
+      />,
+    )
+
+    const completedCard = screen.getByRole('heading', { name: 'Viaje cumplido' }).closest('article')
+    expect(completedCard).toHaveClass('border-[var(--lagoon-deep)]/35', 'bg-[var(--lagoon)]/25')
+    expect(within(completedCard!).getByText('Objetivo completado')).toBeVisible()
+    expect(completedCard?.querySelector('svg.lucide-circle-check')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+    expect(screen.getByText('Objetivo proyectado')).toBeVisible()
   })
 })

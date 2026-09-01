@@ -24,7 +24,7 @@ import type {
   AllocationChangeContext,
   AllocationChangePreviewResult,
 } from "../../../../features/goals/allocation-change";
-import { AllocationImpactComparison } from "./AllocationImpactComparison";
+import { AllocationImpactComparison } from "../../../../features/goals/AllocationImpactComparison";
 
 export interface AllocationChangeProps {
   context: AllocationChangeContext;

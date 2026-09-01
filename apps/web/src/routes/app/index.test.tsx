@@ -26,14 +26,22 @@ describe('loadHomeRoadmap', () => {
   })
 
   it('loads existing goals and finances in parallel and builds the roadmap', async () => {
-    vi.mocked(getGoalsWorkspace).mockResolvedValue({ profile: 'present', workspace: goals })
+    const eligibleGoal = { id: 'goal-eligible', completionEligible: true, status: 'active', projection: { status: 'available', completionMonth: '2026-08' }, contributions: [] }
+    const ineligibleGoal = { id: 'goal-ineligible', completionEligible: false, status: 'active', projection: { status: 'available', completionMonth: '2026-08' }, contributions: [] }
+    vi.mocked(getGoalsWorkspace).mockResolvedValue({
+      profile: 'present',
+      workspace: { ...goals, groups: [{ status: 'active', goals: [eligibleGoal, ineligibleGoal] }] },
+    })
     vi.mocked(getFinancesWorkspace).mockResolvedValue(finances)
 
-    const roadmap = await loadHomeRoadmap('present', '2026-08')
+    const result = await loadHomeRoadmap('present', '2026-08')
 
+    expect(result).not.toBeNull()
+    if (!result) throw new Error('Expected present-profile home data.')
     expect(getGoalsWorkspace).toHaveBeenCalledOnce()
     expect(getFinancesWorkspace).toHaveBeenCalledOnce()
-    expect(roadmap?.currentMonth.month).toBe('2026-08')
+    expect(result.roadmap.currentMonth.month).toBe('2026-08')
+    expect(result.completionGoals).toEqual([eligibleGoal])
   })
 
   it('does not load roadmap workspaces before onboarding', async () => {

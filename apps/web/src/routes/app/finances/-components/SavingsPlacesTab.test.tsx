@@ -182,7 +182,7 @@ describe('SavingsPlacesTab', () => {
       screen.getByRole('heading', { name: 'Movimientos de Banco Nación' }),
     ).toBeInTheDocument()
     const section = screen.getByRole('region', {
-      name: 'Entradas de Banco Nación',
+      name: 'Movimientos de Banco Nación',
     })
     expect(within(section).getByText('Ahorro registrado')).toBeInTheDocument()
     expect(within(section).getByText('Transferencia desde Efectivo')).toBeInTheDocument()

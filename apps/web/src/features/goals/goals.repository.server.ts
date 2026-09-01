@@ -130,6 +130,15 @@ export interface GoalsWorkspaceRows {
       percentage: string
     }>
   }>
+  completionWithdrawals?: Array<{
+    id: string
+    goalId: string
+    placeId: string
+    placeName: string
+    amount: string
+    currency: string
+    createdAt: Date | string
+  }>
 }
 
 export function selectWinningSnapshots(
@@ -244,6 +253,25 @@ export async function getGoalsWorkspaceRows(
     where: (placeTable: any, { eq }: any) => eq(placeTable.userId, userId),
   })
   const placeNameMap = new Map<string, string>(savingsPlaces.map((p: any) => [p.id, p.name]))
+  const goalIds = base.goals.map((goal: any) => goal.id)
+  const completionRows =
+    goalIds.length > 0 && savingsPlaces.length > 0
+      ? await db.query.goalCompletionWithdrawals.findMany({
+          where: (withdrawalsTable: any, { and, inArray }: any) =>
+            and(inArray(withdrawalsTable.placeId, savingsPlaces.map((place: any) => place.id)), inArray(withdrawalsTable.goalId, goalIds)),
+        })
+      : []
+  const completionWithdrawals = completionRows
+    .filter((withdrawal: any) => placeNameMap.has(withdrawal.placeId) && goalIds.includes(withdrawal.goalId))
+    .map((withdrawal: any) => ({
+      id: withdrawal.id,
+      goalId: withdrawal.goalId,
+      placeId: withdrawal.placeId,
+      placeName: placeNameMap.get(withdrawal.placeId)!,
+      amount: withdrawal.amount,
+      currency: withdrawal.currency,
+      createdAt: withdrawal.createdAt,
+    }))
 
   const userInvestmentContributions = await db.query.investmentContributions.findMany({
     where: (contribTable: any, { eq }: any) => eq(contribTable.userId, userId),
@@ -310,6 +338,7 @@ export async function getGoalsWorkspaceRows(
     allocations,
     contributions: allContributions,
     savingContributions: allContributions,
+    completionWithdrawals,
   }
 }
 
@@ -1022,6 +1051,17 @@ export function mapRowsToGoalsWorkspaceSource(rows: GoalsWorkspaceRows): GoalsWo
         amount: a.amount,
         percentage: a.percentage,
       })),
+    })),
+    completionWithdrawals: (rows.completionWithdrawals ?? []).map((withdrawal) => ({
+      id: withdrawal.id,
+      goalId: withdrawal.goalId,
+      placeId: withdrawal.placeId,
+      placeName: withdrawal.placeName,
+      amount: withdrawal.amount,
+      currency: withdrawal.currency as CurrencyCode,
+      createdAt: withdrawal.createdAt instanceof Date
+        ? withdrawal.createdAt.toISOString()
+        : String(withdrawal.createdAt),
     })),
   }
 }

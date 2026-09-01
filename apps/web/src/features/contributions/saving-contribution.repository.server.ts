@@ -79,6 +79,24 @@ export function createContributionPreviewToken(
 
 export const createSavingContributionPreviewToken = createContributionPreviewToken
 
+async function assertContributionGoalsAreMutable(
+  tx: any,
+  userId: string,
+  allocations: Array<{ goalId: string }>,
+): Promise<void> {
+  const goalIds = [...new Set(allocations.map(({ goalId }) => goalId))]
+  if (!goalIds.length) return
+
+  const goals = await tx.query.financialGoals.findMany({
+    where: (goalsTable: any, { and, eq, inArray }: any) =>
+      and(eq(goalsTable.userId, userId), inArray(goalsTable.id, goalIds)),
+  })
+
+  if (goals.some((goal: any) => goal.status === 'completed')) {
+    throw new Error('No se pueden modificar aportes de objetivos completados.')
+  }
+}
+
 export async function getSavingContributionStateWithExecutor(
   executor: any,
   userId: string,
@@ -383,6 +401,16 @@ export async function updateSavingContributionInRepository(input: {
   const { userId, contributionId, draft } = input
 
   return db.transaction(async (tx) => {
+    const lockedProfile = await tx
+      .select({ userId: financialProfiles.userId })
+      .from(financialProfiles)
+      .where(eq(financialProfiles.userId, userId))
+      .for('update')
+
+    if (!lockedProfile.length) {
+      throw new Error('Financial profile not found.')
+    }
+
     const savingContribution = await tx.query.savingContributions.findFirst({
       where: (contribTable: any, { and, eq }: any) =>
         and(eq(contribTable.id, contributionId), eq(contribTable.userId, userId)),
@@ -396,6 +424,8 @@ export async function updateSavingContributionInRepository(input: {
       if (!allocations.length) {
         throw new Error('No allocations found for contribution.')
       }
+
+      await assertContributionGoalsAreMutable(tx, userId, allocations)
 
       const parsedDraft = parseSavingDraft(draft)
       if (parsedDraft.currency !== savingContribution.currency) {
@@ -468,6 +498,8 @@ export async function updateSavingContributionInRepository(input: {
         throw new Error('No allocations found for contribution.')
       }
 
+      await assertContributionGoalsAreMutable(tx, userId, allocations)
+
       const parsedDraft = parseSavingDraft(draft)
       if (parsedDraft.currency !== investmentContribution.currency) {
         throw new Error('Cannot change contribution currency on update.')
@@ -524,15 +556,42 @@ export async function deleteSavingContributionInRepository(input: {
   const { userId, contributionId } = input
 
   return db.transaction(async (tx) => {
+    const lockedProfile = await tx
+      .select({ userId: financialProfiles.userId })
+      .from(financialProfiles)
+      .where(eq(financialProfiles.userId, userId))
+      .for('update')
+
+    if (!lockedProfile.length) {
+      throw new Error('Financial profile not found.')
+    }
+
     const savingContribution = await tx.query.savingContributions.findFirst({
       where: (contribTable: any, { and, eq }: any) =>
         and(eq(contribTable.id, contributionId), eq(contribTable.userId, userId)),
     })
 
     if (savingContribution) {
+      if (!savingContribution.placeId) {
+        throw new Error('Lugar de ahorro no encontrado.')
+      }
+
+      for (const placeId of [savingContribution.placeId].sort()) {
+        const [place] = await tx
+          .select()
+          .from(savingsPlaces)
+          .where(and(eq(savingsPlaces.id, placeId), eq(savingsPlaces.userId, userId)))
+          .for('update')
+        if (!place) {
+          throw new Error('Lugar de ahorro no encontrado.')
+        }
+      }
+
       const allocations = await tx.query.savingContributionAllocations.findMany({
         where: (allocTable: any, { eq }: any) => eq(allocTable.contributionId, contributionId),
       })
+
+      await assertContributionGoalsAreMutable(tx, userId, allocations)
 
       const positionIds = allocations.map((a: any) => a.savingPositionId).filter(Boolean)
 
@@ -553,6 +612,8 @@ export async function deleteSavingContributionInRepository(input: {
       const allocations = await tx.query.investmentContributionAllocations.findMany({
         where: (allocTable: any, { eq }: any) => eq(allocTable.contributionId, contributionId),
       })
+
+      await assertContributionGoalsAreMutable(tx, userId, allocations)
 
       for (const alloc of allocations) {
         const position = await tx.query.goalInvestmentPositions.findFirst({

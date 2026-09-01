@@ -8,13 +8,27 @@ import type { SavingsPlacesWorkspace } from './savings-places'
 import type { SavingsPlaceSelection } from './savings-places.schema'
 
 export async function getSavingsPlacesWorkspaceState(userId: string): Promise<SavingsPlacesWorkspace> {
-  const [places, contributions, transfers] = await Promise.all([
-    db.query.savingsPlaces.findMany({ where: (table, { eq }) => eq(table.userId, userId) }),
+  const places = await db.query.savingsPlaces.findMany({
+    where: (table, { eq }) => eq(table.userId, userId),
+  })
+  const placeIds = places.map((place) => place.id)
+
+  const [contributions, transfers, goals] = await Promise.all([
     db.query.savingContributions.findMany({ where: (table, { eq }) => eq(table.userId, userId) }),
     db.query.savingsPlaceTransfers.findMany({ where: (table, { eq }) => eq(table.userId, userId) }),
+    db.query.financialGoals.findMany({ where: (table, { eq }) => eq(table.userId, userId) }),
   ])
 
   const placeMap = new Map(places.map((p) => [p.id, p.name]))
+  const goalMap = new Map(goals.map((goal) => [goal.id, goal.name]))
+  const goalIds = goals.map((goal) => goal.id)
+  const completionWithdrawals =
+    placeIds.length > 0 && goalIds.length > 0
+      ? await db.query.goalCompletionWithdrawals.findMany({
+          where: (table, { and, inArray }) =>
+            and(inArray(table.placeId, placeIds), inArray(table.goalId, goalIds)),
+        })
+      : []
 
   const transfersWithNames = transfers.map((t) => ({
     ...t,
@@ -22,10 +36,19 @@ export async function getSavingsPlacesWorkspaceState(userId: string): Promise<Sa
     toPlaceName: placeMap.get(t.toPlaceId) ?? '',
   }))
 
+  const completionWithdrawalsWithNames = completionWithdrawals
+    .filter((withdrawal) => goalMap.has(withdrawal.goalId) && placeMap.has(withdrawal.placeId))
+    .map((withdrawal) => ({
+      ...withdrawal,
+      goalName: goalMap.get(withdrawal.goalId)!,
+      placeName: placeMap.get(withdrawal.placeId)!,
+    }))
+
   return calculateSavingsPlacesWorkspace({
     places,
     contributions,
     transfers: transfersWithNames,
+    completionWithdrawals: completionWithdrawalsWithNames,
   })
 }
 
@@ -87,6 +110,13 @@ export async function deleteSavingsPlaceInRepository(
     where: (table, { eq }) => eq(table.placeId, placeId),
   })
   if (hasContributions) {
+    throw new Error('No podés eliminar un lugar que tiene movimientos.')
+  }
+
+  const hasCompletionWithdrawals = await db.query.goalCompletionWithdrawals.findFirst({
+    where: (table, { eq }) => eq(table.placeId, placeId),
+  })
+  if (hasCompletionWithdrawals) {
     throw new Error('No podés eliminar un lugar que tiene movimientos.')
   }
 
@@ -164,6 +194,23 @@ export async function transferSavingsInRepository(input: {
       where: (table: any, { eq }: any) => eq(table.userId, userId),
     })
 
+    const goals = await tx.query.financialGoals.findMany({
+      where: (table: any, { eq }: any) => eq(table.userId, userId),
+    })
+    const goalIds = goals.map((goal: any) => goal.id)
+    const ownedGoalIds = new Set(goalIds)
+    const completionWithdrawals =
+      goalIds.length > 0
+        ? await tx.query.goalCompletionWithdrawals.findMany({
+            where: (table: any, { and, eq, inArray }: any) =>
+              and(
+                eq(table.placeId, fromPlaceId),
+                eq(table.currency, currency),
+                inArray(table.goalId, goalIds),
+              ),
+          })
+        : []
+
     let sourceBalance = new BigNumber(0)
     for (const c of contributions) {
       if (c.placeId === fromPlaceId && c.currency === currency) {
@@ -178,7 +225,11 @@ export async function transferSavingsInRepository(input: {
         sourceBalance = sourceBalance.plus(t.amount)
       }
     }
-
+    for (const withdrawal of completionWithdrawals) {
+      if (ownedGoalIds.has(withdrawal.goalId)) {
+        sourceBalance = sourceBalance.minus(withdrawal.amount)
+      }
+    }
     const transferAmount = new BigNumber(amount)
     if (sourceBalance.isLessThan(transferAmount)) {
       throw new Error('No tenés saldo suficiente en ese lugar.')

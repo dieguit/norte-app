@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildGoalLifecycleProposal,
+  selectGoalLifecycleAllocation,
   serializeGoalLifecycleState,
   type GoalLifecycleState,
 } from './goal-lifecycle'
@@ -243,6 +244,57 @@ describe('buildGoalLifecycleProposal', () => {
     ).toThrow('sum to 100%')
   })
 
+  it('accepts a pause draft with a numeric zero target percentage', () => {
+    const state: GoalLifecycleState = {
+      source: createThreeGoalsWorkspaceSource('active'),
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    }
+
+    expect(() =>
+      buildGoalLifecycleProposal({
+        lifecycle: 'pause',
+        goalId: 'travel',
+        state,
+        currentMonth: '2026-08',
+        draft: {
+          allocations: [
+            { goalId: 'travel', percentage: '0' },
+            { goalId: 'emergency', percentage: '75.00' },
+            { goalId: 'retirement', percentage: '25.00' },
+          ],
+        },
+      }),
+    ).not.toThrow()
+  })
+
+  it('accepts a pause draft with a comma-formatted zero target percentage', () => {
+    const state: GoalLifecycleState = {
+      source: createThreeGoalsWorkspaceSource('active'),
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    }
+
+    const proposal = buildGoalLifecycleProposal({
+      lifecycle: 'pause',
+      goalId: 'travel',
+      state,
+      currentMonth: '2026-08',
+      draft: {
+        allocations: [
+          { goalId: 'travel', percentage: '0,00' },
+          { goalId: 'emergency', percentage: '75.00' },
+          { goalId: 'retirement', percentage: '25.00' },
+        ],
+      },
+    })
+
+    expect(proposal.persistedAllocation.entries).toEqual([
+      { goalId: 'emergency', percentage: '75.00' },
+      { goalId: 'retirement', percentage: '25.00' },
+    ])
+  })
+
   it('accepts a valid resume draft and applies it correctly', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('paused'),
@@ -334,5 +386,117 @@ describe('buildGoalLifecycleProposal', () => {
     expect(serialized1).toBe(serialized2)
     expect(serialized1).toContain('"lifecycle":"pause"')
     expect(serialized1).toContain('"goalId":"travel"')
+  })
+
+  it('invalidates serialization when incomes or expenses change but not when they are reordered', () => {
+    const state: GoalLifecycleState = {
+      source: {
+        ...createThreeGoalsWorkspaceSource(),
+        incomes: [
+          {
+            id: 'income-2',
+            sourceKind: 'bonus',
+            sourceId: null,
+            sourceName: 'Bono',
+            concept: 'Annual bonus',
+            amount: '200000.00',
+            currency: 'ARS',
+            recurring: false,
+            effectiveMonth: '2026-08-01',
+          },
+          {
+            id: 'income-1',
+            sourceKind: 'salary',
+            sourceId: null,
+            sourceName: 'Sueldo',
+            concept: null,
+            amount: '1000000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-01-01',
+          },
+        ],
+        expenses: [
+          {
+            id: 'expense-2',
+            sourceKind: 'travel_leisure',
+            sourceId: null,
+            sourceName: 'Viaje',
+            concept: 'Weekend trip',
+            amount: '50000.00',
+            currency: 'ARS',
+            recurring: false,
+            effectiveMonth: '2026-08-01',
+            endMonth: null,
+          },
+          {
+            id: 'expense-1',
+            sourceKind: 'housing',
+            sourceId: null,
+            sourceName: 'Alquiler',
+            concept: null,
+            amount: '300000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-01-01',
+            endMonth: null,
+          },
+        ],
+      },
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    }
+
+    const serialized = serializeGoalLifecycleState('pause', 'travel', state, '2026-08')
+    const reordered: GoalLifecycleState = {
+      ...state,
+      source: {
+        ...state.source,
+        incomes: [...state.source.incomes!].reverse(),
+        expenses: [...state.source.expenses!].reverse(),
+      },
+    }
+
+    expect(serialized).toBe(serializeGoalLifecycleState('pause', 'travel', reordered, '2026-08'))
+    expect(serialized).not.toBe(
+      serializeGoalLifecycleState(
+        'pause',
+        'travel',
+        { ...state, source: { ...state.source, incomes: [{ ...state.source.incomes![0], amount: '250000.00' }, state.source.incomes![1]] } },
+        '2026-08',
+      ),
+    )
+    expect(serialized).not.toBe(
+      serializeGoalLifecycleState(
+        'pause',
+        'travel',
+        { ...state, source: { ...state.source, expenses: [{ ...state.source.expenses![0], amount: '60000.00' }, state.source.expenses![1]] } },
+        '2026-08',
+      ),
+    )
+  })
+})
+
+describe('selectGoalLifecycleAllocation', () => {
+  it('selects the latest current snapshot and earliest pending snapshot consistently', () => {
+    const snapshots = [
+      { id: 'future', userId: 'user-1', effectiveMonth: '2026-10-01' },
+      { id: 'current', userId: 'user-1', effectiveMonth: '2026-08-01' },
+      { id: 'next', userId: 'user-1', effectiveMonth: '2026-09-01' },
+    ]
+    const allocations = [
+      { id: 'future-entry', snapshotId: 'future', goalId: 'goal-1', percentage: '20.00' },
+      { id: 'current-entry', snapshotId: 'current', goalId: 'goal-1', percentage: '60.00' },
+      { id: 'next-entry', snapshotId: 'next', goalId: 'goal-1', percentage: '80.00' },
+    ]
+
+    expect(selectGoalLifecycleAllocation(snapshots, allocations, '2026-08', 'current')).toEqual({
+      effectiveMonth: '2026-08-01',
+      entries: [{ goalId: 'goal-1', percentage: '60.00' }],
+    })
+    expect(selectGoalLifecycleAllocation(snapshots, allocations, '2026-08', 'pending')).toEqual({
+      effectiveMonth: '2026-09-01',
+      entries: [{ goalId: 'goal-1', percentage: '80.00' }],
+    })
   })
 })

@@ -7,7 +7,7 @@ import type {
   GoalCreationContext,
   GoalCreationPreviewResult,
 } from '../../../../features/goals/goal-creation'
-import { AllocationImpactComparison } from './AllocationImpactComparison'
+import { AllocationImpactComparison } from '../../../../features/goals/AllocationImpactComparison'
 import { GoalImpact } from './GoalImpact'
 import { useGoalCreationForm } from './useGoalCreationForm'
 
@@ -346,4 +346,3 @@ describe('AllocationImpactComparison component', () => {
     expect(container.firstChild).toBeNull()
   })
 })
-

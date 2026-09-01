@@ -308,6 +308,7 @@ export type InvestmentContribution = typeof investmentContributions.$inferSelect
 export type InvestmentContributionAllocation = typeof investmentContributionAllocations.$inferSelect
 export type SavingsPlace = typeof savingsPlaces.$inferSelect
 export type SavingsPlaceTransfer = typeof savingsPlaceTransfers.$inferSelect
+export type GoalCompletionWithdrawal = typeof goalCompletionWithdrawals.$inferSelect
 
 export const incomeSources = pgTable(
   'income_sources',
@@ -429,6 +430,40 @@ export const savingsPlaceTransfers = pgTable(
     check('savings_place_transfers_amount_check', sql`${table.amount} > 0`),
     check('savings_place_transfers_currency_check', sql`${table.currency} in ('ARS', 'USD')`),
     check('savings_place_transfers_places_check', sql`${table.fromPlaceId} <> ${table.toPlaceId}`),
+  ],
+)
+
+export const goalCompletionWithdrawals = pgTable(
+  'goal_completion_withdrawals',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    goalId: uuid('goal_id')
+      .notNull()
+      .references(() => financialGoals.id, { onDelete: 'restrict' }),
+    placeId: uuid('place_id')
+      .notNull()
+      .references(() => savingsPlaces.id, { onDelete: 'restrict' }),
+    amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('goal_completion_withdrawals_goal_place_uidx').on(
+      table.goalId,
+      table.placeId,
+    ),
+    index('goal_completion_withdrawals_goal_id_idx').on(table.goalId),
+    index('goal_completion_withdrawals_place_id_idx').on(table.placeId),
+    check(
+      'goal_completion_withdrawals_amount_check',
+      sql`${table.amount} > 0`,
+    ),
+    check(
+      'goal_completion_withdrawals_currency_check',
+      sql`${table.currency} in ('ARS', 'USD')`,
+    ),
   ],
 )
 

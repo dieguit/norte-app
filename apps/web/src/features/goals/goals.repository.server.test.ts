@@ -78,6 +78,12 @@ const mockTx = {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    savingsPlaceTransfers: {
+      findMany: vi.fn(),
+    },
+    goalCompletionWithdrawals: {
+      findMany: vi.fn(),
+    },
   },
 }
 
@@ -131,6 +137,12 @@ vi.mock('../../db/client', () => ({
         findMany: vi.fn(),
         findFirst: vi.fn(),
       },
+      savingsPlaceTransfers: {
+        findMany: vi.fn(),
+      },
+      goalCompletionWithdrawals: {
+        findMany: vi.fn(),
+      },
     },
   },
 }))
@@ -144,6 +156,7 @@ describe('goals.repository.server', () => {
     vi.mocked(db.query.savingContributionAllocations.findMany).mockResolvedValue([] as never)
     vi.mocked(db.query.investmentContributions.findMany).mockResolvedValue([] as never)
     vi.mocked(db.query.investmentContributionAllocations.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.query.goalCompletionWithdrawals.findMany).mockResolvedValue([] as never)
   })
 
   it('returns null when financial profile is absent', async () => {
@@ -523,6 +536,7 @@ describe('goals.repository.server', () => {
       expenses: [],
       contributions: [],
       savingContributions: [],
+      completionWithdrawals: [],
     })
 
     expect(db.query.goalSavingsPositions.findMany).not.toHaveBeenCalled()
@@ -719,6 +733,16 @@ describe('goals.repository.server', () => {
     vi.mocked(db.query.savingsPlaces.findMany).mockResolvedValue([
       { id: 'place-1', name: 'Banco Nación' },
     ] as never)
+    vi.mocked(db.query.goalCompletionWithdrawals.findMany).mockResolvedValue([
+      {
+        id: 'completion-1',
+        goalId: 'g1',
+        placeId: 'place-1',
+        amount: '50000.00',
+        currency: 'ARS',
+        createdAt: new Date('2026-08-20T12:00:00Z'),
+      },
+    ] as never)
 
     const result = await getGoalsWorkspaceRows('user_1', '2026-08')
 
@@ -770,6 +794,17 @@ describe('goals.repository.server', () => {
             percentage: '100.00',
           },
         ],
+      },
+    ])
+    expect(result?.completionWithdrawals).toEqual([
+      {
+        id: 'completion-1',
+        goalId: 'g1',
+        placeId: 'place-1',
+        placeName: 'Banco Nación',
+        amount: '50000.00',
+        currency: 'ARS',
+        createdAt: new Date('2026-08-20T12:00:00Z'),
       },
     ])
 
@@ -2679,6 +2714,105 @@ describe('goals.repository.server', () => {
       expect(token1).not.toBe(tokenDiffGoal)
       expect(token1).not.toBe(tokenDiffMonth)
       expect(token1).not.toBe(tokenDiffDraft)
+    })
+
+    it('changes when incomes or expenses change but not when they are reordered', () => {
+      const state = {
+        source: {
+          profile: {
+            userId: 'user_1',
+            baseCurrency: 'ARS' as const,
+            expensesKnowledge: 'known',
+            plannedMonthlyContribution: '60000.00',
+            onboardingCompleted: true,
+          },
+          goals: [],
+          savingsPositions: [],
+          investmentPositions: [],
+          snapshots: [],
+          allocations: [],
+          incomes: [
+            {
+              id: 'income-2',
+              sourceKind: 'bonus',
+              sourceId: null,
+              sourceName: 'Bono',
+              concept: 'Annual bonus',
+              amount: '200000.00',
+              currency: 'ARS' as const,
+              recurring: false,
+              effectiveMonth: '2026-08-01',
+            },
+            {
+              id: 'income-1',
+              sourceKind: 'salary',
+              sourceId: null,
+              sourceName: 'Sueldo',
+              concept: null,
+              amount: '1000000.00',
+              currency: 'ARS' as const,
+              recurring: true,
+              effectiveMonth: '2026-01-01',
+            },
+          ],
+          expenses: [
+            {
+              id: 'expense-2',
+              sourceKind: 'travel_leisure',
+              sourceId: null,
+              sourceName: 'Viaje',
+              concept: 'Weekend trip',
+              amount: '50000.00',
+              currency: 'ARS' as const,
+              recurring: false,
+              effectiveMonth: '2026-08-01',
+              endMonth: null,
+            },
+            {
+              id: 'expense-1',
+              sourceKind: 'housing',
+              sourceId: null,
+              sourceName: 'Alquiler',
+              concept: null,
+              amount: '300000.00',
+              currency: 'ARS' as const,
+              recurring: true,
+              effectiveMonth: '2026-01-01',
+              endMonth: null,
+            },
+          ],
+        },
+        pendingSnapshots: [],
+        pendingAllocations: [],
+      }
+
+      const token = createGoalLifecyclePreviewToken('pause', 'g1', state, '2026-08')
+      const reordered = {
+        ...state,
+        source: {
+          ...state.source,
+          incomes: [...state.source.incomes].reverse(),
+          expenses: [...state.source.expenses].reverse(),
+        },
+      }
+
+      expect(token).toBe(createGoalLifecyclePreviewToken('pause', 'g1', reordered, '2026-08'))
+      expect(token).not.toBe(
+        createGoalLifecyclePreviewToken(
+          'pause',
+          'g1',
+          { ...state, source: { ...state.source, incomes: [{ ...state.source.incomes[0], amount: '250000.00' }, state.source.incomes[1]] } },
+          '2026-08',
+        ),
+      )
+      expect(token).not.toBe(
+        createGoalLifecyclePreviewToken(
+          'pause',
+          'g1',
+          { ...state, source: { ...state.source, expenses: [{ ...state.source.expenses[0], amount: '60000.00' }, state.source.expenses[1]] } },
+          '2026-08',
+        ),
+      )
     })
   })
 
