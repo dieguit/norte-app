@@ -1,0 +1,1 @@
+{"nodes": [{"id": "posthog_setup_report", "label": "PostHog Integration Report", "file_type": "document", "source_file": "posthog-setup-report.md", "rationale": "Details the instrumentation of analytics events across client and server."}], "edges": [], "hyperedges": []}
