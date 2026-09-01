@@ -1500,15 +1500,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/routes/app/-components/Roadmap.test.tsx": {
-    "mtime": 1788294084.301457,
-    "seen": 1788296483.4046881,
-    "ast_hash": "fdc52c14af9a61ae75e4deb74514641d",
+    "mtime": 1788299506.1541412,
+    "seen": 1788301335.8004057,
+    "ast_hash": "fac547ee8421c83c92899e3b9a2292fd",
     "semantic_hash": ""
   },
   "apps/web/src/routes/app/-components/Roadmap.tsx": {
-    "mtime": 1788294084.301457,
-    "seen": 1788296483.4046886,
-    "ast_hash": "1a841cdd3e558ba4c9a51901b2de33d1",
+    "mtime": 1788301313.9150424,
+    "seen": 1788301335.8004062,
+    "ast_hash": "08e0ba78fdc07a5e0db70baafd3f939d",
     "semantic_hash": ""
   },
   "apps/web/src/routes/app/-components/SavingContribution.test.tsx": {
@@ -2424,21 +2424,21 @@
     "semantic_hash": ""
   },
   "apps/web/src/features/goals/GoalCompletion.test.tsx": {
-    "mtime": 1788295679.01898,
-    "seen": 1788296483.4046392,
-    "ast_hash": "a69c90825df847b92b4b071a1f694337",
+    "mtime": 1788297661.889038,
+    "seen": 1788301335.8003564,
+    "ast_hash": "c1807bf8b79912c3bca938b84218b30c",
     "semantic_hash": ""
   },
   "apps/web/src/features/goals/GoalCompletion.tsx": {
-    "mtime": 1788296366.7922895,
-    "seen": 1788296483.4046397,
-    "ast_hash": "096f37a508510c1fe727ba9ca4c5abf1",
+    "mtime": 1788297678.653623,
+    "seen": 1788301335.8003578,
+    "ast_hash": "b1d95e8a0b0103dc7f66ba3895cad66d",
     "semantic_hash": ""
   },
   "apps/web/src/features/goals/GoalCompletionSheet.test.tsx": {
-    "mtime": 1788294084.2963996,
-    "seen": 1788296483.4046402,
-    "ast_hash": "0cd63a106dfeb2f1ac8253b464676d17",
+    "mtime": 1788299727.4791863,
+    "seen": 1788301335.8003583,
+    "ast_hash": "c5a558b4651974f5b7f51bfd45db96a4",
     "semantic_hash": ""
   },
   "apps/web/src/features/goals/GoalCompletionSheet.tsx": {
@@ -2472,15 +2472,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/features/goals/goal-completion.test.ts": {
-    "mtime": 1788294084.2980866,
-    "seen": 1788296483.4046497,
-    "ast_hash": "64fac01ce40201dfe3ecb56d1f3f6ad0",
+    "mtime": 1788297886.6969,
+    "seen": 1788301335.8003666,
+    "ast_hash": "9035df57db03dd5a40ae8d5d51213390",
     "semantic_hash": ""
   },
   "apps/web/src/features/goals/goal-completion.ts": {
-    "mtime": 1788294084.2980866,
-    "seen": 1788296483.4046504,
-    "ast_hash": "1f4834cbb6bd80aa54a5b4d8bb1a1116",
+    "mtime": 1788297900.293377,
+    "seen": 1788301335.800367,
+    "ast_hash": "24a46aeca66073efb7e4b172aa5fb95e",
     "semantic_hash": ""
   },
   "apps/web/src/routes/app/-components/GoalCompletionBanner.tsx": {
