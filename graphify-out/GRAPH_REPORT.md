@@ -1,16 +1,16 @@
 # Graph Report - app  (2026-09-01)
 
 ## Corpus Check
-- 404 files · ~397,184 words
+- 404 files · ~397,219 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2392 nodes · 5216 edges · 223 communities (127 shown, 85 thin omitted)
+- 2412 nodes · 5280 edges · 227 communities (130 shown, 86 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 74 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8a0e5908`
+- Built from commit: `fa04c720`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -20,44 +20,44 @@
 - placeholder.controller.ts
 - db/schema.ts
 - ExpenseSheet.tsx
-- savings-places.repository.server.ts
+- financial.server.ts
 - goal-creation.schema.ts
 - GoalCreation.tsx
-- goals.ts
+- goal-creation.ts
 - routeTree.gen.ts
 - goals/route.tsx
 - formatMoney
 - seccion4.md
-- app/route.test.tsx
-- scripts
+- FinancialOnboarding
+- package.json
 - app/index.tsx
 - Agent skills
 - NORTE-PRD-development-spec.md
-- SavingsTransferSheet.tsx
+- button.tsx
 - financial.functions.test.ts
 - cn
 - preguntas.md
-- admin.functions.ts
+- admin-page.tsx
 - definition.ts
 - onboarding.server.ts
 - createMoney
-- WhatsappConnectionService
-- FinancialOnboarding
-- informe-page.tsx
+- whatsapp-auth-store.service.ts
+- goals.ts
+- FinancesWorkspace.tsx
 - compilerOptions
 - financial.functions.ts
 - compilerOptions
 - shared-types/package.json
 - tasks
-- button.tsx
+- saving-contribution.server.ts
 - saving-contribution.ts
 - UsersService
 - components.json
 - Design System: Norte
-- admin.server.ts
+- admin.functions.ts
 - goals.server.ts
 - compilerOptions
-- allocation-change.ts
+- Money
 - onboarding-page.tsx
 - expenses.repository.server.ts
 - onboarding/repository.server.ts
@@ -72,7 +72,7 @@
 - DatabaseShutdownService
 - WhatsappAuthStoreService
 - Building For Production
-- FinancialOnboarding.tsx
+- saving-contribution.schema.ts
 - csv.ts
 - placeholder.schema.ts
 - Contributions and Investments
@@ -86,7 +86,7 @@
 - scripts
 - Product
 - admin-result-details-page.tsx
-- financial.server.ts
+- goal-lifecycle.ts
 - informe-page.test.tsx
 - Decimal-Safe Money Arithmetic
 - NestJS Drizzle
@@ -94,7 +94,7 @@
 - NestJS Zod
 - api/README.md
 - Columnas del CSV administrativo
-- savings-places.functions.ts
+- scripts
 - dependencies
 - onboarding-repeated-items.tsx
 - goals/route.test.tsx
@@ -222,23 +222,27 @@
 - vitest
 - domain.md
 - triage-labels.md
-- SavingsTransferSheet.test.tsx
-- GoalCompletion.test.tsx
+- saving-contribution.repository.server.ts
+- goal-completion.ts
 - FinancialOnboarding.test.tsx
-- PlanAllocationEditor.tsx
-- GoalCreationSheet.test.tsx
+- money.ts
+- expenses.schema.ts
+- goal-lifecycle.schema.ts
+- __root.tsx
+- client.ts
+- invitation.ts
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 81 edges
-2. `createMoney()` - 55 edges
+2. `createMoney()` - 60 edges
 3. `requireFinancialUser()` - 42 edges
-4. `Button()` - 34 edges
-5. `Money` - 33 edges
+4. `Money` - 34 edges
+5. `Button()` - 34 edges
 6. `formatMoney()` - 32 edges
 7. `parseMoneyInput()` - 29 edges
-8. `GoalsWorkspaceSource` - 23 edges
-9. `compilerOptions` - 23 edges
-10. `buildGoalsWorkspace()` - 22 edges
+8. `buildGoalsWorkspace()` - 27 edges
+9. `GoalsWorkspaceSource` - 25 edges
+10. `compilerOptions` - 23 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `PlanAllocationEditorProps` --references--> `GoalCreationAllocation`  [EXTRACTED]
@@ -249,17 +253,17 @@
   apps/web/src/features/financial/incomes.ts → apps/web/src/lib/money.ts
 - `BuildSavingPreviewInput` --references--> `GoalsWorkspaceSource`  [EXTRACTED]
   apps/web/src/features/contributions/saving-contribution.ts → apps/web/src/features/goals/goals.ts
-- `listAdminCsvRowsServer()` --indirect_call--> `toAdminCsvRow()`  [INFERRED]
-  apps/web/src/features/admin/admin.server.ts → apps/web/src/features/admin/csv.ts
+- `handleSubmit()` --calls--> `completeFinancialOnboarding`  [EXTRACTED]
+  apps/web/src/routes/app/-components/FinancialOnboarding.tsx → apps/web/src/features/financial/financial.functions.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (223 total, 85 thin omitted)
+## Communities (227 total, 86 thin omitted)
 
 ### Community 0 - "goals.repository.server.ts"
-Cohesion: 0.17
-Nodes (33): getNextCalendarMonth(), serializeAllocationChangeState(), serializeGoalCreationState(), serializeGoalEditState(), confirmAllocationChangeInRepository(), confirmGoalCreationInRepository(), confirmGoalEditInRepository(), confirmGoalLifecycleInRepository() (+25 more)
+Cohesion: 0.14
+Nodes (37): getNextCalendarMonth(), AllocationChangePreviewResult, BuildAllocationChangeProposalInput, AllocationChangeDraft, serializeAllocationChangeState(), serializeGoalCreationState(), serializeGoalEditState(), serializeGoalLifecycleState() (+29 more)
 
 ### Community 1 - "GoalLifecycle.tsx"
 Cohesion: 0.25
@@ -270,28 +274,28 @@ Cohesion: 0.11
 Nodes (22): CreatePlaceholderDto, DeletePlaceholderResponseDto, PlaceholderListResponseDto, PlaceholderResponseDto, UpdatePlaceholderDto, PlaceholderController, ApiOperation, ApiResponse (+14 more)
 
 ### Community 3 - "db/schema.ts"
-Cohesion: 0.11
-Nodes (33): db, pool, allocationPlanEntries, AllocationPlanEntry, AllocationPlanSnapshot, allocationPlanSnapshots, Expense, expenses (+25 more)
+Cohesion: 0.10
+Nodes (33): allocationPlanEntries, AllocationPlanEntry, AllocationPlanSnapshot, allocationPlanSnapshots, Expense, expenses, ExpenseSource, FinancialGoal (+25 more)
 
 ### Community 4 - "ExpenseSheet.tsx"
-Cohesion: 0.14
-Nodes (26): MonthPickerInput(), Field(), FieldDescription(), FieldError(), FieldGroup(), FieldLabel(), FieldSet(), fieldVariants (+18 more)
+Cohesion: 0.11
+Nodes (37): MonthPickerInput(), Field(), FieldDescription(), FieldError(), FieldGroup(), FieldLabel(), FieldSet(), fieldVariants (+29 more)
 
-### Community 5 - "savings-places.repository.server.ts"
-Cohesion: 0.17
-Nodes (17): SavingContribution, SavingsPlaceTransfer, calculateSavingsPlacesWorkspace(), CurrencyCode, getSavingsPlaceEntries(), normalizeSavingsPlaceName(), createSavingsPlaceInRepository(), deleteSavingsPlaceInRepository() (+9 more)
+### Community 5 - "financial.server.ts"
+Cohesion: 0.06
+Nodes (52): SavingContribution, SavingsPlaceTransfer, ExpensesWorkspace, FinancesWorkspaceState, FinancialAppState, getFinancesWorkspaceServer(), IncomesWorkspace, MonthlyFinancialPlan (+44 more)
 
 ### Community 6 - "goal-creation.schema.ts"
-Cohesion: 0.16
-Nodes (17): ConfirmGoalCreationInput, confirmGoalCreationSchema, ConfirmGoalEditInput, confirmGoalEditSchema, goalCreationDraftSchema, GoalEditRequestInput, goalEditRequestSchema, goalImpactSchema (+9 more)
+Cohesion: 0.15
+Nodes (18): allocationChangeDraftSchema, ConfirmAllocationChangeInput, confirmAllocationChangeSchema, confirmGoalCreationSchema, confirmGoalEditSchema, goalCreationDraftSchema, GoalEditRequestInput, goalEditRequestSchema (+10 more)
 
 ### Community 7 - "GoalCreation.tsx"
 Cohesion: 0.13
 Nodes (26): GoalCreationContext, GoalCreationPreviewResult, GoalEditContext, createObjectiveSchema(), GoalCreationDraft, confirmGoalCreation, confirmGoalEdit, getGoalEditContext (+18 more)
 
-### Community 8 - "goals.ts"
-Cohesion: 0.08
-Nodes (51): FinancialSummaryCardsSummary, SavingAllocationPreview, SavingDraft, MonthlyFinancialSummary, AllocationChangeProposal, buildAllocationChangeProposal(), buildGoalCreationProposal(), calculatePercentageSum() (+43 more)
+### Community 8 - "goal-creation.ts"
+Cohesion: 0.14
+Nodes (26): amountSchema, amountSchema, buildAllocationChangeProposal(), buildGoalCreationProposal(), calculatePercentageSum(), getNextCalendarMonthStr(), GoalCreationBefore, GoalCreationProposal (+18 more)
 
 ### Community 9 - "routeTree.gen.ts"
 Cohesion: 0.07
@@ -302,20 +306,20 @@ Cohesion: 0.21
 Nodes (9): GoalsEmpty(), GoalsEmptyProps, GoalsError(), GoalsErrorProps, GoalsLoading(), GoalsWorkspace(), makeFinancialSummary(), makeWorkspace() (+1 more)
 
 ### Community 11 - "formatMoney"
-Cohesion: 0.11
-Nodes (31): FinancialSummaryCards(), FinancialSummaryCardsProps, summary, ContributionSummary, GoalWorkspaceItem, RoadmapData, RoadmapMonth, formatCalendarMonth() (+23 more)
+Cohesion: 0.08
+Nodes (39): FinancialSummaryCards(), FinancialSummaryCardsProps, summary, ContributionSummary, GoalsWorkspace, GoalWorkspaceItem, addMonth(), buildRoadmap() (+31 more)
 
 ### Community 12 - "seccion4.md"
 Cohesion: 0.05
 Nodes (37): Bloque 1 — Roadmap vivo, Bloque 2 — Decisiones y WhatsApp, Cierre comercial, Confirmación post-click, Copy completo propuesto, Copy final en bloque listo para implementar, Criterio de aceptación, CTA button (+29 more)
 
-### Community 13 - "app/route.test.tsx"
-Cohesion: 0.20
-Nodes (6): getFinancialAppState, AppShell(), emptyRoadmap, Route, analytics, emptyRoadmap
+### Community 13 - "FinancialOnboarding"
+Cohesion: 0.12
+Nodes (8): getFinancialAppState, expenseSourceLabel(), FinancialOnboarding(), handleSubmit(), incomeSourceLabel(), Route, analytics, emptyRoadmap
 
-### Community 14 - "scripts"
-Cohesion: 0.05
-Nodes (37): author, description, devDependencies, turbo, typescript, turbo, typescript, keywords (+29 more)
+### Community 14 - "package.json"
+Cohesion: 0.08
+Nodes (23): author, description, devDependencies, turbo, typescript, turbo, typescript, keywords (+15 more)
 
 ### Community 15 - "app/index.tsx"
 Cohesion: 0.23
@@ -325,57 +329,57 @@ Nodes (7): getFinancesWorkspace, getGoalsWorkspace, HomeError(), HomeLoading(), 
 Cohesion: 0.33
 Nodes (5): Agent skills, Domain docs, Git behavior, Issue tracker, Triage labels
 
-### Community 18 - "SavingsTransferSheet.tsx"
-Cohesion: 0.15
-Nodes (20): Sheet(), SheetContent(), SheetDescription(), SheetHeader(), SheetTitle(), ContributionKind, transferSavings, SavingsMovement (+12 more)
+### Community 18 - "button.tsx"
+Cohesion: 0.14
+Nodes (22): Button(), Sheet(), SheetContent(), SheetDescription(), SheetHeader(), SheetTitle(), ContributionKind, getSavingContributionContext (+14 more)
 
 ### Community 19 - "financial.functions.test.ts"
-Cohesion: 0.21
-Nodes (9): completeFinancialOnboarding, createExpense, deleteExpense, updateExpense, handleSubmit(), month(), remove(), save() (+1 more)
+Cohesion: 0.27
+Nodes (7): createExpense, deleteExpense, updateExpense, month(), remove(), save(), posthogCapture
 
 ### Community 20 - "cn"
-Cohesion: 0.07
-Nodes (32): CalendarDayButton(), Card(), CardAction(), CardContent(), CardDescription(), CardFooter(), CardHeader(), CardTitle() (+24 more)
+Cohesion: 0.06
+Nodes (47): MonthPickerInputProps, Badge(), badgeVariants, buttonVariants, Calendar(), CalendarDayButton(), Card(), CardAction() (+39 more)
 
 ### Community 21 - "preguntas.md"
 Cohesion: 0.06
 Nodes (33): **Bloque 0 — Calibrador**, **Bloque 1 — Ingresos**, **Bloque 2 — Egresos (montos mensuales)**, **Bloque 3 — Tarjetas**, **Cierre**, **Contrato de datos — Excel de salida**, **Mapeo pregunta → informe**, **Notas de implementación** (+25 more)
 
-### Community 22 - "admin.functions.ts"
-Cohesion: 0.14
-Nodes (24): getAdminCsvRow, getAdminResultFiles, getAdminSession, listAdminCsvRows, listAdminResults, loginAdmin, saveAdminReport, setAdminReportSent (+16 more)
+### Community 22 - "admin-page.tsx"
+Cohesion: 0.15
+Nodes (17): getAdminResultFiles, listAdminCsvRows, listAdminResults, loginAdmin, AdminPage(), closeReportEditor(), fetchResults(), handleDownloadAllCsv() (+9 more)
 
 ### Community 23 - "definition.ts"
-Cohesion: 0.12
-Nodes (29): dayOptions, definedAnswerIds, extraIncomeSchema, filterAnswersForActiveSteps(), fixedExpenseExpiryFields, getVisibleFields(), hasDetailedFixedExpense(), hasPositiveAmount() (+21 more)
+Cohesion: 0.14
+Nodes (20): dayOptions, definedAnswerIds, extraIncomeSchema, fixedExpenseExpiryFields, hasDetailedFixedExpense(), hasPositiveAmount(), hasPositiveOther(), hasPositiveRepeatedItem() (+12 more)
 
 ### Community 24 - "onboarding.server.ts"
 Cohesion: 0.14
-Nodes (24): saveDraftInput, createOnboardingUpload, getDraftInput, getOnboardingDraft, saveOnboardingDraft, createOnboardingUploadServer(), deleteOnboardingUploadServer(), getOnboardingDraftServer() (+16 more)
+Nodes (25): saveDraftInput, createOnboardingUpload, deleteOnboardingUpload, getDraftInput, getOnboardingDraft, saveOnboardingDraft, createOnboardingUploadServer(), deleteOnboardingUploadServer() (+17 more)
 
 ### Community 25 - "createMoney"
-Cohesion: 0.08
-Nodes (50): ExpenseMonthInput, FixedExpenseSourceKind, getExpenseTotalArs(), getMonthlyBalanceArs(), isExpenseIncludedInMonth(), ONE_TIME_EXPENSE_SOURCES, RECURRING_EXPENSE_SOURCES, CompletionProjection (+42 more)
+Cohesion: 0.13
+Nodes (33): derivePreviousMonthShortfalls(), PreviousMonthShortfall, SavingDraft, ExpenseMonthInput, FixedExpenseSourceKind, getExpenseTotalArs(), getMonthlyBalanceArs(), isExpenseIncludedInMonth() (+25 more)
 
-### Community 26 - "WhatsappConnectionService"
+### Community 26 - "whatsapp-auth-store.service.ts"
+Cohesion: 0.13
+Nodes (6): StoredJson, Injectable, WhatsappConnectionService, ReplySocket, Injectable, WhatsappMessageService
+
+### Community 27 - "goals.ts"
 Cohesion: 0.14
-Nodes (5): Injectable, WhatsappConnectionService, ReplySocket, Injectable, WhatsappMessageService
+Nodes (16): PROJECTION_HORIZON_MONTHS, addMonthsToMonth(), ContributionAllocationSummary, GOAL_STATUS_LABELS, GoalFundingRow, groupGoals(), PRIORITY_ORDER, projectGoalCompletion() (+8 more)
 
-### Community 27 - "FinancialOnboarding"
-Cohesion: 0.22
-Nodes (3): expenseSourceLabel(), FinancialOnboarding(), incomeSourceLabel()
-
-### Community 28 - "informe-page.tsx"
+### Community 28 - "FinancesWorkspace.tsx"
 Cohesion: 0.12
-Nodes (23): ChartConfig, ChartContainer(), ChartContext, ChartContextProps, ChartLegendContent(), ChartTooltipContent(), getPayloadConfigFromPayload(), INITIAL_DIMENSION (+15 more)
+Nodes (22): ChartConfig, ChartContainer(), ChartContext, ChartContextProps, ChartLegendContent(), ChartTooltipContent(), getPayloadConfigFromPayload(), INITIAL_DIMENSION (+14 more)
 
 ### Community 29 - "compilerOptions"
 Cohesion: 0.08
 Nodes (25): compilerOptions, allowSyntheticDefaultImports, baseUrl, declaration, emitDecoratorMetadata, esModuleInterop, experimentalDecorators, forceConsistentCasingInFileNames (+17 more)
 
 ### Community 30 - "financial.functions.ts"
-Cohesion: 0.09
-Nodes (27): amountSchema, conceptSchema, createExpenseSchema, customSourceSchema, deleteExpenseSchema, expenseDraftSchema, fixedSourceSchema, monthSchema (+19 more)
+Cohesion: 0.11
+Nodes (20): completeFinancialOnboarding, CompleteFinancialOnboardingInput, completeFinancialOnboardingInputSchema, createIncome, deleteIncome, getIncomesWorkspace, updateIncome, completeFinancialOnboardingServer() (+12 more)
 
 ### Community 31 - "compilerOptions"
 Cohesion: 0.08
@@ -389,13 +393,13 @@ Nodes (24): dependencies, zod, devDependencies, tsup, @types/node, vitest, expor
 Cohesion: 0.09
 Nodes (24): ^build, .env*, ^lint, .output/**, $TURBO_DEFAULT$, .vinxi/**, dependsOn, inputs (+16 more)
 
-### Community 34 - "button.tsx"
-Cohesion: 0.21
-Nodes (13): MonthPickerInputProps, Button(), buttonVariants, Calendar(), ButtonVariant, Month, MonthCal(), MonthCalProps (+5 more)
+### Community 34 - "saving-contribution.server.ts"
+Cohesion: 0.23
+Nodes (14): createSavingContributionPreviewToken, deleteSavingContributionInRepository(), getSavingContributionState(), updateSavingContributionInRepository(), ConfirmSavingContributionInput, DeleteSavingContributionInput, SavingContributionDraft, UpdateSavingContributionInput (+6 more)
 
 ### Community 35 - "saving-contribution.ts"
-Cohesion: 0.05
-Nodes (74): buildContributionPreview(), BuildContributionPreviewInput, buildSavingPreview(), BuildSavingPreviewInput, deriveMonthlyContributionTargets(), deriveMonthlySavingTargets(), derivePreviousMonthShortfalls(), deriveUsdPurchase() (+66 more)
+Cohesion: 0.20
+Nodes (16): buildContributionPreview(), BuildContributionPreviewInput, buildSavingPreview(), BuildSavingPreviewInput, deriveMonthlySavingTargets(), deriveUsdPurchase(), EligibleGoalSource, parseSavingDraft() (+8 more)
 
 ### Community 36 - "UsersService"
 Cohesion: 0.12
@@ -409,29 +413,29 @@ Nodes (21): aliases, components, hooks, lib, ui, utils, iconLibrary, menuAccent 
 Cohesion: 0.09
 Nodes (21): Buttons, Cards / Containers, Chips, Colors, Components, Design System: Norte, Do:, Do's and Don'ts (+13 more)
 
-### Community 39 - "admin.server.ts"
-Cohesion: 0.26
-Nodes (16): OnboardingDraft, getAdminResultDetailsServer(), getAdminResultFilesServer(), listAdminCsvRowsServer(), listAdminResultsServer(), saveAdminReportServer(), setAdminReportSentServer(), requireAdminSession() (+8 more)
+### Community 39 - "admin.functions.ts"
+Cohesion: 0.25
+Nodes (19): getAdminCsvRow, getAdminSession, saveAdminReport, setAdminReportSent, getAdminCsvRowServer(), getAdminResultDetailsServer(), getAdminResultFilesServer(), listAdminCsvRowsServer() (+11 more)
 
 ### Community 40 - "goals.server.ts"
-Cohesion: 0.12
-Nodes (32): requireFinancialUser(), completeFinancialOnboardingServer(), allocationEntrySchema, parseGoalCreationSubmission(), ConfirmGoalLifecycleInput, confirmGoalLifecycleSchema, GoalLifecyclePreviewInput, goalLifecyclePreviewSchema (+24 more)
+Cohesion: 0.13
+Nodes (28): requireFinancialUser(), ConfirmGoalCreationInput, ConfirmGoalEditInput, parseGoalCreationSubmission(), getGoalCreationContext, GoalsAppState, AllocationChangeContextState, confirmAllocationChangeServer() (+20 more)
 
 ### Community 41 - "compilerOptions"
 Cohesion: 0.09
 Nodes (21): compilerOptions, declaration, declarationMap, esModuleInterop, forceConsistentCasingInFileNames, ignoreDeprecations, lib, module (+13 more)
 
-### Community 42 - "allocation-change.ts"
-Cohesion: 0.16
-Nodes (17): AllocationChangeContext, AllocationChangePreviewResult, AllocationChangeState, BuildAllocationChangeProposalInput, AllocationChangeDraft, allocationChangeDraftSchema, ConfirmAllocationChangeInput, confirmAllocationChangeSchema (+9 more)
+### Community 42 - "Money"
+Cohesion: 0.22
+Nodes (18): FinancialSummaryCardsSummary, SavingAllocationPreview, MonthlyFinancialSummary, AllocationChangeContext, AllocationChangeProposal, GoalCreationAllocation, GoalCreationAllocationEntry, confirmAllocationChange (+10 more)
 
 ### Community 43 - "onboarding-page.tsx"
 Cohesion: 0.19
-Nodes (16): getActiveSteps(), getFirstIncompleteStep(), getInactiveAnswerIds(), deviceIdSchema, getInvitedDeviceId(), deleteOnboardingUpload, fixedExpenseIds, formatNumber() (+8 more)
+Nodes (22): filterAnswersForActiveSteps(), getActiveSteps(), getFirstIncompleteStep(), getInactiveAnswerIds(), getVisibleFields(), OnboardingAnswers, onboardingAnswerSchema, DRAFT_KEY (+14 more)
 
 ### Community 44 - "expenses.repository.server.ts"
-Cohesion: 0.19
-Nodes (18): expenseSources, createExpenseInRepository(), deleteExpenseInRepository(), expenseValues(), getExpensesWorkspaceState(), insertExpenseWithExecutor(), resolveSource(), mockTx (+10 more)
+Cohesion: 0.21
+Nodes (17): expenseSources, createExpenseInRepository(), deleteExpenseInRepository(), expenseValues(), getExpensesWorkspaceState(), insertExpenseWithExecutor(), resolveSource(), mockTx (+9 more)
 
 ### Community 45 - "onboarding/repository.server.ts"
 Cohesion: 0.19
@@ -446,8 +450,8 @@ Cohesion: 0.27
 Nodes (14): incomeSources, createIncomeInRepository(), deleteIncomeInRepository(), getIncomesWorkspaceState(), incomeValues(), insertIncomeWithExecutor(), resolveSource(), mockTx (+6 more)
 
 ### Community 48 - "onboarding-page.test.tsx"
-Cohesion: 0.16
-Nodes (14): getFileValidationError(), advanceToCard(), initialAnswers, makeDraft(), posthogCapture, posthogCaptureException, posthogIdentify, renderDailyExpenses() (+6 more)
+Cohesion: 0.17
+Nodes (13): getFileValidationError(), advanceToCard(), initialAnswers, makeDraft(), posthogCapture, posthogCaptureException, posthogIdentify, renderDailyExpenses() (+5 more)
 
 ### Community 49 - "Home and Financial Roadmap"
 Cohesion: 0.12
@@ -477,13 +481,13 @@ Nodes (4): TestableWhatsappAuthStoreService, Inject, Injectable, WhatsappAuthSto
 Cohesion: 0.13
 Nodes (14): Adding A Route, Adding Links, API Routes, Building For Production, Data Fetching, Demo files, Getting Started, Learn More (+6 more)
 
-### Community 57 - "FinancialOnboarding.tsx"
-Cohesion: 0.15
-Nodes (18): Badge(), badgeVariants, canonical(), GoalCompletion(), GoalCompletionProps, initialAllocationEntries(), parseAmount(), formatMoneyInput() (+10 more)
+### Community 57 - "saving-contribution.schema.ts"
+Cohesion: 0.12
+Nodes (15): catchUpMonthSchema, ConfirmContributionInput, confirmContributionSchema, confirmSavingContributionSchema, ContributionDraft, contributionDraftInputSchema, contributionIdSchema, DeleteContributionInput (+7 more)
 
 ### Community 58 - "csv.ts"
-Cohesion: 0.19
-Nodes (13): cardHeaders, CompletedDraft, CsvRow, CsvValue, escapeCsvValue(), fixedOtherAmount(), fixedOtherValue(), serializeCsv() (+5 more)
+Cohesion: 0.16
+Nodes (16): downloadCsv(), handleDownloadRowCsv(), cardHeaders, CompletedDraft, csvHeaders, CsvRow, CsvValue, escapeCsvValue() (+8 more)
 
 ### Community 59 - "placeholder.schema.ts"
 Cohesion: 0.27
@@ -503,7 +507,7 @@ Nodes (14): Acceptance criteria, Allocation editor, Completed-goal redistributio
 
 ### Community 63 - "users.service.ts"
 Cohesion: 0.17
-Nodes (13): DATABASE_CONNECTION, DATABASE_POOL, DBS, databaseProviders, Database, Schema, NewUser, User (+5 more)
+Nodes (12): DATABASE_CONNECTION, DATABASE_POOL, DBS, databaseProviders, Database, Schema, NewUser, User (+4 more)
 
 ### Community 64 - "devDependencies"
 Cohesion: 0.15
@@ -533,13 +537,13 @@ Nodes (11): Accessibility & Inclusion, Brand Commitments, Capabilities and Const
 Cohesion: 0.30
 Nodes (8): getAdminResultDetails, AdminResultDetailsPage(), AnswerValue(), formatValue(), isBlank(), numberFormatter, formatAdminDownloadLabel(), RepeatedItemField
 
-### Community 71 - "financial.server.ts"
-Cohesion: 0.21
-Nodes (13): ExpensesWorkspace, CompleteFinancialOnboardingInput, FinancesWorkspaceState, FinancialAppState, getFinancesWorkspaceServer(), getFinancialAppStateServer(), IncomesWorkspace, MonthlyFinancialPlan (+5 more)
+### Community 71 - "goal-lifecycle.ts"
+Cohesion: 0.20
+Nodes (8): AllocationChangeState, GoalCreationImpact, GoalCreationState, getNextCalendarMonthStr(), GoalLifecycleProposal, GoalLifecycleState, GoalsWorkspaceSource, mapAllocationChangeContext()
 
 ### Community 72 - "informe-page.test.tsx"
-Cohesion: 0.17
-Nodes (3): posthogCapture, posthogIdentify, TestIntersectionObserver
+Cohesion: 0.14
+Nodes (5): formatMillions(), InformePage(), posthogCapture, posthogIdentify, TestIntersectionObserver
 
 ### Community 73 - "Decimal-Safe Money Arithmetic"
 Cohesion: 0.17
@@ -565,9 +569,9 @@ Nodes (10): Compile and run the project, Deployment, Description, License, Proje
 Cohesion: 0.20
 Nodes (9): Celdas vacías y sanitización, Columnas del CSV administrativo, Compras y tarjetas, Gastos cotidianos y gustitos, Gastos fijos, Ingresos, Ingresos extra, Metadatos y contacto (+1 more)
 
-### Community 79 - "savings-places.functions.ts"
-Cohesion: 0.19
-Nodes (14): createSavingsPlace, deleteSavingsPlace, getSavingsPlacesWorkspace, renameSavingsPlace, createSavingsPlaceSchema, deleteSavingsPlaceSchema, renameSavingsPlaceSchema, SavingsPlaceSelection (+6 more)
+### Community 79 - "scripts"
+Cohesion: 0.14
+Nodes (14): scripts, build, check-types, db:down, db:logs, db:studio, db:test:down, db:test:logs (+6 more)
 
 ### Community 80 - "dependencies"
 Cohesion: 0.22
@@ -578,8 +582,8 @@ Cohesion: 0.31
 Nodes (8): ExtraIncome, getMonthlyDateOptions(), OnboardingField, formatNumber(), numberFormatter, OnboardingRepeatedItems(), parseNumber(), Props
 
 ### Community 82 - "goals/route.test.tsx"
-Cohesion: 0.13
-Nodes (11): Route, Route, Route, emptyWorkspace, sampleFinancialSummary, sampleGoal, sampleWorkspace, Route (+3 more)
+Cohesion: 0.18
+Nodes (8): Route, Route, Route, emptyWorkspace, sampleFinancialSummary, sampleGoal, sampleWorkspace, FileRoutesByPath
 
 ### Community 83 - "Home and Financial Onboarding Critique"
 Cohesion: 0.22
@@ -614,8 +618,8 @@ Cohesion: 0.43
 Nodes (5): credentialsSchema, getAdminSessionServer(), hasValidAdminCredentials(), loginAdminServer(), useAdminSession()
 
 ### Community 91 - "SavingContribution.tsx"
-Cohesion: 0.28
-Nodes (5): SavingContributionContext, SavingContributionSummary, formatDerivedMoney(), SavingContributionProps, SavingsPlacePicker()
+Cohesion: 0.13
+Nodes (18): confirmContribution, confirmSavingContribution, deleteContribution, deleteSavingContribution, getContributionContext, previewContribution, previewSavingContribution, updateContribution (+10 more)
 
 ### Community 92 - "Domain rules"
 Cohesion: 0.25
@@ -745,45 +749,57 @@ Nodes (4): imports, name, private, type
 Cohesion: 0.50
 Nodes (3): Architecture, Behavior, Git usage
 
-### Community 218 - "SavingsTransferSheet.test.tsx"
-Cohesion: 0.22
-Nodes (6): bank, cash, places, routerInvalidate, TransferSheet, TransferSheetProps
+### Community 218 - "saving-contribution.repository.server.ts"
+Cohesion: 0.30
+Nodes (10): deriveMonthlyContributionTargets(), EligibleGoal, createContributionPreviewToken(), createSavingContributionInRepository(), getSavingContributionStateWithExecutor(), SavingContributionState, StaleSavingContributionPreviewError, SavingContributionPreviewResult (+2 more)
 
-### Community 219 - "GoalCompletion.test.tsx"
-Cohesion: 0.29
-Nodes (5): capture, context, emptyAllocationPreview(), invalidate, preview()
+### Community 219 - "goal-completion.ts"
+Cohesion: 0.11
+Nodes (23): buildGoalCompletionContext(), buildGoalCompletionProposal(), canonicalAmount(), GoalCompletionContext, GoalCompletionDraft, GoalCompletionPreviewResult, GoalCompletionProposal, GoalCompletionSavingsPlace (+15 more)
 
 ### Community 220 - "FinancialOnboarding.test.tsx"
 Cohesion: 0.32
 Nodes (6): addSalary(), mockInvalidate, mockNavigate, posthogCapture, reachExpenseStep(), reachIncomeStep()
 
-### Community 221 - "PlanAllocationEditor.tsx"
-Cohesion: 0.38
-Nodes (3): Slider(), PlanAllocationEditor(), PlanAllocationEditorProps
+### Community 221 - "money.ts"
+Cohesion: 0.32
+Nodes (10): addMoney(), AllocatedMoney, AllocationTarget, assertSameCurrency(), calculateAllocationAmounts(), compareMoney(), integerFormatter, isZeroMoney() (+2 more)
 
-### Community 222 - "GoalCreationSheet.test.tsx"
-Cohesion: 0.67
-Nodes (3): getGoalCreationContext, GoalCreationSheet(), sampleContext
+### Community 222 - "expenses.schema.ts"
+Cohesion: 0.24
+Nodes (9): conceptSchema, createExpenseSchema, customSourceSchema, DeleteExpenseInput, deleteExpenseSchema, expenseDraftSchema, fixedSourceSchema, monthSchema (+1 more)
+
+### Community 223 - "goal-lifecycle.schema.ts"
+Cohesion: 0.27
+Nodes (8): allocationEntrySchema, ConfirmGoalLifecycleInput, confirmGoalLifecycleSchema, GoalLifecyclePreviewInput, goalLifecyclePreviewSchema, GoalLifecycleRequestInput, goalLifecycleRequestSchema, goalLifecycleSchema
+
+### Community 224 - "__root.tsx"
+Cohesion: 0.28
+Nodes (4): Route, Route, mocks, FileRoutesById
+
+### Community 225 - "client.ts"
+Cohesion: 0.40
+Nodes (3): db, pool, mockTx
 
 ## Knowledge Gaps
-- **920 isolated node(s):** `invalidate`, `capture`, `context`, `GoalCompletionProps`, `AllocationChangeContextState` (+915 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1094 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **85 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **924 isolated node(s):** `invalidate`, `capture`, `context`, `context`, `present` (+919 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1099 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **86 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Button()` connect `button.tsx` to `GoalLifecycle.tsx`, `ExpenseSheet.tsx`, `GoalCreation.tsx`, `allocation-change.ts`, `formatMoney`, `goals/route.tsx`, `onboarding-page.tsx`, `app/index.tsx`, `onboarding-page.test.tsx`, `onboarding-repeated-items.tsx`, `SavingsTransferSheet.tsx`, `cn`, `admin.functions.ts`, `FinancialOnboarding.tsx`, `SavingContribution.tsx`, `informe-page.tsx`, `createMoney`?**
-  _High betweenness centrality (0.020) - this node is a cross-community bridge._
-- **Why does `cn()` connect `cn` to `button.tsx`, `ExpenseSheet.tsx`, `SavingsTransferSheet.tsx`, `FinancialOnboarding.tsx`, `informe-page.tsx`, `PlanAllocationEditor.tsx`?**
-  _High betweenness centrality (0.014) - this node is a cross-community bridge._
-- **Why does `createMoney()` connect `createMoney` to `button.tsx`, `db/schema.ts`, `saving-contribution.ts`, `goals.ts`, `goals.server.ts`, `allocation-change.ts`, `formatMoney`, `SavingsTransferSheet.tsx`, `FinancialOnboarding.tsx`, `FinancialOnboarding`?**
-  _High betweenness centrality (0.007) - this node is a cross-community bridge._
+- **Why does `Button()` connect `button.tsx` to `GoalLifecycle.tsx`, `ExpenseSheet.tsx`, `GoalCreation.tsx`, `goal-creation.ts`, `Money`, `formatMoney`, `goals/route.tsx`, `onboarding-page.tsx`, `app/index.tsx`, `onboarding-page.test.tsx`, `onboarding-repeated-items.tsx`, `cn`, `admin-page.tsx`, `SavingContribution.tsx`, `FinancesWorkspace.tsx`?**
+  _High betweenness centrality (0.019) - this node is a cross-community bridge._
+- **Why does `cn()` connect `cn` to `button.tsx`, `ExpenseSheet.tsx`, `FinancesWorkspace.tsx`?**
+  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+- **Why does `createMoney()` connect `createMoney` to `saving-contribution.ts`, `ExpenseSheet.tsx`, `financial.server.ts`, `goal-lifecycle.ts`, `goal-creation.ts`, `goals.ts`, `goals.server.ts`, `formatMoney`, `Money`, `FinancialOnboarding`, `button.tsx`, `saving-contribution.repository.server.ts`, `goal-completion.ts`, `FinancesWorkspace.tsx`, `money.ts`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **What connects `invalidate`, `capture`, `context` to the rest of the system?**
-  _920 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _924 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `goals.repository.server.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.14174972314507198 - nodes in this community are weakly interconnected._
 - **Should `placeholder.controller.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.10897435897435898 - nodes in this community are weakly interconnected._
 - **Should `db/schema.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10609756097560975 - nodes in this community are weakly interconnected._
-- **Should `ExpenseSheet.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09851551956815115 - nodes in this community are weakly interconnected._
