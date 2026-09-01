@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Roadmap } from './Roadmap'
@@ -50,7 +50,7 @@ const month = (value: string): RoadmapMonth => ({
 
 const roadmap: RoadmapData = {
   undatedObjectives: [{ ...goal, id: 'goal-2', name: 'Viaje', projection: { status: 'commitment_absent' } }],
-  futureMonths: [{ ...month('2026-09'), objectives: [goal], recurringExpenses: [{ id: 'rent', sourceKind: 'housing', sourceId: null, sourceName: 'Vivienda', concept: null, amount: '900000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08', endMonth: null }] }],
+  futureMonths: [{ ...month('2026-09'), objectives: [goal], recurringExpenses: [{ id: 'rent', sourceKind: 'housing', sourceId: null, sourceName: 'Vivienda', concept: null, amount: '900000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08', endMonth: null }], recurringIncomes: [{ id: 'salary', sourceKind: 'salary', sourceId: null, sourceName: 'Sueldo', concept: null, amount: '3000000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08' }] }],
   currentMonth: {
     ...month('2026-08'),
     recurringExpenses: [{ id: 'rent', sourceKind: 'housing', sourceId: null, sourceName: 'Vivienda', concept: null, amount: '900000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08', endMonth: null }],
@@ -76,7 +76,10 @@ describe('Roadmap component', () => {
       'data-side',
       'right',
     )
-    expect(screen.queryByRole('region', { name: 'Gastos previstos para Septiembre de 2026' })).not.toBeInTheDocument()
+    const futureExpenses = screen.getByRole('region', { name: 'Gastos previstos para Septiembre de 2026' })
+    const futureIncomes = screen.getByRole('region', { name: 'Ingresos y aportes para Septiembre de 2026' })
+    expect(within(futureExpenses).getByText('Gastos recurrentes')).toBeVisible()
+    expect(within(futureIncomes).getByText('Ingresos recurrentes')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Colchón de 3 meses' })).toHaveAttribute(
       'data-roadmap-objective',
       'full-width',

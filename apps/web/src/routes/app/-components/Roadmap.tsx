@@ -91,15 +91,12 @@ function MonthGroup({
   kind: "future" | "today" | "history";
 }) {
   const label = formatCalendarMonth(group.month);
-  const isGoalMonth = group.objectives.length > 0;
-  const recurringExpenses = isGoalMonth ? [] : group.recurringExpenses;
-  const recurringIncomes = isGoalMonth ? [] : group.recurringIncomes;
   const hasSideContent =
     group.oneTimeExpenses.length > 0 ||
-    recurringExpenses.length > 0 ||
+    group.recurringExpenses.length > 0 ||
     group.endingExpenses.length > 0 ||
     group.oneTimeIncomes.length > 0 ||
-    recurringIncomes.length > 0 ||
+    group.recurringIncomes.length > 0 ||
     group.contributions.length > 0;
 
   return (
@@ -148,7 +145,7 @@ function MonthGroup({
             />
             <RecordGroup
               title="Gastos recurrentes"
-              items={recurringExpenses}
+              items={group.recurringExpenses}
               getLabel={expenseLabel}
               titleClassName="text-[var(--error)]"
             />
@@ -171,7 +168,7 @@ function MonthGroup({
             />
             <RecordGroup
               title="Ingresos recurrentes"
-              items={recurringIncomes}
+              items={group.recurringIncomes}
               getLabel={incomeLabel}
               titleClassName="text-[var(--palm)]"
             />
