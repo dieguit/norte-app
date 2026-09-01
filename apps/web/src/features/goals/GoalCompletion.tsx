@@ -15,7 +15,6 @@ import {
   type GoalCreationAllocation,
   type GoalCreationAllocationEntry,
 } from './goal-creation'
-import { isPlainDecimalMoneyString } from './goal-completion.schema'
 import {
   confirmGoalCompletion,
   previewGoalCompletion,
@@ -25,6 +24,7 @@ import type {
   GoalCompletionPreviewResult,
 } from './goal-completion'
 import { formatMoney } from '../../lib/format'
+import { formatMoneyInput, parseMoneyInput } from '../../lib/money'
 import { AllocationImpactComparison } from './AllocationImpactComparison'
 
 export interface GoalCompletionProps {
@@ -35,9 +35,9 @@ export interface GoalCompletionProps {
 }
 
 function parseAmount(value: string): BigNumber | null {
-  if (!isPlainDecimalMoneyString(value)) return null
-  const amount = new BigNumber(value.trim().replace(',', '.'))
-  return amount.isFinite() && !amount.isNaN() ? amount : null
+  if (!value.trim()) return null
+  const money = parseMoneyInput(value, 'ARS')
+  return money ? new BigNumber(money.amount) : null
 }
 
 function canonical(value: string): string {
@@ -166,7 +166,7 @@ export function GoalCompletion({
 
   const withdrawalDraft = context.savingsPlaces
     .filter((place) => (withdrawals[place.id] ?? '').trim() !== '')
-    .map((place) => ({ placeId: place.id, amount: withdrawals[place.id] }))
+    .map((place) => ({ placeId: place.id, amount: canonical(withdrawals[place.id]) }))
   const allocationDraft = allocations
   const previewMatchesDraft = (candidate: GoalCompletionPreviewResult | null) => {
     if (!candidate || !withdrawalsValid || !allocationsValid) return false
@@ -250,7 +250,7 @@ export function GoalCompletion({
 
   const handleWithdrawalChange = (placeId: string, value: string) => {
     if (isSubmitting) return
-    setWithdrawals((current) => ({ ...current, [placeId]: value }))
+    setWithdrawals((current) => ({ ...current, [placeId]: formatMoneyInput(value) }))
     setPreview(null)
     if (!isPreviewRevalidationRequired) setServerError(null)
   }
@@ -310,7 +310,7 @@ export function GoalCompletion({
         suppressNextPreviewRef.current = true
         setIsPreviewRevalidationRequired(true)
         setPreview(result.preview)
-        setWithdrawals(Object.fromEntries(result.preview.proposal.withdrawals.map((withdrawal) => [withdrawal.placeId, withdrawal.amount.amount])))
+        setWithdrawals(Object.fromEntries(result.preview.proposal.withdrawals.map((withdrawal) => [withdrawal.placeId, formatMoneyInput(withdrawal.amount.amount.replace('.', ','))])))
         setAllocations(result.preview.proposal.allocation.entries.map((entry) => ({ goalId: entry.goalId, percentage: entry.percentage })))
         setServerError('Tus saldos o tu Plan cambiaron. Revisá los retiros y la distribución actualizados antes de confirmar.')
         await onContextInvalid?.()
@@ -389,10 +389,10 @@ export function GoalCompletion({
                 const errorId = `completion-${place.id}-error`
                 return (
                   <Field key={place.id} data-invalid={Boolean(error)}>
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="grid grid-cols-2 items-start gap-4">
                       <FieldLabel
                         htmlFor={`completion-${place.id}`}
-                        className="flex min-w-0 flex-col items-start gap-1"
+                        className="flex w-full min-w-0 flex-col items-start gap-1"
                       >
                         <span className="text-sm font-medium text-[var(--sea-ink)]">{place.name}</span>
                         <span className="text-xs font-normal text-[var(--sea-ink-soft)]">
@@ -405,11 +405,10 @@ export function GoalCompletion({
                         aria-invalid={Boolean(error)}
                         aria-describedby={error ? errorId : undefined}
                         inputMode="decimal"
-                        pattern="[0-9]+([.,][0-9]{1,2})?"
                         value={withdrawals[place.id] ?? ''}
                         disabled={isSubmitting}
                         onChange={(event) => handleWithdrawalChange(place.id, event.target.value)}
-                        className="w-32 text-right font-mono text-sm"
+                        className="min-w-0 text-right font-mono text-sm"
                       />
                     </div>
                     {error && <FieldError id={errorId}>{error}</FieldError>}

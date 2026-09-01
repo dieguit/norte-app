@@ -136,7 +136,7 @@ describe('GoalCompletion', () => {
     renderCompletion()
 
     const caja = screen.getByRole('textbox', { name: 'Monto a retirar de Caja de ahorro' })
-    await user.type(caja, '1.234')
+    await user.type(caja, '0')
     expect(screen.getByText('Ingresá un monto mayor a cero, con hasta dos decimales.')).toBeInTheDocument()
 
     await user.clear(caja)
@@ -189,8 +189,8 @@ describe('GoalCompletion', () => {
       data: expect.objectContaining({
         goalId: 'goal-1',
         withdrawals: [
-          { placeId: 'place-1', amount: '600' },
-          { placeId: 'place-2', amount: '400' },
+          { placeId: 'place-1', amount: '600.00' },
+          { placeId: 'place-2', amount: '400.00' },
         ],
       }),
     }))
@@ -341,8 +341,8 @@ describe('GoalCompletion', () => {
     expect(confirmGoalCompletion).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         withdrawals: [
-          { placeId: 'place-1', amount: '600' },
-          { placeId: 'place-2', amount: '400' },
+          { placeId: 'place-1', amount: '600.00' },
+          { placeId: 'place-2', amount: '400.00' },
         ],
       }),
     }))
@@ -387,8 +387,8 @@ describe('GoalCompletion', () => {
       data: {
         goalId: 'goal-1',
         withdrawals: [
-          { placeId: 'place-1', amount: '600' },
-          { placeId: 'place-2', amount: '400' },
+          { placeId: 'place-1', amount: '600.00' },
+          { placeId: 'place-2', amount: '400.00' },
         ],
         allocations: [
           { goalId: 'goal-1', percentage: '0.00' },
