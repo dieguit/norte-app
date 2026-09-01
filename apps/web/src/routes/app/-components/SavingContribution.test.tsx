@@ -125,6 +125,27 @@ describe('SavingContribution component', () => {
   })
 
   describe('ARS contribution flow', () => {
+    it('waits for a savings place before requesting a preview', async () => {
+      const user = userEvent.setup()
+      vi.mocked(previewSavingContribution).mockRejectedValue(
+        new Error('[{"code":"invalid_type","path":["place"]}]'),
+      )
+
+      render(
+        <SavingContribution
+          context={defaultContext}
+          onCancel={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      )
+
+      await user.type(screen.getByLabelText(/monto en pesos/i), '100000')
+      await new Promise((resolve) => setTimeout(resolve, 300))
+
+      expect(previewSavingContribution).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
     it('renders currency choices, inputs with decimal inputMode, and calculates debounced preview', async () => {
       const user = userEvent.setup()
       vi.mocked(previewSavingContribution).mockResolvedValue(mockArsPreview)

@@ -301,7 +301,7 @@ export function SavingContribution({
 
   // Debounced preview calculation
   useEffect(() => {
-    if (!hasEligibleGoals) {
+    if (!hasEligibleGoals || (kind === "saving" && !place)) {
       setPreview(null);
       return;
     }
