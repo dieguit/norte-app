@@ -126,7 +126,7 @@ describe('GoalCompletionSheet', () => {
     resolveFirst(present)
     await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Monto a retirar de Caja' })).not.toBeInTheDocument())
     resolveSecond({ profile: 'present', context: secondContext })
-    expect(await screen.findByText('Emergencias')).toBeInTheDocument()
+    expect(await screen.findByText('Completar Emergencias significa usar los ahorros acumulados para alcanzar el objetivo; las deducciones quedan registradas y reducen esos lugares de ahorro.')).toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Monto a retirar de Caja' })).not.toBeInTheDocument()
   })
 

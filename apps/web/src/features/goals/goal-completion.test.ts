@@ -178,6 +178,7 @@ describe('goal completion context and proposal', () => {
     expect(proposal.persistedAllocation.entries).toEqual([
       { goalId: 'goal-other', percentage: '100.00' },
     ])
+    expect(proposal.impacts.map((impact) => impact.goalId)).toEqual(['goal-other'])
     expect(proposal.proposedSource.goals.find((goal) => goal.id === 'goal-complete')?.status).toBe('completed')
     expect(proposal.proposedSource.goals.find((goal) => goal.id === 'goal-other')?.status).toBe('active')
   })

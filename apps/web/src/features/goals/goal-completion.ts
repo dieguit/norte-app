@@ -205,7 +205,7 @@ export function buildGoalCompletionProposal(input: {
     allocation: removal.allocation,
     persistedAllocation: removal.persistedAllocation,
     pauseMonthlyCommitment: removal.pauseMonthlyCommitment,
-    impacts: removal.impacts,
+    impacts: removal.impacts.filter((impact) => impact.goalId !== goal.id),
     proposedSource: {
       ...removal.proposedSource,
       incomes: state.source.incomes,

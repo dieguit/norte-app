@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRouter } from '@tanstack/react-router'
@@ -121,7 +121,7 @@ describe('GoalCompletion', () => {
   it('explains completion, renders only supplied places, starts empty, and reports the running total', () => {
     renderCompletion()
 
-    expect(screen.getByText(/completarlo significa usar los ahorros acumulados/i)).toBeInTheDocument()
+    expect(screen.getByText('Completar Viaje significa usar los ahorros acumulados para alcanzar el objetivo; las deducciones quedan registradas y reducen esos lugares de ahorro.')).toBeInTheDocument()
     expect(screen.getByText(/las deducciones/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '¿De dónde sale el dinero?' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Monto a retirar de Caja de ahorro' })).toHaveValue('')
@@ -155,14 +155,18 @@ describe('GoalCompletion', () => {
     expect(screen.getByText('Los montos deben sumar exactamente el objetivo.')).toBeInTheDocument()
   })
 
-  it('shows the completed target as a fixed zero-percent plan row', () => {
+  it('omits the completed target from redistribution and explains the released contribution', () => {
     renderCompletion()
 
-    const targetRow = screen.getByTestId('completion-target-row')
-    expect(targetRow).toHaveTextContent('Viaje')
-    expect(targetRow).toHaveTextContent('Sin asignación de aporte mensual')
-    expect(targetRow).toHaveTextContent('Completado')
-    expect(screen.queryByRole('textbox', { name: 'Porcentaje para Viaje' })).not.toBeInTheDocument()
+    const planSection = screen.getByRole('heading', { name: 'Redistribuí tu Plan' }).closest('section')
+    expect(planSection).not.toBeNull()
+    const section = within(planSection as HTMLElement)
+
+    expect(section.getByText('Al completar este objetivo, su aporte mensual queda disponible para tus otros objetivos.')).toBeInTheDocument()
+    expect(section.queryByText('Viaje')).not.toBeInTheDocument()
+    expect(section.queryByText('Sin asignación de aporte mensual')).not.toBeInTheDocument()
+    expect(section.queryByText('Completado')).not.toBeInTheDocument()
+    expect(section.queryByTestId('completion-target-row')).not.toBeInTheDocument()
   })
 
   it('keeps the allocation editor disabled until withdrawals are valid and shows the exact total', async () => {

@@ -3,7 +3,6 @@ import { usePostHog } from '@posthog/react'
 import { useRouter } from '@tanstack/react-router'
 import BigNumber from 'bignumber.js'
 import { toast } from 'sonner'
-import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Field, FieldError, FieldLabel } from '../../components/ui/field'
 import { Input } from '../../components/ui/input'
@@ -343,7 +342,7 @@ export function GoalCompletion({
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <div className="flex flex-col gap-6">
           <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)]">
-            Completarlo significa usar los ahorros acumulados para alcanzar el objetivo; las deducciones quedan registradas y reducen esos lugares de ahorro.
+            Completar {context.goalName} significa usar los ahorros acumulados para alcanzar el objetivo; las deducciones quedan registradas y reducen esos lugares de ahorro.
           </p>
 
           {serverError && (
@@ -430,21 +429,8 @@ export function GoalCompletion({
                 Redistribuí tu Plan
               </h2>
               <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
-                Al completar este objetivo, su aporte mensual queda en 0% y el resto se redistribuye proporcionalmente.
+                Al completar este objetivo, su aporte mensual queda disponible para tus otros objetivos.
               </p>
-            </div>
-            <div
-              data-testid="completion-target-row"
-              className="flex items-center justify-between gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5"
-            >
-              <div className="flex min-w-0 flex-col items-start gap-0.5">
-                <span className="text-sm font-medium text-[var(--sea-ink)]">{context.goalName}</span>
-                <span className="text-xs font-normal text-[var(--sea-ink-soft)]">Sin asignación de aporte mensual</span>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className="text-sm font-semibold text-[var(--sea-ink-soft)]">0%</span>
-                <Badge variant="secondary">Completado</Badge>
-              </div>
             </div>
             {remainingGoals.length === 0 ? (
               <p className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/40 p-4 text-sm text-[var(--sea-ink-soft)]">

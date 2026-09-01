@@ -133,12 +133,18 @@ describe('Roadmap component', () => {
     )
 
     const completedCard = screen.getByRole('heading', { name: 'Viaje cumplido' }).closest('article')
-    expect(completedCard).toHaveClass('border-[var(--lagoon-deep)]/35', 'bg-[var(--lagoon)]/25')
-    expect(within(completedCard!).getByText('Objetivo completado')).toBeVisible()
+    expect(completedCard).toHaveClass('border-[var(--lagoon-deep)]/35', 'bg-[var(--lagoon)]/40')
+    expect(completedCard).not.toHaveClass('bg-[var(--lagoon)]/25')
+    const completedLabelText = within(completedCard!).getByText('Objetivo completado')
+    expect(completedLabelText).toBeVisible()
+    const completedLabel = completedLabelText.closest('p')
+    expect(completedLabel).toHaveClass('text-[var(--sea-ink)]')
     expect(completedCard?.querySelector('svg.lucide-circle-check')).toHaveAttribute(
       'aria-hidden',
       'true',
     )
-    expect(screen.getByText('Objetivo proyectado')).toBeVisible()
+    const projectedLabelText = screen.getByText('Objetivo proyectado')
+    expect(projectedLabelText).toBeVisible()
+    expect(projectedLabelText.closest('p')).toHaveClass('text-[var(--palm)]')
   })
 })

@@ -118,16 +118,27 @@ function MonthGroup({
               key={goal.id}
               className={`w-full rounded-2xl border p-4 text-center shadow-[var(--shadow-card)] ${
                 goal.status === "completed"
-                  ? "border-[var(--lagoon-deep)]/35 bg-[var(--lagoon)]/25"
+                  ? "border-[var(--lagoon-deep)]/35 bg-[var(--lagoon)]/90"
                   : "border-[var(--line)] bg-white/90"
               }`}
             >
-              <p className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--palm)]">
+              <p
+                className={`flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${
+                  goal.status === "completed"
+                    ? "text-[var(--sea-ink)]"
+                    : "text-[var(--palm)]"
+                }`}
+              >
                 {goal.status === "completed" && (
-                  <CircleCheck className="size-4 text-[var(--lagoon-deep)]" aria-hidden="true" />
+                  <CircleCheck
+                    className="size-4 text-[var(--lagoon-deep)]"
+                    aria-hidden="true"
+                  />
                 )}
                 <span>
-                  {goal.status === "completed" ? "Objetivo completado" : "Objetivo proyectado"}
+                  {goal.status === "completed"
+                    ? "Objetivo completado"
+                    : "Objetivo proyectado"}
                 </span>
               </p>
               <h4
