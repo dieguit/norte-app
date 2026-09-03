@@ -58,14 +58,16 @@ export function SavingsPlaceSheet({
   const isEdit = Boolean(place)
 
   const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [serverError, setServerError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
   const mutationCompleted = useRef(false)
 
   useEffect(() => {
     if (!open) return
     setName(place?.name ?? '')
-    setError(null)
+    setNameError(null)
+    setServerError(null)
     mutationCompleted.current = false
   }, [open, place?.id, place?.name])
 
@@ -78,14 +80,15 @@ export function SavingsPlaceSheet({
     e.preventDefault()
     const trimmedName = name.trim()
     if (mutationCompleted.current) return
-    const nameError = getSavingsPlaceNameError(trimmedName)
-    if (nameError) {
-      setError(nameError)
+    const error = getSavingsPlaceNameError(trimmedName)
+    if (error) {
+      setNameError(error)
       return
     }
 
     setIsPending(true)
-    setError(null)
+    setNameError(null)
+    setServerError(null)
 
     void savePlace({
         place,
@@ -96,7 +99,7 @@ export function SavingsPlaceSheet({
           setName('')
           refreshAfterMutation(router, 'El lugar se guardó, pero no pudimos actualizar la vista.')
         },
-      }).catch((err) => setError(err instanceof Error ? err.message : 'Error al guardar.'))
+      }).catch(() => setServerError('No pudimos guardar el lugar.'))
         .finally(() => setIsPending(false))
   }
 
@@ -105,13 +108,14 @@ export function SavingsPlaceSheet({
     if (!window.confirm('¿Eliminar este lugar?')) return
 
     setIsPending(true)
-    setError(null)
+    setNameError(null)
+    setServerError(null)
 
     void deletePlace(place.id, () => {
       mutationCompleted.current = true
       onOpenChange(false)
       refreshAfterMutation(router, 'El lugar se eliminó, pero no pudimos actualizar la vista.')
-    }).catch((err) => setError(err instanceof Error ? err.message : 'Error al eliminar.'))
+    }).catch(() => setServerError('No pudimos eliminar el lugar.'))
       .finally(() => setIsPending(false))
   }
 
@@ -120,10 +124,14 @@ export function SavingsPlaceSheet({
     onOpenChange={handleOpenChange}
     isEdit={isEdit}
     name={name}
-    error={error}
+    nameError={nameError}
+    serverError={serverError}
     isPending={isPending}
     onSubmit={handleSubmit}
-    onNameChange={setName}
+    onNameChange={(val) => {
+      setName(val)
+      if (nameError) setNameError(null)
+    }}
     onDelete={handleDelete}
   />
 }
@@ -133,7 +141,8 @@ function SavingsPlaceSheetView({
   onOpenChange,
   isEdit,
   name,
-  error,
+  nameError,
+  serverError,
   isPending,
   onSubmit,
   onNameChange,
@@ -143,7 +152,8 @@ function SavingsPlaceSheetView({
   onOpenChange: (open: boolean) => void
   isEdit: boolean
   name: string
-  error: string | null
+  nameError: string | null
+  serverError: string | null
   isPending: boolean
   onSubmit: (event: React.FormEvent) => void
   onNameChange: (name: string) => void
@@ -161,7 +171,15 @@ function SavingsPlaceSheetView({
           onSubmit={onSubmit}
           className="flex flex-1 flex-col gap-5 overflow-y-auto p-6"
         >
-          <SavingsPlaceSheetFields name={name} error={error} isPending={isPending} onNameChange={onNameChange} />
+          {serverError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive"
+            >
+              {serverError}
+            </div>
+          )}
+          <SavingsPlaceSheetFields name={name} error={nameError} isPending={isPending} onNameChange={onNameChange} />
           <SavingsPlaceSheetActions isEdit={isEdit} isPending={isPending} onDelete={onDelete} />
         </form>
       </SheetContent>

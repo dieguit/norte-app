@@ -183,10 +183,10 @@ describe('SavingsPlaceSheet', () => {
     expect(toast.error).toHaveBeenCalledWith('El lugar se guardó, pero no pudimos actualizar la vista.')
   })
 
-  it('preserves the renamed name and displays a server error when rename fails', async () => {
+  it('preserves the renamed name and displays a sanitized server error in a form-level alert without marking the field invalid when rename fails', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
-    vi.mocked(renameSavingsPlace).mockRejectedValue(new Error('No se pudo renombrar.'))
+    vi.mocked(renameSavingsPlace).mockRejectedValue(new Error('Database exploded.'))
 
     render(<SavingsPlaceSheet open onOpenChange={onOpenChange} place={bank} />)
     const input = screen.getByRole('textbox', { name: 'Nombre del lugar' })
@@ -194,8 +194,10 @@ describe('SavingsPlaceSheet', () => {
     await user.type(input, 'Banco Galicia')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No se pudo renombrar.'))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No pudimos guardar el lugar.'))
     expect(input).toHaveValue('Banco Galicia')
+    expect(input).toHaveAttribute('aria-invalid', 'false')
+    expect(document.querySelector('#place-name-error')).not.toBeInTheDocument()
     expect(onOpenChange).not.toHaveBeenCalled()
   })
 
@@ -253,7 +255,7 @@ describe('SavingsPlaceSheet', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
   })
 
-  it('preserves the entered name and shows a server error', async () => {
+  it('preserves the entered name and shows a sanitized server error without marking the field invalid when create fails', async () => {
     const user = userEvent.setup()
     vi.mocked(createSavingsPlace).mockRejectedValue(new Error('Ese lugar ya existe.'))
     renderSheet()
@@ -262,8 +264,25 @@ describe('SavingsPlaceSheet', () => {
     await user.type(input, 'Efectivo')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Ese lugar ya existe.'))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No pudimos guardar el lugar.'))
     expect(input).toHaveValue('Efectivo')
+    expect(input).toHaveAttribute('aria-invalid', 'false')
+    expect(document.querySelector('#place-name-error')).not.toBeInTheDocument()
+  })
+
+  it('shows a sanitized server error without marking the field invalid when delete fails', async () => {
+    const user = userEvent.setup()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(deleteSavingsPlace).mockRejectedValue(new Error('Server failed to delete'))
+    renderSheet({ place: bank })
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No pudimos eliminar el lugar.'))
+    const input = screen.getByRole('textbox', { name: 'Nombre del lugar' })
+    expect(input).toHaveAttribute('aria-invalid', 'false')
+    expect(document.querySelector('#place-name-error')).not.toBeInTheDocument()
+    confirmSpy.mockRestore()
   })
 
   it('keeps rename actions disabled through a place change and ignores close until completion', async () => {
