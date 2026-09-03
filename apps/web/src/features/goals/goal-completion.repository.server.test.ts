@@ -368,7 +368,7 @@ describe('goal-completion.repository.server', () => {
     expect(tx.insert).not.toHaveBeenCalled()
   })
 
-  it('persists exact withdrawals, completion status, and the next plan atomically', async () => {
+  it('persists exact withdrawals, completion status, and the current plan atomically', async () => {
     const insertedValues = vi.fn()
     const updatedValues = vi.fn()
     const goalReturning = vi.fn().mockResolvedValue([{ id: 'goal_1' }])
@@ -392,6 +392,7 @@ describe('goal-completion.repository.server', () => {
 
     expect(tx.insert).toHaveBeenCalledWith(goalCompletionWithdrawals)
     expect(tx.update).toHaveBeenCalledWith(financialGoals)
+    expect(tx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
     expect(tx.delete).toHaveBeenCalledWith(allocationPlanEntries)
     expect(tx.insert).not.toHaveBeenCalledWith(allocationPlanEntries)
     expect(tx.update).toHaveBeenCalledWith(financialProfiles)
@@ -405,7 +406,7 @@ describe('goal-completion.repository.server', () => {
     expect(result).toEqual({ completedAt: insertedValues.mock.calls[0][0][0].createdAt.toISOString() })
     expect(insertedValues.mock.calls[1][0]).toEqual({
       userId: 'user_1',
-      effectiveMonth: '2026-09-01',
+      effectiveMonth: '2026-08-01',
       plannedMonthlyContribution: null,
     })
   })

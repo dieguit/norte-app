@@ -118,7 +118,7 @@ function selectAllocationChangeBaseline(input: {
     pendingSnapshot,
     selectedSnapshot,
     sourceAllocs,
-    effectiveMonth: pendingSnapshot?.effectiveMonth ?? `${currentMonth.slice(0, 7)}-01`,
+    effectiveMonth: `${currentMonth.slice(0, 7)}-01`,
   }
 }
 
@@ -158,22 +158,18 @@ function addAllocationChangeAmounts(input: {
 
 function buildAllocationChangeProposedSource(input: {
   state: AllocationChangeState
-  pendingSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
   selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
   effectiveMonth: string
   entries: GoalCreationAllocationEntry[]
   dedicationPercentage: number
 }): GoalsWorkspaceSource {
   const targetMonth = input.effectiveMonth.slice(0, 7)
-  const snapshotId =
-    input.selectedSnapshot?.effectiveMonth.slice(0, 7) === targetMonth
-      ? input.selectedSnapshot.id
-      : `snap-allocation-${targetMonth}`
+  const currentSnapshot = input.state.source.snapshots.find(
+    (snapshot) => snapshot.effectiveMonth.slice(0, 7) === targetMonth,
+  )
+  const snapshotId = currentSnapshot?.id ?? `snap-allocation-${targetMonth}`
   return buildGoalProposalSource({
     source: input.state.source,
-    pendingSnapshot: input.pendingSnapshot,
-    pendingAllocations: input.state.pendingAllocations,
-    includePendingSnapshot: true,
     snapshotId,
     effectiveMonth: input.effectiveMonth,
     entries: input.entries,
@@ -233,7 +229,6 @@ export function buildAllocationChangeProposal(
       : Number(state.source.profile?.goalDedicationPercentage ?? 90)
   const proposedSource = buildAllocationChangeProposedSource({
     state,
-    pendingSnapshot: baseline.pendingSnapshot,
     selectedSnapshot: baseline.selectedSnapshot,
     effectiveMonth: baseline.effectiveMonth,
     entries,

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import BigNumber from 'bignumber.js'
 import { db } from '../../db/client'
 import { withLockedFinancialProfile } from '../../db/with-locked-financial-profile.server'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, gt } from 'drizzle-orm'
 import {
   allocationPlanEntries,
   allocationPlanSnapshots,
@@ -556,12 +556,21 @@ export async function getGoalLifecycleState(
   return getGoalLifecycleStateWithExecutor(db, userId, currentMonth)
 }
 
-async function replacePendingAllocationSnapshot(
+async function replaceCurrentAllocationSnapshot(
   tx: any,
   userId: string,
   allocation: GoalCreationAllocation | { effectiveMonth: string; entries?: ReadonlyArray<any> },
   plannedMonthlyContribution?: string | null,
 ): Promise<string> {
+  await tx
+    .delete(allocationPlanSnapshots)
+    .where(
+      and(
+        eq(allocationPlanSnapshots.userId, userId),
+        gt(allocationPlanSnapshots.effectiveMonth, allocation.effectiveMonth),
+      ),
+    )
+
   const existingSnapshot = await tx.query.allocationPlanSnapshots.findFirst({
     where: (snapshots: any, { and, eq }: any) =>
       and(
@@ -630,7 +639,7 @@ export async function persistGoalAllocationPlan({
       .set({ plannedMonthlyContribution: null })
       .where(eq(financialProfiles.userId, userId))
   }
-  const snapshotId = await replacePendingAllocationSnapshot(
+  const snapshotId = await replaceCurrentAllocationSnapshot(
     tx,
     userId,
     allocation,
@@ -685,7 +694,7 @@ async function persistCreatedGoalPlan(
   goalId: string,
   plannedMonthlyContribution: string | null | undefined,
 ): Promise<void> {
-  const snapshotId = await replacePendingAllocationSnapshot(
+  const snapshotId = await replaceCurrentAllocationSnapshot(
     tx,
     userId,
     proposal.allocation,
@@ -793,7 +802,7 @@ async function persistAllocationChange(
       plannedMonthlyContribution: monthlyContribution,
     })
     .where(eq(financialProfiles.userId, userId))
-  const snapshotId = await replacePendingAllocationSnapshot(
+  const snapshotId = await replaceCurrentAllocationSnapshot(
     tx,
     userId,
     proposal.allocation,
@@ -894,7 +903,7 @@ async function persistEditedGoal(
       .where(eq(goalInvestmentPositions.goalId, goalId))
   }
 
-  const snapshotId = await replacePendingAllocationSnapshot(
+  const snapshotId = await replaceCurrentAllocationSnapshot(
     tx,
     userId,
     proposal.allocation,

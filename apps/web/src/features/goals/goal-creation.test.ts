@@ -174,66 +174,33 @@ describe('serializeAllocationEntries', () => {
 
 describe('buildGoalCreationProposal', () => {
   describe('Allocation defaults & Seeding', () => {
-    it('replaces a pending next-month snapshot without duplicating its month', () => {
+    it('promotes the pending plan baseline into the current month', () => {
       const source = createBaseWorkspaceSource()
-      source.snapshots.push({ id: 'source-next', userId: 'user-1', effectiveMonth: '2026-09-01' })
+      const state: GoalCreationState = {
+        source,
+        pendingSnapshots: [
+          { id: 'snap-global-sep', userId: 'user-1', effectiveMonth: '2026-09-01' },
+        ],
+        pendingAllocations: [
+          { id: 'alloc-sep-1', snapshotId: 'snap-global-sep', goalId: 'goal-1', percentage: '70.00' },
+          { id: 'alloc-sep-2', snapshotId: 'snap-global-sep', goalId: 'goal-2', percentage: '30.00' },
+        ],
+      }
+
       const proposal = buildGoalCreationProposal({
-        draft: createBaseDraft({
-          allocations: [
-            { goalId: 'goal-1', percentage: '60.00' },
-            { goalId: 'goal-2', percentage: '0.00' },
-            { goalId: PENDING_GOAL_ID, percentage: '40.00' },
-          ],
-        }),
-        state: {
-          source,
-          pendingSnapshots: [{ id: 'pending-next', userId: 'user-1', effectiveMonth: '2026-09-01' }],
-          pendingAllocations: [],
-        },
+        draft: createBaseDraft(),
+        state,
         currentMonth: '2026-08',
       })
 
-      expect(proposal.proposedSource.snapshots.filter((snapshot) => snapshot.effectiveMonth === '2026-09-01')).toEqual([
-        { id: 'pending-next', userId: 'user-1', effectiveMonth: '2026-09-01' },
+      expect(proposal.allocation.entries).toEqual([
+        expect.objectContaining({ goalId: 'goal-1', percentage: '70.00' }),
+        expect.objectContaining({ goalId: 'goal-2', percentage: '30.00' }),
+        expect.objectContaining({ goalId: PENDING_GOAL_ID, percentage: '0.00' }),
       ])
-    })
-
-    it('remaps allocations when replacing an existing next-month snapshot with a synthetic source', () => {
-      const source = createBaseWorkspaceSource()
-      source.snapshots.push({ id: 'source-next', userId: 'user-1', effectiveMonth: '2026-09-01' })
-      source.allocations.push(
-        { id: 'next-allocation-1', snapshotId: 'source-next', goalId: 'goal-1', percentage: '60.00' },
-        { id: 'next-allocation-2', snapshotId: 'source-next', goalId: 'goal-2', percentage: '40.00' },
-      )
-
-      const proposal = buildGoalCreationProposal({
-        draft: createBaseDraft({
-          allocations: [
-            { goalId: 'goal-1', percentage: '40.00' },
-            { goalId: 'goal-2', percentage: '40.00' },
-            { goalId: PENDING_GOAL_ID, percentage: '20.00' },
-          ],
-        }),
-        state: { source, pendingSnapshots: [], pendingAllocations: [] },
-        currentMonth: '2026-08',
-      })
-
-      const nextSnapshot = proposal.proposedSource.snapshots.find(
-        (snapshot) => snapshot.effectiveMonth === '2026-09-01',
-      )
-
-      expect(nextSnapshot?.id).toBe('snap-allocation-2026-09')
-      expect(proposal.proposedSource.allocations).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ snapshotId: nextSnapshot?.id, goalId: 'goal-1' }),
-          expect.objectContaining({ snapshotId: nextSnapshot?.id, goalId: 'goal-2' }),
-          expect.objectContaining({ snapshotId: nextSnapshot?.id, goalId: PENDING_GOAL_ID }),
-        ]),
-      )
-      expect(proposal.proposedSource.allocations).not.toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ snapshotId: 'source-next' }),
-        ]),
+      expect(proposal.allocation.effectiveMonth).toBe('2026-08-01')
+      expect(proposal.proposedSource.snapshots).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ effectiveMonth: '2026-09-01' })]),
       )
     })
 
@@ -288,47 +255,8 @@ describe('buildGoalCreationProposal', () => {
       expect(proposal.allocation.totalPercentage).toBe('100.00')
     })
 
-    it('prefers pending next-month snapshot over current snapshot when available', () => {
+    it('replaces the current-month source snapshot and allocations in the proposed source', () => {
       const source = createBaseWorkspaceSource()
-      const state: GoalCreationState = {
-        source,
-        pendingSnapshots: [
-          {
-            id: 'snap-global-sep',
-            userId: 'user-1',
-            effectiveMonth: '2026-09-01',
-          },
-        ],
-        pendingAllocations: [
-          { id: 'alloc-sep-1', snapshotId: 'snap-global-sep', goalId: 'goal-1', percentage: '70.00' },
-          { id: 'alloc-sep-2', snapshotId: 'snap-global-sep', goalId: 'goal-2', percentage: '30.00' },
-        ],
-      }
-
-      const proposal = buildGoalCreationProposal({
-        draft: createBaseDraft(),
-        state,
-        currentMonth: '2026-08',
-      })
-
-      expect(proposal.allocation.entries).toEqual([
-        expect.objectContaining({ goalId: 'goal-1', percentage: '70.00' }),
-        expect.objectContaining({ goalId: 'goal-2', percentage: '30.00' }),
-        expect.objectContaining({ goalId: PENDING_GOAL_ID, percentage: '0.00' }),
-      ])
-      expect(proposal.allocation.effectiveMonth).toBe('2026-09-01')
-    })
-
-    it('replaces the next-month source snapshot and allocations in the proposed source', () => {
-      const source = createBaseWorkspaceSource()
-      source.snapshots.push({ id: 'future-snapshot', userId: 'user-1', effectiveMonth: '2026-09-01' })
-      source.allocations.push({
-        id: 'future-allocation',
-        snapshotId: 'future-snapshot',
-        goalId: 'goal-1',
-        percentage: '100.00',
-      })
-
       const proposal = buildGoalCreationProposal({
         draft: createBaseDraft({
           allocations: [
@@ -342,14 +270,14 @@ describe('buildGoalCreationProposal', () => {
       })
 
       expect(proposal.proposedSource.snapshots).toContainEqual({
-        id: 'snap-allocation-2026-09',
+        id: 'snap-global-aug',
         userId: 'user-1',
-        effectiveMonth: '2026-09-01',
+        effectiveMonth: '2026-08-01',
       })
-      expect(proposal.proposedSource.allocations.filter((entry) => entry.snapshotId === 'snap-allocation-2026-09')).toEqual([
-        { id: 'alloc-snap-allocation-2026-09-goal-1', snapshotId: 'snap-allocation-2026-09', goalId: 'goal-1', percentage: '50.00' },
-        { id: 'alloc-snap-allocation-2026-09-goal-2', snapshotId: 'snap-allocation-2026-09', goalId: 'goal-2', percentage: '30.00' },
-        { id: 'alloc-snap-allocation-2026-09-pending-goal', snapshotId: 'snap-allocation-2026-09', goalId: PENDING_GOAL_ID, percentage: '20.00' },
+      expect(proposal.proposedSource.allocations.filter((entry) => entry.snapshotId === 'snap-global-aug')).toEqual([
+        { id: 'alloc-snap-global-aug-goal-1', snapshotId: 'snap-global-aug', goalId: 'goal-1', percentage: '50.00' },
+        { id: 'alloc-snap-global-aug-goal-2', snapshotId: 'snap-global-aug', goalId: 'goal-2', percentage: '30.00' },
+        { id: 'alloc-snap-global-aug-pending-goal', snapshotId: 'snap-global-aug', goalId: PENDING_GOAL_ID, percentage: '20.00' },
       ])
     })
 
@@ -477,7 +405,7 @@ describe('buildGoalCreationProposal', () => {
       expect(pendingEntry?.allocatedDestinationAmount).toEqual({ amount: '40.00', currency: 'USD' })
     })
 
-    it('advances a December proposal to January without changing allocation order', () => {
+    it('keeps a December proposal effective in December', () => {
       const source = createBaseWorkspaceSource()
       const proposal = buildGoalCreationProposal({
         draft: createBaseDraft({
@@ -491,13 +419,13 @@ describe('buildGoalCreationProposal', () => {
         currentMonth: '2026-12',
       })
 
-      expect(proposal.allocation.effectiveMonth).toBe('2027-01-01')
+      expect(proposal.allocation.effectiveMonth).toBe('2026-12-01')
       expect(proposal.allocation.entries.map((entry) => entry.goalId)).toEqual([
         'goal-1',
         'goal-2',
         PENDING_GOAL_ID,
       ])
-      expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe('2027-01-01')
+      expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe('2026-12-01')
     })
 
 

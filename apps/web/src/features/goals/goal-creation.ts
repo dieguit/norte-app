@@ -114,7 +114,7 @@ export interface GoalCreationPreviewResult {
   previewToken: string
 }
 
-export function getNextCalendarMonthStr(currentMonth: string): string {
+function getNextCalendarMonthStr(currentMonth: string): string {
   const [year, month] = currentMonth.slice(0, 7).split('-').map(Number)
   const totalMonths = year * 12 + (month - 1) + 1
   const targetYear = Math.floor(totalMonths / 12)
@@ -586,17 +586,16 @@ function buildGoalCreationProposedSource(input: {
   entries: GoalCreationAllocationEntry[]
   proposedGoals: GoalsWorkspaceSource['goals']
   proposedInvestmentPositions: GoalsWorkspaceSource['investmentPositions']
-  nextMonthStr: string
-  nextMonthEffective: string
+  effectiveMonthKey: string
+  effectiveMonth: string
 }): GoalsWorkspaceSource {
-  const pendingSnapshot = input.state.pendingSnapshots.find(
-    (snapshot) => snapshot.effectiveMonth === input.nextMonthEffective,
+  const currentSnapshot = input.state.source.snapshots.find(
+    (snapshot) => snapshot.effectiveMonth.slice(0, 7) === input.effectiveMonthKey,
   )
   return buildGoalProposalSource({
     source: input.state.source,
-    pendingSnapshot,
-    snapshotId: pendingSnapshot?.id ?? `snap-allocation-${input.nextMonthStr}`,
-    effectiveMonth: input.nextMonthEffective,
+    snapshotId: currentSnapshot?.id ?? `snap-allocation-${input.effectiveMonthKey}`,
+    effectiveMonth: input.effectiveMonth,
     entries: input.entries,
     goals: input.proposedGoals,
     investmentPositions: input.proposedInvestmentPositions,
@@ -674,12 +673,12 @@ function buildGoalCreationAllocation(input: {
 }): {
   allocation: GoalCreationAllocation
   selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
-  nextMonthStr: string
-  nextMonthEffective: string
+  effectiveMonthKey: string
+  effectiveMonth: string
 } {
   const { draft, state, currentMonth, subject, normalizedGoal } = input
-  const nextMonthStr = getNextCalendarMonthStr(currentMonth)
-  const nextMonthEffective = `${nextMonthStr}-01`
+  const effectiveMonthKey = currentMonth.slice(0, 7)
+  const effectiveMonth = `${effectiveMonthKey}-01`
   const activeExistingGoals = state.source.goals.filter((goal) => goal.status === 'active')
   const { snapshot: selectedSnapshot, allocations: sourceAllocs } = selectGoalPlanSnapshot(
     state.source,
@@ -708,11 +707,11 @@ function buildGoalCreationAllocation(input: {
 
   const allocation: GoalCreationAllocation = {
     monthlyContribution,
-    effectiveMonth: nextMonthEffective,
+    effectiveMonth,
     entries,
     totalPercentage: totalBn.toFixed(2),
   }
-  return { allocation, selectedSnapshot, nextMonthStr, nextMonthEffective }
+  return { allocation, selectedSnapshot, effectiveMonthKey, effectiveMonth }
 }
 
 function buildGoalCreationWorkspaces(input: {
@@ -724,8 +723,8 @@ function buildGoalCreationWorkspaces(input: {
   selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
   subject: GoalCreationSubject
   goalName: string
-  nextMonthStr: string
-  nextMonthEffective: string
+  effectiveMonthKey: string
+  effectiveMonth: string
 }): { proposedSource: GoalsWorkspaceSource; impacts: GoalCreationImpact[] } {
   const beforeWorkspace = buildCurrentGoalsPlanWorkspace(input.state, input.currentMonth)
   const proposedSource = buildGoalCreationProposedSource(input)
@@ -766,8 +765,8 @@ export function buildGoalCreationProposal(input: GoalCreationInput): GoalCreatio
     selectedSnapshot: plan.selectedSnapshot,
     subject,
     goalName: normalizedGoal.name,
-    nextMonthStr: plan.nextMonthStr,
-    nextMonthEffective: plan.nextMonthEffective,
+    effectiveMonthKey: plan.effectiveMonthKey,
+    effectiveMonth: plan.effectiveMonth,
   })
   return {
     normalizedGoal,

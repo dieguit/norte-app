@@ -2,9 +2,6 @@ import type { GoalsWorkspaceSource } from './goals'
 
 export function buildGoalProposalSource(input: {
   source: GoalsWorkspaceSource
-  pendingSnapshot?: GoalsWorkspaceSource['snapshots'][number]
-  pendingAllocations?: GoalsWorkspaceSource['allocations']
-  includePendingSnapshot?: boolean
   snapshotId: string
   effectiveMonth: string
   entries: ReadonlyArray<{ goalId: string; percentage: string }>
@@ -12,11 +9,8 @@ export function buildGoalProposalSource(input: {
   investmentPositions: GoalsWorkspaceSource['investmentPositions']
   profile: GoalsWorkspaceSource['profile']
 }): GoalsWorkspaceSource {
-  const snapshots = [
-    ...input.source.snapshots,
-    ...(input.includePendingSnapshot && input.pendingSnapshot ? [input.pendingSnapshot] : []),
-  ]
-  const sourceAllocations = [...input.source.allocations, ...(input.pendingAllocations ?? [])]
+  const snapshots = [...input.source.snapshots]
+  const sourceAllocations = [...input.source.allocations]
   const targetMonth = input.effectiveMonth.slice(0, 7)
   const replacedSnapshotIds = new Set(
     snapshots

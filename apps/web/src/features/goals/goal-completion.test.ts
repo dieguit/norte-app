@@ -171,6 +171,8 @@ describe('goal completion context and proposal', () => {
       },
     })
 
+    expect(proposal.allocation.effectiveMonth).toBe('2026-08-01')
+    expect(proposal.persistedAllocation.effectiveMonth).toBe('2026-08-01')
     expect(proposal.withdrawals).toEqual([
       { placeId: 'bank', placeName: 'Banco', amount: createMoney('600.00', 'ARS') },
       { placeId: 'cash', placeName: 'Efectivo', amount: createMoney('400.00', 'ARS') },

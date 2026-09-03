@@ -17,7 +17,6 @@ import {
 import {
   type GoalCreationAllocation,
   type GoalCreationImpact,
-  getNextCalendarMonthStr,
   rebalanceAllocationEntries,
   selectGoalPlanSnapshot,
 } from './goal-creation'
@@ -341,22 +340,20 @@ function buildLifecycleProposedSource(input: {
   state: GoalLifecycleState
   goalId: string
   allGoals: LifecycleGoal[]
-  nextMonthStr: string
-  nextMonthEffective: string
+  effectiveMonthKey: string
+  effectiveMonth: string
   persistedEntries: Array<{ goalId: string; percentage: string }>
   pauseMonthlyCommitment: boolean
   nextStatus: GoalStatus
 }): GoalsWorkspaceSource {
-  const snapshotId = input.state.pendingSnapshots.find(
-    (snapshot) => snapshot.effectiveMonth === input.nextMonthEffective,
-  )?.id ?? `snap-allocation-${input.nextMonthStr}`
+  const currentSnapshot = input.state.source.snapshots.find(
+    (snapshot) => snapshot.effectiveMonth.slice(0, 7) === input.effectiveMonthKey,
+  )
+  const snapshotId = currentSnapshot?.id ?? `snap-allocation-${input.effectiveMonthKey}`
   return buildGoalProposalSource({
     source: input.state.source,
-    pendingSnapshot: input.state.pendingSnapshots.find(
-      (snapshot) => snapshot.effectiveMonth === input.nextMonthEffective,
-    ),
     snapshotId,
-    effectiveMonth: input.nextMonthEffective,
+    effectiveMonth: input.effectiveMonth,
     entries: input.persistedEntries,
     goals: input.allGoals.map((goal) =>
       goal.id === input.goalId ? { ...goal, status: input.nextStatus } : goal,
@@ -470,8 +467,8 @@ function buildLifecycleSetup(input: BuildGoalLifecycleProposalInput) {
   const allGoals = input.state.source.goals
   const targetGoal = validateLifecycleTarget(input.lifecycle, input.goalId, allGoals)
   const nextStatus: GoalStatus = input.lifecycle === 'pause' ? 'paused' : 'active'
-  const nextMonthStr = getNextCalendarMonthStr(input.currentMonth)
-  const nextMonthEffective = `${nextMonthStr}-01`
+  const effectiveMonthKey = input.currentMonth.slice(0, 7)
+  const effectiveMonth = `${effectiveMonthKey}-01`
   const existingActiveGoals = allGoals.filter((goal) => goal.status === 'active')
   const proposedActiveGoals = input.lifecycle === 'pause'
     ? existingActiveGoals.filter((goal) => goal.id !== input.goalId)
@@ -488,8 +485,8 @@ function buildLifecycleSetup(input: BuildGoalLifecycleProposalInput) {
     allGoals,
     targetGoal,
     nextStatus,
-    nextMonthStr,
-    nextMonthEffective,
+    effectiveMonthKey,
+    effectiveMonth,
     existingActiveGoals,
     proposedActiveGoals,
     pauseMonthlyCommitment,
@@ -537,10 +534,10 @@ function buildLifecycleAllocation(input: ReturnType<typeof buildLifecycleSetup>)
   return {
     displayEntries: entries,
     persistedEntries,
-    persistedAllocation: { effectiveMonth: input.nextMonthEffective, entries: persistedEntries },
+    persistedAllocation: { effectiveMonth: input.effectiveMonth, entries: persistedEntries },
     allocation: {
       monthlyContribution,
-      effectiveMonth: input.nextMonthEffective,
+      effectiveMonth: input.effectiveMonth,
       entries,
       totalPercentage,
     } satisfies GoalCreationAllocation,
@@ -556,8 +553,8 @@ function buildLifecycleWorkspaces(
     state: input.state,
     goalId: input.goalId,
     allGoals: input.allGoals,
-    nextMonthStr: input.nextMonthStr,
-    nextMonthEffective: input.nextMonthEffective,
+    effectiveMonthKey: input.effectiveMonthKey,
+    effectiveMonth: input.effectiveMonth,
     persistedEntries: allocation.persistedEntries,
     pauseMonthlyCommitment: input.pauseMonthlyCommitment,
     nextStatus: input.nextStatus,

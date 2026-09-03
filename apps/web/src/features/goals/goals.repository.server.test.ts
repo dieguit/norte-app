@@ -1215,7 +1215,7 @@ describe('goals.repository.server', () => {
       }))
     }
 
-    it('1. inserts Goal with normalized fixed target and next-month desired date', async () => {
+    it('1. inserts the goal and replaces the current-month plan', async () => {
       setupMocks()
       const state = await getGoalCreationState('user_1', currentMonth)
       const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)
@@ -1230,16 +1230,36 @@ describe('goals.repository.server', () => {
       expect(result).toEqual({ goalId: 'goal_created_id' })
       expect(mockTx.select).toHaveBeenCalled()
       expect(mockTx.insert).toHaveBeenCalledWith(financialGoals)
-      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
-      expect(insertedSnapshotValues).toEqual({
-        userId: 'user_1',
-        effectiveMonth: '2026-09-01',
-        plannedMonthlyContribution: '60000.00',
-      })
 
       const goalInsertCall = mockTx.insert.mock.calls.find((call) => call[0] === financialGoals)
       expect(goalInsertCall).toBeDefined()
+    })
+
+    it('inserts a new current-month snapshot when none exists', async () => {
+      setupMocks({ snapshots: [] })
+      const state = await getGoalCreationState('user_1', currentMonth)
+      const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)
+
+      const result = await confirmGoalCreationInRepository({
+        userId: 'user_1',
+        currentMonth,
+        draft: validDraft,
+        previewToken: token,
+      })
+
+      expect(result).toEqual({ goalId: 'goal_created_id' })
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-08-01',
+        plannedMonthlyContribution: '60000.00',
+      })
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
     })
 
     it('2. inserts zero-valued investment position when strategy is invest', async () => {
@@ -1276,7 +1296,13 @@ describe('goals.repository.server', () => {
       expect(mockTx.insert).not.toHaveBeenCalledWith(goalInvestmentPositions)
     })
 
-    it('4. reuses existing next-month snapshot without inserting new snapshot', async () => {
+    it('4. reuses current-month snapshot and cleans up scheduled future plans', async () => {
+      const pastSnapshot = {
+        id: 's_past',
+        userId: 'user_1',
+        effectiveMonth: '2026-07-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
       const pendingSnapshot = {
         id: 's_pending',
         userId: 'user_1',
@@ -1284,9 +1310,29 @@ describe('goals.repository.server', () => {
         createdAt: new Date('2026-01-01T00:00:00Z'),
       }
 
+      let deletedSnapshotsWhere: any = null
+      mockTx.delete.mockImplementation((table: any) => ({
+        where: vi.fn().mockImplementation((condition: any) => {
+          if (table === allocationPlanSnapshots) {
+            deletedSnapshotsWhere = condition
+          }
+          return Promise.resolve(undefined)
+        }),
+      }))
+
       setupMocks({
-        snapshots: [mockSnapshotCurrent, pendingSnapshot],
+        snapshots: [pastSnapshot, mockSnapshotCurrent, pendingSnapshot],
       })
+
+      // Re-apply the mockTx.delete tracker after setupMocks overrides it
+      mockTx.delete.mockImplementation((table: any) => ({
+        where: vi.fn().mockImplementation((condition: any) => {
+          if (table === allocationPlanSnapshots) {
+            deletedSnapshotsWhere = condition
+          }
+          return Promise.resolve(undefined)
+        }),
+      }))
 
       const state = await getGoalCreationState('user_1', currentMonth)
       const token = createGoalCreationPreviewToken(state!, currentMonth, validDraft)
@@ -1299,8 +1345,20 @@ describe('goals.repository.server', () => {
       })
 
       expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+
+      // Verify deletion predicate targets allocationPlanSnapshots for authenticated user with effectiveMonth > 2026-08-01
+      expect(deletedSnapshotsWhere).toBeDefined()
+      const stringifiedParams = JSON.stringify(deletedSnapshotsWhere, (key, value) => {
+        if (key === 'table') return undefined
+        return value
+      })
+      expect(stringifiedParams).toContain('user_1')
+      expect(stringifiedParams).toContain('2026-08-01')
+      expect(stringifiedParams).toContain('>')
     })
 
     it('5. rejects when allocations were edited after preview without refreshing the token', async () => {
@@ -1811,6 +1869,7 @@ describe('goals.repository.server', () => {
         effectiveMonth: '2026-08-01',
         plannedMonthlyContribution: '82500.00',
       })
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).not.toHaveBeenCalledWith(financialGoals)
@@ -1915,9 +1974,16 @@ describe('goals.repository.server', () => {
       expect(mockTx.insert).not.toHaveBeenCalled()
     })
 
-    it('5. reuses existing current-month snapshot and updates profile and snapshot', async () => {
+    it('5. reuses current-month snapshot and cleans up scheduled future plans', async () => {
+      const pendingSnapshot = {
+        id: 's_pending',
+        userId: 'user_1',
+        effectiveMonth: '2026-09-01',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      }
+
       setupMocks({
-        snapshots: [mockSnapshotCurrent],
+        snapshots: [mockSnapshotCurrent, pendingSnapshot],
       })
 
       const state = await getAllocationChangeState('user_1', currentMonth)
@@ -1933,6 +1999,7 @@ describe('goals.repository.server', () => {
       expect(mockTx.update).toHaveBeenCalledWith(financialProfiles)
       expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
     })
@@ -2292,7 +2359,7 @@ describe('goals.repository.server', () => {
       }))
     }
 
-    it('1. atomically updates goal and investment position, updates allocations, and never inserts into financialGoals', async () => {
+    it('1. atomically updates goal and investment position, updates allocations, and replaces current snapshot', async () => {
       setupMocks()
       const state = await getGoalEditState('user_1', currentMonth, 'g2')
       const token = createGoalEditPreviewToken(state!, currentMonth, 'g2', validEditDraft)
@@ -2308,12 +2375,9 @@ describe('goals.repository.server', () => {
       expect(mockTx.select).toHaveBeenCalled()
       expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
       expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
-      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
-      expect(insertedSnapshotValues).toEqual({
-        userId: 'user_1',
-        effectiveMonth: '2026-09-01',
-        plannedMonthlyContribution: '60000.00',
-      })
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).not.toHaveBeenCalledWith(financialGoals)
@@ -2472,7 +2536,7 @@ describe('goals.repository.server', () => {
       expect(mockTx.insert).not.toHaveBeenCalled()
     })
 
-    it('7. reuses existing next-month snapshot without inserting new snapshot', async () => {
+    it('7. reuses current-month snapshot and cleans up scheduled future plans', async () => {
       const pendingSnapshot = {
         id: 's_pending',
         userId: 'user_1',
@@ -2496,6 +2560,35 @@ describe('goals.repository.server', () => {
       })
 
       expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
+    it('inserts a new current-month snapshot when none exists during edit', async () => {
+      setupMocks({
+        snapshots: [],
+      })
+
+      const state = await getGoalEditState('user_1', currentMonth, 'g2')
+      const token = createGoalEditPreviewToken(state!, currentMonth, 'g2', validEditDraft)
+
+      await confirmGoalEditInRepository({
+        userId: 'user_1',
+        goalId: 'g2',
+        currentMonth,
+        draft: validEditDraft,
+        previewToken: token,
+      })
+
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-08-01',
+        plannedMonthlyContribution: '60000.00',
+      })
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
     })
@@ -2972,7 +3065,7 @@ describe('goals.repository.server', () => {
       }))
     }
 
-    it('atomically pauses the goal and replaces next-month allocations', async () => {
+    it('atomically pauses the goal and replaces current-month allocations', async () => {
       setupLifecycleMocks()
       const state = await getGoalLifecycleState('user_1', currentMonth)
       const draft = {
@@ -2991,18 +3084,15 @@ describe('goals.repository.server', () => {
 
       expect(mockTx.select).toHaveBeenCalled()
       expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
-      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
-      expect(insertedSnapshotValues).toEqual({
-        userId: 'user_1',
-        effectiveMonth: '2026-09-01',
-        plannedMonthlyContribution: '60000.00',
-      })
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.update).not.toHaveBeenCalledWith(financialProfiles)
     })
 
-    it('atomically resumes a paused goal and replaces next-month allocations', async () => {
+    it('atomically resumes a paused goal and replaces current-month allocations', async () => {
       setupLifecycleMocks()
       const state = await getGoalLifecycleState('user_1', currentMonth)
       const draft = {
@@ -3025,12 +3115,9 @@ describe('goals.repository.server', () => {
 
       expect(mockTx.select).toHaveBeenCalled()
       expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
-      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
-      expect(insertedSnapshotValues).toEqual({
-        userId: 'user_1',
-        effectiveMonth: '2026-09-01',
-        plannedMonthlyContribution: '60000.00',
-      })
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
     })
@@ -3055,12 +3142,9 @@ describe('goals.repository.server', () => {
 
       expect(mockTx.update).toHaveBeenCalledWith(financialGoals)
       expect(mockTx.update).toHaveBeenCalledWith(financialProfiles)
-      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
-      expect(insertedSnapshotValues).toEqual({
-        userId: 'user_1',
-        effectiveMonth: '2026-09-01',
-        plannedMonthlyContribution: null,
-      })
+      expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       // When 0 entries remain, insert for allocationPlanEntries is not called
       expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanEntries)
@@ -3137,7 +3221,7 @@ describe('goals.repository.server', () => {
       ).rejects.toThrow('database failure')
     })
 
-    it('reuses existing next-month snapshot without inserting new snapshot', async () => {
+    it('reuses current-month snapshot and cleans up scheduled future plans', async () => {
       const pendingSnapshot = {
         id: 's_pending',
         userId: 'user_1',
@@ -3165,6 +3249,39 @@ describe('goals.repository.server', () => {
       })
 
       expect(mockTx.insert).not.toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.update).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
+    it('inserts a new current-month snapshot when none exists during lifecycle change', async () => {
+      setupLifecycleMocks({
+        snapshots: [],
+      })
+
+      const state = await getGoalLifecycleState('user_1', currentMonth)
+      const draft = {
+        allocations: [{ goalId: 'g2', percentage: '100.00' }],
+      }
+      const token = createGoalLifecyclePreviewToken('pause', 'g1', state!, currentMonth, draft)
+
+      await confirmGoalLifecycleInRepository({
+        userId: 'user_1',
+        goalId: 'g1',
+        lifecycle: 'pause',
+        currentMonth,
+        draft,
+        previewToken: token,
+      })
+
+      expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanSnapshots)
+      expect(insertedSnapshotValues).toEqual({
+        userId: 'user_1',
+        effectiveMonth: '2026-08-01',
+        plannedMonthlyContribution: '60000.00',
+      })
+      expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanSnapshots)
       expect(mockTx.delete).toHaveBeenCalledWith(allocationPlanEntries)
       expect(mockTx.insert).toHaveBeenCalledWith(allocationPlanEntries)
     })

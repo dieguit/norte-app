@@ -295,7 +295,7 @@ describe('buildGoalLifecycleProposal', () => {
     ])
   })
 
-  it('advances a December pause to January and preserves converted cent rounding', () => {
+  it('keeps a December pause effective in December and preserves converted cent rounding', () => {
     const proposal = buildGoalLifecycleProposal({
       lifecycle: 'pause',
       goalId: 'travel',
@@ -314,7 +314,8 @@ describe('buildGoalLifecycleProposal', () => {
       },
     })
 
-    expect(proposal.allocation.effectiveMonth).toBe('2027-01-01')
+    expect(proposal.allocation.effectiveMonth).toBe('2026-12-01')
+    expect(proposal.persistedAllocation.effectiveMonth).toBe('2026-12-01')
     expect(proposal.persistedAllocation.entries.map((entry) => entry.goalId)).toEqual([
       'emergency',
       'retirement',
@@ -329,7 +330,7 @@ describe('buildGoalLifecycleProposal', () => {
       allocatedBaseAmount: { amount: '40002.00', currency: 'ARS' },
       allocatedDestinationAmount: { amount: '26.67', currency: 'USD' },
     })
-    expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe('2027-01-01')
+    expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe('2026-12-01')
   })
 
   it('rejects a pause draft whose remaining active goals do not total 100%', () => {

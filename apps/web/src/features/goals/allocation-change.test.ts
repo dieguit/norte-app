@@ -339,10 +339,10 @@ describe('buildAllocationChangeProposal', () => {
       projection: { status: 'available' },
       allocatedMonthlyAmounts: [{ amount: '450000.00', currency: 'ARS' }],
     })
-    expect(proposal.allocation.effectiveMonth).toBe('2026-09-01')
-    for (const candidate of proposal.impacts) {
-      expect(candidate.after).toEqual(candidate.before.projection)
-    }
+    expect(proposal.allocation.effectiveMonth).toBe('2026-08-01')
+    expect(proposal.proposedSource.snapshots).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ effectiveMonth: '2026-09-01' })]),
+    )
   })
 
   it('uses the saved dedication percentage when no draft is provided', () => {
