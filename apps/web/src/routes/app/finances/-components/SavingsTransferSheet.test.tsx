@@ -202,6 +202,19 @@ describe('SavingsTransferSheet', () => {
     expect(screen.getByRole('button', { name: 'Transferir' })).toBeDisabled()
   })
 
+  it('does not show destination error prematurely when typing an amount without touching destination', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '50')
+
+    expect(screen.queryByText('Elegí un destino.')).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Hacia' }).closest('[data-slot="field"]')).toHaveAttribute(
+      'data-invalid',
+      'false',
+    )
+  })
+
   it('parses a positive localized amount and always sends the contextual source', async () => {
     const user = userEvent.setup()
     renderSheet()
@@ -232,7 +245,7 @@ describe('SavingsTransferSheet', () => {
     await user.type(amount, '25')
     await user.click(screen.getByRole('button', { name: 'Transferir' }))
 
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No se pudo transferir.'))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Error al realizar la transferencia.'))
     expect(amount).toHaveValue('25')
   })
 

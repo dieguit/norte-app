@@ -45,11 +45,9 @@ function isInsufficientBalance(
 }
 
 function getDestinationError(
-  values: TransferValues,
   validationErrors: Record<string, string>,
-  positive: boolean,
 ) {
-  return validationErrors.toPlaceId ?? (positive && !values.toPlaceId ? 'Elegí un destino.' : undefined)
+  return validationErrors.toPlaceId
 }
 
 function getAmountError(
@@ -81,7 +79,7 @@ function getTransferState(
     parsedAmount,
     isPositiveAmount: positive,
     hasInsufficientBalance: insufficient,
-    destinationError: getDestinationError(values, validationErrors, positive),
+    destinationError: getDestinationError(validationErrors),
     amountError: getAmountError(values, validationErrors, insufficient, positive),
   }
 }
@@ -232,8 +230,8 @@ function useTransferActions({
         onOpenChange,
         reset: state.reset,
       })
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Error al transferir.')
+    } catch {
+      setError('Error al realizar la transferencia.')
     } finally {
       setIsPending(false)
     }
