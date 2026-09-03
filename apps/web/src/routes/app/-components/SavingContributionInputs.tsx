@@ -30,23 +30,54 @@ function SavingContributionUsdInputs({
   onArsSpentChange,
   onRateChange,
 }: SavingContributionInputsProps) {
+  const errorId = 'saving-usd-validation-error'
+  const isInvalid = Boolean(validationError)
+  const describedBy = isInvalid ? errorId : undefined
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field>
           <FieldLabel htmlFor="saving-usd-amount-input">Monto en dólares</FieldLabel>
-          <Input id="saving-usd-amount-input" aria-label="Monto en dólares" inputMode="decimal" placeholder="0" value={amount} onChange={(event) => onAmountChange(event.target.value)} />
+          <Input
+            id="saving-usd-amount-input"
+            aria-label="Monto en dólares"
+            inputMode="decimal"
+            placeholder="0"
+            value={amount}
+            onChange={(event) => onAmountChange(event.target.value)}
+            aria-invalid={isInvalid}
+            aria-describedby={describedBy}
+          />
         </Field>
         <Field>
           <FieldLabel htmlFor="saving-rate-input">Tipo de cambio</FieldLabel>
-          <Input id="saving-rate-input" aria-label="Tipo de cambio" inputMode="decimal" placeholder="1.500" value={effectiveRate} onChange={(event) => onRateChange(event.target.value)} />
+          <Input
+            id="saving-rate-input"
+            aria-label="Tipo de cambio"
+            inputMode="decimal"
+            placeholder="1.500"
+            value={effectiveRate}
+            onChange={(event) => onRateChange(event.target.value)}
+            aria-invalid={isInvalid}
+            aria-describedby={describedBy}
+          />
         </Field>
       </div>
       <Field>
         <FieldLabel htmlFor="saving-ars-spent-input">Pesos gastados</FieldLabel>
-        <Input id="saving-ars-spent-input" aria-label="Pesos gastados" inputMode="decimal" placeholder="0" value={arsSpent} onChange={(event) => onArsSpentChange(event.target.value)} />
+        <Input
+          id="saving-ars-spent-input"
+          aria-label="Pesos gastados"
+          inputMode="decimal"
+          placeholder="0"
+          value={arsSpent}
+          onChange={(event) => onArsSpentChange(event.target.value)}
+          aria-invalid={isInvalid}
+          aria-describedby={describedBy}
+        />
       </Field>
-      {validationError && <FieldError className="text-sm font-medium text-destructive">{validationError}</FieldError>}
+      {validationError && <FieldError id={errorId} className="text-sm font-medium text-destructive">{validationError}</FieldError>}
     </div>
   )
 }

@@ -573,5 +573,40 @@ describe('GoalCreation component (2-step flow)', () => {
       expect(screen.getByRole('heading', { name: '2. Distribución e impacto' })).toBeVisible()
       expect(posthogCapture).not.toHaveBeenCalled()
     })
+
+    it('links invalid fields to their error messages with aria-invalid and aria-describedby', async () => {
+      const user = userEvent.setup()
+      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
+
+      // Both name and targetAmount are empty by default, strategy is save
+      // Click continue without filling required fields
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
+
+      const nameInput = screen.getByRole('textbox', { name: /nombre del objetivo/i })
+      const targetAmountInput = screen.getByRole('textbox', { name: /monto objetivo/i })
+
+      expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+      expect(nameInput).toHaveAttribute('aria-describedby', 'goal-name-error')
+      const nameError = screen.getByText('Ingresá un nombre.')
+      expect(nameError).toHaveAttribute('id', 'goal-name-error')
+
+      expect(targetAmountInput).toHaveAttribute('aria-invalid', 'true')
+      expect(targetAmountInput).toHaveAttribute('aria-describedby', 'goal-targetAmount-error')
+      const targetAmountError = screen.getByText('Ingresá un monto objetivo mayor a cero.')
+      expect(targetAmountError).toHaveAttribute('id', 'goal-targetAmount-error')
+
+      // Switch to investment strategy to test annualReturnRate validation linkage
+      await user.click(screen.getByRole('radio', { name: 'Invertir' }))
+      const rateInput = screen.getByRole('textbox', { name: /rendimiento anual estimado/i })
+      await user.clear(rateInput)
+      await user.type(rateInput, '999')
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
+
+      expect(rateInput).toHaveAttribute('aria-invalid', 'true')
+      expect(rateInput).toHaveAttribute('aria-describedby', 'goal-annualReturnRate-error')
+      const rateError = screen.getByText('Ingresá un rendimiento entre 0% y 100%, con hasta tres decimales.')
+      expect(rateError).toHaveAttribute('id', 'goal-annualReturnRate-error')
+    })
   })
 })
+

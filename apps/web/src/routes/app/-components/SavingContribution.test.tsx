@@ -114,3 +114,32 @@ it('replaces unexpected preview server error with stable Spanish copy', async ()
   expect(await screen.findByText('No pudimos calcular la vista previa.')).toBeVisible()
   expect(screen.queryByText(/Internal Zod error/i)).not.toBeInTheDocument()
 })
+
+it('links USD inputs to validation error via aria-invalid and aria-describedby', async () => {
+  const user = userEvent.setup()
+  renderContribution({
+    currency: 'USD',
+  })
+  await selectSavingsPlace(user)
+
+  const amountInput = screen.getByLabelText(/monto en dólares/i)
+  const rateInput = screen.getByLabelText(/tipo de cambio/i)
+  const arsSpentInput = screen.getByLabelText(/pesos gastados/i)
+
+  await user.type(amountInput, '100')
+  await user.type(rateInput, '1000')
+  await user.type(arsSpentInput, '50000')
+
+  const errorElement = await screen.findByText('Los valores en USD, ARS gastados y tipo de cambio no coinciden.')
+  expect(errorElement).toHaveAttribute('id', 'saving-usd-validation-error')
+
+  expect(amountInput).toHaveAttribute('aria-invalid', 'true')
+  expect(amountInput).toHaveAttribute('aria-describedby', 'saving-usd-validation-error')
+
+  expect(rateInput).toHaveAttribute('aria-invalid', 'true')
+  expect(rateInput).toHaveAttribute('aria-describedby', 'saving-usd-validation-error')
+
+  expect(arsSpentInput).toHaveAttribute('aria-invalid', 'true')
+  expect(arsSpentInput).toHaveAttribute('aria-describedby', 'saving-usd-validation-error')
+})
+
