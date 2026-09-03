@@ -28,6 +28,7 @@ export function useSavingContributionController(props: SavingContributionProps) 
   const isEdit = Boolean(initialContribution)
   const initialCurrency = initialContribution?.currency ?? propCurrency ?? 'ARS'
   const [staleMessage, setStaleMessage] = useState<string | null>(null)
+  const [placeTouched, setPlaceTouched] = useState(false)
   const alertRef = useRef<HTMLDivElement>(null)
   const clearDraftFeedback = () => {
     previewState.clearPreview()
@@ -63,16 +64,36 @@ export function useSavingContributionController(props: SavingContributionProps) 
     alertRef,
     onSuccess: props.onSuccess,
   })
+
+  const derivedPlaceError =
+    kind === 'saving' && draft.place?.kind === 'new' && !draft.place.name.trim()
+      ? 'Escribí un nombre para el lugar.'
+      : getPlaceError(previewState.serverError)
+
+  const handlePlaceBlur = () => {
+    setPlaceTouched(true)
+  }
+
+  const handleConfirm = async () => {
+    setPlaceTouched(true)
+    return confirmation.handleConfirm()
+  }
+
   return {
     ...props,
     kind,
     isEdit,
     draft,
     previewState,
-    confirmation,
+    confirmation: {
+      ...confirmation,
+      handleConfirm,
+    },
     staleMessage,
     alertRef,
-    placeError: getPlaceError(previewState.serverError),
+    placeTouched,
+    onPlaceBlur: handlePlaceBlur,
+    placeError: derivedPlaceError,
     actionNoun: kind === 'investment' ? 'inversión' : 'ahorro',
     isFormValid: Boolean(previewState.preview && !previewState.isPreviewPending && !confirmation.isSubmitting && previewState.hasEligibleGoals && !previewState.hasIncompleteInvestmentData && !previewState.validationError),
   }

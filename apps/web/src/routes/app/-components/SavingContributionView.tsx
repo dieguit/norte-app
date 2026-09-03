@@ -24,6 +24,8 @@ export function SavingContributionView(model: SavingContributionViewModel) {
     staleMessage,
     alertRef,
     placeError,
+    placeTouched,
+    onPlaceBlur,
     actionNoun,
     isFormValid,
   } = model
@@ -34,7 +36,17 @@ export function SavingContributionView(model: SavingContributionViewModel) {
         <SavingContributionTarget kind={kind} currency={draft.currency} context={context} hidden={isEdit || !!catchUpMonth || !previewState.hasEligibleGoals} />
         <SavingContributionFeedback serverError={previewState.serverError} placeError={placeError} staleMessage={staleMessage} catchUpMonth={catchUpMonth} alertRef={alertRef} />
         <SavingContributionInputs currency={draft.currency} amount={draft.amount} arsSpent={draft.arsSpent} effectiveRate={draft.effectiveRate} validationError={previewState.validationError} onAmountChange={draft.handleAmountChange} onArsSpentChange={draft.handleArsSpentChange} onRateChange={draft.handleRateChange} />
-        {kind === 'saving' && <SavingsPlacePicker places={context?.places ?? []} value={draft.place} onChange={draft.setPlace} disabled={confirmation.isSubmitting} error={placeError} />}
+        {kind === 'saving' && (
+          <SavingsPlacePicker
+            places={context?.places ?? []}
+            value={draft.place}
+            onChange={draft.setPlace}
+            disabled={confirmation.isSubmitting}
+            error={placeError}
+            touched={placeTouched}
+            onBlur={onPlaceBlur}
+          />
+        )}
         <SavingContributionEligibility kind={kind} currency={draft.currency} hasEligibleGoals={previewState.hasEligibleGoals} hasIncompleteInvestmentData={previewState.hasIncompleteInvestmentData} />
         <SavingContributionPreview actionNoun={actionNoun} preview={previewState.preview} />
       </div>

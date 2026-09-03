@@ -114,6 +114,9 @@ function buildPreviewPlan(
   kind: ContributionKind,
   draft: SavingContributionDraftState,
 ): PreviewPlan | null {
+  if (kind === 'saving' && draft.place?.kind === 'new' && !draft.place.name.trim()) {
+    return null
+  }
   if (draft.currency === 'USD') return buildUsdDraft(kind, draft)
   if (!parseMoneyInput(draft.amount, 'ARS')) return null
   return {
@@ -140,6 +143,14 @@ function toPreviewResult(
   }
 }
 
+function getSafePreviewErrorMessage(error: any) {
+  const message = error?.message
+  if (message && !message.includes('{') && !message.includes('Zod')) {
+    return message
+  }
+  return 'No pudimos calcular la vista previa.'
+}
+
 function scheduleRemotePreview(
   plan: PreviewPlan,
   setState: Dispatch<SetStateAction<PreviewState>>,
@@ -149,7 +160,7 @@ function scheduleRemotePreview(
   const timer = setTimeout(() => {
     previewSavingContribution({ data: plan.draft })
       .then((preview) => active && setState({ preview, isPreviewPending: false, serverError: null, validationError: null }))
-      .catch((error: any) => active && setState((current) => ({ ...current, preview: null, isPreviewPending: false, serverError: error?.message ?? 'Error al calcular la vista previa.' })))
+      .catch((error: any) => active && setState((current) => ({ ...current, preview: null, isPreviewPending: false, serverError: getSafePreviewErrorMessage(error) })))
   }, 250)
   return () => {
     active = false

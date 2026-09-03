@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Field, FieldError, FieldLabel } from '../../../components/ui/field'
 import {
   Select,
@@ -27,6 +28,32 @@ export interface SavingsPlacePickerProps {
   className?: string
   disabled?: boolean
   error?: string
+  touched?: boolean
+  onBlur?: () => void
+}
+
+function SavingsPlaceSelectContent({
+  options,
+}: {
+  options: Array<{ value: string; label: string }>
+}) {
+  return (
+    <SelectContent>
+      {options.map((option) => (
+        <SelectItem key={option.value} value={option.value}>
+          {option.label}
+        </SelectItem>
+      ))}
+      <SelectItem value={NEW_PLACE_VALUE}>Otro (agregar nuevo)</SelectItem>
+    </SelectContent>
+  )
+}
+
+function getSelectTriggerAria(error?: string, isNewPlace?: boolean, errorId?: string) {
+  if (!error || isNewPlace) {
+    return { invalid: undefined, describedBy: undefined }
+  }
+  return { invalid: 'true' as const, describedBy: errorId }
 }
 
 export function SavingsPlacePicker({
@@ -36,43 +63,53 @@ export function SavingsPlacePicker({
   className,
   disabled,
   error,
+  touched: externalTouched,
+  onBlur: externalOnBlur,
 }: SavingsPlacePickerProps) {
+  const [internalTouched, setInternalTouched] = useState(false)
+  const isTouched = externalTouched !== undefined ? (externalTouched || internalTouched) : true
   const options = places.map((place) => ({ value: place.id, label: place.name }))
   const selectItems = [...options, { value: NEW_PLACE_VALUE, label: 'Otro (agregar nuevo)' }]
-  const selectedValue = value?.kind === 'new' ? NEW_PLACE_VALUE : value?.placeId ?? ''
   const isNewPlace = value?.kind === 'new'
+  const selectedValue = isNewPlace ? NEW_PLACE_VALUE : (value?.placeId ?? '')
   const errorId = isNewPlace ? 'new-savings-place-error' : 'savings-place-error'
+  const hasVisibleError = Boolean(error && (!isNewPlace || isTouched))
+  const triggerAria = getSelectTriggerAria(error, isNewPlace, errorId)
+
+  const handleBlur = () => {
+    setInternalTouched(true)
+    externalOnBlur?.()
+  }
 
   return (
-    <Field data-invalid={!!error} data-disabled={disabled} className={className}>
+    <Field data-invalid={hasVisibleError} data-disabled={disabled} className={className}>
       <FieldLabel htmlFor="savings-place-trigger">¿Dónde está este ahorro?</FieldLabel>
-        <Select items={selectItems} value={selectedValue} onValueChange={(nextValue) => {
+      <Select
+        items={selectItems}
+        value={selectedValue}
+        onValueChange={(nextValue) => {
           const nextSelection = getSavingsPlaceSelection(nextValue)
           if (nextSelection) onChange(nextSelection)
-        }}>
+        }}
+      >
         <SelectTrigger
           id="savings-place-trigger"
           aria-label="¿Dónde está este ahorro?"
-          aria-invalid={error && !isNewPlace ? 'true' : undefined}
-          aria-describedby={error && !isNewPlace ? errorId : undefined}
+          aria-invalid={triggerAria.invalid}
+          aria-describedby={triggerAria.describedBy}
           className="w-full"
           disabled={disabled}
         >
           <SelectValue placeholder="Seleccionar lugar" />
         </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-          <SelectItem value={NEW_PLACE_VALUE}>Otro (agregar nuevo)</SelectItem>
-        </SelectContent>
+        <SavingsPlaceSelectContent options={options} />
       </Select>
       {isNewPlace && (
         <SavingsPlaceNameField
           name={value.name}
           error={error}
+          touched={isTouched}
+          onBlur={handleBlur}
           disabled={disabled}
           errorId={errorId}
           onChange={(name) => onChange({ kind: 'new', name })}

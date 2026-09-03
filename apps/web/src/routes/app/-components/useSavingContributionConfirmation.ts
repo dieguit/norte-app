@@ -77,6 +77,14 @@ async function recordContribution(
   return true
 }
 
+function getSafeServerErrorMessage(error: any) {
+  const message = error?.message
+  if (message && !message.includes('{') && !message.includes('Zod')) {
+    return message
+  }
+  return 'Ocurrió un error al guardar.'
+}
+
 export function useSavingContributionConfirmation(
   options: UseSavingContributionConfirmationOptions,
 ) {
@@ -112,7 +120,7 @@ export function useSavingContributionConfirmation(
       }
       options.onSuccess()
     } catch (error: any) {
-      options.setServerError(error?.message ?? 'Ocurrió un error al guardar.')
+      options.setServerError(getSafeServerErrorMessage(error))
       setTimeout(() => options.alertRef.current?.focus(), 0)
     } finally {
       setIsSubmitting(false)

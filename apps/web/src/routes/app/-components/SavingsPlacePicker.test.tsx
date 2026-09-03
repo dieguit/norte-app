@@ -163,4 +163,29 @@ describe('SavingsPlacePicker', () => {
     expect(input).toHaveAttribute('aria-describedby', 'new-savings-place-error')
     expect(screen.getByText(error)).toHaveAttribute('data-slot', 'field-error')
   })
+
+  it('hides the new-place validation error when untouched and reveals it after blur', async () => {
+    const user = userEvent.setup()
+    const error = 'Escribí un nombre para el lugar.'
+
+    render(
+      <SavingsPlacePicker
+        places={[]}
+        value={{ kind: 'new', name: '' }}
+        onChange={vi.fn()}
+        error={error}
+        touched={false}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Nombre del lugar nuevo' })
+    expect(input).not.toHaveAttribute('aria-invalid')
+    expect(screen.queryByText(error)).not.toBeInTheDocument()
+
+    await user.click(input)
+    await user.tab()
+
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText(error)).toBeInTheDocument()
+  })
 })

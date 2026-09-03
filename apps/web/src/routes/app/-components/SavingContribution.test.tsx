@@ -49,16 +49,31 @@ it('refreshes the preview when the savings place changes', async () => {
   await waitFor(() => expect(previewSavingContribution).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ place: { kind: 'existing', placeId: 'place-2' } }) })))
 })
 
-it('renders a new-place validation error once', async () => {
+it('renders a new-place validation error once after touching the input or blur', async () => {
   const user = userEvent.setup()
-  vi.mocked(previewSavingContribution).mockRejectedValue(new Error('Escribí un nombre para el lugar.'))
   renderContribution()
+  await user.type(screen.getByLabelText(/monto en pesos/i), '100000')
   await user.click(screen.getByRole('combobox', { name: '¿Dónde está este ahorro?' }))
   await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
-  await user.type(screen.getByLabelText(/monto en pesos/i), '100000')
+  const input = screen.getByRole('textbox', { name: 'Nombre del lugar nuevo' })
+  await user.click(input)
+  await user.tab()
   const error = await screen.findByText('Escribí un nombre para el lugar.')
   expect(error).toHaveAttribute('data-slot', 'field-error')
   expect(screen.getAllByText('Escribí un nombre para el lugar.')).toHaveLength(1)
+})
+
+it('does not request a preview nor show an error alert when selecting new place with empty name', async () => {
+  const user = userEvent.setup()
+  renderContribution()
+  await user.type(screen.getByLabelText(/monto en pesos/i), '100000')
+  await user.click(screen.getByRole('combobox', { name: '¿Dónde está este ahorro?' }))
+  await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
+
+  await new Promise((resolve) => setTimeout(resolve, 350))
+  expect(previewSavingContribution).not.toHaveBeenCalled()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(screen.queryByText('Escribí un nombre para el lugar.')).not.toBeInTheDocument()
 })
 
 it('clears the preview immediately when the draft changes', async () => {
@@ -87,4 +102,15 @@ it('submits an ARS contribution and closes successfully', async () => {
   await user.click(confirm)
   await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
   expect(toast.success).toHaveBeenCalledWith('Ahorro registrado.')
+})
+
+it('replaces unexpected preview server error with stable Spanish copy', async () => {
+  const user = userEvent.setup()
+  vi.mocked(previewSavingContribution).mockRejectedValue(new Error('Internal Zod error: {"field": "unexpected"}'))
+  renderContribution()
+  await selectSavingsPlace(user)
+  await user.type(screen.getByLabelText(/monto en pesos/i), '100000')
+
+  expect(await screen.findByText('No pudimos calcular la vista previa.')).toBeVisible()
+  expect(screen.queryByText(/Internal Zod error/i)).not.toBeInTheDocument()
 })
