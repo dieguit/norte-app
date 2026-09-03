@@ -207,9 +207,9 @@ async function removeExpense({
     } catch {
       toast.error('El gasto se eliminó, pero no pudimos actualizar la vista.')
     }
-  } catch (cause) {
-    setError(cause instanceof Error ? cause.message : 'No pudimos eliminar el gasto.')
-  } finally {
+    } catch {
+      setError('No pudimos eliminar el gasto.')
+    } finally {
     setSaving(false)
   }
 }
@@ -257,8 +257,8 @@ function useExpenseSheetActions(props: ExpenseSheetActionProps) {
       } else {
         onOpenChange(false)
       }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No pudimos guardar el gasto.')
+    } catch {
+      setError('No pudimos guardar el gasto.')
     } finally {
       setSaving(false)
     }

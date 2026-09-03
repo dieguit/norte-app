@@ -572,4 +572,44 @@ describe('IncomeSheet', () => {
 
     expect(document.querySelector('input[type="month"]')).not.toBeInTheDocument()
   })
+
+  it('renders a unique id for the form-level error when saving fails and sanitizes server error message', async () => {
+    const user = userEvent.setup()
+    vi.mocked(createIncome).mockRejectedValueOnce(new Error('Sensitive database column error'))
+    renderSheet()
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const formError = await screen.findByText('No pudimos guardar el ingreso.')
+    expect(formError).toBeInTheDocument()
+    expect(formError).toHaveAttribute('id', 'income-form-error')
+    expect(screen.queryByText('Sensitive database column error')).not.toBeInTheDocument()
+  })
+
+  it('sanitizes server error message when deleting fails', async () => {
+    const user = userEvent.setup()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(deleteIncome).mockRejectedValueOnce(new Error('Internal delete failure detail'))
+    renderSheet({
+      id: 'income_1',
+      sourceKind: 'salary',
+      sourceId: null,
+      sourceName: 'Sueldo',
+      amount: '100.00',
+      concept: 'Sueldo mensual',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-08-01',
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+
+    const formError = await screen.findByText('No pudimos eliminar el ingreso.')
+    expect(formError).toBeInTheDocument()
+    expect(formError).toHaveAttribute('id', 'income-form-error')
+    expect(screen.queryByText('Internal delete failure detail')).not.toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
 })

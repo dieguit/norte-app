@@ -196,8 +196,8 @@ function useIncomeSheetActions({
       } else {
         onOpenChange(false);
       }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No pudimos guardar el ingreso.");
+    } catch {
+      setError("No pudimos guardar el ingreso.");
     } finally {
       setSaving(false);
     }
@@ -221,8 +221,8 @@ function useIncomeSheetActions({
       } catch {
         toast.error("El ingreso se eliminó, pero no pudimos actualizar la vista.");
       }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No pudimos eliminar el ingreso.");
+    } catch {
+      setError("No pudimos eliminar el ingreso.");
     } finally {
       setSaving(false);
     }

@@ -593,4 +593,43 @@ describe('ExpenseSheet', () => {
     expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toBeVisible()
     expect(screen.queryByText(/se va a guardar para que puedas volver a usarlo/i)).not.toBeInTheDocument()
   })
+
+  it('sanitizes server error message when saving fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(createExpense).mockRejectedValueOnce(new Error('Internal server table constraint error'))
+    renderSheet()
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const formError = await screen.findByText('No pudimos guardar el gasto.')
+    expect(formError).toBeInTheDocument()
+    expect(screen.queryByText('Internal server table constraint error')).not.toBeInTheDocument()
+  })
+
+  it('sanitizes server error message when deleting fails', async () => {
+    const user = userEvent.setup()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(deleteExpense).mockRejectedValueOnce(new Error('Internal server delete constraint error'))
+    renderSheet({
+      id: 'exp_1',
+      sourceKind: 'housing',
+      sourceId: null,
+      sourceName: 'Alquiler / vivienda',
+      amount: '100.00',
+      concept: 'Alquiler mensual',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-06-01',
+      endMonth: null,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+
+    const formError = await screen.findByText('No pudimos eliminar el gasto.')
+    expect(formError).toBeInTheDocument()
+    expect(screen.queryByText('Internal server delete constraint error')).not.toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
 })

@@ -154,8 +154,8 @@ function IncomeSheetFields({
             saving={saving}
           />
         )}
-      {error && <FieldError id="income-month-error">{error}</FieldError>}
       </FieldSet>
+      {error && <FieldError id="income-form-error">{error}</FieldError>}
     </FieldGroup>
   );
 }
