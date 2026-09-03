@@ -1333,14 +1333,16 @@ describe('goals.repository.server', () => {
       setupMocks()
       const staleToken = 'f'.repeat(64)
 
-      await expect(
-        confirmGoalCreationInRepository({
-          userId: 'user_1',
-          currentMonth,
-          draft: validDraft,
-          previewToken: staleToken,
-        }),
-      ).rejects.toThrow(StaleGoalCreationPreviewError)
+      const staleError = await confirmGoalCreationInRepository({
+        userId: 'user_1',
+        currentMonth,
+        draft: validDraft,
+        previewToken: staleToken,
+      }).catch((error: unknown) => error)
+
+      expect(staleError).toBeInstanceOf(StaleGoalCreationPreviewError)
+      if (!(staleError instanceof StaleGoalCreationPreviewError)) throw staleError
+      expect(staleError.code).toBe('STALE_GOAL_CREATION_PREVIEW')
 
       expect(mockTx.insert).not.toHaveBeenCalled()
     })

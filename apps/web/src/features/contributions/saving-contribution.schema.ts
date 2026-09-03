@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { savingsPlaceSelectionSchema } from '../savings-places/savings-places.schema'
 
-export const contributionDraftInputSchema = z
+const contributionDraftInputSchema = z
   .object({
     kind: z.enum(['saving', 'investment']).optional().default('saving'),
     currency: z.enum(['ARS', 'USD']),
@@ -22,15 +22,15 @@ export const contributionDraftInputSchema = z
 
 export const savingDraftInputSchema = contributionDraftInputSchema
 
-export const previewTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, 'Token de vista previa inválido.')
+const previewTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, 'Token de vista previa inválido.')
 
-export const contributionIdSchema = z.string().uuid('ID de aporte inválido.')
+const contributionIdSchema = z.string().uuid('ID de aporte inválido.')
 
 const catchUpMonthSchema = z
   .string()
   .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mes de regularización inválido.')
 
-export const confirmContributionSchema = z.object({
+const confirmContributionSchema = z.object({
   draft: contributionDraftInputSchema,
   previewToken: previewTokenSchema,
   catchUpMonth: catchUpMonthSchema.optional(),
@@ -38,14 +38,14 @@ export const confirmContributionSchema = z.object({
 
 export const confirmSavingContributionSchema = confirmContributionSchema
 
-export const updateContributionSchema = z.object({
+const updateContributionSchema = z.object({
   contributionId: contributionIdSchema,
   draft: contributionDraftInputSchema,
 })
 
 export const updateSavingContributionSchema = updateContributionSchema
 
-export const deleteContributionSchema = z.object({
+const deleteContributionSchema = z.object({
   contributionId: contributionIdSchema,
 })
 
@@ -59,4 +59,3 @@ export type UpdateContributionInput = z.input<typeof updateContributionSchema>
 export type UpdateSavingContributionInput = UpdateContributionInput
 export type DeleteContributionInput = z.input<typeof deleteContributionSchema>
 export type DeleteSavingContributionInput = DeleteContributionInput
-

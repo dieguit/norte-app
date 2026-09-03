@@ -2,7 +2,6 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ComponentType } from 'react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRouter } from '@tanstack/react-router'
@@ -48,15 +47,6 @@ const cash: SavingsPlaceSummary = {
 
 const places = [bank, cash]
 
-type TransferSheetProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  fromPlace: SavingsPlaceSummary
-  places: SavingsPlaceSummary[]
-}
-
-const TransferSheet = SavingsTransferSheet as unknown as ComponentType<TransferSheetProps>
-
 function renderSheet(
   props: Partial<{
     open: boolean
@@ -66,7 +56,7 @@ function renderSheet(
   }> = {},
 ) {
   return render(
-    <TransferSheet
+    <SavingsTransferSheet
       open
       onOpenChange={vi.fn()}
       fromPlace={bank}
@@ -174,6 +164,7 @@ describe('SavingsTransferSheet', () => {
       'true',
     )
     expect(screen.getByText('Elegí un destino.')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Hacia' })).toHaveFocus()
 
     await user.click(screen.getByRole('combobox', { name: 'Hacia' }))
     await user.click(await screen.findByRole('option', { name: 'Efectivo' }))
@@ -186,6 +177,15 @@ describe('SavingsTransferSheet', () => {
       'true',
     )
     expect(transferSavings).not.toHaveBeenCalled()
+  })
+
+  it('formats the transfer amount while typing', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('125.000')
   })
 
   it('shows an inline error for a non-positive typed amount', async () => {
@@ -252,6 +252,10 @@ describe('SavingsTransferSheet', () => {
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '25')
     await user.click(screen.getByRole('button', { name: 'Transferir' }))
 
+    expect(document.querySelector('form')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('combobox', { name: 'Hacia' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Moneda' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Transfiriendo...' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Close' }))
     await user.keyboard('{Escape}')
@@ -290,7 +294,7 @@ describe('SavingsTransferSheet', () => {
     function ControlledSheet() {
       const [open, setOpen] = useState(true)
       return (
-        <TransferSheet
+        <SavingsTransferSheet
           open={open}
           onOpenChange={setOpen}
           fromPlace={bank}
@@ -329,7 +333,7 @@ describe('SavingsTransferSheet', () => {
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '25')
 
     view.rerender(
-      <TransferSheet
+      <SavingsTransferSheet
         open
         onOpenChange={onOpenChange}
         fromPlace={cash}

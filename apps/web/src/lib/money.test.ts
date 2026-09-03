@@ -1,3 +1,4 @@
+import BigNumber from "bignumber.js";
 import { describe, expect, it } from "vitest";
 import {
   createMoney,
@@ -110,8 +111,8 @@ describe("calculateAllocationAmounts", () => {
       { id: "g3", percentage: "33.34" },
     ];
     const res = calculateAllocationAmounts(total, targets);
-    const sumCents = res.reduce((acc, item) => acc + Math.round(Number(item.amount.amount) * 100), 0);
-    expect(sumCents).toBe(10000); // 100.00 * 100
+    const sum = res.reduce((acc, item) => acc.plus(item.amount.amount), new BigNumber(0));
+    expect(sum.toFixed(2)).toBe("100.00");
   });
 
   it("rejects invalid allocation totals (not 100%)", () => {
@@ -147,8 +148,8 @@ describe("calculateAllocationAmounts", () => {
       { id: "g3", amount: { amount: "0.01", currency: "ARS" } },
       { id: "g4", amount: { amount: "0.01", currency: "ARS" } },
     ]);
-    const sumCents = res.reduce((acc, item) => acc + Math.round(Number(item.amount.amount) * 100), 0);
-    expect(sumCents).toBe(6);
+    const sum = res.reduce((acc, item) => acc.plus(item.amount.amount), new BigNumber(0));
+    expect(sum.toFixed(2)).toBe("0.06");
   });
 
   it("prioritizes larger remainder over original index", () => {
@@ -189,5 +190,44 @@ describe("calculateAllocationAmounts", () => {
     ];
     expect(() => calculateAllocationAmounts(total, targets)).toThrow("Allocation percentages must sum to 100%");
   });
-});
 
+  it.each([
+    [-10, 110],
+    [110, -10],
+  ])("rejects allocation percentages outside 0..100 even when the pair sums to 100", (first, second) => {
+    const total = createMoney("100.00", "ARS");
+
+    expect(() => calculateAllocationAmounts(total, [
+      { id: "g1", percentage: first },
+      { id: "g2", percentage: second },
+    ])).toThrow("Allocation percentages must sum to 100%");
+  });
+
+  it("accepts zero and 100 percent boundary values", () => {
+    expect(calculateAllocationAmounts(createMoney("100.00", "ARS"), [
+      { id: "g1", percentage: 0 },
+      { id: "g2", percentage: 100 },
+    ])).toEqual([
+      { id: "g1", amount: { amount: "0.00", currency: "ARS" } },
+      { id: "g2", amount: { amount: "100.00", currency: "ARS" } },
+    ]);
+  });
+
+  it("rejects a negative total amount", () => {
+    expect(() => calculateAllocationAmounts(createMoney("-0.01", "ARS"), [
+      { id: "g1", percentage: 100 },
+    ])).toThrow("Allocation percentages must sum to 100%");
+  });
+
+  it("distributes a single leftover cent to the first equal remainder", () => {
+    const result = calculateAllocationAmounts(createMoney("0.01", "ARS"), [
+      { id: "g1", percentage: 50 },
+      { id: "g2", percentage: 50 },
+    ]);
+
+    expect(result).toEqual([
+      { id: "g1", amount: { amount: "0.01", currency: "ARS" } },
+      { id: "g2", amount: { amount: "0.00", currency: "ARS" } },
+    ]);
+  });
+});

@@ -1,33 +1,6 @@
-import { useEffect, useState } from "react";
 import { usePostHog } from "@posthog/react";
 import { useRouter } from "@tanstack/react-router";
-import BigNumber from "bignumber.js";
 import { toast } from "sonner";
-import { Button } from "../../../../components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "../../../../components/ui/field";
-import { Input } from "../../../../components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "../../../../components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../../components/ui/select";
-import { Switch } from "../../../../components/ui/switch";
-import { MonthPickerInput } from "../../../../components/MonthPicker";
 import {
   createIncome,
   deleteIncome,
@@ -38,9 +11,13 @@ import {
   createIncomeSchema,
   type IncomeDraft,
 } from "../../../../features/financial/incomes.schema";
-import { PLANNING_ARS_PER_USD } from "../../../../features/financial/financial";
 import { formatMoneyInput, parseMoneyInput } from "../../../../lib/money";
-import { IncomeSourcePicker } from "./IncomeSourcePicker";
+import {
+  FinancialSheetFrame,
+  type FinancialDraftState,
+  useFinancialDraftState,
+} from "./FinancialFormPrimitives";
+import { IncomeSheetForm } from "./IncomeSheetForm";
 
 type IncomeRow = {
   id: string;
@@ -54,6 +31,19 @@ type IncomeRow = {
   effectiveMonth: string;
 };
 
+type IncomeSheetProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  month: string;
+  sources: Array<{ id: string; name: string }>;
+  income?: IncomeRow;
+  draft?: IncomeDraft;
+  onSaveDraft?: (draft: IncomeDraft) => void;
+  recurringOnly?: boolean;
+};
+
+type ValidationIssue = { path: PropertyKey[]; message: string };
+
 function defaultDraft(month: string): IncomeDraft {
   return {
     source: { kind: "salary" },
@@ -65,116 +55,156 @@ function defaultDraft(month: string): IncomeDraft {
   };
 }
 
-export function IncomeSheet({
+function getIncomeDraft(
+  income: IncomeRow | undefined,
+  initialDraft: IncomeDraft | undefined,
+  month: string,
+  recurringOnly: boolean,
+): IncomeDraft {
+  if (income) {
+    return {
+      source:
+        income.sourceKind === "custom"
+          ? { kind: "custom", sourceId: income.sourceId! }
+          : { kind: income.sourceKind as keyof typeof FIXED_INCOME_SOURCES },
+      amount: formatMoneyInput(income.amount.replace(".", ",")),
+      concept: income.concept ?? "",
+      currency: income.currency,
+      recurring: income.recurring,
+      effectiveMonth: income.effectiveMonth.slice(0, 7),
+    };
+  }
+  if (!initialDraft) return defaultDraft(month);
+  return {
+    ...initialDraft,
+    amount: formatMoneyInput(initialDraft.amount.replace(".", ",")),
+    recurring: recurringOnly ? true : initialDraft.recurring,
+    effectiveMonth: recurringOnly ? month : initialDraft.effectiveMonth,
+  };
+}
+
+function getValidationErrors(issues: readonly ValidationIssue[]) {
+  const errors: Record<string, string> = {};
+  for (const issue of issues) {
+    const field = issue.path[1];
+    if (typeof field === "string" && !errors[field]) errors[field] = issue.message;
+  }
+  return errors;
+}
+
+function normalizeIncomeDraft(draft: IncomeDraft): IncomeDraft {
+  return {
+    ...draft,
+    amount: parseMoneyInput(draft.amount, draft.currency)!.amount,
+  };
+}
+
+async function persistIncome(income: IncomeRow | undefined, draft: IncomeDraft) {
+  if (income) {
+    await updateIncome({ data: { incomeId: income.id, draft } });
+    return;
+  }
+  await createIncome({ data: { draft } });
+}
+
+function useIncomeDraftState({
   open,
-  onOpenChange,
   month,
-  sources,
   income,
   draft: initialDraft,
-  onSaveDraft,
   recurringOnly = false,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  month: string;
-  sources: Array<{ id: string; name: string }>;
-  income?: IncomeRow;
-  draft?: IncomeDraft;
-  onSaveDraft?: (draft: IncomeDraft) => void;
-  recurringOnly?: boolean;
-}) {
-  const router = useRouter();
-  const posthog = usePostHog();
-  const [draft, setDraft] = useState<IncomeDraft>(() => defaultDraft(month));
-  const [error, setError] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
-  const [saving, setSaving] = useState(false);
+}: Pick<IncomeSheetProps, "open" | "month" | "income" | "draft" | "recurringOnly">): FinancialDraftState<IncomeDraft> {
+  const initialDraftValue = getIncomeDraft(income, initialDraft, month, recurringOnly);
+  return useFinancialDraftState({
+    open,
+    initialDraft: initialDraftValue,
+    resetKey: JSON.stringify(initialDraftValue),
+  });
+}
 
-  useEffect(() => {
-    if (!open) return;
-    setError(null);
-    setValidationErrors({});
-    setDraft(
-      income
-        ? {
-            source:
-              income.sourceKind === "custom"
-                ? { kind: "custom", sourceId: income.sourceId! }
-                : {
-                    kind: income.sourceKind as keyof typeof FIXED_INCOME_SOURCES,
-                  },
-            amount: formatMoneyInput(income.amount.replace(".", ",")),
-            concept: income.concept ?? "",
-            currency: income.currency,
-            recurring: income.recurring,
-            effectiveMonth: income.effectiveMonth.slice(0, 7),
-          }
-        : initialDraft
-          ? {
-              ...initialDraft,
-              amount: formatMoneyInput(initialDraft.amount.replace(".", ",")),
-              recurring: recurringOnly ? true : initialDraft.recurring,
-              effectiveMonth: recurringOnly ? month : initialDraft.effectiveMonth,
-            }
-          : defaultDraft(month),
-    );
-  }, [income, initialDraft, month, open, recurringOnly]);
+async function persistIncomeForm(
+  income: IncomeRow | undefined,
+  draft: IncomeDraft,
+  onSaveDraft: ((draft: IncomeDraft) => void) | undefined,
+  posthog: ReturnType<typeof usePostHog>,
+) {
+  if (onSaveDraft) {
+    onSaveDraft(draft);
+    return;
+  }
+  await persistIncome(income, draft);
+  posthog?.capture(income ? "income_updated" : "income_created", {
+    recurring: draft.recurring,
+    currency: draft.currency,
+    source_kind: draft.source.kind,
+  });
+}
+
+function focusFirstInvalidIncomeField(draft: IncomeDraft, errors: Record<string, string>) {
+  const fields = [
+    ["amount", "income-amount"],
+    ["source", draft.source.kind === "custom" && "name" in draft.source ? "new-income-name" : "income-source-trigger"],
+    ["concept", "income-concept"],
+    ["effectiveMonth", "income-month-picker"],
+  ] as const;
+  const [, id] = fields.find(([field]) => errors[field]) ?? [];
+  if (id) document.getElementById(id)?.focus();
+}
+
+type IncomeSheetActionProps = IncomeSheetProps &
+  FinancialDraftState<IncomeDraft> & {
+    router: ReturnType<typeof useRouter>;
+    posthog: ReturnType<typeof usePostHog>;
+  };
+
+function useIncomeSheetActions({
+  income,
+  onOpenChange,
+  onSaveDraft,
+  router,
+  posthog,
+  draft,
+  saving,
+  setError,
+  setValidationErrors,
+  setSaving,
+}: IncomeSheetActionProps) {
 
   async function save() {
+    if (saving) return;
     const parsed = createIncomeSchema.safeParse({ draft });
     if (!parsed.success) {
-      const errors: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        const field = issue.path[1];
-        if (typeof field === "string" && !errors[field])
-          errors[field] = issue.message;
-      }
+      const errors = getValidationErrors(parsed.error.issues);
       setValidationErrors(errors);
+      focusFirstInvalidIncomeField(draft, errors);
       return;
     }
     setValidationErrors({});
     setSaving(true);
     setError(null);
     try {
-      const normalizedDraft = {
-        ...parsed.data.draft,
-        amount: parseMoneyInput(
-          parsed.data.draft.amount,
-          parsed.data.draft.currency,
-        )!.amount,
-      };
-      if (onSaveDraft) {
-        onSaveDraft(normalizedDraft);
-      } else {
-        if (income)
-          await updateIncome({
-            data: { incomeId: income.id, draft: normalizedDraft },
-          });
-        else await createIncome({ data: { draft: normalizedDraft } });
-        posthog?.capture(income ? "income_updated" : "income_created", {
-          recurring: normalizedDraft.recurring,
-          currency: normalizedDraft.currency,
-          source_kind: normalizedDraft.source.kind,
-        });
-        await router.invalidate();
+      const normalizedDraft = normalizeIncomeDraft(parsed.data.draft);
+      await persistIncomeForm(income, normalizedDraft, onSaveDraft, posthog);
+      if (!onSaveDraft) {
         toast.success(income ? "Ingreso actualizado." : "Ingreso agregado.");
+        onOpenChange(false);
+        try {
+          await router.invalidate();
+        } catch {
+          toast.error("El ingreso se guardó, pero no pudimos actualizar la vista.");
+        }
+      } else {
+        onOpenChange(false);
       }
-      onOpenChange(false);
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "No pudimos guardar el ingreso.",
-      );
+      setError(cause instanceof Error ? cause.message : "No pudimos guardar el ingreso.");
     } finally {
       setSaving(false);
     }
   }
 
   async function remove() {
+    if (saving) return;
     if (!income || !window.confirm("¿Eliminar este ingreso?")) return;
     setSaving(true);
     try {
@@ -184,201 +214,70 @@ export function IncomeSheet({
         currency: income.currency,
         source_kind: income.sourceKind,
       });
-      await router.invalidate();
       toast.success("Ingreso eliminado.");
       onOpenChange(false);
+      try {
+        await router.invalidate();
+      } catch {
+        toast.error("El ingreso se eliminó, pero no pudimos actualizar la vista.");
+      }
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "No pudimos eliminar el ingreso.",
-      );
+      setError(cause instanceof Error ? cause.message : "No pudimos eliminar el ingreso.");
     } finally {
       setSaving(false);
     }
   }
 
-  const parsedUsdAmount =
-    draft.currency === "USD" ? parseMoneyInput(draft.amount, "USD") : null;
-  const arsEquivalent =
-    parsedUsdAmount && new BigNumber(parsedUsdAmount.amount).isGreaterThan(0)
-      ? new BigNumber(parsedUsdAmount.amount).times(PLANNING_ARS_PER_USD)
-      : null;
+  return { onSave: () => void save(), onRemove: income ? () => void remove() : undefined };
+}
+
+function useIncomeSheet(props: IncomeSheetProps) {
+  const state = useIncomeDraftState(props);
+  const router = useRouter();
+  const posthog = usePostHog();
+  const actions = useIncomeSheetActions({ ...props, ...state, router, posthog });
+
+  return {
+    ...state,
+    showPersistenceHint: !props.onSaveDraft,
+    onDraftChange: state.setDraft,
+    ...actions,
+  };
+}
+
+function getTitle(recurringOnly: boolean, hasDraft: boolean, hasIncome: boolean) {
+  if (recurringOnly) return hasDraft ? "Editar ingreso recurrente" : "Nuevo ingreso recurrente";
+  return hasIncome ? "Editar ingreso" : "Nuevo ingreso";
+}
+
+export function IncomeSheet(props: IncomeSheetProps) {
+  const state = useIncomeSheet(props);
+  const { open, onOpenChange, sources, income, draft, recurringOnly = false } = props;
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
-        <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
-          <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-            {recurringOnly
-              ? initialDraft
-                ? 'Editar ingreso recurrente'
-                : 'Nuevo ingreso recurrente'
-              : income
-                ? 'Editar ingreso'
-                : 'Nuevo ingreso'}
-          </SheetTitle>
-          <SheetDescription>
-            {recurringOnly
-              ? 'Indicá cuánto recibís por mes y de dónde viene.'
-              : 'Indicá el origen y desde cuándo contás con este ingreso.'}
-          </SheetDescription>
-        </SheetHeader>
-        <form
-          className="flex flex-1 flex-col gap-5 overflow-y-auto p-6"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void save();
-          }}
-        >
-          <FieldGroup>
-            <FieldSet>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field data-invalid={!!validationErrors.amount}>
-                  <FieldLabel htmlFor="income-amount">Monto</FieldLabel>
-                  <Input
-                    id="income-amount"
-                    aria-label="Monto"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={draft.amount}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        amount: formatMoneyInput(event.target.value),
-                      })
-                    }
-                  />
-                  {validationErrors.amount && (
-                    <FieldError>{validationErrors.amount}</FieldError>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="income-currency-trigger">
-                    Moneda
-                  </FieldLabel>
-                  <Select
-                    items={{ ARS: "Pesos (ARS)", USD: "Dólares (USD)" }}
-                    value={draft.currency}
-                    onValueChange={(currency) =>
-                      currency &&
-                      setDraft({
-                        ...draft,
-                        currency: currency as "ARS" | "USD",
-                      })
-                    }
-                  >
-                    <SelectTrigger
-                      id="income-currency-trigger"
-                      aria-label="Moneda"
-                      className="w-full"
-                    >
-                      <SelectValue placeholder="Seleccionar moneda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ARS">Pesos (ARS)</SelectItem>
-                      <SelectItem value="USD">Dólares (USD)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-              {arsEquivalent !== null && (
-                <p className="text-sm text-[var(--sea-ink-soft)]">
-                  Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}
-                </p>
-              )}
-              {!recurringOnly && (
-                <Field orientation="horizontal">
-                  <Switch
-                    id="income-recurring"
-                    checked={draft.recurring}
-                    onCheckedChange={(recurring) =>
-                      setDraft({
-                        ...draft,
-                        recurring,
-                        source:
-                          draft.source.kind === "custom"
-                            ? draft.source
-                            : { kind: recurring ? "salary" : "asset_sale" },
-                      })
-                    }
-                  />
-                  <FieldLabel htmlFor="income-recurring">
-                    Es ingreso recurrente
-                  </FieldLabel>
-                </Field>
-              )}
-              <IncomeSourcePicker
-                recurring={draft.recurring}
-                sources={sources}
-                value={draft.source}
-                error={validationErrors.source}
-                onChange={(source) => setDraft({ ...draft, source })}
-                showPersistenceHint={!onSaveDraft}
-              />
-              <Field data-invalid={!!validationErrors.concept}>
-                <FieldLabel htmlFor="income-concept">Concepto</FieldLabel>
-                <Input
-                  id="income-concept"
-                  aria-label="Concepto"
-                  aria-invalid={!!validationErrors.concept}
-                  aria-describedby={
-                    validationErrors.concept ? "income-concept-error" : undefined
-                  }
-                  maxLength={120}
-                  value={draft.concept}
-                  onChange={(event) =>
-                    setDraft({ ...draft, concept: event.target.value })
-                  }
-                />
-                {validationErrors.concept && (
-                  <FieldError id="income-concept-error">
-                    {validationErrors.concept}
-                  </FieldError>
-                )}
-              </Field>
-              {!recurringOnly && (
-                <Field data-invalid={!!validationErrors.effectiveMonth}>
-                  <FieldLabel htmlFor="income-month-picker">
-                    {draft.recurring ? "Desde el mes" : "Mes del ingreso"}
-                  </FieldLabel>
-                  <MonthPickerInput
-                    id="income-month-picker"
-                    aria-label={
-                      draft.recurring ? "Desde el mes" : "Mes del ingreso"
-                    }
-                    value={draft.effectiveMonth}
-                    onValueChange={(effectiveMonth) =>
-                      setDraft({ ...draft, effectiveMonth })
-                    }
-                  />
-                  {validationErrors.effectiveMonth && (
-                    <FieldError>{validationErrors.effectiveMonth}</FieldError>
-                  )}
-                </Field>
-              )}
-              {error && <FieldError>{error}</FieldError>}
-            </FieldSet>
-          </FieldGroup>
-          <div className="mt-auto flex gap-3 pt-4">
-            {income && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => void remove()}
-                disabled={saving}
-              >
-                Eliminar
-              </Button>
-            )}
-            <Button type="submit" disabled={saving} className="flex-1">
-              {saving ? "Guardando..." : "Guardar"}
-            </Button>
-          </div>
-        </form>
-      </SheetContent>
-    </Sheet>
+    <FinancialSheetFrame
+      open={open}
+      onOpenChange={onOpenChange}
+      saving={state.saving}
+      title={getTitle(recurringOnly, Boolean(draft), Boolean(income))}
+      description={
+        recurringOnly
+          ? "Indicá cuánto recibís por mes y de dónde viene."
+          : "Indicá el origen y desde cuándo contás con este ingreso."
+      }
+    >
+        <IncomeSheetForm
+          draft={state.draft}
+          error={state.error}
+          validationErrors={state.validationErrors}
+          saving={state.saving}
+          arsEquivalent={state.arsEquivalent}
+          showPersistenceHint={state.showPersistenceHint}
+          onDraftChange={state.onDraftChange}
+          onSave={state.onSave}
+          onRemove={state.onRemove}
+          sources={sources}
+          recurringOnly={recurringOnly}
+        />
+    </FinancialSheetFrame>
   );
 }

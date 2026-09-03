@@ -8,14 +8,21 @@ import {
   parseMoneyInput,
 } from '../../lib/money'
 import {
+  type ContributionKind,
   type GoalProjection,
   type GoalsWorkspaceSource,
   buildGoalsWorkspace,
 } from '../goals/goals'
+import {
+  serializeGoalCoreCollections,
+  serializeGoalFinancialSources,
+  serializeGoalPlanCollections,
+  serializeGoalProfile,
+} from '../goals/goal-proposal-serialization'
 
 import { PLANNING_ARS_PER_USD } from '../financial/financial'
 
-export type ContributionKind = 'saving' | 'investment'
+export type { ContributionKind } from '../goals/goals'
 
 export interface EligibleGoalSource {
   id: string
@@ -35,6 +42,39 @@ export function selectEligibleGoals<T extends EligibleGoalSource = EligibleGoalS
   return goals.filter(
     (goal) => goal.status === 'active' && goal.currency === currency && goal.strategy === strategy,
   )
+}
+
+export interface ContributionEligibilityState {
+  eligibleGoals: EligibleGoal[]
+  eligibleGoalsUsd: EligibleGoal[]
+  eligibleInvestmentGoals: EligibleGoal[]
+  eligibleInvestmentGoalsUsd: EligibleGoal[]
+}
+
+export function getEligibleContributionGoals(
+  state: ContributionEligibilityState,
+  kind: ContributionKind,
+  currency: CurrencyCode,
+): EligibleGoal[] {
+  if (kind === 'investment') {
+    return currency === 'USD' ? state.eligibleInvestmentGoalsUsd : state.eligibleInvestmentGoals
+  }
+  return currency === 'USD' ? state.eligibleGoalsUsd : state.eligibleGoals
+}
+
+function getContributionGoalError(kind: ContributionKind, currency: CurrencyCode): string {
+  const action = kind === 'investment' ? 'la inversión' : 'el ahorro'
+  return `No hay objetivos activos para distribuir ${action} en ${currency}.`
+}
+
+export function requireEligibleContributionGoals(
+  state: ContributionEligibilityState,
+  kind: ContributionKind,
+  currency: CurrencyCode,
+): EligibleGoal[] {
+  const goals = getEligibleContributionGoals(state, kind, currency)
+  if (!goals.length) throw new Error(getContributionGoalError(kind, currency))
+  return goals
 }
 
 export interface SavingDraftInput {
@@ -93,6 +133,46 @@ export interface SavingContributionContext {
   monthlyInvestmentTargetArs?: Money | null
   monthlyInvestmentTargetUsd?: Money | null
   places: Array<{ id: string; name: string }>
+  investmentState: InvestmentContributionDataState
+}
+
+export type InvestmentContributionCurrencyState =
+  | { status: 'ready' }
+  | { status: 'incomplete'; reason: 'missing_investment_position' }
+
+export interface InvestmentContributionDataState {
+  ars: InvestmentContributionCurrencyState
+  usd: InvestmentContributionCurrencyState
+}
+
+function getInvestmentContributionCurrencyState(
+  source: Pick<GoalsWorkspaceSource, 'goals' | 'investmentPositions'>,
+  currency: 'ARS' | 'USD',
+): InvestmentContributionCurrencyState {
+  const positionGoalIds = new Set(
+    source.investmentPositions
+      .filter((position) => position.currency === currency)
+      .map((position) => position.goalId),
+  )
+  const hasMissingPosition = source.goals.some(
+    (goal) =>
+      goal.status === 'active' &&
+      goal.strategy === 'invest' &&
+      goal.currency === currency &&
+      !positionGoalIds.has(goal.id),
+  )
+  return hasMissingPosition
+    ? { status: 'incomplete', reason: 'missing_investment_position' }
+    : { status: 'ready' }
+}
+
+export function getInvestmentContributionDataState(
+  source: Pick<GoalsWorkspaceSource, 'goals' | 'investmentPositions'>,
+): InvestmentContributionDataState {
+  return {
+    ars: getInvestmentContributionCurrencyState(source, 'ARS'),
+    usd: getInvestmentContributionCurrencyState(source, 'USD'),
+  }
 }
 
 export type SavingContributionContextState =
@@ -107,8 +187,6 @@ export interface BuildSavingPreviewInput {
   currentMonth?: string
 }
 
-export type BuildContributionPreviewInput = BuildSavingPreviewInput
-
 export interface UsdPurchaseInput {
   usdAmount?: string | null
   arsSpent?: string | null
@@ -121,248 +199,292 @@ export interface UsdPurchaseDerivation {
   effectiveRate?: string
 }
 
+type ParsedUsdValue = { value: BigNumber | null; provided: boolean }
+
+function normalizeDotSeparatedNumber(value: string): string {
+  const parts = value.split('.')
+  return parts.length > 2 || (parts.length === 2 && parts[1].length === 3)
+    ? value.replace(/\./g, '')
+    : value
+}
+
+function normalizeNumericText(value?: string | null): string | null {
+  if (value === undefined || value === null) return null
+  const clean = String(value).replace(/[$]|US[$]|USD|ARS|\s/gi, '').trim()
+  if (!clean) return null
+  return normalizeNumericSeparators(clean)
+}
+
+function hasCommaAndDot(value: string): boolean {
+  return value.includes(',') && value.includes('.')
+}
+
+function normalizeNumericSeparators(value: string): string {
+  if (hasCommaAndDot(value)) return value.replace(/\./g, '').replace(',', '.')
+  if (value.includes(',')) return value.replace(',', '.')
+  return normalizeDotSeparatedNumber(value)
+}
+
+function isFiniteNumber(value: BigNumber): boolean {
+  return value.isFinite() && !value.isNaN()
+}
+
+function parseNumericValue(value?: string | null): BigNumber | null {
+  const normalized = normalizeNumericText(value)
+  if (!normalized) return null
+  try {
+    const parsed = new BigNumber(normalized)
+    return isFiniteNumber(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function isValueProvided(value?: string | null): boolean {
+  return value !== undefined && value !== null && String(value).trim() !== ''
+}
+
+function parseUsdPurchaseValues(input: UsdPurchaseInput) {
+  const values = [input.usdAmount, input.arsSpent, input.effectiveRate]
+  const parsed = values.map((value): ParsedUsdValue => ({
+    value: parseNumericValue(value),
+    provided: isValueProvided(value),
+  }))
+  return {
+    usd: parsed[0],
+    ars: parsed[1],
+    rate: parsed[2],
+    providedCount: parsed.filter(({ provided }) => provided).length,
+  }
+}
+
+function validateUsdPurchaseValues(values: ReturnType<typeof parseUsdPurchaseValues>): void {
+  for (const item of [values.usd, values.ars, values.rate]) {
+    if (item.provided && !item.value?.isGreaterThan(0)) {
+      throw new Error('USD purchase values must be positive')
+    }
+  }
+}
+
+function hasUsdPurchasePair(first: ParsedUsdValue, second: ParsedUsdValue): boolean {
+  return first.provided && second.provided && !!first.value && !!second.value
+}
+
+function deriveUsdRate(usd: BigNumber, ars: BigNumber): UsdPurchaseDerivation {
+  return { effectiveRate: ars.dividedBy(usd).toFixed(2, BigNumber.ROUND_HALF_UP) }
+}
+
+function deriveArsSpent(usd: BigNumber, rate: BigNumber): UsdPurchaseDerivation {
+  return { arsSpent: usd.times(rate).toFixed(2, BigNumber.ROUND_HALF_UP) }
+}
+
+function deriveUsdAmount(ars: BigNumber, rate: BigNumber): UsdPurchaseDerivation {
+  return { usdAmount: ars.dividedBy(rate).toFixed(2, BigNumber.ROUND_HALF_UP) }
+}
+
+function deriveTwoUsdPurchaseValues(values: ReturnType<typeof parseUsdPurchaseValues>): UsdPurchaseDerivation | null {
+  const { usd, ars, rate } = values
+  if (hasUsdPurchasePair(usd, ars)) return deriveUsdRate(usd.value!, ars.value!)
+  if (hasUsdPurchasePair(usd, rate)) return deriveArsSpent(usd.value!, rate.value!)
+  if (hasUsdPurchasePair(ars, rate)) return deriveUsdAmount(ars.value!, rate.value!)
+  return null
+}
+
+function hasIncoherentUsdPurchase(ars: BigNumber, expectedArs: BigNumber): boolean {
+  const roundedExpected = expectedArs.toFixed(2, BigNumber.ROUND_HALF_UP)
+  const roundedActual = ars.toFixed(2, BigNumber.ROUND_HALF_UP)
+  return roundedExpected !== roundedActual
+}
+
+function normalizeCompleteUsdPurchase(values: ReturnType<typeof parseUsdPurchaseValues>): UsdPurchaseDerivation {
+  const { usd, ars, rate } = values
+  const [usdValue, arsValue, rateValue] = requireCompleteUsdPurchaseValues(usd.value, ars.value, rate.value)
+  const expectedArs = usdValue.times(rateValue)
+  if (hasIncoherentUsdPurchase(arsValue, expectedArs)) {
+    throw new Error('USD purchase values are incoherent')
+  }
+  return {
+    usdAmount: usdValue.toFixed(2, BigNumber.ROUND_HALF_UP),
+    arsSpent: arsValue.toFixed(2, BigNumber.ROUND_HALF_UP),
+    effectiveRate: rateValue.toFixed(2, BigNumber.ROUND_HALF_UP),
+  }
+}
+
+function requireCompleteUsdPurchaseValues(
+  usd: BigNumber | null,
+  ars: BigNumber | null,
+  rate: BigNumber | null,
+): [BigNumber, BigNumber, BigNumber] {
+  if (!usd) throw new Error('USD purchase derivation requires at least two positive values')
+  if (!ars) throw new Error('USD purchase derivation requires at least two positive values')
+  if (!rate) throw new Error('USD purchase derivation requires at least two positive values')
+  return [usd, ars, rate]
+}
+
 export function deriveUsdPurchase(input: UsdPurchaseInput): UsdPurchaseDerivation {
-  const parseVal = (val?: string | null): BigNumber | null => {
-    if (val === undefined || val === null) return null
-    const clean = String(val).replace(/[$]|US[$]|USD|ARS|\s/gi, '').trim()
-    if (!clean) return null
-    let normalized = clean
-    if (clean.includes(',') && clean.includes('.')) {
-      normalized = clean.replace(/\./g, '').replace(',', '.')
-    } else if (clean.includes(',')) {
-      normalized = clean.replace(',', '.')
-    } else if (clean.includes('.')) {
-      const parts = clean.split('.')
-      if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
-        normalized = clean.replace(/\./g, '')
-      }
-    }
-    try {
-      const bn = new BigNumber(normalized)
-      if (!bn.isFinite() || bn.isNaN()) return null
-      return bn
-    } catch {
-      return null
-    }
-  }
-
-  const bnUsd = parseVal(input.usdAmount)
-  const bnArs = parseVal(input.arsSpent)
-  const bnRate = parseVal(input.effectiveRate)
-
-  const isUsdProvided = input.usdAmount !== undefined && input.usdAmount !== null && String(input.usdAmount).trim() !== ''
-  const isArsProvided = input.arsSpent !== undefined && input.arsSpent !== null && String(input.arsSpent).trim() !== ''
-  const isRateProvided = input.effectiveRate !== undefined && input.effectiveRate !== null && String(input.effectiveRate).trim() !== ''
-
-  if (isUsdProvided && (!bnUsd || !bnUsd.isGreaterThan(0))) {
-    throw new Error('USD purchase values must be positive')
-  }
-  if (isArsProvided && (!bnArs || !bnArs.isGreaterThan(0))) {
-    throw new Error('USD purchase values must be positive')
-  }
-  if (isRateProvided && (!bnRate || !bnRate.isGreaterThan(0))) {
-    throw new Error('USD purchase values must be positive')
-  }
-
-  const providedCount = (isUsdProvided ? 1 : 0) + (isArsProvided ? 1 : 0) + (isRateProvided ? 1 : 0)
-
-  if (providedCount < 2) {
+  const values = parseUsdPurchaseValues(input)
+  validateUsdPurchaseValues(values)
+  if (values.providedCount < 2) {
     throw new Error('USD purchase derivation requires at least two positive values')
   }
-
-  if (providedCount === 2) {
-    if (isUsdProvided && isArsProvided && bnUsd && bnArs) {
-      const derivedRate = bnArs.dividedBy(bnUsd).toFixed(2, BigNumber.ROUND_HALF_UP)
-      return { effectiveRate: derivedRate }
-    }
-    if (isUsdProvided && isRateProvided && bnUsd && bnRate) {
-      const derivedArs = bnUsd.times(bnRate).toFixed(2, BigNumber.ROUND_HALF_UP)
-      return { arsSpent: derivedArs }
-    }
-    if (isArsProvided && isRateProvided && bnArs && bnRate) {
-      const derivedUsd = bnArs.dividedBy(bnRate).toFixed(2, BigNumber.ROUND_HALF_UP)
-      return { usdAmount: derivedUsd }
+  if (values.providedCount === 2) {
+    return deriveTwoUsdPurchaseValues(values) ?? {
+      ...normalizeCompleteUsdPurchase(values),
     }
   }
+  return normalizeCompleteUsdPurchase(values)
+}
 
-  if (providedCount === 3 && bnUsd && bnArs && bnRate) {
-    const expectedArs = bnUsd.times(bnRate)
-    const expectedArsStr = expectedArs.toFixed(2, BigNumber.ROUND_HALF_UP)
-    const actualArsStr = bnArs.toFixed(2, BigNumber.ROUND_HALF_UP)
-    const diff = bnArs.minus(expectedArs).abs()
+function parseDraftAmount(input: SavingDraftInput | SavingDraft): Money {
+  const parsed = parseStringDraftAmount(input) ?? parseMoneyDraftAmount(input)
+  if (parsed) return parsed
+  throw new Error('Contribution amount must be positive')
+}
 
-    if (diff.isGreaterThan(0.01) && expectedArsStr !== actualArsStr) {
-      throw new Error('USD purchase values are incoherent')
-    }
+function parseStringDraftAmount(input: SavingDraftInput | SavingDraft): Money | null {
+  if (typeof input.amount !== 'string') return null
+  const parsed = parseMoneyInput(input.amount, input.currency)
+  return parsed && isPositiveMoney(parsed) ? parsed : null
+}
 
-    return {
-      usdAmount: bnUsd.toFixed(2, BigNumber.ROUND_HALF_UP),
-      arsSpent: bnArs.toFixed(2, BigNumber.ROUND_HALF_UP),
-      effectiveRate: bnRate.toFixed(2, BigNumber.ROUND_HALF_UP),
-    }
+function parseMoneyDraftAmount(input: SavingDraftInput | SavingDraft): Money | null {
+  if (!isMoneyObject(input.amount)) return null
+  if (input.amount.currency !== input.currency) return null
+  return isPositiveMoney(input.amount) ? input.amount : null
+}
+
+function isMoneyObject(value: unknown): value is Money {
+  if (typeof value !== 'object' || value === null) return false
+  return 'amount' in value && 'currency' in value
+}
+
+function draftArsSpent(input: SavingDraftInput | SavingDraft): string {
+  return typeof input.arsSpent === 'string' ? input.arsSpent : input.arsSpent!.amount
+}
+
+function deriveCompleteUsdDraft(input: SavingDraftInput | SavingDraft, amount: Money) {
+  const arsSpent = draftArsSpent(input)
+  const derivation = deriveUsdPurchase({ usdAmount: amount.amount, arsSpent, effectiveRate: input.effectiveRate })
+  return { arsSpent: createMoney(derivation.arsSpent ?? arsSpent, 'ARS'), effectiveRate: derivation.effectiveRate ?? input.effectiveRate! }
+}
+
+function deriveArsSpentUsdDraft(input: SavingDraftInput | SavingDraft, amount: Money) {
+  const arsSpent = draftArsSpent(input)
+  const derivation = deriveUsdPurchase({ usdAmount: amount.amount, arsSpent })
+  return { arsSpent: createMoney(arsSpent, 'ARS'), effectiveRate: derivation.effectiveRate! }
+}
+
+function deriveRateUsdDraft(input: SavingDraftInput | SavingDraft, amount: Money) {
+  const derivation = deriveUsdPurchase({ usdAmount: amount.amount, effectiveRate: input.effectiveRate })
+  return { arsSpent: createMoney(derivation.arsSpent!, 'ARS'), effectiveRate: input.effectiveRate! }
+}
+
+function deriveUsdDraftValues(input: SavingDraftInput | SavingDraft, amount: Money) {
+  if (hasCompleteUsdDraft(input)) {
+    return deriveCompleteUsdDraft(input, amount)
   }
+  if (input.arsSpent) {
+    return deriveArsSpentUsdDraft(input, amount)
+  }
+  if (input.effectiveRate) {
+    return deriveRateUsdDraft(input, amount)
+  }
+  return { arsSpent: undefined, effectiveRate: undefined }
+}
 
-  throw new Error('USD purchase derivation requires at least two positive values')
+function hasCompleteUsdDraft(input: SavingDraftInput | SavingDraft): boolean {
+  return !!input.arsSpent && !!input.effectiveRate
+}
+
+function validateSavingDraftInput(input: SavingDraftInput | SavingDraft): void {
+  if (!input || typeof input !== 'object') throw new Error('Invalid saving draft input')
+  validateDraftCurrency(input.currency)
+}
+
+function validateDraftCurrency(currency: string): void {
+  if (currency !== 'ARS' && currency !== 'USD') throw new Error(`Invalid currency: ${currency}`)
 }
 
 export function parseSavingDraft(input: SavingDraftInput | SavingDraft): SavingDraft {
-  if (!input || typeof input !== 'object') {
-    throw new Error('Invalid saving draft input')
-  }
-
-  if (input.currency !== 'ARS' && input.currency !== 'USD') {
-    throw new Error(`Invalid currency: ${input.currency}`)
-  }
-
-  let amountMoney: Money
-  if (typeof input.amount === 'string') {
-    const parsed = parseMoneyInput(input.amount, input.currency)
-    if (!parsed || !isPositiveMoney(parsed)) {
-      throw new Error('Contribution amount must be positive')
-    }
-    amountMoney = parsed
-  } else if (
-    typeof input.amount === 'object' &&
-    input.amount !== null &&
-    'amount' in input.amount &&
-    'currency' in input.amount
-  ) {
-    if (input.amount.currency !== input.currency || !isPositiveMoney(input.amount)) {
-      throw new Error('Contribution amount must be positive')
-    }
-    amountMoney = input.amount
-  } else {
-    throw new Error('Contribution amount must be positive')
-  }
-
+  validateSavingDraftInput(input)
+  const amount = parseDraftAmount(input)
   if (input.currency === 'USD') {
-    let arsSpentMoney: Money | undefined
-    let effectiveRateStr: string | undefined
-
-    if (input.arsSpent && input.effectiveRate) {
-      const arsSpentStr = typeof input.arsSpent === 'string' ? input.arsSpent : input.arsSpent.amount
-      const derivation = deriveUsdPurchase({
-        usdAmount: amountMoney.amount,
-        arsSpent: arsSpentStr,
-        effectiveRate: input.effectiveRate,
-      })
-      arsSpentMoney = createMoney(derivation.arsSpent ?? arsSpentStr, 'ARS')
-      effectiveRateStr = derivation.effectiveRate ?? input.effectiveRate
-    } else if (input.arsSpent) {
-      const arsSpentStr = typeof input.arsSpent === 'string' ? input.arsSpent : input.arsSpent.amount
-      const derivation = deriveUsdPurchase({
-        usdAmount: amountMoney.amount,
-        arsSpent: arsSpentStr,
-      })
-      arsSpentMoney = createMoney(arsSpentStr, 'ARS')
-      effectiveRateStr = derivation.effectiveRate!
-    } else if (input.effectiveRate) {
-      const derivation = deriveUsdPurchase({
-        usdAmount: amountMoney.amount,
-        effectiveRate: input.effectiveRate,
-      })
-      arsSpentMoney = createMoney(derivation.arsSpent!, 'ARS')
-      effectiveRateStr = input.effectiveRate
-    }
-
-    return {
-      ...(input.kind ? { kind: input.kind } : {}),
-      currency: 'USD',
-      amount: amountMoney,
-      place: input.place,
-      arsSpent: arsSpentMoney,
-      effectiveRate: effectiveRateStr,
-    }
+    const usdValues = deriveUsdDraftValues(input, amount)
+    return { ...(input.kind ? { kind: input.kind } : {}), currency: 'USD', amount, place: input.place, ...usdValues }
   }
+  return { ...(input.kind ? { kind: input.kind } : {}), currency: 'ARS', amount, place: input.place }
+}
 
-  return {
-    ...(input.kind ? { kind: input.kind } : {}),
-    currency: 'ARS',
-    amount: amountMoney,
-    place: input.place,
+type PercentageItem = {
+  id: string
+  name: string
+  index: number
+  basePctCents: BigNumber
+  remainder: BigNumber
+}
+
+function parseGoalWeight(percentage: string | number): BigNumber {
+  try {
+    const parsed = new BigNumber(String(percentage).trim().replace(',', '.'))
+    return isNonNegativeFiniteNumber(parsed) ? parsed : new BigNumber(0)
+  } catch {
+    return new BigNumber(0)
   }
 }
 
-export function buildSavingPreview(input: BuildSavingPreviewInput): SavingPreviewResult {
-  const draft = parseSavingDraft(input.draft)
+function isNonNegativeFiniteNumber(value: BigNumber): boolean {
+  return isFiniteNumber(value) && value.isGreaterThanOrEqualTo(0)
+}
 
-  if (!input.eligibleGoals || input.eligibleGoals.length === 0) {
-    throw new Error('No eligible goals')
-  }
+function getGoalWeights(goals: EligibleGoal[]) {
+  const weights = goals.map(({ percentage }) => parseGoalWeight(percentage))
+  const sum = weights.reduce((total, weight) => total.plus(weight), new BigNumber(0))
+  return sum.isZero()
+    ? { weights: goals.map(() => new BigNumber(1)), sum: new BigNumber(goals.length) }
+    : { weights, sum }
+}
 
-  let sumWeights = new BigNumber(0)
-  const parsedWeights = input.eligibleGoals.map((g) => {
-    try {
-      const bn = new BigNumber(String(g.percentage).trim().replace(',', '.'))
-      if (bn.isFinite() && !bn.isNaN() && bn.isGreaterThanOrEqualTo(0)) {
-        sumWeights = sumWeights.plus(bn)
-        return bn
-      }
-      return new BigNumber(0)
-    } catch {
-      return new BigNumber(0)
-    }
-  })
-
-  const weights = sumWeights.isZero()
-    ? input.eligibleGoals.map(() => new BigNumber(1))
-    : parsedWeights
-  const activeSumWeights = sumWeights.isZero()
-    ? new BigNumber(input.eligibleGoals.length)
-    : sumWeights
-
-  const totalPctCents = new BigNumber(10000)
-  const items = input.eligibleGoals.map((g, index) => {
-    const weight = weights[index]
-    const exactPctCents = totalPctCents.times(weight).dividedBy(activeSumWeights)
+function buildPercentageItems(goals: EligibleGoal[], weights: BigNumber[], sum: BigNumber): PercentageItem[] {
+  return goals.map((goal, index) => {
+    const exactPctCents = new BigNumber(10000).times(weights[index]).dividedBy(sum)
     const basePctCents = exactPctCents.integerValue(BigNumber.ROUND_DOWN)
-    const remainder = exactPctCents.minus(basePctCents)
-    return {
-      id: g.id,
-      name: g.name,
-      index,
-      basePctCents,
-      remainder,
-    }
+    return { id: goal.id, name: goal.name, index, basePctCents, remainder: exactPctCents.minus(basePctCents) }
   })
+}
 
-  const sumBasePctCents = items.reduce((acc, item) => acc.plus(item.basePctCents), new BigNumber(0))
-  const leftoverPctCents = totalPctCents.minus(sumBasePctCents).toNumber()
-
-  const sortedIndices = items
+function distributePercentageRemainder(items: PercentageItem[]): Map<number, BigNumber> {
+  const totalBase = items.reduce((sum, item) => sum.plus(item.basePctCents), new BigNumber(0))
+  const leftover = new BigNumber(10000).minus(totalBase).toNumber()
+  const sorted = items
     .map((item, idx) => ({ idx, remainder: item.remainder, index: item.index }))
-    .sort((a, b) => {
-      const cmp = b.remainder.comparedTo(a.remainder) ?? 0
-      if (cmp !== 0) return cmp
-      return a.index - b.index
-    })
-
-  const finalPctCentsMap = new Map<number, BigNumber>()
-  items.forEach((item, idx) => finalPctCentsMap.set(idx, item.basePctCents))
-
-  for (let i = 0; i < leftoverPctCents; i++) {
-    const targetIdx = sortedIndices[i % sortedIndices.length].idx
-    const current = finalPctCentsMap.get(targetIdx)!
-    finalPctCentsMap.set(targetIdx, current.plus(1))
+    .sort((a, b) => (b.remainder.comparedTo(a.remainder) || 0) || a.index - b.index)
+  const result = new Map(items.map((item, idx) => [idx, item.basePctCents]))
+  for (let i = 0; i < leftover; i++) {
+    const targetIdx = sorted[i % sorted.length].idx
+    result.set(targetIdx, result.get(targetIdx)!.plus(1))
   }
+  return result
+}
 
-  const normalizedTargets = items.map((item, idx) => {
-    const finalPctCents = finalPctCentsMap.get(idx)!
-    const percentage = finalPctCents.dividedBy(100).toFixed(2)
-    return {
-      id: item.id,
-      name: item.name,
-      percentage,
-    }
-  })
+function normalizeEligibleGoalTargets(goals: EligibleGoal[]) {
+  const { weights, sum } = getGoalWeights(goals)
+  const items = buildPercentageItems(goals, weights, sum)
+  const finalPercentages = distributePercentageRemainder(items)
+  return items.map((item, index) => ({
+    id: item.id,
+    name: item.name,
+    percentage: finalPercentages.get(index)!.dividedBy(100).toFixed(2),
+  }))
+}
 
-  const allocatedMoneyList = calculateAllocationAmounts(
+function buildPreviewAllocations(draft: SavingDraft, goals: EligibleGoal[]): SavingAllocationPreview[] {
+  const targets = normalizeEligibleGoalTargets(goals)
+  const amounts = calculateAllocationAmounts(
     draft.amount,
-    normalizedTargets.map((t) => ({ id: t.id, percentage: t.percentage })),
+    targets.map(({ id, percentage }) => ({ id, percentage })),
   )
-
-  const allocations: SavingAllocationPreview[] = normalizedTargets.map((target) => {
-    const allocated = allocatedMoneyList.find((a) => a.id === target.id)!
+  return targets.map((target) => {
+    const allocated = amounts.find(({ id }) => id === target.id)!
     return {
       goalId: target.id,
       goalName: target.name,
@@ -370,83 +492,82 @@ export function buildSavingPreview(input: BuildSavingPreviewInput): SavingPrevie
       amount: allocated.amount,
     }
   })
+}
 
-  if (input.workspaceSource && input.currentMonth) {
-    const beforeWorkspace = buildGoalsWorkspace(input.workspaceSource, input.currentMonth)
-
-    const kind = input.kind ?? 'saving'
-    let proposedSource: GoalsWorkspaceSource
-
-    if (kind === 'investment') {
-      const existingInvestments = [...(input.workspaceSource.investmentPositions ?? [])]
-      for (const alloc of allocations) {
-        const existingIdx = existingInvestments.findIndex((p) => p.goalId === alloc.goalId)
-        if (existingIdx >= 0) {
-          const existing = existingInvestments[existingIdx]
-          const newCurrentValue = new BigNumber(existing.currentValue)
-            .plus(new BigNumber(alloc.amount.amount))
-            .toFixed(2)
-          existingInvestments[existingIdx] = {
-            ...existing,
-            currentValue: newCurrentValue,
-          }
-        } else {
-          existingInvestments.push({
-            id: `synthetic-${alloc.goalId}`,
-            goalId: alloc.goalId,
-            currentValue: alloc.amount.amount,
-            currency: alloc.amount.currency,
-          })
-        }
-      }
-      proposedSource = {
-        ...input.workspaceSource,
-        investmentPositions: existingInvestments,
-      }
-    } else {
-      const syntheticPositions = allocations.map((alloc) => ({
-        id: `synthetic-${alloc.goalId}`,
-        goalId: alloc.goalId,
-        amount: alloc.amount.amount,
-        currency: alloc.amount.currency,
-      }))
-      proposedSource = {
-        ...input.workspaceSource,
-        savingsPositions: [
-          ...(input.workspaceSource.savingsPositions ?? []),
-          ...syntheticPositions,
-        ],
-      }
-    }
-
-    const afterWorkspace = buildGoalsWorkspace(proposedSource, input.currentMonth)
-
-    const beforeGoals = beforeWorkspace.groups.flatMap((g) => g.goals)
-    const afterGoals = afterWorkspace.groups.flatMap((g) => g.goals)
-
-    for (const alloc of allocations) {
-      const beforeGoal = beforeGoals.find((g) => g.id === alloc.goalId)
-      const afterGoal = afterGoals.find((g) => g.id === alloc.goalId)
-
-      if (beforeGoal) {
-        alloc.progressBefore = beforeGoal.progressPercentage
-        alloc.projectionBefore = beforeGoal.projection
-      }
-      if (afterGoal) {
-        alloc.progressAfter = afterGoal.progressPercentage
-        alloc.projectionAfter = afterGoal.projection
-      }
+function addInvestmentPreviewPositions(source: GoalsWorkspaceSource, allocations: SavingAllocationPreview[]) {
+  const positions = [...(source.investmentPositions ?? [])]
+  for (const allocation of allocations) {
+    const index = positions.findIndex((position) => position.goalId === allocation.goalId)
+    if (index < 0) continue
+    const position = positions[index]
+    positions[index] = {
+      ...position,
+      currentValue: new BigNumber(position.currentValue).plus(allocation.amount.amount).toFixed(2),
     }
   }
+  return { ...source, investmentPositions: positions }
+}
 
-  return {
-    draft,
-    allocations,
+function addSavingPreviewPositions(source: GoalsWorkspaceSource, allocations: SavingAllocationPreview[]) {
+  const positions = allocations.map((allocation) => ({
+    id: `synthetic-${allocation.goalId}`,
+    goalId: allocation.goalId,
+    amount: allocation.amount.amount,
+    currency: allocation.amount.currency,
+  }))
+  return { ...source, savingsPositions: [...(source.savingsPositions ?? []), ...positions] }
+}
+
+function buildPreviewWorkspaceSource(
+  source: GoalsWorkspaceSource,
+  allocations: SavingAllocationPreview[],
+  kind: ContributionKind,
+) {
+  return kind === 'investment'
+    ? addInvestmentPreviewPositions(source, allocations)
+    : addSavingPreviewPositions(source, allocations)
+}
+
+function addWorkspaceProjectionsIfAvailable(input: BuildSavingPreviewInput, allocations: SavingAllocationPreview[]): void {
+  if (input.workspaceSource && input.currentMonth) {
+    addWorkspaceProjections(allocations, input.workspaceSource, input.currentMonth, input.kind ?? 'saving')
   }
 }
 
-export function buildContributionPreview(input: BuildContributionPreviewInput): SavingPreviewResult {
-  return buildSavingPreview(input)
+function addWorkspaceProjections(
+  allocations: SavingAllocationPreview[],
+  source: GoalsWorkspaceSource,
+  currentMonth: string,
+  kind: ContributionKind,
+): void {
+  const before = buildGoalsWorkspace(source, currentMonth)
+  const after = buildGoalsWorkspace(buildPreviewWorkspaceSource(source, allocations, kind), currentMonth)
+  const beforeGoals = before.groups.flatMap((group) => group.goals)
+  const afterGoals = after.groups.flatMap((group) => group.goals)
+  for (const allocation of allocations) {
+    const beforeGoal = beforeGoals.find((goal) => goal.id === allocation.goalId)
+    const afterGoal = afterGoals.find((goal) => goal.id === allocation.goalId)
+    if (beforeGoal) {
+      allocation.progressBefore = beforeGoal.progressPercentage
+      allocation.projectionBefore = beforeGoal.projection
+    }
+    if (afterGoal) {
+      allocation.progressAfter = afterGoal.progressPercentage
+      allocation.projectionAfter = afterGoal.projection
+    }
+  }
+}
+
+export function buildSavingPreview(input: BuildSavingPreviewInput): SavingPreviewResult {
+  validateEligibleGoals(input.eligibleGoals)
+  const draft = parseSavingDraft(input.draft)
+  const allocations = buildPreviewAllocations(draft, input.eligibleGoals)
+  addWorkspaceProjectionsIfAvailable(input, allocations)
+  return { draft, allocations }
+}
+
+function validateEligibleGoals(goals: EligibleGoal[] | undefined): asserts goals is EligibleGoal[] {
+  if (!goals?.length) throw new Error('No eligible goals')
 }
 
 export interface SerializeContributionStateInput {
@@ -454,18 +575,52 @@ export interface SerializeContributionStateInput {
   draft: SavingDraftInput | SavingDraft
   eligibleGoals: EligibleGoal[]
   currentMonth?: string
+  workspaceSource?: GoalsWorkspaceSource
+  monthlyTargetArs?: Money | null
+  monthlyTargetUsd?: Money | null
+  monthlyInvestmentTargetArs?: Money | null
+  monthlyInvestmentTargetUsd?: Money | null
+}
+
+function getSerializedKind(input: SerializeContributionStateInput, draft: SavingDraft): ContributionKind {
+  if (input.kind) return input.kind
+  if (draft.kind) return draft.kind
+  return getInputDraftKind(input.draft) ?? 'saving'
+}
+
+function getInputDraftKind(draft: SerializeContributionStateInput['draft']): ContributionKind | undefined {
+  if (typeof draft !== 'object' || !('kind' in draft)) return undefined
+  return draft.kind
+}
+
+function serializeEligibleGoals(goals: EligibleGoal[]) {
+  return goals
+    .map((goal) => ({
+      id: goal.id,
+      name: goal.name,
+      percentage: new BigNumber(String(goal.percentage).replace(',', '.')).toFixed(2),
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id))
+}
+
+function serializeWorkspaceSource(source: GoalsWorkspaceSource) {
+  return {
+    profile: serializeGoalProfile(source.profile, true),
+    ...serializeGoalCoreCollections(source),
+    ...serializeGoalPlanCollections(source),
+    ...serializeGoalFinancialSources(source),
+    hasFinancialPlan: source.incomes !== undefined || source.expenses !== undefined,
+  }
+}
+
+function serializeMoney(value: Money | null | undefined) {
+  return value ? { amount: value.amount, currency: value.currency } : null
 }
 
 export function serializeContributionState(input: SerializeContributionStateInput): string {
   const normalizedDraft = parseSavingDraft(input.draft)
   const normalized = {
-    kind:
-      input.kind ??
-      normalizedDraft.kind ??
-      (typeof input.draft === 'object' && input.draft && 'kind' in input.draft && input.draft.kind
-        ? input.draft.kind
-        : undefined) ??
-      'saving',
+    kind: getSerializedKind(input, normalizedDraft),
     currentMonth: input.currentMonth ?? null,
     draft: {
       currency: normalizedDraft.currency,
@@ -473,13 +628,14 @@ export function serializeContributionState(input: SerializeContributionStateInpu
       arsSpent: normalizedDraft.arsSpent ? normalizedDraft.arsSpent.amount : null,
       effectiveRate: normalizedDraft.effectiveRate ?? null,
     },
-    eligibleGoals: input.eligibleGoals
-      .map((g) => ({
-        id: g.id,
-        name: g.name,
-        percentage: new BigNumber(String(g.percentage).replace(',', '.')).toFixed(2),
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
+    eligibleGoals: serializeEligibleGoals(input.eligibleGoals),
+    workspaceSource: input.workspaceSource ? serializeWorkspaceSource(input.workspaceSource) : null,
+    monthlyTargets: {
+      savingArs: serializeMoney(input.monthlyTargetArs),
+      savingUsd: serializeMoney(input.monthlyTargetUsd),
+      investmentArs: serializeMoney(input.monthlyInvestmentTargetArs),
+      investmentUsd: serializeMoney(input.monthlyInvestmentTargetUsd),
+    },
   }
   return JSON.stringify(normalized)
 }
@@ -492,7 +648,7 @@ export function serializeSavingContributionState(input: {
   return serializeContributionState({ ...input, kind: 'saving' })
 }
 
-export function deriveMonthlyContributionTargets(input: {
+type MonthlyTargetInput = {
   monthlyCommitmentArs?: string | Money | null
   goals: Array<{
     id: string
@@ -507,99 +663,115 @@ export function deriveMonthlyContributionTargets(input: {
   }>
   currentMonth?: string
   kind?: ContributionKind
-}): {
+}
+
+function getCommitmentAmount(input: MonthlyTargetInput): string | null | undefined {
+  return typeof input.monthlyCommitmentArs === 'object' && input.monthlyCommitmentArs
+    ? input.monthlyCommitmentArs.amount
+    : input.monthlyCommitmentArs
+}
+
+function getTargetContributionAmount(
+  contribution: NonNullable<MonthlyTargetInput['existingContributions']>[number],
+): BigNumber | null {
+  const amount = getTargetContributionText(contribution)
+  const parsed = new BigNumber(amount)
+  return isPositiveFiniteNumber(parsed) ? parsed : null
+}
+
+function getTargetContributionText(
+  contribution: NonNullable<MonthlyTargetInput['existingContributions']>[number],
+): string {
+  return typeof contribution.amount === 'object' && contribution.amount
+    ? contribution.amount.amount
+    : String(contribution.amount)
+}
+
+function isPositiveFiniteNumber(value: BigNumber): boolean {
+  return value.isFinite() && value.isGreaterThan(0)
+}
+
+function addCurrentMonthContribution(
+  totals: { ars: BigNumber; usd: BigNumber },
+  contribution: NonNullable<MonthlyTargetInput['existingContributions']>[number],
+  currentMonth: string,
+): void {
+  const month = getTargetContributionMonth(contribution.createdAt)
+  if (month !== currentMonth) return
+  const amount = getTargetContributionAmount(contribution)
+  if (!amount) return
+  const key = getContributionTotalKey(contribution.currency)
+  if (key) totals[key] = totals[key].plus(amount)
+}
+
+function getTargetContributionMonth(createdAt: Date | string): string | null {
+  return getContributionMonth(createdAt)
+}
+
+function getContributionTotalKey(currency: string): 'ars' | 'usd' | null {
+  if (currency === 'ARS') return 'ars'
+  if (currency === 'USD') return 'usd'
+  return null
+}
+
+function sumCurrentMonthContributions(input: MonthlyTargetInput): { ars: BigNumber; usd: BigNumber } {
+  const totals = { ars: new BigNumber(0), usd: new BigNumber(0) }
+  if (!input.existingContributions || !input.currentMonth) return totals
+  for (const contribution of input.existingContributions) {
+    addCurrentMonthContribution(totals, contribution, input.currentMonth)
+  }
+  return totals
+}
+
+function selectTargetGoals(input: MonthlyTargetInput, currency: CurrencyCode) {
+  const strategy = (input.kind ?? 'saving') === 'saving' ? 'save' : 'invest'
+  return input.goals.filter((goal) => goal.currency === currency && goal.strategy === strategy)
+}
+
+function sumGoalPercentages(goals: MonthlyTargetInput['goals']): BigNumber {
+  return goals.reduce((total, goal) => {
+    const percentage = new BigNumber(String(goal.percentage).replace(',', '.'))
+    return percentage.isFinite() && percentage.isGreaterThan(0) ? total.plus(percentage) : total
+  }, new BigNumber(0))
+}
+
+function deriveArsTarget(commitment: BigNumber, goals: MonthlyTargetInput['goals'], contributed: BigNumber): Money | null {
+  const totalPercentage = sumGoalPercentages(goals)
+  if (!goals.length || !totalPercentage.isGreaterThan(0)) return null
+  const target = commitment.multipliedBy(totalPercentage).dividedBy(100)
+  const remaining = BigNumber.max(0, target.minus(contributed)).toFixed(2, BigNumber.ROUND_HALF_UP)
+  return createMoney(remaining, 'ARS')
+}
+
+function deriveUsdTarget(commitment: BigNumber, goals: MonthlyTargetInput['goals'], contributed: BigNumber): Money | null {
+  const planningRate = new BigNumber(PLANNING_ARS_PER_USD)
+  const total = goals.reduce((amount, goal) => {
+    const percentage = new BigNumber(String(goal.percentage).replace(',', '.'))
+    if (!percentage.isFinite() || !percentage.isGreaterThan(0)) return amount
+    return amount.plus(commitment.multipliedBy(percentage).dividedBy(100).dividedBy(planningRate))
+  }, new BigNumber(0))
+  if (!goals.length || !total.isGreaterThan(0)) return null
+  const remaining = BigNumber.max(0, total.minus(contributed)).toFixed(2, BigNumber.ROUND_HALF_UP)
+  return createMoney(remaining, 'USD')
+}
+
+export function deriveMonthlyContributionTargets(input: MonthlyTargetInput): {
   monthlyTargetArs: Money | null
   monthlyTargetUsd: Money | null
 } {
-  const commitmentStr =
-    typeof input.monthlyCommitmentArs === 'object' && input.monthlyCommitmentArs
-      ? input.monthlyCommitmentArs.amount
-      : input.monthlyCommitmentArs
+  const commitmentStr = getCommitmentAmount(input)
   if (!commitmentStr) {
     return { monthlyTargetArs: null, monthlyTargetUsd: null }
   }
-
   const commitmentBn = new BigNumber(commitmentStr)
   if (!commitmentBn.isFinite() || commitmentBn.isLessThanOrEqualTo(0)) {
     return { monthlyTargetArs: null, monthlyTargetUsd: null }
   }
-
-  let currentMonthContributedArs = new BigNumber(0)
-  let currentMonthContributedUsd = new BigNumber(0)
-
-  if (input.existingContributions && input.currentMonth) {
-    for (const c of input.existingContributions) {
-      const createdStr =
-        c.createdAt instanceof Date
-          ? c.createdAt.toISOString().slice(0, 7)
-          : String(c.createdAt).slice(0, 7)
-      if (createdStr === input.currentMonth) {
-        const amtStr =
-          typeof c.amount === 'object' && c.amount ? c.amount.amount : String(c.amount)
-        const amtBn = new BigNumber(amtStr)
-        if (amtBn.isFinite() && amtBn.isGreaterThan(0)) {
-          if (c.currency === 'ARS') {
-            currentMonthContributedArs = currentMonthContributedArs.plus(amtBn)
-          } else if (c.currency === 'USD') {
-            currentMonthContributedUsd = currentMonthContributedUsd.plus(amtBn)
-          }
-        }
-      }
-    }
+  const contributed = sumCurrentMonthContributions(input)
+  return {
+    monthlyTargetArs: deriveArsTarget(commitmentBn, selectTargetGoals(input, 'ARS'), contributed.ars),
+    monthlyTargetUsd: deriveUsdTarget(commitmentBn, selectTargetGoals(input, 'USD'), contributed.usd),
   }
-
-  const targetStrategy = (input.kind ?? 'saving') === 'saving' ? 'save' : 'invest'
-
-  // ARS goals
-  const arsGoals = input.goals.filter(
-    (g) => g.currency === 'ARS' && g.strategy === targetStrategy,
-  )
-  let totalArsPercent = new BigNumber(0)
-  for (const g of arsGoals) {
-    const pct = new BigNumber(String(g.percentage).replace(',', '.'))
-    if (pct.isFinite() && pct.isGreaterThan(0)) {
-      totalArsPercent = totalArsPercent.plus(pct)
-    }
-  }
-
-  let monthlyTargetArs: Money | null = null
-  if (arsGoals.length > 0 && totalArsPercent.isGreaterThan(0)) {
-    const targetArsAmount = commitmentBn
-      .multipliedBy(totalArsPercent)
-      .dividedBy(100)
-    const remainingArs = BigNumber.max(
-      0,
-      targetArsAmount.minus(currentMonthContributedArs),
-    ).toFixed(2, BigNumber.ROUND_HALF_UP)
-    monthlyTargetArs = createMoney(remainingArs, 'ARS')
-  }
-
-  // USD goals
-  const usdGoals = input.goals.filter(
-    (g) => g.currency === 'USD' && g.strategy === targetStrategy,
-  )
-  let totalUsdAmount = new BigNumber(0)
-  const planningRate = new BigNumber(PLANNING_ARS_PER_USD)
-
-  for (const g of usdGoals) {
-    const pct = new BigNumber(String(g.percentage).replace(',', '.'))
-    if (pct.isFinite() && pct.isGreaterThan(0)) {
-      const arsShare = commitmentBn.multipliedBy(pct).dividedBy(100)
-      const usdShare = arsShare.dividedBy(planningRate)
-      totalUsdAmount = totalUsdAmount.plus(usdShare)
-    }
-  }
-
-  let monthlyTargetUsd: Money | null = null
-  if (usdGoals.length > 0 && totalUsdAmount.isGreaterThan(0)) {
-    const remainingUsd = BigNumber.max(
-      0,
-      totalUsdAmount.minus(currentMonthContributedUsd),
-    ).toFixed(2, BigNumber.ROUND_HALF_UP)
-    monthlyTargetUsd = createMoney(remainingUsd, 'USD')
-  }
-
-  return { monthlyTargetArs, monthlyTargetUsd }
 }
 
 export function deriveMonthlySavingTargets(
@@ -614,113 +786,153 @@ export interface PreviousMonthShortfall {
   amount: Money
 }
 
-export function derivePreviousMonthShortfalls(input: {
+type ShortfallInput = {
   closedMonth: string
   plannedMonthlyContribution: string | null
   goals: Array<{ id: string; strategy: string; currency: CurrencyCode }>
   allocations: Array<{ goalId: string; percentage: string }>
   savingContributions: Array<{ amount: string; currency: string; createdAt: Date | string }>
   investmentContributions: Array<{ amount: string; currency: string; createdAt: Date | string }>
-}): PreviousMonthShortfall[] {
-  if (!input.plannedMonthlyContribution || !input.allocations || input.allocations.length === 0) {
-    return []
+}
+
+const SHORTFALL_CATEGORIES: Array<{
+  kind: ContributionKind
+  currency: CurrencyCode
+  strategy: 'save' | 'invest'
+}> = [
+  { kind: 'saving', currency: 'ARS', strategy: 'save' },
+  { kind: 'saving', currency: 'USD', strategy: 'save' },
+  { kind: 'investment', currency: 'ARS', strategy: 'invest' },
+  { kind: 'investment', currency: 'USD', strategy: 'invest' },
+]
+
+function buildAllocationMap(allocations: ShortfallInput['allocations']): Map<string, BigNumber> {
+  const map = new Map<string, BigNumber>()
+  for (const allocation of allocations) {
+    const percentage = new BigNumber(String(allocation.percentage).replace(',', '.'))
+    if (percentage.isFinite() && percentage.isGreaterThan(0)) map.set(allocation.goalId, percentage)
   }
+  return map
+}
 
-  const commitmentBn = new BigNumber(input.plannedMonthlyContribution)
-  if (!commitmentBn.isFinite() || commitmentBn.isLessThanOrEqualTo(0)) {
-    return []
+function sumExpectedShortfallAmount(
+  input: ShortfallInput,
+  category: (typeof SHORTFALL_CATEGORIES)[number],
+  commitment: BigNumber,
+  allocationMap: Map<string, BigNumber>,
+): BigNumber {
+  return input.goals.reduce(
+    (total, goal) => total.plus(expectedGoalShare(goal, category, commitment, allocationMap)),
+    new BigNumber(0),
+  )
+}
+
+function expectedGoalShare(
+  goal: ShortfallInput['goals'][number],
+  category: (typeof SHORTFALL_CATEGORIES)[number],
+  commitment: BigNumber,
+  allocationMap: Map<string, BigNumber>,
+): BigNumber {
+  if (!matchesShortfallCategory(goal, category)) return new BigNumber(0)
+  const percentage = allocationMap.get(goal.id)
+  if (!percentage) return new BigNumber(0)
+  const share = commitment.multipliedBy(percentage).dividedBy(100)
+  return category.currency === 'USD' ? share.dividedBy(PLANNING_ARS_PER_USD) : share
+}
+
+function matchesShortfallCategory(
+  goal: ShortfallInput['goals'][number],
+  category: (typeof SHORTFALL_CATEGORIES)[number],
+): boolean {
+  return goal.currency === category.currency && goal.strategy === category.strategy
+}
+
+function getContributionMonth(createdAt: Date | string): string | null {
+  try {
+    return (createdAt instanceof Date ? createdAt : new Date(createdAt)).toISOString().slice(0, 7)
+  } catch {
+    return null
   }
+}
 
-  const categories: Array<{
-    kind: ContributionKind
-    currency: CurrencyCode
-    strategy: 'save' | 'invest'
-  }> = [
-    { kind: 'saving', currency: 'ARS', strategy: 'save' },
-    { kind: 'saving', currency: 'USD', strategy: 'save' },
-    { kind: 'investment', currency: 'ARS', strategy: 'invest' },
-    { kind: 'investment', currency: 'USD', strategy: 'invest' },
-  ]
+function sumActualShortfallAmount(
+  contributions: ShortfallInput['savingContributions'],
+  currency: CurrencyCode,
+  closedMonth: string,
+): BigNumber {
+  return contributions.reduce(
+    (total, contribution) => total.plus(actualContributionAmount(contribution, currency, closedMonth)),
+    new BigNumber(0),
+  )
+}
 
-  const allocationByGoalId = new Map<string, BigNumber>()
-  for (const a of input.allocations) {
-    const pct = new BigNumber(String(a.percentage).replace(',', '.'))
-    if (pct.isFinite() && pct.isGreaterThan(0)) {
-      allocationByGoalId.set(a.goalId, pct)
-    }
+function actualContributionAmount(
+  contribution: ShortfallInput['savingContributions'][number],
+  currency: CurrencyCode,
+  closedMonth: string,
+): BigNumber {
+  if (!isContributionInClosedMonth(contribution, currency, closedMonth)) return new BigNumber(0)
+  return parsePositiveContributionAmount(contribution.amount)
+}
+
+function isContributionInClosedMonth(
+  contribution: ShortfallInput['savingContributions'][number],
+  currency: CurrencyCode,
+  closedMonth: string,
+): boolean {
+  return contribution.currency === currency && getContributionMonth(contribution.createdAt) === closedMonth
+}
+
+function parsePositiveContributionAmount(value: string): BigNumber {
+  try {
+    const amount = new BigNumber(value)
+    return isPositiveFiniteNumber(amount) ? amount : new BigNumber(0)
+  } catch {
+    return new BigNumber(0)
   }
+}
 
-  const planningRate = new BigNumber(PLANNING_ARS_PER_USD)
-  const shortfalls: PreviousMonthShortfall[] = []
+function deriveCategoryShortfall(
+  input: ShortfallInput,
+  category: (typeof SHORTFALL_CATEGORIES)[number],
+  commitment: BigNumber,
+  allocationMap: Map<string, BigNumber>,
+): PreviousMonthShortfall | null {
+  const expected = sumExpectedShortfallAmount(input, category, commitment, allocationMap)
+  if (!expected.isGreaterThan(0)) return null
+  const contributions = category.kind === 'saving' ? input.savingContributions : input.investmentContributions
+  const actual = sumActualShortfallAmount(contributions, category.currency, input.closedMonth)
+  const amount = expected.minus(actual).toFixed(2, BigNumber.ROUND_HALF_UP)
+  return new BigNumber(amount).isGreaterThan(0)
+    ? { kind: category.kind, currency: category.currency, amount: createMoney(amount, category.currency) }
+    : null
+}
 
-  for (const cat of categories) {
-    const matchingGoals = input.goals.filter(
-      (g) => g.currency === cat.currency && g.strategy === cat.strategy,
-    )
+export function derivePreviousMonthShortfalls(input: ShortfallInput): PreviousMonthShortfall[] {
+  const commitmentBn = getValidShortfallCommitment(input)
+  if (!commitmentBn) return []
+  const allocationMap = buildAllocationMap(input.allocations)
+  return SHORTFALL_CATEGORIES.flatMap((category) =>
+    getCategoryShortfallList(input, category, commitmentBn, allocationMap),
+  )
+}
 
-    if (matchingGoals.length === 0) {
-      continue
-    }
+function getValidShortfallCommitment(input: ShortfallInput): BigNumber | null {
+  if (!hasShortfallInputs(input)) return null
+  const commitment = new BigNumber(input.plannedMonthlyContribution!)
+  return commitment.isFinite() && commitment.isGreaterThan(0) ? commitment : null
+}
 
-    let expectedAmount = new BigNumber(0)
-    for (const g of matchingGoals) {
-      const pct = allocationByGoalId.get(g.id)
-      if (pct && pct.isGreaterThan(0)) {
-        const arsShare = commitmentBn.multipliedBy(pct).dividedBy(100)
-        if (cat.currency === 'USD') {
-          expectedAmount = expectedAmount.plus(arsShare.dividedBy(planningRate))
-        } else {
-          expectedAmount = expectedAmount.plus(arsShare)
-        }
-      }
-    }
+function hasShortfallInputs(input: ShortfallInput): boolean {
+  return Boolean(input.plannedMonthlyContribution) && input.allocations.length > 0
+}
 
-    if (expectedAmount.isLessThanOrEqualTo(0)) {
-      continue
-    }
-
-    const contribList =
-      cat.kind === 'saving' ? input.savingContributions : input.investmentContributions
-
-    let actualAmount = new BigNumber(0)
-    for (const c of contribList) {
-      if (c.currency !== cat.currency) continue
-      let createdIso: string | null = null
-      try {
-        createdIso =
-          c.createdAt instanceof Date
-            ? c.createdAt.toISOString()
-            : new Date(c.createdAt).toISOString()
-      } catch {
-        createdIso = null
-      }
-
-      if (!createdIso || createdIso.slice(0, 7) !== input.closedMonth) {
-        continue
-      }
-
-      try {
-        const amt = new BigNumber(c.amount)
-        if (amt.isFinite() && amt.isGreaterThan(0)) {
-          actualAmount = actualAmount.plus(amt)
-        }
-      } catch {
-        // ignore invalid contribution amount
-      }
-    }
-
-    if (actualAmount.isLessThan(expectedAmount)) {
-      const diffBn = expectedAmount.minus(actualAmount)
-      const formattedDiff = diffBn.toFixed(2, BigNumber.ROUND_HALF_UP)
-      if (new BigNumber(formattedDiff).isGreaterThan(0)) {
-        shortfalls.push({
-          kind: cat.kind,
-          currency: cat.currency,
-          amount: createMoney(formattedDiff, cat.currency),
-        })
-      }
-    }
-  }
-
-  return shortfalls
+function getCategoryShortfallList(
+  input: ShortfallInput,
+  category: (typeof SHORTFALL_CATEGORIES)[number],
+  commitment: BigNumber,
+  allocationMap: Map<string, BigNumber>,
+): PreviousMonthShortfall[] {
+  const shortfall = deriveCategoryShortfall(input, category, commitment, allocationMap)
+  return shortfall ? [shortfall] : []
 }

@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '../../db/client'
+import { savingsPlaceTransfers } from '../../db/schema'
 import {
   deleteSavingsPlaceInRepository,
+  createSavingsPlaceInRepository,
   getSavingsPlacesWorkspaceState,
+  renameSavingsPlaceInRepository,
   resolveSavingsPlaceWithExecutor,
   transferSavingsInRepository,
 } from './savings-places.repository.server'
@@ -53,6 +56,8 @@ function getSqlParamValues(query: any): string[] {
 vi.mock('../../db/client', () => ({
   db: {
     delete: vi.fn().mockReturnValue({ where: vi.fn() }),
+    insert: vi.fn(),
+    update: vi.fn(),
     transaction: vi.fn().mockImplementation((callback) => callback(mockTx)),
     query: {
       savingsPlaces: {
@@ -205,6 +210,22 @@ describe('savings-places.repository.server', () => {
 
       expect(result).toEqual({ id: 'place-2', name: 'Caja' })
     })
+
+    it('creates a new place through the repository path', async () => {
+      const onConflictDoNothing = vi.fn()
+      vi.mocked(db.insert).mockReturnValue({
+        values: vi.fn().mockReturnValue({ onConflictDoNothing }),
+      } as any)
+      vi.mocked(db.query.savingsPlaces.findFirst).mockResolvedValue({
+        id: 'place-3',
+        name: 'Caja',
+      } as any)
+
+      await expect(createSavingsPlaceInRepository('user_1', ' Caja ')).resolves.toEqual({
+        placeId: 'place-3',
+      })
+      expect(onConflictDoNothing).toHaveBeenCalledOnce()
+    })
   })
 
   describe('deleteSavingsPlaceInRepository', () => {
@@ -216,7 +237,28 @@ describe('savings-places.repository.server', () => {
       vi.mocked(db.query.savingContributions.findFirst).mockResolvedValue(undefined)
       vi.mocked(db.query.savingsPlaceTransfers.findFirst).mockResolvedValue(undefined)
 
+      const where = vi.fn()
+      vi.mocked(db.delete).mockReturnValue({ where } as never)
+
       await deleteSavingsPlaceInRepository('user_1', 'place-1')
+
+      expect(where).toHaveBeenCalledOnce()
+      expect(getSqlParamValues(where.mock.calls[0][0])).toEqual(['place-1', 'user_1'])
+    })
+
+    it('includes user ownership in the rename write predicate', async () => {
+      vi.mocked(db.query.savingsPlaces.findFirst)
+        .mockResolvedValueOnce({ id: 'place-1', userId: 'user_1' } as any)
+        .mockResolvedValueOnce(undefined)
+      const where = vi.fn()
+      vi.mocked(db.update).mockReturnValue({
+        set: vi.fn().mockReturnValue({ where }),
+      } as never)
+
+      await renameSavingsPlaceInRepository('user_1', 'place-1', 'Caja nueva')
+
+      expect(where).toHaveBeenCalledOnce()
+      expect(getSqlParamValues(where.mock.calls[0][0])).toEqual(['place-1', 'user_1'])
     })
 
     it('rejects deletion when place has contributions', async () => {
@@ -296,6 +338,74 @@ describe('savings-places.repository.server', () => {
           amount: '250.00',
         }),
       ).rejects.toThrow('No tenés saldo suficiente en ese lugar.')
+    })
+
+    it('rejects a transfer when either place is not owned by the user', async () => {
+      vi.mocked(mockTx.select).mockImplementation(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            for: vi.fn().mockResolvedValue([undefined]),
+          }),
+        }),
+      }) as any)
+
+      await expect(
+        transferSavingsInRepository({
+          userId: 'user_1',
+          fromPlaceId: 'foreign-place',
+          toPlaceId: 'p2',
+          currency: 'ARS',
+          amount: '1.00',
+        }),
+      ).rejects.toThrow('Lugar de ahorro no encontrado.')
+      expect(mockTx.query.savingContributions.findMany).not.toHaveBeenCalled()
+    })
+
+    it('skips completion withdrawals when the user has no goals', async () => {
+      vi.mocked(mockTx.query.financialGoals.findMany).mockResolvedValue([])
+      vi.mocked(mockTx.query.savingContributions.findMany).mockResolvedValue([
+        { placeId: 'p1', currency: 'ARS', amount: '10.00' },
+      ] as any)
+      vi.mocked(mockTx.query.savingsPlaceTransfers.findMany).mockResolvedValue([])
+      vi.mocked(mockTx.insert).mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'transfer-no-goals' }]),
+        }),
+      } as any)
+
+      await expect(
+        transferSavingsInRepository({
+          userId: 'user_1',
+          fromPlaceId: 'p1',
+          toPlaceId: 'p2',
+          currency: 'ARS',
+          amount: '1.00',
+        }),
+      ).resolves.toEqual({ transferId: 'transfer-no-goals' })
+      expect(mockTx.query.goalCompletionWithdrawals.findMany).not.toHaveBeenCalled()
+    })
+
+    it('includes incoming transfers when calculating the source balance', async () => {
+      vi.mocked(mockTx.query.financialGoals.findMany).mockResolvedValue([])
+      vi.mocked(mockTx.query.savingContributions.findMany).mockResolvedValue([])
+      vi.mocked(mockTx.query.savingsPlaceTransfers.findMany).mockResolvedValue([
+        { fromPlaceId: 'p2', toPlaceId: 'p1', currency: 'ARS', amount: '10.00' },
+      ] as any)
+      vi.mocked(mockTx.insert).mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'transfer-incoming' }]),
+        }),
+      } as any)
+
+      await expect(
+        transferSavingsInRepository({
+          userId: 'user_1',
+          fromPlaceId: 'p1',
+          toPlaceId: 'p2',
+          currency: 'ARS',
+          amount: '10.00',
+        }),
+      ).resolves.toEqual({ transferId: 'transfer-incoming' })
     })
 
     it('uses decimal arithmetic for balances and locks places before reading movements', async () => {
@@ -414,6 +524,53 @@ describe('savings-places.repository.server', () => {
           amount: '1000.00',
         }),
       ).resolves.toEqual({ transferId: 'transfer-foreign-goal' })
+    })
+
+    it('rolls back the staged transfer when the movement insert fails', async () => {
+      const committedTransfers: any[] = []
+      const stagedTransfers: any[] = []
+      const insertError = new Error('Movement insert failed')
+
+      vi.mocked(db.transaction).mockImplementation((async (callback: any) => {
+        const tx = {
+          ...mockTx,
+          insert: vi.fn((table) => {
+            if (table !== savingsPlaceTransfers) throw new Error('Unexpected table insert')
+            return {
+              values: vi.fn((value) => {
+                stagedTransfers.push(value)
+                return { returning: vi.fn().mockRejectedValue(insertError) }
+              }),
+            }
+          }),
+        }
+
+        try {
+          const result = await callback(tx)
+          committedTransfers.push(...stagedTransfers)
+          return result
+        } catch (error) {
+          throw error
+        }
+      }) as never)
+      vi.mocked(mockTx.query.financialGoals.findMany).mockResolvedValue([])
+      vi.mocked(mockTx.query.savingContributions.findMany).mockResolvedValue([
+        { placeId: 'p1', currency: 'ARS', amount: '10.00' },
+      ] as any)
+      vi.mocked(mockTx.query.savingsPlaceTransfers.findMany).mockResolvedValue([])
+      vi.mocked(mockTx.query.goalCompletionWithdrawals.findMany).mockResolvedValue([])
+
+      await expect(
+        transferSavingsInRepository({
+          userId: 'user_1',
+          fromPlaceId: 'p1',
+          toPlaceId: 'p2',
+          currency: 'ARS',
+          amount: '1.00',
+        }),
+      ).rejects.toThrow(insertError)
+      expect(stagedTransfers).toHaveLength(1)
+      expect(committedTransfers).toEqual([])
     })
   })
 })

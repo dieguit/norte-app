@@ -25,8 +25,6 @@ export const FIXED_INCOME_SOURCES = {
   ...ONE_TIME_INCOME_SOURCES,
 } as const
 
-export type FixedIncomeSourceKind = keyof typeof FIXED_INCOME_SOURCES
-
 export interface IncomeMonthInput {
   amount: Money
   recurring: boolean

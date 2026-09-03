@@ -454,7 +454,9 @@ describe('saving-contribution.repository.server', () => {
 
     mockTx.update.mockImplementation((_table: any) => ({
       set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([{ id: 'updated_id' }]),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 'updated_id' }]),
+        }),
       }),
     }))
 
@@ -560,6 +562,34 @@ describe('saving-contribution.repository.server', () => {
         amount: '20000.00',
       })
       expect(token1).not.toBe(tokenDiffAmount)
+    })
+
+    it('changes when investment balances, monthly targets, or goal values change', async () => {
+      setupDbMocks()
+      const state = (await getSavingContributionState(userId, currentMonth))!
+      const draft: SavingDraftInput = { kind: 'investment', currency: 'ARS', amount: '10000.00' }
+      const token = createSavingContributionPreviewToken(state, currentMonth, draft)
+
+      expect(createSavingContributionPreviewToken({
+        ...state,
+        source: {
+          ...state.source,
+          investmentPositions: [{ ...mockInvestPosArs1, currentValue: '10001.00' }] as any,
+        },
+      }, currentMonth, draft)).not.toBe(token)
+      expect(createSavingContributionPreviewToken({
+        ...state,
+        monthlyInvestmentTargetArs: { amount: '999.00', currency: 'ARS' },
+      }, currentMonth, draft)).not.toBe(token)
+      expect(createSavingContributionPreviewToken({
+        ...state,
+        source: {
+          ...state.source,
+          goals: state.source.goals.map((goal) => goal.id === mockInvestGoalArs1.id
+            ? { ...goal, targetAmount: '999999.00' }
+            : goal),
+        },
+      }, currentMonth, draft)).not.toBe(token)
     })
   })
 
@@ -1068,6 +1098,57 @@ describe('saving-contribution.repository.server', () => {
       expect(mockTx.update).toHaveBeenCalledWith(investmentContributions)
     })
 
+    it('rejects an update when any referenced investment position is missing before mutating anything', async () => {
+      const existingInvestContrib = {
+        id: 'inv_contrib_1', userId, amount: '10000.00', currency: 'ARS',
+        arsSpent: null, effectiveRate: null, createdAt: new Date('2026-08-01T00:00:00Z'),
+        updatedAt: new Date('2026-08-01T00:00:00Z'),
+      }
+      const existingInvestAllocs = [
+        { id: 'ica_1', contributionId: 'inv_contrib_1', goalId: 'g_inv_ars_1', amount: '6000.00', percentage: '60.00', investmentPositionId: 'ip_ars_1' },
+        { id: 'ica_2', contributionId: 'inv_contrib_1', goalId: 'g_inv_ars_2', amount: '4000.00', percentage: '40.00', investmentPositionId: 'missing-position' },
+      ]
+      setupDbMocks({ investmentContribution: existingInvestContrib, investmentContributionAllocations: existingInvestAllocs })
+      mockTx.query.goalInvestmentPositions.findFirst = vi.fn().mockImplementation((args: any) => {
+        const condition = args.where({ id: 'id' }, { eq: (_field: any, value: string) => ({ value }) })
+        return condition?.value === 'ip_ars_1' ? mockInvestPosArs1 : null
+      })
+
+      await expect(updateSavingContributionInRepository({
+        userId,
+        contributionId: 'inv_contrib_1',
+        draft: { kind: 'investment', currency: 'ARS', amount: '20000.00' },
+      })).rejects.toThrow('Investment position not found for goal g_inv_ars_2')
+      expect(mockTx.update).not.toHaveBeenCalled()
+    })
+
+    it('rejects an investment update when the position update affects zero rows', async () => {
+      const existingInvestContrib = {
+        id: 'inv_contrib_1', userId, amount: '10000.00', currency: 'ARS',
+        arsSpent: null, effectiveRate: null, createdAt: new Date('2026-08-01T00:00:00Z'),
+        updatedAt: new Date('2026-08-01T00:00:00Z'),
+      }
+      const existingInvestAllocs = [
+        { id: 'ica_1', contributionId: 'inv_contrib_1', goalId: 'g_inv_ars_1', amount: '10000.00', percentage: '100.00', investmentPositionId: 'ip_ars_1' },
+      ]
+      setupDbMocks({ investmentContribution: existingInvestContrib, investmentContributionAllocations: existingInvestAllocs })
+      mockTx.query.goalInvestmentPositions.findFirst = vi.fn().mockResolvedValue(mockInvestPosArs1)
+      mockTx.update.mockImplementation((table: any) => ({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue(table === goalInvestmentPositions ? [] : [{ id: 'updated_id' }]),
+          }),
+        }),
+      }))
+
+      await expect(updateSavingContributionInRepository({
+        userId,
+        contributionId: 'inv_contrib_1',
+        draft: { kind: 'investment', currency: 'ARS', amount: '20000.00' },
+      })).rejects.toThrow('Investment position update affected no rows for goal g_inv_ars_1')
+      expect(mockTx.update).toHaveBeenCalledTimes(1)
+    })
+
     it('rejects investment correction for unauthorized user', async () => {
       setupDbMocks({ investmentContribution: null })
 
@@ -1184,6 +1265,30 @@ describe('saving-contribution.repository.server', () => {
       expect(mockTx.update).toHaveBeenCalledWith(goalInvestmentPositions)
       expect(mockTx.delete).toHaveBeenCalledWith(investmentContributions)
       expect(mockTx.delete).not.toHaveBeenCalledWith(allocationPlanEntries)
+    })
+
+    it('rejects deletion when any referenced investment position is missing before mutating anything', async () => {
+      const existingInvestContrib = {
+        id: 'inv_contrib_1', userId, amount: '10000.00', currency: 'ARS',
+        arsSpent: null, effectiveRate: null, createdAt: new Date('2026-08-01T00:00:00Z'),
+        updatedAt: new Date('2026-08-01T00:00:00Z'),
+      }
+      const existingInvestAllocs = [
+        { id: 'ica_1', contributionId: 'inv_contrib_1', goalId: 'g_inv_ars_1', amount: '6000.00', percentage: '60.00', investmentPositionId: 'ip_ars_1' },
+        { id: 'ica_2', contributionId: 'inv_contrib_1', goalId: 'g_inv_ars_2', amount: '4000.00', percentage: '40.00', investmentPositionId: 'missing-position' },
+      ]
+      setupDbMocks({ investmentContribution: existingInvestContrib, investmentContributionAllocations: existingInvestAllocs })
+      mockTx.query.goalInvestmentPositions.findFirst = vi.fn().mockImplementation((args: any) => {
+        const condition = args.where({ id: 'id' }, { eq: (_field: any, value: string) => ({ value }) })
+        return condition?.value === 'ip_ars_1' ? mockInvestPosArs1 : null
+      })
+
+      await expect(deleteSavingContributionInRepository({
+        userId,
+        contributionId: 'inv_contrib_1',
+      })).rejects.toThrow('Investment position not found for goal g_inv_ars_2')
+      expect(mockTx.update).not.toHaveBeenCalled()
+      expect(mockTx.delete).not.toHaveBeenCalled()
     })
 
     it('throws error when contribution is not found or user ownership fails', async () => {

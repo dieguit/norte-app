@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { loginAdminServer, getAdminSessionServer } from './auth.server'
+import { loginAdminServer } from './auth.server'
 import {
   listAdminResultsServer,
   getAdminResultFilesServer,
@@ -15,9 +15,6 @@ import { reportSchema } from './report'
 export const loginAdmin = createServerFn({ method: 'POST' })
   .validator((input: unknown) => z.object({ username: z.string(), password: z.string() }).parse(input))
   .handler(({ data }) => loginAdminServer(data))
-
-export const getAdminSession = createServerFn({ method: 'GET' })
-  .handler(getAdminSessionServer)
 
 export const listAdminResults = createServerFn({ method: 'GET' })
   .handler(listAdminResultsServer)

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { completeFinancialOnboarding } from '../../../features/financial/financial.functions'
@@ -66,12 +66,19 @@ describe('FinancialOnboarding', () => {
     render(<FinancialOnboarding />)
 
     expect(screen.getByText('Paso 1 de 4')).toBeVisible()
+    const progress = screen.getByRole('progressbar', {
+      name: 'Progreso del onboarding',
+    })
+    expect(progress).toHaveAttribute('aria-valuemin', '1')
+    expect(progress).toHaveAttribute('aria-valuemax', '4')
+    expect(progress).toHaveAttribute('aria-valuenow', '1')
     expect(screen.getByRole('heading', { name: 'Hola, te damos la bienvenida a Norte!' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Objetivos' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Finanzas' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Hoja de ruta' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Empezar' })).toBeVisible()
     expect(screen.queryByLabelText('Tipo de objetivo')).not.toBeInTheDocument()
+    expect(document.querySelectorAll('main')).toHaveLength(0)
   })
 
   it('starts the objective screen with a derived emergency fund', async () => {
@@ -340,6 +347,25 @@ describe('FinancialOnboarding', () => {
     expect(posthogCapture).toHaveBeenCalledWith('financial_onboarding_completed')
   })
 
+  it('continues to navigation and recovers controls when analytics fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeFinancialOnboarding).mockResolvedValueOnce({ created: true })
+    posthogCapture.mockImplementationOnce(() => {
+      throw new Error('Analytics error')
+    })
+
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+    await addHousingExpense(user)
+    const submit = screen.getByRole('button', { name: 'Listo, continuar al plan' })
+    await user.click(submit)
+
+    expect(mockInvalidate).toHaveBeenCalledOnce()
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/app' })
+    expect(submit).toBeEnabled()
+    expect(submit).toHaveTextContent('Listo, continuar al plan')
+  })
+
   it('shows a retry message and stays on step 4 when a plan already exists', async () => {
     const user = userEvent.setup()
     vi.mocked(completeFinancialOnboarding).mockResolvedValueOnce({ created: false })
@@ -384,5 +410,51 @@ describe('FinancialOnboarding', () => {
     expect(submit).toBeEnabled()
     expect(mockNavigate).not.toHaveBeenCalled()
     expect(posthogCapture).not.toHaveBeenCalled()
+  })
+
+  it('announces and focuses a submission error', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeFinancialOnboarding).mockRejectedValueOnce(new Error('Network error'))
+
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+    await addHousingExpense(user)
+    await user.click(screen.getByRole('button', { name: 'Listo, continuar al plan' }))
+
+    await waitFor(() => {
+      const error = screen.getByRole('alert')
+      expect(error).toHaveTextContent('No pudimos guardar tu plan.')
+      expect(error).toHaveFocus()
+    })
+  })
+
+  it('does not report a saved plan as a failed submission when invalidation rejects', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeFinancialOnboarding).mockResolvedValueOnce({ created: true })
+    mockInvalidate.mockRejectedValueOnce(new Error('Refresh error'))
+
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+    await addHousingExpense(user)
+    await user.click(screen.getByRole('button', { name: 'Listo, continuar al plan' }))
+
+    expect(completeFinancialOnboarding).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Listo, continuar al plan' })).toBeEnabled()
+  })
+
+  it('does not report a saved plan as a failed submission when navigation rejects', async () => {
+    const user = userEvent.setup()
+    vi.mocked(completeFinancialOnboarding).mockResolvedValueOnce({ created: true })
+    mockNavigate.mockRejectedValueOnce(new Error('Navigation error'))
+
+    render(<FinancialOnboarding />)
+    await reachExpenseStep(user)
+    await addHousingExpense(user)
+    await user.click(screen.getByRole('button', { name: 'Listo, continuar al plan' }))
+
+    expect(completeFinancialOnboarding).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Listo, continuar al plan' })).toBeEnabled()
   })
 })

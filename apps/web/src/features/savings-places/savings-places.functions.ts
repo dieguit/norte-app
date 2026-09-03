@@ -8,14 +8,9 @@ import {
 import {
   createSavingsPlaceServer,
   deleteSavingsPlaceServer,
-  getSavingsPlacesWorkspaceServer,
   renameSavingsPlaceServer,
   transferSavingsServer,
 } from './savings-places.server'
-
-export const getSavingsPlacesWorkspace = createServerFn({ method: 'GET' }).handler(
-  getSavingsPlacesWorkspaceServer,
-)
 
 export const createSavingsPlace = createServerFn({ method: 'POST' })
   .validator((input: unknown) => createSavingsPlaceSchema.parse(input))

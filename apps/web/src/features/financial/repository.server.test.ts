@@ -6,6 +6,7 @@ import {
   expenses,
   financialGoals,
   financialProfiles,
+  goalInvestmentPositions,
   incomes,
 } from '../../db/schema'
 import { getInitialHomeState, persistFinancialOnboarding } from './repository.server'
@@ -271,6 +272,137 @@ describe('financial repository.server getInitialHomeState', () => {
     const home = await getInitialHomeState('user_income', fixedNow)
     expect(home?.income).toEqual({ amount: '250000.00', currency: 'ARS' })
   })
+
+  it('returns null when the user has no financial profile', async () => {
+    vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(undefined)
+
+    await expect(getInitialHomeState('user_missing', new Date('2026-08-15T12:00:00Z'))).resolves.toBeNull()
+    expect(db.query.incomes.findMany).not.toHaveBeenCalled()
+  })
+
+  it('returns null when the user has no goal, snapshot, or allocation', async () => {
+    const profile = {
+      userId: 'user_missing_data',
+      baseCurrency: 'ARS',
+      expensesKnowledge: 'unknown',
+      plannedMonthlyContribution: '50000.00',
+    }
+    const goal = {
+      id: 'goal_missing_data',
+      userId: 'user_missing_data',
+      name: 'Meta',
+      type: 'purchase',
+      targetAmount: '1000000.00',
+      currency: 'ARS',
+      emergencyFundMonths: null,
+      strategy: 'save',
+    }
+    const snapshot = {
+      id: 'snapshot_missing_data',
+      userId: 'user_missing_data',
+      effectiveMonth: '2026-08-01',
+      plannedMonthlyContribution: '50000.00',
+    }
+
+    vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue(profile as never)
+    vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue(undefined)
+    await expect(getInitialHomeState('user_missing_data')).resolves.toBeNull()
+
+    vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue(goal as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findFirst).mockResolvedValue(undefined)
+    await expect(getInitialHomeState('user_missing_data')).resolves.toBeNull()
+
+    vi.mocked(db.query.allocationPlanSnapshots.findFirst).mockResolvedValue(snapshot as never)
+    vi.mocked(db.query.allocationPlanEntries.findFirst).mockResolvedValue(undefined)
+    await expect(getInitialHomeState('user_missing_data')).resolves.toBeNull()
+  })
+
+  it('uses an explicit non-emergency goal target in the home projection', async () => {
+    vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
+      userId: 'user_target',
+      baseCurrency: 'ARS',
+      expensesKnowledge: 'unknown',
+      plannedMonthlyContribution: '50000.00',
+    } as never)
+    vi.mocked(db.query.financialGoals.findFirst).mockResolvedValue({
+      id: 'goal_target',
+      userId: 'user_target',
+      name: 'Meta',
+      type: 'purchase',
+      targetAmount: '1000000.00',
+      currency: 'ARS',
+      emergencyFundMonths: null,
+      strategy: 'save',
+    } as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findFirst).mockResolvedValue({
+      id: 'snapshot_target',
+      userId: 'user_target',
+      effectiveMonth: '2026-08-01',
+      plannedMonthlyContribution: '50000.00',
+    } as never)
+    vi.mocked(db.query.allocationPlanEntries.findFirst).mockResolvedValue({
+      snapshotId: 'snapshot_target',
+      goalId: 'goal_target',
+      percentage: '100.00',
+    } as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([] as never)
+
+    const home = await getInitialHomeState('user_target', new Date('2026-08-15T12:00:00Z'))
+
+    expect(home?.goal.targetAmount).toEqual({ amount: '1000000.00', currency: 'ARS' })
+    expect(home?.projection.status).toBe('available')
+  })
+
+  it('uses the goal still allocated by the latest snapshot when the oldest goal is completed', async () => {
+    const oldestCompletedGoal = {
+      id: 'goal_completed',
+      userId: 'user_snapshot_goal',
+      name: 'Objetivo completado',
+      type: 'purchase',
+      targetAmount: '1000000.00',
+      currency: 'ARS',
+      emergencyFundMonths: null,
+      strategy: 'save',
+      status: 'completed',
+    }
+    const latestGoal = {
+      ...oldestCompletedGoal,
+      id: 'goal_active',
+      name: 'Objetivo vigente',
+      status: 'active',
+      targetAmount: '2000000.00',
+    }
+    let allocationQueried = false
+
+    vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
+      userId: 'user_snapshot_goal',
+      baseCurrency: 'ARS',
+      expensesKnowledge: 'unknown',
+      plannedMonthlyContribution: '50000.00',
+    } as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findFirst).mockResolvedValue({
+      id: 'snapshot_latest',
+      userId: 'user_snapshot_goal',
+      effectiveMonth: '2026-08-01',
+      plannedMonthlyContribution: '50000.00',
+    } as never)
+    vi.mocked(db.query.allocationPlanEntries.findFirst).mockImplementation((async () => {
+      allocationQueried = true
+      return { snapshotId: 'snapshot_latest', goalId: latestGoal.id, percentage: '100.00' }
+    }) as never)
+    vi.mocked(db.query.financialGoals.findFirst).mockImplementation((async () => {
+      return (allocationQueried ? latestGoal : oldestCompletedGoal) as never
+    }) as never)
+    vi.mocked(db.query.allocationPlanSnapshots.findMany).mockResolvedValue([] as never)
+
+    const home = await getInitialHomeState(
+      'user_snapshot_goal',
+      new Date('2026-08-15T12:00:00Z'),
+    )
+
+    expect(home?.goal.name).toBe('Objetivo vigente')
+    expect(home?.goal.targetAmount).toEqual({ amount: '2000000.00', currency: 'ARS' })
+  })
 })
 
 describe('persistFinancialOnboarding', () => {
@@ -279,6 +411,7 @@ describe('persistFinancialOnboarding', () => {
   let persistedIncomes: any[]
   let persistedExpenses: any[]
   let persistedGoal: any
+  let persistedInvestment: any
   let persistedSnapshot: any
   let persistedAllocation: any
 
@@ -287,6 +420,7 @@ describe('persistFinancialOnboarding', () => {
     persistedIncomes = []
     persistedExpenses = []
     persistedGoal = null
+    persistedInvestment = null
     persistedSnapshot = null
     persistedAllocation = null
 
@@ -331,6 +465,14 @@ describe('persistFinancialOnboarding', () => {
               return {
                 returning: () => [{ id: 'goal_1', ...val }],
               }
+            },
+          }
+        }
+        if (table === goalInvestmentPositions) {
+          return {
+            values: (val: any) => {
+              persistedInvestment = val
+              return { returning: vi.fn() }
             },
           }
         }
@@ -545,6 +687,34 @@ describe('persistFinancialOnboarding', () => {
     expect(result).toEqual({ created: true })
     expect(persistedProfile.plannedMonthlyContribution).toBe('0.00')
     expect(persistedSnapshot.plannedMonthlyContribution).toBe('0.00')
+  })
+
+  it('persists an investment goal with availability details', async () => {
+    const investmentInput = {
+      ...standardInput,
+      goal: {
+        ...standardInput.goal,
+        type: 'purchase' as const,
+        targetAmount: '1000000.00',
+        currency: 'ARS' as const,
+        strategy: 'invest' as const,
+        availability: 'available_from' as const,
+        availableFromMonth: '2027-01',
+      },
+    }
+
+    const result = await persistFinancialOnboarding('user_1', investmentInput, '2026-08')
+
+    expect(result).toEqual({ created: true })
+    expect(persistedGoal.targetAmount).toBe('1000000.00')
+    expect(persistedInvestment).toMatchObject({
+      goalId: 'goal_1',
+      currentValue: '0.00',
+      currency: 'ARS',
+      annualReturnRate: '0',
+      availability: 'available_from',
+      availableFrom: '2027-01-01',
+    })
   })
 
   it('returns created: false on retry when financial profile already exists', async () => {

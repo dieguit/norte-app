@@ -464,6 +464,7 @@ describe('mapGoalLifecycleContext', () => {
       goalId: 'g1',
       lifecycle: 'pause',
       goalName: 'Reserva',
+      goalCurrency: 'USD',
       currentMonth: '2026-08',
       plannedMonthlyContribution: { amount: '80000.00', currency: 'ARS' },
       activeGoals: [{ id: 'g1', name: 'Reserva', currency: 'USD' }],
@@ -485,6 +486,7 @@ describe('mapGoalLifecycleContext', () => {
       goalId: 'g2',
       lifecycle: 'resume',
       goalName: 'Viaje',
+      goalCurrency: 'USD',
       currentMonth: '2026-08',
     })
   })

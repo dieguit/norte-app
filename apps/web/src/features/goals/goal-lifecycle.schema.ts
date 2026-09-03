@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { allocationEntrySchema } from './goal-creation.schema'
 
-export const goalLifecycleSchema = z.enum(['pause', 'resume'])
+const goalLifecycleSchema = z.enum(['pause', 'resume'])
 
 export const goalLifecycleRequestSchema = z.object({
   goalId: z.string().uuid(),

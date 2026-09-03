@@ -3,6 +3,7 @@ import {
   type CurrencyCode,
   type Money,
   createMoney,
+  parseMoneyInput,
 } from '../../lib/money'
 import type { PreviousMonthShortfall } from '../contributions/saving-contribution'
 
@@ -73,6 +74,13 @@ export function deriveEmergencyFundTarget(expenses: Money, months: number): Mone
     new BigNumber(expenses.amount).times(months).dividedBy(PLANNING_ARS_PER_USD),
     'USD',
   )
+}
+
+export function getArsEquivalent(amount: string, currency: CurrencyCode) {
+  if (currency !== 'USD') return null
+  const parsed = parseMoneyInput(amount, 'USD')
+  if (!parsed || !new BigNumber(parsed.amount).isGreaterThan(0)) return null
+  return new BigNumber(parsed.amount).times(PLANNING_ARS_PER_USD)
 }
 
 export function projectCompletionMonth(

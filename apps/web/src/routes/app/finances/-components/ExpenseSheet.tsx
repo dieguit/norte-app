@@ -1,33 +1,6 @@
-import { useEffect, useState } from 'react'
 import { usePostHog } from '@posthog/react'
 import { useRouter } from '@tanstack/react-router'
-import BigNumber from 'bignumber.js'
 import { toast } from 'sonner'
-import { Button } from '../../../../components/ui/button'
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from '../../../../components/ui/field'
-import { Input } from '../../../../components/ui/input'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '../../../../components/ui/sheet'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../../../components/ui/select'
-import { Switch } from '../../../../components/ui/switch'
-import { MonthPickerInput } from '../../../../components/MonthPicker'
 import {
   createExpense,
   deleteExpense,
@@ -38,9 +11,9 @@ import {
   createExpenseSchema,
   type ExpenseDraft,
 } from '../../../../features/financial/expenses.schema'
-import { PLANNING_ARS_PER_USD } from '../../../../features/financial/financial'
+import { FinancialSheetFrame, type FinancialDraftState, useFinancialDraftState } from './FinancialFormPrimitives'
 import { formatMoneyInput, parseMoneyInput } from '../../../../lib/money'
-import { ExpenseSourcePicker } from './ExpenseSourcePicker'
+import { ExpenseSheetForm } from './ExpenseSheetForm'
 
 type ExpenseRow = {
   id: string
@@ -57,6 +30,19 @@ type ExpenseRow = {
 
 type ExpenseFormDraft = ExpenseDraft & { effectiveMonth: string }
 
+type ExpenseSheetProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  month: string
+  sources: Array<{ id: string; name: string }>
+  expense?: ExpenseRow
+  draft?: ExpenseDraft
+  onSaveDraft?: (draft: ExpenseDraft) => void
+  recurringOnly?: boolean
+}
+
+type ValidationIssue = { path: PropertyKey[]; message: string }
+
 function defaultDraft(month: string): ExpenseFormDraft {
   return {
     source: { kind: 'housing' },
@@ -68,343 +54,269 @@ function defaultDraft(month: string): ExpenseFormDraft {
   }
 }
 
-export function ExpenseSheet({
+function getExpenseDraft(
+  expense: ExpenseRow | undefined,
+  initialDraft: ExpenseDraft | undefined,
+  month: string,
+  recurringOnly: boolean,
+): ExpenseFormDraft {
+  if (expense) {
+    return {
+      source:
+        expense.sourceKind === 'custom'
+          ? { kind: 'custom', sourceId: expense.sourceId! }
+          : { kind: expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES },
+      amount: formatMoneyInput(expense.amount.replace('.', ',')),
+      concept: expense.concept ?? '',
+      currency: expense.currency,
+      recurring: expense.recurring,
+      effectiveMonth: month,
+    }
+  }
+  if (!initialDraft) return defaultDraft(month)
+  return {
+    ...initialDraft,
+    amount: formatMoneyInput(initialDraft.amount.replace('.', ',')),
+    recurring: recurringOnly ? true : initialDraft.recurring,
+    effectiveMonth: month,
+  }
+}
+
+function getValidationErrors(issues: readonly ValidationIssue[]) {
+  const errors: Record<string, string> = {}
+  for (const issue of issues) {
+    const field = issue.path[0] === 'draft' ? issue.path[1] : issue.path[0]
+    if (typeof field === 'string' && !errors[field]) errors[field] = issue.message
+  }
+  return errors
+}
+
+function normalizeExpenseDraft(draft: ExpenseDraft): ExpenseDraft {
+  return {
+    ...draft,
+    amount: parseMoneyInput(draft.amount, draft.currency)!.amount,
+  }
+}
+
+function parseExpenseFormDraft(draft: ExpenseFormDraft) {
+  const parsed = createExpenseSchema.safeParse({
+    draft: {
+      source: draft.source,
+      amount: draft.amount,
+      concept: draft.concept,
+      currency: draft.currency,
+      recurring: draft.recurring,
+    },
+    effectiveMonth: draft.effectiveMonth,
+  })
+  if (!parsed.success) return { errors: getValidationErrors(parsed.error.issues) }
+  return {
+    data: {
+      draft: normalizeExpenseDraft(parsed.data.draft),
+      effectiveMonth: parsed.data.effectiveMonth,
+    },
+  }
+}
+
+async function persistExpense(
+  expense: ExpenseRow | undefined,
+  draft: ExpenseDraft,
+  effectiveMonth: string,
+) {
+  if (expense) {
+    await updateExpense({ data: { expenseId: expense.id, draft, effectiveMonth } })
+    return
+  }
+  await createExpense({ data: { draft, effectiveMonth } })
+}
+
+function useExpenseDraftState({
   open,
-  onOpenChange,
   month,
-  sources,
   expense,
   draft: initialDraft,
-  onSaveDraft,
   recurringOnly = false,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  month: string
-  sources: Array<{ id: string; name: string }>
-  expense?: ExpenseRow
-  draft?: ExpenseDraft
-  onSaveDraft?: (draft: ExpenseDraft) => void
-  recurringOnly?: boolean
-}) {
-  const router = useRouter()
-  const posthog = usePostHog()
-  const [draft, setDraft] = useState<ExpenseFormDraft>(() => defaultDraft(month))
-  const [error, setError] = useState<string | null>(null)
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
+}: Pick<ExpenseSheetProps, 'open' | 'month' | 'expense' | 'draft' | 'recurringOnly'>): FinancialDraftState<ExpenseFormDraft> {
+  const initialDraftValue = getExpenseDraft(expense, initialDraft, month, recurringOnly)
+  return useFinancialDraftState({
+    open,
+    initialDraft: initialDraftValue,
+    resetKey: JSON.stringify(initialDraftValue),
+  })
+}
 
-  useEffect(() => {
-    if (!open) return
-    setError(null)
-    setValidationErrors({})
-    setDraft(
-      expense
-        ? {
-            source:
-              expense.sourceKind === 'custom'
-                ? { kind: 'custom', sourceId: expense.sourceId! }
-                : {
-                    kind: expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES,
-                  },
-            amount: formatMoneyInput(expense.amount.replace('.', ',')),
-            concept: expense.concept ?? '',
-            currency: expense.currency,
-            recurring: expense.recurring,
-            effectiveMonth: expense.effectiveMonth.slice(0, 7),
-          }
-        : initialDraft
-          ? {
-              ...initialDraft,
-              amount: formatMoneyInput(initialDraft.amount.replace('.', ',')),
-              recurring: recurringOnly ? true : initialDraft.recurring,
-              effectiveMonth: month,
-            }
-          : defaultDraft(month),
-    )
-  }, [expense, initialDraft, month, open, recurringOnly])
+async function persistExpenseForm(
+  expense: ExpenseRow | undefined,
+  draft: ExpenseDraft,
+  effectiveMonth: string,
+  onSaveDraft: ((draft: ExpenseDraft) => void) | undefined,
+  posthog: ReturnType<typeof usePostHog>,
+) {
+  if (onSaveDraft) {
+    onSaveDraft(draft)
+    return
+  }
+  await persistExpense(expense, draft, effectiveMonth)
+  posthog?.capture(expense ? 'expense_updated' : 'expense_created', {
+    recurring: draft.recurring,
+    currency: draft.currency,
+    source_kind: draft.source.kind,
+  })
+}
+
+function focusFirstInvalidExpenseField(draft: ExpenseFormDraft, errors: Record<string, string>) {
+  const fields = [
+    ['amount', 'expense-amount'],
+    ['source', draft.source.kind === 'custom' && 'name' in draft.source ? 'new-expense-name' : 'expense-source-trigger'],
+    ['concept', 'expense-concept'],
+    ['effectiveMonth', 'expense-month-picker'],
+  ] as const
+  const [, id] = fields.find(([field]) => errors[field]) ?? []
+  if (id) document.getElementById(id)?.focus()
+}
+
+type ExpenseSheetActionProps = ExpenseSheetProps & FinancialDraftState<ExpenseFormDraft> & {
+  router: ReturnType<typeof useRouter>
+  posthog: ReturnType<typeof usePostHog>
+}
+
+async function removeExpense({
+  expense,
+  month,
+  onOpenChange,
+  router,
+  posthog,
+  setError,
+  setSaving,
+  saving,
+}: ExpenseSheetActionProps) {
+  if (saving) return
+  if (!expense || !window.confirm('¿Eliminar este gasto desde el mes seleccionado?')) return
+  setSaving(true)
+  try {
+    await deleteExpense({ data: { expenseId: expense.id, effectiveMonth: month } })
+    posthog?.capture('expense_deleted', {
+      recurring: expense.recurring,
+      currency: expense.currency,
+      source_kind: expense.sourceKind,
+    })
+    toast.success('Gasto eliminado.')
+    onOpenChange(false)
+    try {
+      await router.invalidate()
+    } catch {
+      toast.error('El gasto se eliminó, pero no pudimos actualizar la vista.')
+    }
+  } catch (cause) {
+    setError(cause instanceof Error ? cause.message : 'No pudimos eliminar el gasto.')
+  } finally {
+    setSaving(false)
+  }
+}
+
+function useExpenseSheetActions(props: ExpenseSheetActionProps) {
+  const {
+    expense,
+    onOpenChange,
+    onSaveDraft,
+    router,
+    posthog,
+    draft,
+    setError,
+    setValidationErrors,
+    setSaving,
+  } = props
 
   async function save() {
-    const parsed = createExpenseSchema.safeParse({
-      draft: {
-        source: draft.source,
-        amount: draft.amount,
-        concept: draft.concept,
-        currency: draft.currency,
-        recurring: draft.recurring,
-      },
-      effectiveMonth: draft.effectiveMonth,
-    })
-    if (!parsed.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of parsed.error.issues) {
-        const field = issue.path[0] === 'draft' ? issue.path[1] : issue.path[0]
-        if (typeof field === 'string' && !errors[field]) {
-          errors[field] = issue.message
-        }
-      }
-      setValidationErrors(errors)
+    if (props.saving) return
+    const result = parseExpenseFormDraft(draft)
+    if (!result.data) {
+      setValidationErrors(result.errors)
+      focusFirstInvalidExpenseField(draft, result.errors)
       return
     }
     setValidationErrors({})
     setSaving(true)
     setError(null)
     try {
-      const normalizedDraft = {
-        ...parsed.data.draft,
-        amount: parseMoneyInput(
-          parsed.data.draft.amount,
-          parsed.data.draft.currency,
-        )!.amount,
-      }
-      if (onSaveDraft) {
-        onSaveDraft(normalizedDraft)
-      } else {
-        if (expense) {
-          await updateExpense({
-            data: {
-              expenseId: expense.id,
-              draft: normalizedDraft,
-              effectiveMonth: parsed.data.effectiveMonth,
-            },
-          })
-        } else {
-          await createExpense({
-            data: {
-              draft: normalizedDraft,
-              effectiveMonth: parsed.data.effectiveMonth,
-            },
-          })
-        }
-        posthog?.capture(expense ? 'expense_updated' : 'expense_created', {
-          recurring: normalizedDraft.recurring,
-          currency: normalizedDraft.currency,
-          source_kind: normalizedDraft.source.kind,
-        })
-        await router.invalidate()
+      await persistExpenseForm(
+        expense,
+        result.data.draft,
+        result.data.effectiveMonth,
+        onSaveDraft,
+        posthog,
+      )
+      if (!onSaveDraft) {
         toast.success(expense ? 'Gasto actualizado.' : 'Gasto agregado.')
+        onOpenChange(false)
+        try {
+          await router.invalidate()
+        } catch {
+          toast.error('El gasto se guardó, pero no pudimos actualizar la vista.')
+        }
+      } else {
+        onOpenChange(false)
       }
-      onOpenChange(false)
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'No pudimos guardar el gasto.',
-      )
+      setError(cause instanceof Error ? cause.message : 'No pudimos guardar el gasto.')
     } finally {
       setSaving(false)
     }
   }
 
-  async function remove() {
-    if (!expense || !window.confirm('¿Eliminar este gasto desde el mes seleccionado?')) return
-    setSaving(true)
-    try {
-      await deleteExpense({
-        data: {
-          expenseId: expense.id,
-          effectiveMonth: month,
-        },
-      })
-      posthog?.capture('expense_deleted', {
-        recurring: expense.recurring,
-        currency: expense.currency,
-        source_kind: expense.sourceKind,
-      })
-      await router.invalidate()
-      toast.success('Gasto eliminado.')
-      onOpenChange(false)
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'No pudimos eliminar el gasto.',
-      )
-    } finally {
-      setSaving(false)
-    }
+  return {
+    onSave: () => void save(),
+    onRemove: expense ? () => void removeExpense(props) : undefined,
   }
+}
 
-  const parsedUsdAmount =
-    draft.currency === 'USD' ? parseMoneyInput(draft.amount, 'USD') : null
-  const arsEquivalent =
-    parsedUsdAmount && new BigNumber(parsedUsdAmount.amount).isGreaterThan(0)
-      ? new BigNumber(parsedUsdAmount.amount).times(PLANNING_ARS_PER_USD)
-      : null
+function useExpenseSheet(props: ExpenseSheetProps) {
+  const state = useExpenseDraftState(props)
+  const router = useRouter()
+  const posthog = usePostHog()
+  const actions = useExpenseSheetActions({ ...props, ...state, router, posthog })
 
+  return {
+    ...state,
+    showPersistenceHint: !props.onSaveDraft,
+    onDraftChange: state.setDraft,
+    ...actions,
+  }
+}
+
+function getTitle(recurringOnly: boolean, hasDraft: boolean, hasExpense: boolean) {
+  if (recurringOnly) return hasDraft ? 'Editar gasto recurrente' : 'Nuevo gasto recurrente'
+  return hasExpense ? 'Editar gasto' : 'Nuevo gasto'
+}
+
+export function ExpenseSheet(props: ExpenseSheetProps) {
+  const state = useExpenseSheet(props)
+  const { open, onOpenChange, sources, expense, draft, recurringOnly = false } = props
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
-        <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
-          <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-            {recurringOnly
-              ? initialDraft
-                ? 'Editar gasto recurrente'
-                : 'Nuevo gasto recurrente'
-              : expense
-                ? 'Editar gasto'
-                : 'Nuevo gasto'}
-          </SheetTitle>
-          <SheetDescription>
-            {recurringOnly
-              ? 'Indicá cuánto gastás por mes y en qué concepto.'
-              : 'Indicá el concepto y las condiciones de este gasto.'}
-          </SheetDescription>
-        </SheetHeader>
-        <form
-          className="flex flex-1 flex-col gap-5 overflow-y-auto p-6"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void save()
-          }}
-        >
-          <FieldGroup>
-            <FieldSet>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field data-invalid={!!validationErrors.amount}>
-                  <FieldLabel htmlFor="expense-amount">Monto</FieldLabel>
-                  <Input
-                    id="expense-amount"
-                    aria-label="Monto"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={draft.amount}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        amount: formatMoneyInput(event.target.value),
-                      })
-                    }
-                  />
-                  {validationErrors.amount && (
-                    <FieldError>{validationErrors.amount}</FieldError>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="expense-currency-trigger">
-                    Moneda
-                  </FieldLabel>
-                  <Select
-                    items={{ ARS: 'Pesos (ARS)', USD: 'Dólares (USD)' }}
-                    value={draft.currency}
-                    onValueChange={(currency) =>
-                      currency &&
-                      setDraft({
-                        ...draft,
-                        currency: currency as 'ARS' | 'USD',
-                      })
-                    }
-                  >
-                    <SelectTrigger
-                      id="expense-currency-trigger"
-                      aria-label="Moneda"
-                      className="w-full"
-                    >
-                      <SelectValue placeholder="Seleccionar moneda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ARS">Pesos (ARS)</SelectItem>
-                      <SelectItem value="USD">Dólares (USD)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-              {arsEquivalent !== null && (
-                <p className="text-sm text-[var(--sea-ink-soft)]">
-                  Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}
-                </p>
-              )}
-              {!recurringOnly && (
-                <Field orientation="horizontal">
-                  <Switch
-                    id="expense-recurring"
-                    checked={draft.recurring}
-                    onCheckedChange={(recurring) =>
-                      setDraft({
-                        ...draft,
-                        recurring,
-                        source:
-                          draft.source.kind === 'custom'
-                            ? draft.source
-                            : { kind: recurring ? 'housing' : 'clothing' },
-                      })
-                    }
-                  />
-                  <FieldLabel htmlFor="expense-recurring">
-                    Es gasto recurrente
-                  </FieldLabel>
-                </Field>
-              )}
-              <ExpenseSourcePicker
-                recurring={draft.recurring}
-                sources={sources}
-                value={draft.source}
-                error={validationErrors.source}
-                onChange={(source) => setDraft({ ...draft, source })}
-                showPersistenceHint={!onSaveDraft}
-              />
-              <Field data-invalid={!!validationErrors.concept}>
-                <FieldLabel htmlFor="expense-concept">Concepto</FieldLabel>
-                <Input
-                  id="expense-concept"
-                  aria-label="Concepto"
-                  aria-invalid={!!validationErrors.concept}
-                  aria-describedby={
-                    validationErrors.concept ? 'expense-concept-error' : undefined
-                  }
-                  maxLength={120}
-                  value={draft.concept}
-                  onChange={(event) =>
-                    setDraft({ ...draft, concept: event.target.value })
-                  }
-                />
-                {validationErrors.concept && (
-                  <FieldError id="expense-concept-error">
-                    {validationErrors.concept}
-                  </FieldError>
-                )}
-              </Field>
-              {!recurringOnly && (
-                <Field data-invalid={!!validationErrors.effectiveMonth}>
-                  <FieldLabel htmlFor="expense-month-picker">
-                    {draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
-                  </FieldLabel>
-                  <MonthPickerInput
-                    id="expense-month-picker"
-                    aria-label={draft.recurring ? 'Desde el mes' : 'Mes del gasto'}
-                    value={draft.effectiveMonth}
-                    onValueChange={(effectiveMonth) =>
-                      setDraft({ ...draft, effectiveMonth })
-                    }
-                  />
-                  {validationErrors.effectiveMonth && (
-                    <FieldError>{validationErrors.effectiveMonth}</FieldError>
-                  )}
-                </Field>
-              )}
-              {error && <FieldError>{error}</FieldError>}
-            </FieldSet>
-          </FieldGroup>
-          <div className="mt-auto flex gap-3 pt-4">
-            {expense && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => void remove()}
-                disabled={saving}
-              >
-                Eliminar
-              </Button>
-            )}
-            <Button type="submit" disabled={saving} className="flex-1">
-              {saving ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </div>
-        </form>
-      </SheetContent>
-    </Sheet>
+    <FinancialSheetFrame
+      open={open}
+      onOpenChange={onOpenChange}
+      saving={state.saving}
+      title={getTitle(recurringOnly, Boolean(draft), Boolean(expense))}
+      description={
+        recurringOnly
+          ? 'Indicá cuánto gastás por mes y en qué concepto.'
+          : 'Indicá el concepto y las condiciones de este gasto.'
+      }
+    >
+        <ExpenseSheetForm
+          draft={state.draft}
+          error={state.error}
+          validationErrors={state.validationErrors}
+          saving={state.saving}
+          arsEquivalent={state.arsEquivalent}
+          showPersistenceHint={state.showPersistenceHint}
+          onDraftChange={state.onDraftChange}
+          onSave={state.onSave}
+          onRemove={state.onRemove}
+          sources={sources}
+          recurringOnly={recurringOnly}
+        />
+    </FinancialSheetFrame>
   )
 }

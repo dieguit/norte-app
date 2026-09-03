@@ -58,6 +58,7 @@ describe('GoalLifecycle component', () => {
     goalId: 'goal-travel',
     lifecycle: 'pause',
     goalName: 'Viaje',
+    goalCurrency: 'ARS',
     currentMonth: '2026-08',
     plannedMonthlyContribution: { amount: '100000.00', currency: 'ARS' },
     activeGoals: [
@@ -79,6 +80,7 @@ describe('GoalLifecycle component', () => {
     goalId: 'goal-travel',
     lifecycle: 'resume',
     goalName: 'Viaje',
+    goalCurrency: 'USD',
     currentMonth: '2026-08',
     plannedMonthlyContribution: { amount: '100000.00', currency: 'ARS' },
     activeGoals: [
@@ -98,6 +100,7 @@ describe('GoalLifecycle component', () => {
     goalId: 'goal-only',
     lifecycle: 'pause',
     goalName: 'Fondo único',
+    goalCurrency: 'ARS',
     currentMonth: '2026-08',
     plannedMonthlyContribution: { amount: '50000.00', currency: 'ARS' },
     activeGoals: [{ id: 'goal-only', name: 'Fondo único', currency: 'ARS' }],
@@ -584,6 +587,21 @@ describe('GoalLifecycle component', () => {
     expect(posthogCapture).not.toHaveBeenCalled()
   })
 
+  it('uses the resumed goal currency when calculating its allocation amount', async () => {
+    vi.mocked(previewGoalLifecycle).mockResolvedValue(makeMockResumeInitialPreview())
+
+    render(
+      <GoalLifecycle
+        lifecycle="resume"
+        context={{ ...resumeContext, activeGoals: [] }}
+        onCancel={vi.fn()}
+        onUpdated={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByText(/≈ USD/)).toBeInTheDocument()
+  })
+
   it('calls onCancel when clicking Cancelar button', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()
@@ -612,6 +630,7 @@ describe('GoalLifecycleSheet component', () => {
       goalId: 'goal-travel',
       lifecycle: 'pause',
       goalName: 'Viaje',
+      goalCurrency: 'ARS',
       currentMonth: '2026-08',
       activeGoals: [{ id: 'goal-travel', name: 'Viaje', currency: 'ARS' }],
     })
@@ -686,7 +705,7 @@ describe('GoalLifecycleSheet component', () => {
     ).toBeVisible()
 
     expect(
-      await screen.findByText('Completá tu perfil financiero antes de pausar o reanudar un objetivo.'),
-    ).toBeVisible()
+      await screen.findByRole('alert'),
+    ).toHaveTextContent('Completá tu perfil financiero antes de pausar o reanudar un objetivo.')
   })
 })

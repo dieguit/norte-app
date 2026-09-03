@@ -211,7 +211,7 @@ describe('GoalCompletion', () => {
     expect(await screen.findByText('Proyección pendiente de actualización')).toBeInTheDocument()
   })
 
-  it('treats a preview failure as stale context, refetches, and requires explicit review', async () => {
+  it('keeps ordinary preview failures local and leaves the form retryable', async () => {
     const onContextInvalid = vi.fn().mockResolvedValue(undefined)
     vi.mocked(previewGoalCompletion).mockRejectedValue(new Error('No pudimos calcular la proyección.'))
     renderCompletion({ onContextInvalid })
@@ -219,10 +219,10 @@ describe('GoalCompletion', () => {
     await fillWithdrawals()
 
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('Los datos del objetivo cambiaron. Revisá los datos actualizados antes de confirmar.')
+    expect(alert).toHaveTextContent('No pudimos calcular la proyección.')
     expect(alert).toHaveFocus()
-    expect(onContextInvalid).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: 'Revisar datos actualizados' })).toBeInTheDocument()
+    expect(onContextInvalid).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Revisar datos actualizados' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Confirmar, marcar como completado' })).toBeDisabled()
   })
 
@@ -290,6 +290,26 @@ describe('GoalCompletion', () => {
     await user.click(screen.getByRole('button', { name: 'Revisar datos actualizados' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar, marcar como completado' })).toBeEnabled())
     expect(screen.queryByRole('button', { name: 'Revisar datos actualizados' })).not.toBeInTheDocument()
+  })
+
+  it('keeps review-refresh failures local instead of reloading context', async () => {
+    const onContextInvalid = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(previewGoalCompletion).mockResolvedValue(preview())
+    vi.mocked(confirmGoalCompletion).mockResolvedValue({ status: 'stale', preview: preview('b'.repeat(64)) })
+    renderCompletion({ onContextInvalid })
+    const user = await fillWithdrawals()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar, marcar como completado' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'Confirmar, marcar como completado' }))
+    expect(onContextInvalid).toHaveBeenCalledOnce()
+
+    vi.mocked(previewGoalCompletion).mockRejectedValueOnce(new Error('No pudimos actualizar la proyección.'))
+    await user.click(screen.getByRole('button', { name: 'Revisar datos actualizados' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('No pudimos actualizar la proyección.')
+    expect(alert).toHaveFocus()
+    expect(onContextInvalid).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Revisar datos actualizados' })).toBeInTheDocument()
   })
 
   it('refetches context on invalid state and focuses the safe alert', async () => {

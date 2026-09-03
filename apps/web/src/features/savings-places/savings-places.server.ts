@@ -3,14 +3,9 @@ import { requireFinancialUser } from '../financial/auth.server'
 import {
   createSavingsPlaceInRepository,
   deleteSavingsPlaceInRepository,
-  getSavingsPlacesWorkspaceState,
   renameSavingsPlaceInRepository,
   transferSavingsInRepository,
 } from './savings-places.repository.server'
-
-export async function getSavingsPlacesWorkspaceServer() {
-  return getSavingsPlacesWorkspaceState(await requireFinancialUser())
-}
 
 export async function createSavingsPlaceServer({ data }: { data: { name: string } }) {
   return createSavingsPlaceInRepository(await requireFinancialUser(), data.name)

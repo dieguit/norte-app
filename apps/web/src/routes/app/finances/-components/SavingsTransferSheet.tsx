@@ -1,51 +1,169 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import BigNumber from 'bignumber.js'
 import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
-import { Button } from '../../../../components/ui/button'
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from '../../../../components/ui/field'
-import { Input } from '../../../../components/ui/input'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '../../../../components/ui/sheet'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../../../components/ui/select'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../../components/ui/sheet'
 import { transferSavings } from '../../../../features/savings-places/savings-places.functions'
 import type { SavingsPlaceSummary } from '../../../../features/savings-places/savings-places'
-import { formatMoney } from '../../../../lib/format'
-import { createMoney, formatMoneyInput, parseMoneyInput } from '../../../../lib/money'
+import { createMoney, formatMoneyInput, parseMoneyInput, type CurrencyCode, type Money } from '../../../../lib/money'
+import { SavingsTransferForm } from './SavingsTransferForm'
 
-interface SavingsTransferSheetProps {
+type SavingsTransferSheetProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   fromPlace: SavingsPlaceSummary
   places: SavingsPlaceSummary[]
 }
 
-export function SavingsTransferSheet({
-  open,
+type TransferValues = {
+  toPlaceId: string
+  currency: CurrencyCode
+  amount: string
+}
+
+function getValidationErrors(
+  values: TransferValues,
+  isPositiveAmount: boolean,
+  hasInsufficientBalance: boolean,
+) {
+  const errors: Record<string, string> = {}
+  if (!values.toPlaceId) errors.toPlaceId = 'Elegí un destino.'
+  if (!isPositiveAmount) errors.amount = 'Ingresá un monto mayor a cero.'
+  if (hasInsufficientBalance) errors.amount = 'Saldo insuficiente en el origen.'
+  return errors
+}
+
+function isPositiveAmount(amount: ReturnType<typeof parseMoneyInput>) {
+  return Boolean(amount && new BigNumber(amount.amount).isGreaterThan(0))
+}
+
+function isInsufficientBalance(
+  amount: ReturnType<typeof parseMoneyInput>,
+  balance: Money,
+) {
+  return Boolean(amount && new BigNumber(amount.amount).isGreaterThan(balance.amount))
+}
+
+function getDestinationError(
+  values: TransferValues,
+  validationErrors: Record<string, string>,
+  positive: boolean,
+) {
+  return validationErrors.toPlaceId ?? (positive && !values.toPlaceId ? 'Elegí un destino.' : undefined)
+}
+
+function getAmountError(
+  values: TransferValues,
+  validationErrors: Record<string, string>,
+  insufficient: boolean,
+  positive: boolean,
+) {
+  return validationErrors.amount ?? (
+    insufficient
+      ? 'Saldo insuficiente en el origen.'
+      : values.amount && !positive
+        ? 'Ingresá un monto mayor a cero.'
+        : undefined
+  )
+}
+
+function getTransferState(
+  values: TransferValues,
+  fromPlace: SavingsPlaceSummary,
+  validationErrors: Record<string, string>,
+) {
+  const availableBalance = createMoney(fromPlace.balances[values.currency], values.currency)
+  const parsedAmount = parseMoneyInput(values.amount, values.currency)
+  const positive = isPositiveAmount(parsedAmount)
+  const insufficient = isInsufficientBalance(parsedAmount, availableBalance)
+  return {
+    availableBalance,
+    parsedAmount,
+    isPositiveAmount: positive,
+    hasInsufficientBalance: insufficient,
+    destinationError: getDestinationError(values, validationErrors, positive),
+    amountError: getAmountError(values, validationErrors, insufficient, positive),
+  }
+}
+
+function focusFirstInvalidTransferField(errors: Record<string, string>) {
+  const id = errors.toPlaceId ? 'savings-transfer-destination-trigger' : errors.amount ? 'savings-transfer-amount' : undefined
+  if (id) document.getElementById(id)?.focus()
+}
+
+function resetForm(
+  setToPlaceId: (value: string) => void,
+  setCurrency: (value: CurrencyCode) => void,
+  setAmount: (value: string) => void,
+  setValidationErrors: (value: Record<string, string>) => void,
+  setError: (value: string | null) => void,
+) {
+  setToPlaceId('')
+  setCurrency('ARS')
+  setAmount('')
+  setValidationErrors({})
+  setError(null)
+}
+
+function clearFieldError(
+  setValidationErrors: Dispatch<SetStateAction<Record<string, string>>>,
+  field: string,
+) {
+  setValidationErrors((current) => {
+    const next = { ...current }
+    delete next[field]
+    return next
+  })
+}
+
+async function completeTransfer({
+  fromPlaceId,
+  toPlaceId,
+  currency,
+  amount,
+  router,
   onOpenChange,
+  reset,
+}: {
+  fromPlaceId: string
+  toPlaceId: string
+  currency: CurrencyCode
+  amount: string
+  router: ReturnType<typeof useRouter>
+  onOpenChange: (open: boolean) => void
+  reset: () => void
+}) {
+  await transferSavings({ data: { fromPlaceId, toPlaceId, currency, amount } })
+  toast.success('Transferencia realizada.')
+  reset()
+  onOpenChange(false)
+  try {
+    await router.invalidate()
+  } catch {
+    toast.error('La transferencia se realizó, pero no pudimos actualizar la vista.')
+  }
+}
+
+type TransferDraftState = {
+  values: TransferValues
+  validationErrors: Record<string, string>
+  error: string | null
+  isPending: boolean
+  setToPlaceId: (value: string) => void
+  setCurrency: (value: CurrencyCode) => void
+  setAmount: (value: string) => void
+  setValidationErrors: Dispatch<SetStateAction<Record<string, string>>>
+  setError: (value: string | null) => void
+  setIsPending: (value: boolean) => void
+  reset: () => void
+}
+
+function useTransferDraftState({
+  open,
   fromPlace,
-  places,
-}: SavingsTransferSheetProps) {
-  const router = useRouter()
+}: Pick<SavingsTransferSheetProps, 'open' | 'fromPlace'>): TransferDraftState {
   const [toPlaceId, setToPlaceId] = useState('')
-  const [currency, setCurrency] = useState<'ARS' | 'USD'>('ARS')
+  const [currency, setCurrency] = useState<CurrencyCode>('ARS')
   const [amount, setAmount] = useState('')
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
@@ -53,76 +171,67 @@ export function SavingsTransferSheet({
 
   useEffect(() => {
     if (!open) return
-    setToPlaceId('')
-    setCurrency('ARS')
-    setAmount('')
-    setValidationErrors({})
-    setError(null)
+    resetForm(setToPlaceId, setCurrency, setAmount, setValidationErrors, setError)
   }, [fromPlace.id, open])
 
-  const availableBalance = createMoney(fromPlace.balances[currency], currency)
-  const parsedAmount = parseMoneyInput(amount, currency)
-  const isPositiveAmount = Boolean(
-    parsedAmount && new BigNumber(parsedAmount.amount).isGreaterThan(0),
-  )
-  const hasInsufficientBalance = Boolean(
-    parsedAmount &&
-      new BigNumber(parsedAmount.amount).isGreaterThan(availableBalance.amount),
-  )
-  const destinationError =
-    validationErrors.toPlaceId ??
-    (isPositiveAmount && !toPlaceId ? 'Elegí un destino.' : undefined)
-  const amountError =
-    validationErrors.amount ??
-    (hasInsufficientBalance
-      ? 'Saldo insuficiente en el origen.'
-      : amount && !isPositiveAmount
-        ? 'Ingresá un monto mayor a cero.'
-        : undefined)
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && isPending) return
-    onOpenChange(nextOpen)
+  return {
+    values: { toPlaceId, currency, amount },
+    validationErrors,
+    error,
+    isPending,
+    setToPlaceId,
+    setCurrency,
+    setAmount,
+    setValidationErrors,
+    setError,
+    setIsPending,
+    reset: () => resetForm(setToPlaceId, setCurrency, setAmount, setValidationErrors, setError),
   }
+}
 
-  const handleSubmit = async (event: React.FormEvent) => {
+type TransferActionsProps = {
+  state: TransferDraftState
+  transferState: ReturnType<typeof getTransferState>
+  fromPlace: SavingsPlaceSummary
+  onOpenChange: (open: boolean) => void
+  router: ReturnType<typeof useRouter>
+}
+
+function useTransferActions({
+  state,
+  transferState,
+  fromPlace,
+  onOpenChange,
+  router,
+}: TransferActionsProps) {
+  const { values, isPending, setToPlaceId, setCurrency, setAmount, setValidationErrors, setError, setIsPending } = state
+
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (isPending) return
-
-    const nextErrors: Record<string, string> = {}
-    if (!toPlaceId) nextErrors.toPlaceId = 'Elegí un destino.'
-    if (!isPositiveAmount) nextErrors.amount = 'Ingresá un monto mayor a cero.'
-    if (hasInsufficientBalance) nextErrors.amount = 'Saldo insuficiente en el origen.'
+    const nextErrors = getValidationErrors(
+      values,
+      transferState.isPositiveAmount,
+      transferState.hasInsufficientBalance,
+    )
     if (Object.keys(nextErrors).length > 0) {
       setValidationErrors(nextErrors)
+      focusFirstInvalidTransferField(nextErrors)
       return
     }
-
     setValidationErrors({})
     setError(null)
     setIsPending(true)
-
     try {
-      await transferSavings({
-        data: {
-          fromPlaceId: fromPlace.id,
-          toPlaceId,
-          currency,
-          amount: parsedAmount!.amount,
-        },
+      await completeTransfer({
+        fromPlaceId: fromPlace.id,
+        toPlaceId: values.toPlaceId,
+        currency: values.currency,
+        amount: transferState.parsedAmount!.amount,
+        router,
+        onOpenChange,
+        reset: state.reset,
       })
-      toast.success('Transferencia realizada.')
-      setToPlaceId('')
-      setCurrency('ARS')
-      setAmount('')
-      setValidationErrors({})
-      setError(null)
-      onOpenChange(false)
-      try {
-        await router.invalidate()
-      } catch {
-        toast.error('La transferencia se realizó, pero no pudimos actualizar la vista.')
-      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Error al transferir.')
     } finally {
@@ -130,145 +239,56 @@ export function SavingsTransferSheet({
     }
   }
 
+  return {
+    ...values,
+    onDestinationChange: (value: string | null) => {
+      if (!value) return
+      setToPlaceId(value)
+      clearFieldError(setValidationErrors, 'toPlaceId')
+    },
+    onCurrencyChange: (value: CurrencyCode | null) => value && setCurrency(value),
+    onAmountChange: (value: string) => {
+      setAmount(formatMoneyInput(value))
+      clearFieldError(setValidationErrors, 'amount')
+    },
+    onSubmit: handleSubmit,
+  }
+}
+
+function useSavingsTransferSheet(props: SavingsTransferSheetProps) {
+  const state = useTransferDraftState(props)
+  const transferState = getTransferState(state.values, props.fromPlace, state.validationErrors)
+  const actions = useTransferActions({
+    state,
+    transferState,
+    fromPlace: props.fromPlace,
+    onOpenChange: props.onOpenChange,
+    router: useRouter(),
+  })
+  return { ...state.values, ...transferState, ...state, ...actions }
+}
+
+export function SavingsTransferSheet(props: SavingsTransferSheetProps) {
+  const state = useSavingsTransferSheet(props)
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && state.isPending) return
+    props.onOpenChange(nextOpen)
+  }
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
+    <Sheet open={props.open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
         className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
       >
         <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
           <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-            Transferir desde {fromPlace.name}
+            Transferir desde {props.fromPlace.name}
           </SheetTitle>
           <SheetDescription>
             Elegí el destino y el monto que querés mover desde este lugar.
           </SheetDescription>
         </SheetHeader>
-
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-1 flex-col gap-5 overflow-y-auto p-6"
-        >
-          <FieldGroup>
-            <FieldSet>
-              <Field data-invalid={!!destinationError}>
-                <FieldLabel htmlFor="savings-transfer-destination-trigger">
-                  Hacia
-                </FieldLabel>
-                <Select
-                  items={Object.fromEntries(places.map((place) => [place.id, place.name]))}
-                  value={toPlaceId}
-                  onValueChange={(value) => {
-                    if (value) {
-                      setToPlaceId(value)
-                      setValidationErrors((current) => {
-                        const next = { ...current }
-                        delete next.toPlaceId
-                        return next
-                      })
-                    }
-                  }}
-                  disabled={isPending}
-                >
-                  <SelectTrigger
-                    id="savings-transfer-destination-trigger"
-                    aria-label="Hacia"
-                    aria-invalid={!!destinationError}
-                    aria-describedby={destinationError ? 'savings-transfer-destination-error' : undefined}
-                    className="w-full"
-                  >
-                    <SelectValue placeholder="Seleccionar destino" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {places
-                      .filter((place) => place.id !== fromPlace.id)
-                      .map((place) => (
-                        <SelectItem key={place.id} value={place.id}>
-                          {place.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {destinationError && (
-                  <FieldError id="savings-transfer-destination-error">
-                    {destinationError}
-                  </FieldError>
-                )}
-              </Field>
-
-              <Field data-invalid={!!validationErrors.currency}>
-                <FieldLabel htmlFor="savings-transfer-currency-trigger">
-                  Moneda
-                </FieldLabel>
-                <Select
-                  items={{ ARS: 'Pesos (ARS)', USD: 'Dólares (USD)' }}
-                  value={currency}
-                  onValueChange={(value) =>
-                    value && setCurrency(value as 'ARS' | 'USD')
-                  }
-                  disabled={isPending}
-                >
-                  <SelectTrigger
-                    id="savings-transfer-currency-trigger"
-                    aria-label="Moneda"
-                    aria-invalid={!!validationErrors.currency}
-                    className="w-full"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ARS">Pesos (ARS)</SelectItem>
-                    <SelectItem value="USD">Dólares (USD)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              <Field data-invalid={!!amountError}>
-                <FieldLabel htmlFor="savings-transfer-amount">Monto</FieldLabel>
-                <Input
-                  id="savings-transfer-amount"
-                  aria-label="Monto"
-                  aria-invalid={!!amountError}
-                  aria-describedby={amountError ? 'savings-transfer-amount-error' : undefined}
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(event) => {
-                    setAmount(formatMoneyInput(event.target.value))
-                    setValidationErrors((current) => {
-                      const next = { ...current }
-                      delete next.amount
-                      return next
-                    })
-                  }}
-                  disabled={isPending}
-                />
-                <p className="text-xs text-[var(--sea-ink-soft)]">
-                  Disponible: {formatMoney(availableBalance)}
-                </p>
-                {amountError && (
-                  <FieldError id="savings-transfer-amount-error">
-                    {amountError}
-                  </FieldError>
-                )}
-              </Field>
-
-              {error && <FieldError>{error}</FieldError>}
-            </FieldSet>
-          </FieldGroup>
-
-          <div className="mt-auto flex gap-3 pt-4">
-            <Button
-              type="submit"
-              disabled={
-                isPending || !toPlaceId || !isPositiveAmount || hasInsufficientBalance
-              }
-              className="flex-1"
-            >
-              {isPending ? 'Transfiriendo...' : 'Transferir'}
-            </Button>
-          </div>
-        </form>
+        <SavingsTransferForm {...state} fromPlaceId={props.fromPlace.id} places={props.places} />
       </SheetContent>
     </Sheet>
   )

@@ -29,8 +29,6 @@ export const FIXED_EXPENSE_SOURCES = {
   ...ONE_TIME_EXPENSE_SOURCES,
 } as const
 
-export type FixedExpenseSourceKind = keyof typeof FIXED_EXPENSE_SOURCES
-
 export interface ExpenseMonthInput {
   amount: Money
   recurring: boolean

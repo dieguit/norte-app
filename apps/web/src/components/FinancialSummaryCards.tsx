@@ -5,7 +5,7 @@ import { formatCalendarMonth, formatMoney } from "../lib/format";
 import { Button } from "./ui/button";
 import { Slider } from "./ui/slider";
 
-export interface FinancialSummaryCardsSummary extends MonthlyFinancialSummary {
+interface FinancialSummaryCardsSummary extends MonthlyFinancialSummary {
   dedicationPercentage: string;
   contribution: Money;
 }

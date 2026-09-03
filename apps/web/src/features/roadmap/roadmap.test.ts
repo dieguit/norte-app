@@ -116,6 +116,56 @@ describe('buildRoadmap', () => {
     expect(roadmap.futureMonths[1].oneTimeExpenses.map(({ id }) => id)).toEqual(['notebook'])
   })
 
+  it('keeps same-month items in deterministic domain order regardless of input order', () => {
+    const permutedGoals = structuredClone(goals)
+    permutedGoals.groups[0].goals.push({
+      ...permutedGoals.groups[0].goals[0],
+      id: 'goal-0',
+      name: 'Meta secundaria',
+    })
+
+    const permutedFinances = structuredClone(finances)
+    permutedFinances.incomes.incomes.push({
+      ...permutedFinances.incomes.incomes[0],
+      id: 'side-income',
+      sourceKind: 'bonus',
+      effectiveMonth: '2026-09',
+    })
+    permutedFinances.expenses.expenses.push({
+      ...permutedFinances.expenses.expenses[0],
+      id: 'utilities',
+      sourceKind: 'utilities',
+      effectiveMonth: '2026-09',
+    })
+
+    const expected = buildRoadmap({
+      goals: permutedGoals,
+      finances: permutedFinances,
+      currentMonth: '2026-08',
+    })
+    permutedGoals.groups.reverse()
+    permutedGoals.groups.forEach((group) => group.goals.reverse())
+    permutedFinances.incomes.incomes.reverse()
+    permutedFinances.expenses.expenses.reverse()
+
+    const actual = buildRoadmap({
+      goals: permutedGoals,
+      finances: permutedFinances,
+      currentMonth: '2026-08',
+    })
+
+    expect(actual).toEqual(expected)
+    expect(actual.futureMonths[0].objectives.map(({ id }) => id)).toEqual(['goal-0', 'goal-1'])
+    expect(actual.futureMonths[2].recurringIncomes.map(({ id }) => id)).toEqual([
+      'side-income',
+      'salary',
+    ])
+    expect(actual.futureMonths[2].recurringExpenses.map(({ id }) => id)).toEqual([
+      'rent',
+      'utilities',
+    ])
+  })
+
   it('deduplicates contributions shared by goals and builds newest-first activity history', () => {
     const contribution = {
       id: 'contribution-1',
@@ -233,5 +283,29 @@ describe('buildRoadmap', () => {
       ...roadmap.futureMonths.flatMap(({ objectives }) => objectives),
       ...roadmap.historyMonths.flatMap(({ objectives }) => objectives),
     ].map(({ id }) => id)).not.toContain('completed-undated')
+  })
+
+  it('includes a recurring expense ending in a future month in that month', () => {
+    const endingFinances = structuredClone(finances)
+    endingFinances.expenses.expenses[0].endMonth = '2026-12-01'
+
+    const roadmap = buildRoadmap({ goals, finances: endingFinances, currentMonth: '2026-08' })
+
+    expect(roadmap.futureMonths.map(({ month }) => month)).toEqual([
+      '2027-03',
+      '2026-12',
+      '2026-09',
+    ])
+    expect(roadmap.futureMonths[1].endingExpenses.map(({ id }) => id)).toEqual(['rent'])
+  })
+
+  it('moves a recurring expense out of active events when it ends in the selected month', () => {
+    const endingFinances = structuredClone(finances)
+    endingFinances.expenses.expenses[0].endMonth = '2026-08-01'
+
+    const roadmap = buildRoadmap({ goals, finances: endingFinances, currentMonth: '2026-08' })
+
+    expect(roadmap.currentMonth.recurringExpenses.map(({ id }) => id)).toEqual([])
+    expect(roadmap.currentMonth.endingExpenses.map(({ id }) => id)).toEqual(['rent'])
   })
 })

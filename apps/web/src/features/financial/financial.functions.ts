@@ -20,7 +20,6 @@ import {
 import {
   createIncomeServer,
   deleteIncomeServer,
-  getIncomesWorkspaceServer,
   updateIncomeServer,
 } from './incomes.server'
 import {
@@ -31,8 +30,6 @@ import {
 } from './incomes.schema'
 
 export const getFinancialAppState = createServerFn({ method: 'GET' }).handler(getFinancialAppStateServer)
-
-export const getIncomesWorkspace = createServerFn({ method: 'GET' }).handler(getIncomesWorkspaceServer)
 
 export const getFinancesWorkspace = createServerFn({ method: 'GET' }).handler(getFinancesWorkspaceServer)
 
@@ -60,7 +57,7 @@ export const deleteExpense = createServerFn({ method: 'POST' })
   .validator((input: unknown) => deleteExpenseSchema.parse(input))
   .handler(deleteExpenseServer)
 
-export const completeFinancialOnboardingInputSchema = z.object({
+const completeFinancialOnboardingInputSchema = z.object({
   goal: goalCreationDraftSchema,
   incomes: z.array(incomeDraftSchema).min(1, 'Agregá al menos un ingreso recurrente.'),
   expenses: z.array(expenseDraftSchema).min(1, 'Agregá al menos un gasto recurrente.'),
@@ -80,4 +77,3 @@ export type CompleteFinancialOnboardingInput = z.infer<
 export const completeFinancialOnboarding = createServerFn({ method: 'POST' })
   .validator((input: unknown) => completeFinancialOnboardingInputSchema.parse(input))
   .handler(({ data }) => completeFinancialOnboardingServer(data))
-

@@ -1,11 +1,11 @@
 import { z } from 'zod'
 
-export const maxUploadBytes = 5 * 1024 * 1024
-export const acceptedUploadTypes = ['application/pdf', 'image/jpeg', 'image/png'] as const
+const maxUploadBytes = 5 * 1024 * 1024
+const acceptedUploadTypes = ['application/pdf', 'image/jpeg', 'image/png'] as const
 
 const fieldIdSchema = z.string().regex(/^t[1-5]_(upload_url|postcierre_upload)$/)
 
-export const uploadRequestSchema = z.object({
+const uploadRequestSchema = z.object({
   deviceId: z.uuid(),
   fieldId: fieldIdSchema,
   contentType: z.enum(acceptedUploadTypes),

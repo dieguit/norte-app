@@ -4,7 +4,7 @@ import { getPreviousCalendarMonth } from '../financial/financial'
 import { getSavingsPlacesWorkspaceState } from '../savings-places/savings-places.repository.server'
 import {
   buildSavingPreview,
-  type SavingContributionContext,
+  requireEligibleContributionGoals,
   type SavingContributionContextState,
   type SavingContributionPreviewResult,
 } from './saving-contribution'
@@ -22,8 +22,6 @@ import type {
   SavingContributionDraft,
   UpdateSavingContributionInput,
 } from './saving-contribution.schema'
-
-export type { SavingContributionContext, SavingContributionContextState }
 
 function getCatchUpCreatedAt(catchUpMonth: string | undefined, now: Date): Date | undefined {
   if (!catchUpMonth) return undefined
@@ -53,6 +51,7 @@ export async function getSavingContributionContextServer(): Promise<SavingContri
       eligibleGoalsUsd: state.eligibleGoalsUsd,
       eligibleInvestmentGoals: state.eligibleInvestmentGoals,
       eligibleInvestmentGoalsUsd: state.eligibleInvestmentGoalsUsd,
+      investmentState: state.investmentState,
       monthlyTargetArs: state.monthlyTargetArs,
       monthlyTargetUsd: state.monthlyTargetUsd,
       monthlyInvestmentTargetArs: state.monthlyInvestmentTargetArs,
@@ -75,26 +74,13 @@ export async function previewSavingContributionServer({
   }
 
   const kind = data.kind ?? 'saving'
-  let eligibleGoals =
-    kind === 'investment'
-      ? data.currency === 'USD'
-        ? state.eligibleInvestmentGoalsUsd
-        : state.eligibleInvestmentGoals
-      : data.currency === 'USD'
-        ? state.eligibleGoalsUsd
-        : state.eligibleGoals
-
-  if (!eligibleGoals || eligibleGoals.length === 0) {
-    throw new Error(
-      kind === 'investment'
-        ? data.currency === 'USD'
-          ? 'No hay objetivos activos para distribuir la inversión en USD.'
-          : 'No hay objetivos activos para distribuir la inversión en ARS.'
-        : data.currency === 'USD'
-          ? 'No hay objetivos activos para distribuir el ahorro en USD.'
-          : 'No hay objetivos activos para distribuir el ahorro en ARS.',
-    )
+  if (
+    kind === 'investment' &&
+    (data.currency === 'ARS' ? state.investmentState.ars : state.investmentState.usd).status === 'incomplete'
+  ) {
+    throw new Error(`Falta asociar una posición de inversión en ${data.currency} a uno o más objetivos. Configurala para continuar.`)
   }
+  const eligibleGoals = requireEligibleContributionGoals(state, kind, data.currency)
 
   const preview = buildSavingPreview({
     kind,

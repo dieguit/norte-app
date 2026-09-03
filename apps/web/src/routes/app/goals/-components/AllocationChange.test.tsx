@@ -195,6 +195,9 @@ describe("AllocationChange and AllocationChangeSheet", () => {
           "Completá tu perfil financiero antes de cambiar la planificación.",
         ),
       ).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Completá tu perfil financiero antes de cambiar la planificación.",
+      );
       expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     });
 
@@ -227,6 +230,7 @@ describe("AllocationChange and AllocationChangeSheet", () => {
       render(<AllocationChangeSheet open={true} onOpenChange={vi.fn()} />);
 
       expect(await screen.findByText("Fallo de conexión")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent("Fallo de conexión");
       expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     });
 

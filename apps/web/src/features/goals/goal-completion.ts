@@ -13,10 +13,18 @@ import {
   type GoalLifecycleProposal,
   type GoalLifecycleState,
 } from './goal-lifecycle'
+import { findGoalInWorkspace } from './goal-proposal-workspace'
 import type {
   GoalCreationAllocation,
   GoalCreationImpact,
 } from './goal-creation'
+import {
+  serializeGoalFinancialSources,
+  serializeGoalCoreCollections,
+  serializeGoalPlanCollections,
+  serializeGoalProfile,
+  serializeGoalRecord,
+} from './goal-proposal-serialization'
 
 export interface GoalCompletionSavingsPlace {
   id: string
@@ -68,25 +76,69 @@ export interface GoalCompletionPreviewResult {
   previewToken: string
 }
 
+function isEligibleCompletionGoal(
+  goal: ReturnType<typeof findGoalInWorkspace>,
+): goal is NonNullable<ReturnType<typeof findGoalInWorkspace>> & { targetAmount: Money } {
+  if (!goal) return false
+  if (!goal.completionEligible) return false
+  return goal.targetAmount != null
+}
+
+function getCompletionGoal(
+  state: GoalCompletionState,
+  currentMonth: string,
+  goalId: string,
+): NonNullable<ReturnType<typeof findGoalInWorkspace>> & { targetAmount: Money } {
+  const workspace = buildGoalsWorkspace(state.source, currentMonth)
+  const goal = findGoalInWorkspace(workspace, goalId)
+  if (!isEligibleCompletionGoal(goal)) {
+    throw new Error('El objetivo no está listo para completarse.')
+  }
+  return goal
+}
+
+function getProfileBaseCurrency(
+  profile: NonNullable<GoalCompletionState['source']['profile']>,
+): GoalCompletionSavingsPlace['balance']['currency'] {
+  return profile.baseCurrency ?? 'ARS'
+}
+
+function getPlannedMonthlyContribution(state: GoalCompletionState): Money | undefined {
+  const profile = state.source.profile
+  if (!profile) return undefined
+  const plannedMonthlyContribution = profile.plannedMonthlyContribution
+  if (plannedMonthlyContribution === null) return undefined
+  if (plannedMonthlyContribution === undefined) return undefined
+  return createMoney(plannedMonthlyContribution, getProfileBaseCurrency(profile))
+}
+
+function isPositiveMatchingPlace(
+  place: GoalCompletionSavingsPlace,
+  targetAmount: Money,
+): boolean {
+  if (place.balance.currency !== targetAmount.currency) return false
+  return new BigNumber(place.balance.amount).isGreaterThan(0)
+}
+
+function getCompletionSavingsPlaces(
+  places: GoalCompletionSavingsPlace[],
+  targetAmount: Money,
+): GoalCompletionSavingsPlace[] {
+  return places.filter((place) => isPositiveMatchingPlace(place, targetAmount))
+}
+
+function getActiveGoals(state: GoalCompletionState): GoalLifecycleContext['activeGoals'] {
+  return state.source.goals
+    .filter((goal) => goal.status === 'active')
+    .map(({ id, name, currency }) => ({ id, name, currency }))
+}
+
 export function buildGoalCompletionContext(
   state: GoalCompletionState,
   currentMonth: string,
   goalId: string,
 ): GoalCompletionContext {
-  const workspace = buildGoalsWorkspace(state.source, currentMonth)
-  const goal = workspace.groups.flatMap((group) => group.goals).find((candidate) => candidate.id === goalId)
-  if (!goal || !goal.completionEligible || !goal.targetAmount) {
-    throw new Error('El objetivo no está listo para completarse.')
-  }
-
-  const plannedMonthlyContribution =
-    state.source.profile?.plannedMonthlyContribution !== null &&
-    state.source.profile?.plannedMonthlyContribution !== undefined
-      ? createMoney(
-          state.source.profile.plannedMonthlyContribution,
-          state.source.profile.baseCurrency ?? 'ARS',
-        )
-      : undefined
+  const goal = getCompletionGoal(state, currentMonth, goalId)
 
   return {
     goalId,
@@ -94,15 +146,9 @@ export function buildGoalCompletionContext(
     targetAmount: goal.targetAmount,
     savingsValue: goal.savingsValue,
     currentMonth,
-    plannedMonthlyContribution,
-    savingsPlaces: state.savingsPlaces.filter(
-      (place) =>
-        place.balance.currency === goal.targetAmount!.currency &&
-        new BigNumber(place.balance.amount).isGreaterThan(0),
-    ),
-    activeGoals: state.source.goals
-      .filter((candidate) => candidate.status === 'active')
-      .map(({ id, name, currency }) => ({ id, name, currency })),
+    plannedMonthlyContribution: getPlannedMonthlyContribution(state),
+    savingsPlaces: getCompletionSavingsPlaces(state.savingsPlaces, goal.targetAmount),
+    activeGoals: getActiveGoals(state),
     currentAllocation: selectGoalLifecycleAllocation(
       state.source.snapshots,
       state.source.allocations,
@@ -118,44 +164,75 @@ export function buildGoalCompletionContext(
   }
 }
 
+type ValidatedGoalCompletionWithdrawal = { placeId: string; amount: Money }
+
+function assertUniqueWithdrawalPlace(seenPlaceIds: Set<string>, placeId: string): void {
+  if (seenPlaceIds.has(placeId)) {
+    throw new Error('Cada lugar de ahorro puede aparecer una sola vez.')
+  }
+  seenPlaceIds.add(placeId)
+}
+
+function getWithdrawalPlace(
+  places: GoalCompletionSavingsPlace[],
+  placeId: string,
+  targetAmount: Money,
+): GoalCompletionSavingsPlace {
+  const place = places.find((candidate) => candidate.id === placeId)
+  if (!place) throw new Error('Lugar de ahorro no encontrado.')
+  if (place.balance.currency !== targetAmount.currency) {
+    throw new Error('La moneda del lugar no coincide con la del objetivo.')
+  }
+  return place
+}
+
+function isInvalidWithdrawalAmount(amount: BigNumber): boolean {
+  const decimals = amount.decimalPlaces()
+  return [
+    !amount.isFinite(),
+    amount.isNaN(),
+    amount.isLessThanOrEqualTo(0),
+    decimals === null,
+    decimals !== null && decimals > 2,
+  ].some(Boolean)
+}
+
+function parseWithdrawalAmount(value: string): BigNumber {
+  const invalidMessage = 'Ingresá un monto mayor a cero, con hasta dos decimales.'
+  if (!isPlainDecimalMoneyString(value)) throw new Error(invalidMessage)
+  let amount: BigNumber
+  try {
+    amount = new BigNumber(value.replace(',', '.'))
+  } catch {
+    throw new Error(invalidMessage)
+  }
+  if (isInvalidWithdrawalAmount(amount)) throw new Error(invalidMessage)
+  return amount
+}
+
+function assertWithdrawalWithinBalance(
+  amount: BigNumber,
+  place: GoalCompletionSavingsPlace,
+): void {
+  if (amount.isGreaterThan(place.balance.amount)) {
+    throw new Error(`El monto supera el saldo disponible en ${place.name}.`)
+  }
+}
+
 export function validateGoalCompletionWithdrawals(input: {
   targetAmount: Money
   places: GoalCompletionSavingsPlace[]
   withdrawals: Array<{ placeId: string; amount: string }>
-}): Array<{ placeId: string; amount: Money }> {
+}): ValidatedGoalCompletionWithdrawal[] {
   const seenPlaceIds = new Set<string>()
   let total = new BigNumber(0)
-  const validated: Array<{ placeId: string; amount: Money }> = []
+  const validated: ValidatedGoalCompletionWithdrawal[] = []
 
   for (const withdrawal of input.withdrawals) {
-    if (seenPlaceIds.has(withdrawal.placeId)) {
-      throw new Error('Cada lugar de ahorro puede aparecer una sola vez.')
-    }
-    seenPlaceIds.add(withdrawal.placeId)
-
-    const place = input.places.find((candidate) => candidate.id === withdrawal.placeId)
-    if (!place) throw new Error('Lugar de ahorro no encontrado.')
-    if (place.balance.currency !== input.targetAmount.currency) {
-      throw new Error('La moneda del lugar no coincide con la del objetivo.')
-    }
-
-    if (!isPlainDecimalMoneyString(withdrawal.amount)) {
-      throw new Error('Ingresá un monto mayor a cero, con hasta dos decimales.')
-    }
-
-    let amount: BigNumber
-    try {
-      amount = new BigNumber(withdrawal.amount.replace(',', '.'))
-    } catch {
-      throw new Error('Ingresá un monto mayor a cero, con hasta dos decimales.')
-    }
-    const decimals = amount.decimalPlaces()
-    if (!amount.isFinite() || amount.isNaN() || amount.isLessThanOrEqualTo(0) || decimals === null || decimals > 2) {
-      throw new Error('Ingresá un monto mayor a cero, con hasta dos decimales.')
-    }
-    if (amount.isGreaterThan(place.balance.amount)) {
-      throw new Error(`El monto supera el saldo disponible en ${place.name}.`)
-    }
+    assertUniqueWithdrawalPlace(seenPlaceIds, withdrawal.placeId)
+    const place = getWithdrawalPlace(input.places, withdrawal.placeId, input.targetAmount)
+    const amount = parseWithdrawalAmount(withdrawal.amount)
+    assertWithdrawalWithinBalance(amount, place)
 
     total = total.plus(amount)
     validated.push({ placeId: place.id, amount: createMoney(amount, input.targetAmount.currency) })
@@ -174,11 +251,7 @@ export function buildGoalCompletionProposal(input: {
   draft: GoalCompletionDraft
 }): GoalCompletionProposal {
   const { state, currentMonth, draft } = input
-  const workspace = buildGoalsWorkspace(state.source, currentMonth)
-  const goal = workspace.groups.flatMap((group) => group.goals).find((candidate) => candidate.id === draft.goalId)
-  if (!goal || !goal.completionEligible || !goal.targetAmount) {
-    throw new Error('El objetivo no está listo para completarse.')
-  }
+  const goal = getCompletionGoal(state, currentMonth, draft.goalId)
 
   const validated = validateGoalCompletionWithdrawals({
     targetAmount: goal.targetAmount,
@@ -197,26 +270,41 @@ export function buildGoalCompletionProposal(input: {
     goalId: goal.id,
     goalName: goal.name,
     targetAmount: goal.targetAmount,
-    withdrawals: validated.map(({ placeId, amount }) => ({
-      placeId,
-      placeName: state.savingsPlaces.find((place) => place.id === placeId)!.name,
-      amount,
-    })),
+    withdrawals: buildCompletionWithdrawals(validated, state.savingsPlaces),
     allocation: removal.allocation,
     persistedAllocation: removal.persistedAllocation,
     pauseMonthlyCommitment: removal.pauseMonthlyCommitment,
     impacts: removal.impacts.filter((impact) => impact.goalId !== goal.id),
-    proposedSource: {
-      ...removal.proposedSource,
-      incomes: state.source.incomes,
-      expenses: state.source.expenses,
-      contributions: state.source.contributions,
-      savingContributions: state.source.savingContributions,
-      completionWithdrawals: state.source.completionWithdrawals,
-      goals: removal.proposedSource.goals.map((candidate) =>
-        candidate.id === goal.id ? { ...candidate, status: 'completed' as const } : candidate,
-      ),
-    },
+    proposedSource: buildCompletedGoalSource(removal.proposedSource, state, goal.id),
+  }
+}
+
+function buildCompletionWithdrawals(
+  withdrawals: ValidatedGoalCompletionWithdrawal[],
+  places: GoalCompletionSavingsPlace[],
+): GoalCompletionProposal['withdrawals'] {
+  return withdrawals.map(({ placeId, amount }) => ({
+    placeId,
+    placeName: places.find((place) => place.id === placeId)!.name,
+    amount,
+  }))
+}
+
+function buildCompletedGoalSource(
+  proposedSource: GoalsWorkspaceSource,
+  state: GoalCompletionState,
+  goalId: string,
+): GoalsWorkspaceSource {
+  return {
+    ...proposedSource,
+    incomes: state.source.incomes,
+    expenses: state.source.expenses,
+    contributions: state.source.contributions,
+    savingContributions: state.source.savingContributions,
+    completionWithdrawals: state.source.completionWithdrawals,
+    goals: proposedSource.goals.map((goal) =>
+      goal.id === goalId ? { ...goal, status: 'completed' as const } : goal,
+    ),
   }
 }
 
@@ -228,21 +316,69 @@ function canonicalAmount(value: string): string {
   }
 }
 
-function mapGoal(goal: GoalsWorkspaceSource['goals'][number]) {
+function getDraftTarget(
+  workspace: ReturnType<typeof buildGoalsWorkspace>,
+  draft: GoalCompletionDraft | undefined,
+): ReturnType<typeof findGoalInWorkspace> {
+  if (!draft) return undefined
+  return findGoalInWorkspace(workspace, draft.goalId)
+}
+
+function getDraftSourceGoal(
+  state: GoalCompletionState,
+  draft: GoalCompletionDraft | undefined,
+): GoalsWorkspaceSource['goals'][number] | undefined {
+  if (!draft) return undefined
+  return state.source.goals.find((goal) => goal.id === draft.goalId)
+}
+
+function getDraftGoalId(draft: GoalCompletionDraft | undefined): string | null {
+  if (!draft) return null
+  return draft.goalId
+}
+
+function serializeCompletionSavingsPlaces(places: GoalCompletionSavingsPlace[]) {
+  return [...places]
+    .map((place) => ({
+      id: place.id,
+      name: place.name,
+      balance: { amount: place.balance.amount, currency: place.balance.currency },
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id))
+}
+
+function serializeCompletionWithdrawals(
+  withdrawals: GoalsWorkspaceSource['completionWithdrawals'],
+) {
+  return (withdrawals ?? [])
+    .map((withdrawal) => ({
+      id: withdrawal.id,
+      goalId: withdrawal.goalId,
+      placeId: withdrawal.placeId,
+      placeName: withdrawal.placeName,
+      amount: withdrawal.amount,
+      currency: withdrawal.currency,
+      createdAt: withdrawal.createdAt,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id))
+}
+
+function serializeCompletionDraft(draft: GoalCompletionDraft | undefined) {
+  if (!draft) return null
   return {
-    id: goal.id,
-    userId: goal.userId ?? null,
-    name: goal.name,
-    type: goal.type,
-    targetAmount: goal.targetAmount ?? null,
-    currency: goal.currency,
-    priority: goal.priority,
-    strategy: goal.strategy,
-    status: goal.status,
-    desiredDate: goal.desiredDate ?? null,
-    completedAt: goal.completedAt ?? null,
-    emergencyFundMonths: goal.emergencyFundMonths ?? null,
-    createdAt: goal.createdAt,
+    goalId: draft.goalId,
+    withdrawals: draft.withdrawals
+      .map((withdrawal) => ({
+        placeId: withdrawal.placeId,
+        amount: canonicalAmount(withdrawal.amount),
+      }))
+      .sort((a, b) => a.placeId.localeCompare(b.placeId)),
+    allocations: draft.allocations
+      .map((allocation) => ({
+        goalId: allocation.goalId,
+        percentage: canonicalAmount(allocation.percentage),
+      }))
+      .sort((a, b) => a.goalId.localeCompare(b.goalId)),
   }
 }
 
@@ -252,140 +388,21 @@ export function serializeGoalCompletionState(
   draft?: GoalCompletionDraft,
 ): string {
   const workspace = buildGoalsWorkspace(state.source, currentMonth)
-  const target = draft
-    ? workspace.groups.flatMap((group) => group.goals).find((goal) => goal.id === draft.goalId)
-    : undefined
+  const target = getDraftTarget(workspace, draft)
+  const sourceGoal = getDraftSourceGoal(state, draft)
   const normalized = {
     currentMonth,
     planningArsPerUsd: PLANNING_ARS_PER_USD,
-    goalId: draft?.goalId ?? null,
+    goalId: getDraftGoalId(draft),
     targetAmount: target?.targetAmount ?? null,
-    goal: state.source.goals.find((goal) => goal.id === draft?.goalId)
-      ? mapGoal(state.source.goals.find((goal) => goal.id === draft?.goalId)!)
-      : null,
-    profile: state.source.profile
-      ? {
-          userId: state.source.profile.userId,
-          baseCurrency: state.source.profile.baseCurrency,
-          expensesKnowledge: state.source.profile.expensesKnowledge,
-          plannedMonthlyContribution: state.source.profile.plannedMonthlyContribution ?? null,
-          goalDedicationPercentage: state.source.profile.goalDedicationPercentage ?? null,
-          onboardingCompleted: state.source.profile.onboardingCompleted,
-        }
-      : null,
-    incomes: (state.source.incomes ?? [])
-      .map((income) => ({
-        id: income.id,
-        sourceKind: income.sourceKind,
-        sourceId: income.sourceId ?? null,
-        sourceName: income.sourceName ?? null,
-        concept: income.concept ?? null,
-        amount: income.amount,
-        currency: income.currency,
-        recurring: income.recurring,
-        effectiveMonth: income.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    expenses: (state.source.expenses ?? [])
-      .map((expense) => ({
-        id: expense.id,
-        sourceKind: expense.sourceKind,
-        sourceId: expense.sourceId ?? null,
-        sourceName: expense.sourceName ?? null,
-        concept: expense.concept ?? null,
-        amount: expense.amount,
-        currency: expense.currency,
-        recurring: expense.recurring,
-        effectiveMonth: expense.effectiveMonth,
-        endMonth: expense.endMonth ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    savingsPlaces: [...state.savingsPlaces]
-      .map((place) => ({
-        id: place.id,
-        name: place.name,
-        balance: { amount: place.balance.amount, currency: place.balance.currency },
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    goals: state.source.goals.map(mapGoal).sort((a, b) => a.id.localeCompare(b.id)),
-    savingsPositions: (state.source.savingsPositions ?? [])
-      .map((position) => ({
-        id: position.id,
-        goalId: position.goalId,
-        amount: position.amount,
-        currency: position.currency,
-        location: position.location ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    investmentPositions: (state.source.investmentPositions ?? [])
-      .map((position) => ({
-        id: position.id,
-        goalId: position.goalId,
-        currentValue: position.currentValue,
-        currency: position.currency,
-        annualReturnRate: position.annualReturnRate ?? null,
-        availability: position.availability ?? null,
-        availableFrom: position.availableFrom ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    completionWithdrawals: (state.source.completionWithdrawals ?? [])
-      .map((withdrawal) => ({
-        id: withdrawal.id,
-        goalId: withdrawal.goalId,
-        placeId: withdrawal.placeId,
-        placeName: withdrawal.placeName,
-        amount: withdrawal.amount,
-        currency: withdrawal.currency,
-        createdAt: withdrawal.createdAt,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    snapshots: (state.source.snapshots ?? [])
-      .map((snapshot) => ({
-        id: snapshot.id,
-        userId: snapshot.userId ?? null,
-        effectiveMonth: snapshot.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    allocations: (state.source.allocations ?? [])
-      .map((allocation) => ({
-        id: allocation.id,
-        snapshotId: allocation.snapshotId,
-        goalId: allocation.goalId,
-        percentage: allocation.percentage,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    pendingSnapshots: (state.pendingSnapshots ?? [])
-      .map((snapshot) => ({
-        id: snapshot.id,
-        userId: snapshot.userId ?? null,
-        effectiveMonth: snapshot.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    pendingAllocations: (state.pendingAllocations ?? [])
-      .map((allocation) => ({
-        id: allocation.id,
-        snapshotId: allocation.snapshotId,
-        goalId: allocation.goalId,
-        percentage: allocation.percentage,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    draft: draft
-      ? {
-          goalId: draft.goalId,
-          withdrawals: draft.withdrawals
-            .map((withdrawal) => ({
-              placeId: withdrawal.placeId,
-              amount: canonicalAmount(withdrawal.amount),
-            }))
-            .sort((a, b) => a.placeId.localeCompare(b.placeId)),
-          allocations: draft.allocations
-            .map((allocation) => ({
-              goalId: allocation.goalId,
-              percentage: canonicalAmount(allocation.percentage),
-            }))
-            .sort((a, b) => a.goalId.localeCompare(b.goalId)),
-        }
-      : null,
+    goal: sourceGoal ? serializeGoalRecord(sourceGoal) : null,
+    profile: serializeGoalProfile(state.source.profile, true),
+    ...serializeGoalFinancialSources(state.source),
+    savingsPlaces: serializeCompletionSavingsPlaces(state.savingsPlaces),
+    ...serializeGoalCoreCollections(state.source),
+    completionWithdrawals: serializeCompletionWithdrawals(state.source.completionWithdrawals),
+    ...serializeGoalPlanCollections(state.source, state.pendingSnapshots, state.pendingAllocations),
+    draft: serializeCompletionDraft(draft),
   }
 
   return JSON.stringify(normalized)

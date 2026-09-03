@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || :)
+if [ -n "$upstream" ] && base=$(git merge-base HEAD "$upstream" 2>/dev/null); then
+  :
+elif base=$(git rev-parse --verify --quiet refs/remotes/origin/main 2>/dev/null); then
+  :
+elif base=$(git rev-parse --verify --quiet refs/heads/main 2>/dev/null); then
+  :
+else
+  printf '%s\n' 'pre-commit: no usable Fallow audit base found' >&2
+  exit 1
+fi
+
+pnpm --dir apps/web fallow:audit --base "$base"

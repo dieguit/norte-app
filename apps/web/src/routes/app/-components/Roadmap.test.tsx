@@ -172,11 +172,11 @@ describe("Roadmap component", () => {
     const projectedGoalCard = screen
       .getByRole("heading", { name: "Colchón de 3 meses" })
       .closest("article");
-    expect(projectedGoalCard).toHaveClass("bg-white/90");
+    expect(projectedGoalCard).toHaveClass("bg-[var(--surface-strong)]");
     expect(projectedGoalCard).not.toHaveClass("backdrop-blur-md");
     expect(
       screen.getByRole("heading", { name: "Viaje" }).closest("article"),
-    ).toHaveClass("bg-white/90");
+    ).toHaveClass("bg-[var(--surface-strong)]");
     expect(screen.getByText("Julio de 2026")).toBeVisible();
     expect(screen.queryByText("Junio de 2026")).not.toBeInTheDocument();
     expect(

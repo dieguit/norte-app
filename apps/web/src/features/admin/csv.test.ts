@@ -25,7 +25,7 @@ const expectedCardHeaders = [
   't5_postcierre_cuotas_cantidad', 't5_postcierre_upload',
 ]
 const cardAnswers = {
-  t1_cuotas_modo: 't1-mode',
+  t1_cuotas_modo: 'A',
   t1_upload_url: 't1-upload', t1_resumen_ars: 't1-ars', t1_resumen_usd: 't1-usd',
   t1_cierre_dia: 't1-close', t1_vto_dia: 't1-due', t1_cuotas_m1: 't1-m1', t1_cuotas_m2: 't1-m2',
   t1_cuotas_m3: 't1-m3', t1_cuotas_m4: 't1-m4', t1_cuotas_m5: 't1-m5', t1_cuotas_m6: 't1-m6',
@@ -33,25 +33,25 @@ const cardAnswers = {
   t1_postcierre: 't1-post', t1_postcierre_cuotas: 't1-post-installments',
   t1_postcierre_cuotas_cantidad: 't1-post-count',
   t1_postcierre_upload: 't1-movements',
-  t2_cuotas_modo: 't2-mode', t2_upload_url: 't2-upload', t2_resumen_ars: 't2-ars', t2_resumen_usd: 't2-usd',
+  t2_cuotas_modo: 'B', t2_upload_url: 't2-upload', t2_resumen_ars: 't2-ars', t2_resumen_usd: 't2-usd',
   t2_cierre_dia: 't2-close', t2_vto_dia: 't2-due', t2_cuotas_m1: 't2-m1', t2_cuotas_m2: 't2-m2',
   t2_cuotas_m3: 't2-m3', t2_cuotas_m4: 't2-m4', t2_cuotas_m5: 't2-m5', t2_cuotas_m6: 't2-m6',
   t2_cuotas_resto: 't2-rest', t2_cuotas_resto_hasta: 't2-rest-until', t2_arrastre: 't2-carry',
   t2_postcierre: 't2-post', t2_postcierre_cuotas: 't2-post-installments', t2_postcierre_cuotas_cantidad: 't2-post-count',
   t2_postcierre_upload: 't2-movements',
-  t3_cuotas_modo: 't3-mode', t3_upload_url: 't3-upload', t3_resumen_ars: 't3-ars', t3_resumen_usd: 't3-usd',
+  t3_cuotas_modo: 'C', t3_upload_url: 't3-upload', t3_resumen_ars: 't3-ars', t3_resumen_usd: 't3-usd',
   t3_cierre_dia: 't3-close', t3_vto_dia: 't3-due', t3_cuotas_m1: 't3-m1', t3_cuotas_m2: 't3-m2',
   t3_cuotas_m3: 't3-m3', t3_cuotas_m4: 't3-m4', t3_cuotas_m5: 't3-m5', t3_cuotas_m6: 't3-m6',
   t3_cuotas_resto: 't3-rest', t3_cuotas_resto_hasta: 't3-rest-until', t3_arrastre: 't3-carry',
   t3_postcierre: 't3-post', t3_postcierre_cuotas: 't3-post-installments', t3_postcierre_cuotas_cantidad: 't3-post-count',
   t3_postcierre_upload: 't3-movements',
-  t4_cuotas_modo: 't4-mode', t4_upload_url: 't4-upload', t4_resumen_ars: 't4-ars', t4_resumen_usd: 't4-usd',
+  t4_cuotas_modo: 'A', t4_upload_url: 't4-upload', t4_resumen_ars: 't4-ars', t4_resumen_usd: 't4-usd',
   t4_cierre_dia: 't4-close', t4_vto_dia: 't4-due', t4_cuotas_m1: 't4-m1', t4_cuotas_m2: 't4-m2',
   t4_cuotas_m3: 't4-m3', t4_cuotas_m4: 't4-m4', t4_cuotas_m5: 't4-m5', t4_cuotas_m6: 't4-m6',
   t4_cuotas_resto: 't4-rest', t4_cuotas_resto_hasta: 't4-rest-until', t4_arrastre: 't4-carry',
   t4_postcierre: 't4-post', t4_postcierre_cuotas: 't4-post-installments', t4_postcierre_cuotas_cantidad: 't4-post-count',
   t4_postcierre_upload: 't4-movements',
-  t5_cuotas_modo: 't5-mode', t5_upload_url: 't5-statement', t5_resumen_ars: 't5-ars', t5_resumen_usd: 't5-usd',
+  t5_cuotas_modo: 'B', t5_upload_url: 't5-statement', t5_resumen_ars: 't5-ars', t5_resumen_usd: 't5-usd',
   t5_cierre_dia: 't5-close', t5_vto_dia: 't5-due', t5_cuotas_m1: 't5-m1', t5_cuotas_m2: 't5-m2',
   t5_cuotas_m3: 't5-m3', t5_cuotas_m4: 't5-m4', t5_cuotas_m5: 't5-m5', t5_cuotas_m6: 't5-m6',
   t5_cuotas_resto: 't5-rest', t5_cuotas_resto_hasta: 't5-rest-until', t5_arrastre: 't5-carry',
@@ -63,7 +63,7 @@ describe('admin CSV export', () => {
   it('uses the current contract headers in order', () => {
     const expectedHeaders = [
       'timestamp', 'nombre', 'contacto_canal', 'whatsapp', 'email', 'p1_pesa', 'p1_otra',
-      'p2_ultimo', 'p3_primero', 'ing_total', 'p5_fuentes', 'ing_tercero_falla',
+      'p2_ultimo_1', 'p2_ultimo_2', 'p3_primero_1', 'p3_primero_2', 'ing_total', 'p5_fuentes', 'ing_tercero_falla',
       'ing_tercero_monto', 'p8a_tiene_vencimiento', 'ing_sueldo_fijo_hasta',
       'ing_trabajos_propios_hasta', 'ing_aportes_tercero_hasta', 'ing_jubilacion_pension_hasta',
       'ing_otro_hasta', 'aumento_tipo', 'aumento_meses', 'aumento_pct', 'aumento_proximo',
@@ -105,21 +105,21 @@ describe('admin CSV export', () => {
         `compra_necesaria_${number}_monto`,
         `compra_necesaria_${number}_fecha`,
       ]),
-      'p14_tiene_compras', 'p15_tarjetas',
+      'p14_tiene_compras', 'n1_concepto', 'n1_monto', 'n2_concepto', 'n2_monto', 'n3_concepto', 'n3_monto', 'p15_tarjetas',
       ...expectedCardHeaders,
     ]
 
     expect(csvHeaders).toEqual(expectedHeaders)
     expect(Object.keys(cardAnswers).sort()).toEqual([...expectedCardHeaders].sort())
-    expect(csvHeaders).not.toContain('n1_concepto')
+    expect(csvHeaders).toContain('n1_concepto')
     expect(csvHeaders).not.toContain('extra_tipo')
     expect(csvHeaders).not.toContain('extra_monto')
     expect(csvHeaders).not.toContain('extra_cuando')
     expect(csvHeaders).not.toContain('extra_hasta')
     expect(csvHeaders).not.toContain('ing_fin1_monto')
     expect(csvHeaders).not.toContain('num_tarjetas')
-    expect(csvHeaders).not.toContain('p2_ultimo_1')
-    expect(csvHeaders).not.toContain('p3_primero_1')
+    expect(csvHeaders).toContain('p2_ultimo_1')
+    expect(csvHeaders).toContain('p3_primero_1')
     expect(csvHeaders).not.toContain('T1_cuotas_modo')
     expect(csvHeaders).toEqual(expect.arrayContaining([
       'fijo_alquiler_hasta', 'fijo_colegio_hasta', 'fijo_prepaga_hasta',
@@ -132,7 +132,7 @@ describe('admin CSV export', () => {
       completedAt,
       answers: {
         nombre: 'Ana', contacto_canal: 'Email', whatsapp: '54911', email: 'ana@example.com',
-        p1_pesa: 'Sí', p1_otra: 'Otra prioridad', p2_ultimo: 'Comida', p3_primero: 'Salidas',
+        p1_pesa: 'Sí', p1_otra: 'Otra prioridad', p2_ultimo: ['Comida'], p3_primero: ['Salidas'],
         p5_fuentes: ['Sueldo fijo', 'Otro'],
         p8a_tiene_vencimiento: 'Sí', ing_sueldo_fijo_hasta: 'dic-26',
         ing_trabajos_propios_hasta: 'ene-27', ing_aportes_tercero_hasta: 'feb-27',
@@ -154,7 +154,7 @@ describe('admin CSV export', () => {
 
     expect(row).toMatchObject({
       timestamp: '2026-07-16T12:00:00.000Z', nombre: 'Ana', contacto_canal: 'Email',
-      p1_pesa: 'Sí', p1_otra: 'Otra prioridad', p2_ultimo: 'Comida', p3_primero: 'Salidas',
+      p1_pesa: 'Sí', p1_otra: 'Otra prioridad', p2_ultimo_1: 'Comida', p3_primero_1: 'Salidas',
       p5_fuentes: 'Sueldo fijo | Otro', p8a_tiene_vencimiento: 'Sí',
       ing_sueldo_fijo_hasta: 'dic-26', ing_trabajos_propios_hasta: 'ene-27',
       ing_aportes_tercero_hasta: 'feb-27', ing_jubilacion_pension_hasta: 'mar-27',
@@ -178,7 +178,7 @@ describe('admin CSV export', () => {
   it('serializes every scalar current answer directly', () => {
     const answers = {
       nombre: 'Bruno', contacto_canal: 'WhatsApp', whatsapp: '5491199999999', email: 'bruno@example.com',
-      p1_pesa: 'Sí', p1_otra: 'Donaciones', p2_ultimo: 'Comida', p3_primero: 'Ahorro',
+      p1_pesa: 'Sí', p1_otra: 'Donaciones', p2_ultimo: ['Comida'], p3_primero: ['Ahorro'],
       ing_total: 850000, p5_fuentes: ['Sueldo fijo', 'Otro'],
       ing_tercero_falla: 'No, es confiable', ing_tercero_monto: 125000,
       p8a_tiene_vencimiento: 'Sí', ing_sueldo_fijo_hasta: 'ene-27',
@@ -216,7 +216,7 @@ describe('admin CSV export', () => {
     const expectedValues = {
       timestamp: '2026-07-16T12:00:00.000Z',
       nombre: 'Bruno', contacto_canal: 'WhatsApp', whatsapp: '5491199999999', email: 'bruno@example.com',
-      p1_pesa: 'Sí', p1_otra: 'Donaciones', p2_ultimo: 'Comida', p3_primero: 'Ahorro',
+      p1_pesa: 'Sí', p1_otra: 'Donaciones', p2_ultimo_1: 'Comida', p3_primero_1: 'Ahorro',
       ing_total: 850000, p5_fuentes: 'Sueldo fijo | Otro',
       ing_tercero_falla: 'No, es confiable', ing_tercero_monto: 125000,
       p8a_tiene_vencimiento: 'Sí', ing_sueldo_fijo_hasta: 'ene-27',
@@ -260,7 +260,7 @@ describe('admin CSV export', () => {
       expect(row[`compra_necesaria_${slot}_fecha`]).toBe('')
     }
     expect(serializeCsv(['ing_tercero_falla'], [row]))
-      .toBe('\uFEFFing_tercero_falla\r\n"No, es confiable"')
+      .toBe('\uFEFFing_tercero_falla\r\nNo, es confiable')
   })
 
   it('flattens all ten extra-income slots with every field populated', () => {
@@ -458,8 +458,92 @@ describe('admin CSV export', () => {
     )
   })
 
-  it('writes BOM-prefixed, comma-delimited CSV with Excel line endings', () => {
+  it('keeps row keys in the same order as the CSV contract', () => {
+    const row = toAdminCsvRow({
+      completedAt,
+      answers: {
+        timestamp: 'ignored',
+        nombre: 'Ana',
+        ingresos_extra: [{ concepto: 'Clases', monto: '50000', desde: 'ene-26', hasta: 'jun-26' }],
+        fijo_otros: [{ concepto: 'Expensas', monto: 30000, desde: '', hasta: 'dic-26' }],
+        var_otros: [{ concepto: 'Mascota', monto: 15000, desde: '', hasta: '' }],
+        d_otros: [{ concepto: 'Cine', monto: 8000, desde: '', hasta: '' }],
+        e13_gustito_adicional1: 'Lo reduzco a la mitad',
+        compras_necesarias: [{ concepto: 'Lavarropas', monto: 500000, fecha: 'oct-27', desde: '', hasta: '' }],
+      },
+    })
+
+    expect(Object.keys(row)).toEqual(csvHeaders)
+    expect(csvHeaders.map((header) => row[header])).toEqual(
+      expect.arrayContaining(['Ana', 'Clases', 'Expensas', 'Mascota', 'Cine', 'Lavarropas']),
+    )
+  })
+
+  it('falls back to blanks for unsupported scalar answers and source shapes', () => {
+    const row = toAdminCsvRow({
+      completedAt,
+      answers: {
+        nombre: { value: 'Ana' },
+        p5_fuentes: 'Sueldo fijo',
+        ingresos_extra: 'not-an-array',
+        fijo_otros: null,
+        var_otros: [{ concepto: null, monto: true }],
+        d_otros: [{ concepto: undefined, monto: 'not-a-number' }],
+        compras_necesarias: [null],
+      } as any,
+    })
+
+    expect(row.nombre).toBe('')
+    expect(row.p5_fuentes).toBe('')
+    expect(row.ingresos_extra1_concepto).toBe('')
+    expect(row.fijo_otro1_concepto).toBe('')
+    expect(row.gasto_diario_adicional_1_concepto).toBe('')
+    expect(row.gasto_diario_adicional_1_monto).toBe('')
+    expect(row.gustito_adicional_1_concepto).toBe('')
+    expect(row.gustito_adicional_1_monto).toBe('')
+    expect(row.compra_necesaria_1_concepto).toBe('')
+  })
+
+  it('writes BOM-prefixed, semicolon-delimited CSV with Excel line endings', () => {
     expect(serializeCsv(['nombre', 'nota'], [{ nombre: 'Ana, "A"', nota: 'uno\ndos' }]))
-      .toBe('\uFEFFnombre,nota\r\n"Ana, ""A""","uno\r\ndos"')
+      .toBe('\uFEFFnombre;nota\r\n"Ana, ""A""";"uno\r\ndos"')
+  })
+
+  it('splits priorities and necessary purchases and normalizes card modes', () => {
+    const row = toAdminCsvRow({
+      completedAt,
+      answers: {
+        p2_ultimo: ['Comida', 'Colegio'],
+        p3_primero: ['Salidas'],
+        n1_concepto: 'Lavarropas',
+        n1_monto: 500000,
+        n2_concepto: 'Anteojos',
+        n2_monto: 100000,
+        t1_cuotas_modo: 'Subir foto o archivo',
+        t2_cuotas_modo: 'Copiar el renglón mes a mes',
+        t3_cuotas_modo: 'No lo tengo a mano, que Norte me lo pida después por WhatsApp',
+      } as any,
+    })
+
+    expect(row).toMatchObject({
+      p2_ultimo_1: 'Comida',
+      p2_ultimo_2: 'Colegio',
+      p3_primero_1: 'Salidas',
+      p3_primero_2: '',
+      n1_concepto: 'Lavarropas',
+      n1_monto: 500000,
+      n2_concepto: 'Anteojos',
+      n2_monto: 100000,
+      t1_cuotas_modo: 'A',
+      t2_cuotas_modo: 'B',
+      t3_cuotas_modo: 'C',
+    })
+  })
+
+  it('writes semicolon-delimited, formula-safe CSV without changing numeric values', () => {
+    expect(serializeCsv(
+      ['nombre', 'nota', 'monto', 'plus', 'minus', 'at'],
+      [{ nombre: '=SUM(A1:A2)', nota: 'Ana; "A"\ndos', monto: -123, plus: '+cmd', minus: '-cmd', at: '@cmd' }],
+    )).toBe('\uFEFFnombre;nota;monto;plus;minus;at\r\n\'=SUM(A1:A2);"Ana; ""A""\r\ndos";-123;\'+cmd;\'-cmd;\'@cmd')
   })
 })

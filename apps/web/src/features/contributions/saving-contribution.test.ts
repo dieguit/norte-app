@@ -4,6 +4,7 @@ import {
   deriveMonthlySavingTargets,
   derivePreviousMonthShortfalls,
   deriveUsdPurchase,
+  getInvestmentContributionDataState,
   parseSavingDraft,
   selectEligibleGoals,
   serializeContributionState,
@@ -106,6 +107,68 @@ describe('saving-contribution domain', () => {
         currency: 'USD',
       })
     })
+
+    it('classifies offset timestamps by their UTC month at both month boundaries', () => {
+      const result = deriveMonthlySavingTargets({
+        monthlyCommitmentArs: '100000.00',
+        goals: [{ id: 'g1', currency: 'ARS', strategy: 'save', percentage: '100.00' }],
+        existingContributions: [
+          { amount: '10000.00', currency: 'ARS', createdAt: '2026-07-31T23:30:00-02:00' },
+          { amount: '10000.00', currency: 'ARS', createdAt: '2026-09-01T00:30:00+02:00' },
+        ],
+        currentMonth: '2026-08',
+      })
+
+      expect(result.monthlyTargetArs).toEqual({ amount: '80000.00', currency: 'ARS' })
+    })
+
+    it('ignores invalid contribution timestamps instead of using their string prefix', () => {
+      const result = deriveMonthlySavingTargets({
+        monthlyCommitmentArs: '100000.00',
+        goals: [{ id: 'g1', currency: 'ARS', strategy: 'save', percentage: '100.00' }],
+        existingContributions: [
+          { amount: '10000.00', currency: 'ARS', createdAt: '2026-08-not-a-date' },
+        ],
+        currentMonth: '2026-08',
+      })
+
+      expect(result.monthlyTargetArs).toEqual({ amount: '100000.00', currency: 'ARS' })
+    })
+  })
+
+  describe('investment contribution data state', () => {
+    it('keeps USD ready when an active ARS investment goal has no persisted position', () => {
+      expect(getInvestmentContributionDataState({
+        goals: [
+          { id: 'investment-ars', currency: 'ARS', status: 'active', strategy: 'invest' },
+          { id: 'investment-usd', currency: 'USD', status: 'active', strategy: 'invest' },
+        ],
+        investmentPositions: [
+          { goalId: 'investment-ars', currency: 'USD' },
+          { goalId: 'investment-usd', currency: 'USD' },
+        ],
+      } as any)).toEqual({
+        ars: { status: 'incomplete', reason: 'missing_investment_position' },
+        usd: { status: 'ready' },
+      })
+    })
+
+    it('keeps ARS ready when an active USD investment goal has no persisted position', () => {
+      expect(getInvestmentContributionDataState({
+        goals: [
+          { id: 'investment-ars', currency: 'ARS', status: 'active', strategy: 'invest' },
+          { id: 'investment-usd', currency: 'USD', status: 'active', strategy: 'invest' },
+        ],
+        investmentPositions: [
+          { goalId: 'investment-ars', currency: 'ARS' },
+          { goalId: 'investment-usd', currency: 'ARS' },
+        ],
+      } as any)).toEqual({
+        ars: { status: 'ready' },
+        usd: { status: 'incomplete', reason: 'missing_investment_position' },
+      })
+    })
+
   })
   describe('buildSavingPreview', () => {
     it('allocates ARS amount proportionally among eligible goals matching brief example', () => {
@@ -343,6 +406,18 @@ describe('saving-contribution domain', () => {
       ).toThrow('USD purchase values are incoherent')
     })
 
+    it('rejects either one-cent mismatch even when the values are otherwise rounded to cents', () => {
+      for (const arsSpent of ['150000.01', '149999.99']) {
+        expect(() =>
+          deriveUsdPurchase({
+            usdAmount: '100.00',
+            arsSpent,
+            effectiveRate: '1500.00',
+          }),
+        ).toThrow('USD purchase values are incoherent')
+      }
+    })
+
     it('rejects one-field inputs', () => {
       expect(() => deriveUsdPurchase({ usdAmount: '100.00' })).toThrow(
         'USD purchase derivation requires at least two positive values',
@@ -578,6 +653,43 @@ describe('saving-contribution domain', () => {
       expect(result.allocations[1].progressBefore).toBe('20.00')
       expect(result.allocations[1].progressAfter).toBe('30.00')
     })
+
+    it('does not synthesize an investment position when the persisted position is missing', () => {
+      const result = buildSavingPreview({
+        kind: 'investment',
+        draft: { kind: 'investment', currency: 'USD', amount: '100.00' },
+        eligibleGoals: [{ id: 'inv-1', name: 'Cedears', percentage: '100.00' }],
+        currentMonth: '2026-08',
+        workspaceSource: {
+          profile: {
+            userId: 'u1',
+            baseCurrency: 'USD',
+            expensesKnowledge: 'known',
+            plannedMonthlyContribution: '100000.00',
+            onboardingCompleted: true,
+          },
+          goals: [{
+            id: 'inv-1',
+            userId: 'u1',
+            name: 'Cedears',
+            type: 'investment',
+            targetAmount: '1000.00',
+            currency: 'USD',
+            priority: 'high',
+            strategy: 'invest',
+            status: 'active',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          }],
+          savingsPositions: [],
+          investmentPositions: [],
+          snapshots: [{ id: 'snap-1', userId: 'u1', effectiveMonth: '2026-08-01' }],
+          allocations: [{ id: 'alloc-1', snapshotId: 'snap-1', goalId: 'inv-1', percentage: '100.00' }],
+        },
+      })
+
+      expect(result.allocations[0].progressBefore).toBe('0.00')
+      expect(result.allocations[0].progressAfter).toBe('0.00')
+    })
   })
 
   describe('derivePreviousMonthShortfalls', () => {
@@ -691,6 +803,23 @@ describe('saving-contribution domain', () => {
       // Expected 30000 ARS - 5000 ARS = 25000.00 ARS
       expect(derivePreviousMonthShortfalls(input)).toEqual([
         { kind: 'saving', currency: 'ARS', amount: { amount: '25000.00', currency: 'ARS' } },
+      ])
+    })
+
+    it('ignores malformed historical investment contribution amounts', () => {
+      const input = {
+        closedMonth: '2026-07',
+        plannedMonthlyContribution: '100000.00',
+        goals: [{ id: 'g-invest-ars', strategy: 'invest', currency: 'ARS' as const }],
+        allocations: [{ goalId: 'g-invest-ars', percentage: '50.00' }],
+        savingContributions: [],
+        investmentContributions: [
+          { amount: 'invalid', currency: 'ARS', createdAt: '2026-07-12T00:00:00.000Z' },
+        ],
+      }
+
+      expect(derivePreviousMonthShortfalls(input)).toEqual([
+        { kind: 'investment', currency: 'ARS', amount: { amount: '50000.00', currency: 'ARS' } },
       ])
     })
 

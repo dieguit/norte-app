@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { SheetLoadingState } from '../../../components/SheetLoadingState'
 import {
   Sheet,
   SheetContent,
@@ -7,12 +7,11 @@ import {
   SheetTitle,
 } from '../../../components/ui/sheet'
 import { Button } from '../../../components/ui/button'
-import { getSavingContributionContext } from '../../../features/contributions/saving-contribution.functions'
 import type {
   ContributionKind,
-  SavingContributionContext,
 } from '../../../features/contributions/saving-contribution'
 import { SavingContribution } from './SavingContribution'
+import { useSavingContributionContext } from './useSavingContributionContext'
 
 export interface SavingContributionSheetProps {
   open: boolean
@@ -27,46 +26,13 @@ export function SavingContributionSheet({
   kind,
   currency,
 }: SavingContributionSheetProps) {
-  const [context, setContext] = useState<SavingContributionContext | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchContext = useCallback(() => {
-    let active = true
-    setLoading(true)
-    setError(null)
-
-    getSavingContributionContext()
-      .then((res) => {
-        if (!active) return
-        if (res.profile === 'missing') {
-          setError(
-            kind === 'investment'
-              ? 'Completá tu perfil financiero antes de registrar una inversión.'
-              : 'Completá tu perfil financiero antes de registrar un ahorro.',
-          )
-        } else {
-          setContext(res.context)
-        }
-      })
-      .catch((err) => {
-        if (!active) return
-        setError(err?.message ?? 'No pudimos cargar los datos.')
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [kind])
-
-  useEffect(() => {
-    if (!open) return
-    const cleanup = fetchContext()
-    return cleanup
-  }, [open, fetchContext])
+  const contributionContext = useSavingContributionContext({
+    open,
+    missingProfileMessage:
+      kind === 'investment'
+        ? 'Completá tu perfil financiero antes de registrar una inversión.'
+        : 'Completá tu perfil financiero antes de registrar un ahorro.',
+  })
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -85,26 +51,20 @@ export function SavingContributionSheet({
           </SheetDescription>
         </SheetHeader>
 
-        {loading ? (
-          <div className="flex flex-1 flex-col gap-4 p-6" role="status">
-            <div className="h-6 w-32 animate-pulse rounded bg-[var(--surface-strong)]" />
-            <div className="h-10 w-full animate-pulse rounded-lg bg-[var(--surface-strong)]" />
-            <div className="h-10 w-full animate-pulse rounded-lg bg-[var(--surface-strong)]" />
-            <div className="h-24 w-full animate-pulse rounded-xl bg-[var(--surface-strong)]" />
-            <p className="sr-only">Cargando...</p>
-          </div>
-        ) : error ? (
+        {contributionContext.loading ? (
+          <SheetLoadingState />
+        ) : contributionContext.error ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-            <p className="text-sm text-destructive">{error}</p>
-            <Button variant="outline" size="sm" onClick={fetchContext}>
+            <p className="text-sm text-destructive">{contributionContext.error}</p>
+            <Button variant="outline" size="sm" onClick={contributionContext.fetchContext}>
               Reintentar
             </Button>
           </div>
-        ) : context ? (
+        ) : contributionContext.context ? (
           <SavingContribution
             kind={kind}
             currency={currency}
-            context={context}
+            context={contributionContext.context}
             onCancel={() => onOpenChange(false)}
             onSuccess={() => onOpenChange(false)}
           />

@@ -138,6 +138,8 @@ describe('IncomeSourcePicker', () => {
     expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).not.toHaveAttribute('aria-describedby')
     expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toHaveAttribute('aria-describedby', 'income-source-error')
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(document.querySelectorAll('#income-source-error')).toHaveLength(1)
   })
 
 })

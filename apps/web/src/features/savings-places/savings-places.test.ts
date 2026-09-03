@@ -215,4 +215,18 @@ describe('calculateSavingsPlacesWorkspace', () => {
     expect(result.places.find((p) => p.id === 'p1')!.hasMovements).toBe(true)
     expect(result.places.find((p) => p.id === 'p2')!.hasMovements).toBe(false)
   })
+
+  it('keeps same-timestamp movement order and normalizes Date timestamps', () => {
+    const result = calculateSavingsPlacesWorkspace({
+      places: [placeA],
+      contributions: [
+        { id: 'second', placeId: 'p1', amount: '2.00', currency: 'ARS', createdAt: new Date('2026-01-01') },
+        { id: 'first', placeId: 'p1', amount: '1.00', currency: 'ARS', createdAt: new Date('2026-01-01') },
+      ],
+      transfers: [],
+    })
+
+    expect(result.movements.map(({ id }) => id)).toEqual(['second', 'first'])
+    expect(result.movements[1].createdAt).toBe('2026-01-01T00:00:00.000Z')
+  })
 })

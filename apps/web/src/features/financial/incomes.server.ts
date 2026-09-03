@@ -4,13 +4,8 @@ import type { IncomeDraft } from './incomes.schema'
 import {
   createIncomeInRepository,
   deleteIncomeInRepository,
-  getIncomesWorkspaceState,
   updateIncomeInRepository,
 } from './incomes.repository.server'
-
-export async function getIncomesWorkspaceServer() {
-  return getIncomesWorkspaceState(await requireFinancialUser())
-}
 
 export async function createIncomeServer({ data }: { data: { draft: IncomeDraft } }) {
   return createIncomeInRepository(await requireFinancialUser(), data.draft)

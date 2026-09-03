@@ -4,10 +4,16 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SavingsPlacePicker } from './SavingsPlacePicker'
+import { getSavingsPlaceSelection, SavingsPlacePicker } from './SavingsPlacePicker'
 
 describe('SavingsPlacePicker', () => {
   afterEach(cleanup)
+
+  it('maps select values to the controlled savings-place value', () => {
+    expect(getSavingsPlaceSelection('__new__')).toEqual({ kind: 'new', name: '' })
+    expect(getSavingsPlaceSelection('place-1')).toEqual({ kind: 'existing', placeId: 'place-1' })
+    expect(getSavingsPlaceSelection(null)).toBeUndefined()
+  })
 
   it('lists existing places and ends with the new-place option', async () => {
     const user = userEvent.setup()

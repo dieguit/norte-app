@@ -1863,9 +1863,10 @@ describe('getGoalLifecycleContext', () => {
     expect(getGoalLifecycleState).toHaveBeenCalledWith('user_456', '2026-08')
     expect(result).toEqual({
       profile: 'present',
-      goalId: validGoalId,
-      lifecycle: 'pause',
-      goalName: 'Reserva',
+       goalId: validGoalId,
+       lifecycle: 'pause',
+       goalName: 'Reserva',
+       goalCurrency: 'USD',
       currentMonth: '2026-08',
       plannedMonthlyContribution: { amount: '60000.00', currency: 'ARS' },
       activeGoals: [{ id: validGoalId, name: 'Reserva', currency: 'USD' }],

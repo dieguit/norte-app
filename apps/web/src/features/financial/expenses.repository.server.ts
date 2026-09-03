@@ -51,6 +51,7 @@ async function resolveSource(tx: any, userId: string, source: ExpenseDraft['sour
     .insert(expenseSources)
     .values({ userId, name, normalizedName })
     .onConflictDoNothing()
+  // fallow-ignore-next-line code-duplication -- expense source resolution keeps its domain error and table local
   const created = await tx.query.expenseSources.findFirst({
     where: (table: any, { and, eq }: any) =>
       and(eq(table.userId, userId), eq(table.normalizedName, normalizedName)),

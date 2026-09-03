@@ -7,7 +7,7 @@ export const goalPrioritySchema = z.enum(['high', 'medium', 'low'])
 export const goalStrategySchema = z.enum(['save', 'invest'])
 export const investmentAvailabilitySchema = z.enum(['available_now', 'available_from', 'long_term'])
 
-export const percentageSchema = z.string().refine((value) => {
+const percentageSchema = z.string().refine((value) => {
   try {
     const amount = new BigNumber(value.replace(',', '.'))
     const decimals = amount.decimalPlaces()
@@ -38,6 +38,24 @@ export const goalCreationDraftSchema = z.object({
 
 export type GoalCreationDraft = z.infer<typeof goalCreationDraftSchema>
 
+function isValidAnnualReturnRate(value: string): boolean {
+  try {
+    const rate = new BigNumber(value.replace(',', '.'))
+    const decimals = rate.decimalPlaces()
+    return rate.isFinite() && rate.gte(0) && rate.lte(100) &&
+      decimals !== null && decimals !== undefined && decimals <= 3
+  } catch {
+    return false
+  }
+}
+
+function needsAvailableFromMonth(
+  availability: GoalCreationDraft['availability'],
+  month: string,
+): boolean {
+  return availability === 'available_from' && !/^\d{4}-\d{2}$/.test(month)
+}
+
 export function createObjectiveSchema(currentMonth: string) {
   return goalCreationDraftSchema.superRefine((draft, context) => {
     if (draft.type === 'emergency_fund') {
@@ -51,20 +69,12 @@ export function createObjectiveSchema(currentMonth: string) {
 }
 
 export const goalPlanSchema = goalCreationDraftSchema.superRefine((draft, context) => {
-  if (draft.strategy === 'invest') {
-    let rate: BigNumber | null = null
-    try {
-      rate = new BigNumber(draft.annualReturnRate.replace(',', '.'))
-    } catch {
-      rate = null
-    }
-    const rateDecimals = rate?.decimalPlaces()
-    if (!rate || !rate.isFinite() || rate.lt(0) || rate.gt(100) || rateDecimals === null || rateDecimals === undefined || rateDecimals > 3) {
-      context.addIssue({ code: 'custom', path: ['annualReturnRate'], message: 'Ingresá un rendimiento entre 0% y 100%, con hasta tres decimales.' })
-    }
-    if (draft.availability === 'available_from' && !/^\d{4}-\d{2}$/.test(draft.availableFromMonth)) {
-      context.addIssue({ code: 'custom', path: ['availableFromMonth'], message: 'Elegí desde qué mes estará disponible.' })
-    }
+  if (draft.strategy !== 'invest') return
+  if (!isValidAnnualReturnRate(draft.annualReturnRate)) {
+    context.addIssue({ code: 'custom', path: ['annualReturnRate'], message: 'Ingresá un rendimiento entre 0% y 100%, con hasta tres decimales.' })
+  }
+  if (needsAvailableFromMonth(draft.availability, draft.availableFromMonth)) {
+    context.addIssue({ code: 'custom', path: ['availableFromMonth'], message: 'Elegí desde qué mes estará disponible.' })
   }
 })
 
@@ -138,4 +148,3 @@ export function parseGoalCreationSubmission(input: unknown, currentMonth: string
   }
   return draft
 }
-

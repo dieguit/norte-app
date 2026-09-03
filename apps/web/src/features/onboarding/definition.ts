@@ -120,8 +120,7 @@ const fixedExpenseExpiryFields = [
 
 function hasPositiveAmount(answers: OnboardingAnswers, id: string) {
   const value = answers[id];
-  const amount =
-    typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  const amount = numericAnswer(value);
   return typeof amount === "number" && Number.isFinite(amount) && amount > 0;
 }
 
@@ -149,39 +148,49 @@ function inferFixedExpenseMode(answers: OnboardingAnswers) {
   return undefined;
 }
 
+function getLegacyFixedOther(
+  answers: OnboardingAnswers,
+  index: number,
+): ExtraIncome | undefined {
+  const conceptKey = `fijo_otro${index}_concepto`;
+  const amountKey = `fijo_otro${index}_monto`;
+  const expiryKey = `fijo_otro${index}_hasta`;
+  if (!hasLegacyFixedOther(answers, conceptKey, amountKey, expiryKey)) return undefined;
+
+  const amount = answers[amountKey];
+  return {
+    concepto: asString(answers[conceptKey]),
+    monto: normalizeLegacyAmount(amount),
+    desde: "",
+    hasta: asString(answers[expiryKey]),
+  };
+}
+
+function hasLegacyFixedOther(
+  answers: OnboardingAnswers,
+  conceptKey: string,
+  amountKey: string,
+  expiryKey: string,
+) {
+  return [conceptKey, amountKey, expiryKey].some((key) => answers[key] !== undefined);
+}
+
+function asString(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function normalizeLegacyAmount(value: unknown) {
+  const numericValue = numericAnswer(value);
+  if (typeof numericValue === "number" && Number.isFinite(numericValue)) return numericValue;
+  return typeof value === "string" || typeof value === "number" ? value : "";
+}
+
 function withInferredFixedExpenseMode(answers: OnboardingAnswers): OnboardingAnswers {
   const normalized = { ...answers };
   if (!Array.isArray(normalized.fijo_otros)) {
     const legacyOthers = [1, 2].flatMap((index) => {
-      const conceptKey = `fijo_otro${index}_concepto`;
-      const amountKey = `fijo_otro${index}_monto`;
-      const expiryKey = `fijo_otro${index}_hasta`;
-      if (
-        normalized[conceptKey] === undefined &&
-        normalized[amountKey] === undefined &&
-        normalized[expiryKey] === undefined
-      ) {
-        return [];
-      }
-      const amount = normalized[amountKey];
-      const numericAmount =
-        typeof amount === "string" && amount.trim() !== ""
-          ? Number(amount)
-          : amount;
-      return [{
-        concepto: typeof normalized[conceptKey] === "string"
-          ? normalized[conceptKey]
-          : "",
-        monto: typeof numericAmount === "number" && Number.isFinite(numericAmount)
-          ? numericAmount
-          : typeof amount === "string" || typeof amount === "number"
-            ? amount
-          : "",
-        desde: "",
-        hasta: typeof normalized[expiryKey] === "string"
-          ? normalized[expiryKey]
-          : "",
-      } satisfies ExtraIncome];
+      const item = getLegacyFixedOther(normalized, index);
+      return item ? [item] : [];
     });
     if (legacyOthers.length > 0) normalized.fijo_otros = legacyOthers;
   }
@@ -199,19 +208,16 @@ function withInferredFixedExpenseMode(answers: OnboardingAnswers): OnboardingAns
   };
 }
 
-export const isDetailedFixedExpense = (answers: OnboardingAnswers) =>
+const isDetailedFixedExpense = (answers: OnboardingAnswers) =>
   inferFixedExpenseMode(answers) === "Quiero desglosar";
 
-export const hasPositiveOther = (answers: OnboardingAnswers) =>
+const hasPositiveOther = (answers: OnboardingAnswers) =>
   Array.isArray(answers.fijo_otros) &&
   (answers.fijo_otros as (string | ExtraIncome)[]).some(
     (item) => {
       if (typeof item !== "object" || item === null) return false;
       const rawMonto = (item as ExtraIncome).monto;
-      const monto =
-        typeof rawMonto === "string" && rawMonto.trim() !== ""
-          ? Number(rawMonto)
-          : rawMonto;
+      const monto = numericAnswer(rawMonto);
       return typeof monto === "number" && Number.isFinite(monto) && monto > 0;
     },
   );
@@ -252,6 +258,126 @@ function hasSelectedIncomeSource(answers: OnboardingAnswers, source: string) {
     Array.isArray(answers.p5_fuentes) &&
     (answers.p5_fuentes as string[]).includes(source)
   );
+}
+
+function isCardManualMode(cardNumber: number, answers: OnboardingAnswers) {
+  return answers[`t${cardNumber}_cuotas_modo`] === "Copiar el renglón mes a mes";
+}
+
+function isCardUploadMode(cardNumber: number, answers: OnboardingAnswers) {
+  return answers[`t${cardNumber}_cuotas_modo`] === "Subir foto o archivo";
+}
+
+function isCardPostClosingVisible(cardNumber: number, answers: OnboardingAnswers) {
+  return isCardManualMode(cardNumber, answers) || isCardUploadMode(cardNumber, answers);
+}
+
+function createCardSummaryFields(cardNumber: number): OnboardingField[] {
+  const manualMode = (answers: OnboardingAnswers) => isCardManualMode(cardNumber, answers);
+  const uploadMode = (answers: OnboardingAnswers) => isCardUploadMode(cardNumber, answers);
+  return [
+    {
+      id: `t${cardNumber}_cuotas_modo`, type: "radio",
+      label: "Elegí el camino que te resulte más cómodo",
+      options: [
+        "Subir foto o archivo", "Copiar el renglón mes a mes",
+        "No lo tengo a mano, que Norte me lo pida después por WhatsApp",
+      ],
+    },
+    { id: `t${cardNumber}_upload_url`, type: "upload", label: "Subir foto o archivo", visibleWhen: uploadMode },
+    {
+      id: `t${cardNumber}_resumen_ars`, type: "number", label: "En pesos ($)",
+      helpText: "Cargá el total que figura en tu último resumen, en pesos.", visibleWhen: manualMode,
+    },
+    {
+      id: `t${cardNumber}_resumen_usd`, type: "number", label: "En dólares (USD)",
+      helpText: "Cargá el total en dólares si aparece en tu resumen.", visibleWhen: manualMode,
+    },
+    {
+      id: `t${cardNumber}_cierre_dia`, type: "select", label: "Día de cierre", options: dayOptions,
+      helpText: "Elegí el día del mes en que cierra esta tarjeta.", visibleWhen: manualMode,
+    },
+    {
+      id: `t${cardNumber}_vto_dia`, type: "select", label: "Día de vencimiento", options: dayOptions,
+      helpText: "Elegí el día límite para pagar el resumen.", visibleWhen: manualMode,
+    },
+  ];
+}
+
+function createCardInstallmentFields(cardNumber: number): OnboardingField[] {
+  const manualMode = (answers: OnboardingAnswers) => isCardManualMode(cardNumber, answers);
+  return [
+    ...[1, 2, 3, 4, 5, 6].map((month) => ({
+      id: `t${cardNumber}_cuotas_m${month}`, type: "number" as const,
+      label: `Mes ${month} ($)`, helpText: `Cargá cuánto te queda pagar en ${month} cuotas.`,
+      visibleWhen: manualMode,
+    })),
+    {
+      id: `t${cardNumber}_cuotas_resto`, type: "number",
+      label: "¿Y después de eso quedan más cuotas por pagar? ($)",
+      helpText: "Cargá el total mensual de cuotas que queda después de estos seis meses.", visibleWhen: manualMode,
+    },
+    {
+      id: `t${cardNumber}_cuotas_resto_hasta`, type: "month",
+      label: "¿Hasta cuando tendrías que pagar? (mes/año)",
+      helpText: "Elegí el último mes en que vas a pagar esas cuotas.", visibleWhen: manualMode,
+    },
+    {
+      id: `t${cardNumber}_arrastre`, type: "number",
+      label: "¿Te quedó algún monto impago del resumen anterior? ($)",
+      helpText: "¿Quedó saldo del resumen pasado que no pagaste completo (y la tarjeta te lo está financiando)?",
+      visibleWhen: manualMode,
+    },
+  ];
+}
+
+function createCardPostClosingFields(cardNumber: number): OnboardingField[] {
+  const postCierreVisible = (answers: OnboardingAnswers) =>
+    isCardPostClosingVisible(cardNumber, answers);
+  return [
+    {
+      id: `t${cardNumber}_postcierre`, type: "number",
+      label: "Cuánto gastaste desde el cierre hasta ahora? A ojo ($)",
+      helpText: "Cargá lo que gastaste desde el cierre del último resumen hasta hoy.", visibleWhen: postCierreVisible,
+    },
+    {
+      id: `t${cardNumber}_postcierre_cuotas`, type: "radio",
+      label: "¿Algo de eso fue en cuotas?", options: ["Sí", "No"],
+      helpText: "Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.", visibleWhen: postCierreVisible,
+    },
+    {
+      id: `t${cardNumber}_postcierre_cuotas_cantidad`, type: "select",
+      label: "¿En cuántas cuotas?", options: Array.from({ length: 18 }, (_, index) => String(index + 1)),
+      helpText: "Elegí en cuántas cuotas se hizo esa compra.",
+      visibleWhen: (answers: OnboardingAnswers) =>
+        postCierreVisible(answers) && answers[`t${cardNumber}_postcierre_cuotas`] === "Sí",
+    },
+    {
+      id: `t${cardNumber}_postcierre_upload`, type: "upload",
+      label: "O subí una captura de los últimos movimientos desde el cierre",
+      helpText: "Subí una captura de los movimientos desde el cierre, si te resulta más fácil.",
+      visibleWhen: postCierreVisible,
+    },
+  ];
+}
+
+function createCardStatementFields(cardNumber: number): OnboardingField[] {
+  return [
+    ...createCardSummaryFields(cardNumber),
+    ...createCardInstallmentFields(cardNumber),
+    ...createCardPostClosingFields(cardNumber),
+  ];
+}
+
+function createCardStatementStep(cardNumber: number): OnboardingStep {
+  return {
+    id: `t${cardNumber}_p16`,
+    title: `Tarjeta ${cardNumber} - el último resumen`,
+    intro: `Tarjeta ${cardNumber}: agarrá el último resumen, o abrí la app del banco, no te vamos a hacer revolver cajones. ¿De cuánto vino?`,
+    visibleWhen: (answers) =>
+      (numericAnswer(answers.p15_tarjetas) ?? -1) >= cardNumber,
+    fields: createCardStatementFields(cardNumber),
+  };
 }
 
 export const onboardingSteps: readonly OnboardingStep[] = [
@@ -894,135 +1020,7 @@ export const onboardingSteps: readonly OnboardingStep[] = [
       },
     ],
   },
-  ...[1, 2, 3, 4, 5].flatMap((n): OnboardingStep[] => {
-    const manualMode = (answers: OnboardingAnswers) =>
-      answers[`t${n}_cuotas_modo`] === "Copiar el renglón mes a mes";
-    const uploadMode = (answers: OnboardingAnswers) =>
-      answers[`t${n}_cuotas_modo`] === "Subir foto o archivo";
-    const postCierreVisible = (answers: OnboardingAnswers) =>
-      manualMode(answers) || uploadMode(answers);
-
-    return [
-      {
-        id: `t${n}_p16`,
-        title: `Tarjeta ${n} - el último resumen`,
-        intro: `Tarjeta ${n}: agarrá el último resumen, o abrí la app del banco, no te vamos a hacer revolver cajones. ¿De cuánto vino?`,
-        visibleWhen: (answers: OnboardingAnswers) => {
-          const cards = answers.p15_tarjetas;
-          return typeof cards === "number" && cards >= n;
-        },
-        fields: [
-          {
-            id: `t${n}_cuotas_modo`,
-            type: "radio",
-            label: "Elegí el camino que te resulte más cómodo",
-            options: [
-              "Subir foto o archivo",
-              "Copiar el renglón mes a mes",
-              "No lo tengo a mano, que Norte me lo pida después por WhatsApp",
-            ],
-          },
-          {
-            id: `t${n}_upload_url`,
-            type: "upload",
-            label: "Subir foto o archivo",
-            visibleWhen: uploadMode,
-          },
-          {
-            id: `t${n}_resumen_ars`,
-            type: "number",
-            label: "En pesos ($)",
-            helpText: "Cargá el total que figura en tu último resumen, en pesos.",
-            visibleWhen: manualMode,
-          },
-          {
-            id: `t${n}_resumen_usd`,
-            type: "number",
-            label: "En dólares (USD)",
-            helpText: "Cargá el total en dólares si aparece en tu resumen.",
-            visibleWhen: manualMode,
-          },
-          {
-            id: `t${n}_cierre_dia`,
-            type: "select",
-            label: "Día de cierre",
-            options: dayOptions,
-            helpText: "Elegí el día del mes en que cierra esta tarjeta.",
-            visibleWhen: manualMode,
-          },
-          {
-            id: `t${n}_vto_dia`,
-            type: "select",
-            label: "Día de vencimiento",
-            options: dayOptions,
-            helpText: "Elegí el día límite para pagar el resumen.",
-            visibleWhen: manualMode,
-          },
-          ...[1, 2, 3, 4, 5, 6].map((month) => ({
-            id: `t${n}_cuotas_m${month}`,
-            type: "number" as const,
-            label: `Mes ${month} ($)`,
-            helpText: `Cargá cuánto te queda pagar en ${month} cuotas.`,
-            visibleWhen: manualMode,
-          })),
-          {
-            id: `t${n}_cuotas_resto`,
-            type: "number",
-            label: "¿Y después de eso quedan más cuotas por pagar? ($)",
-            helpText: "Cargá el total mensual de cuotas que queda después de estos seis meses.",
-            visibleWhen: manualMode,
-          },
-          {
-            id: `t${n}_cuotas_resto_hasta`,
-            type: "month",
-            label: "¿Hasta cuando tendrías que pagar? (mes/año)",
-            helpText: "Elegí el último mes en que vas a pagar esas cuotas.",
-            visibleWhen: manualMode,
-          },
-          {
-            id: `t${n}_arrastre`,
-            type: "number",
-            label: "¿Te quedó algún monto impago del resumen anterior? ($)",
-            helpText: "¿Quedó saldo del resumen pasado que no pagaste completo (y la tarjeta te lo está financiando)?",
-            visibleWhen: manualMode,
-          },
-          {
-            id: `t${n}_postcierre`,
-            type: "number",
-            label: "Cuánto gastaste desde el cierre hasta ahora? A ojo ($)",
-            helpText: "Cargá lo que gastaste desde el cierre del último resumen hasta hoy.",
-            visibleWhen: postCierreVisible,
-          },
-          {
-            id: `t${n}_postcierre_cuotas`,
-            type: "radio",
-            label: "¿Algo de eso fue en cuotas?",
-            options: ["Sí", "No"],
-            helpText: "Indicá si dentro de esos gastos hay compras que vas a pagar en cuotas.",
-            visibleWhen: postCierreVisible,
-          },
-          {
-            id: `t${n}_postcierre_cuotas_cantidad`,
-            type: "select",
-            label: "¿En cuántas cuotas?",
-            options: Array.from({ length: 18 }, (_, index) => String(index + 1)),
-            helpText: "Elegí en cuántas cuotas se hizo esa compra.",
-            visibleWhen: (answers: OnboardingAnswers) =>
-              postCierreVisible(answers) &&
-              answers[`t${n}_postcierre_cuotas`] === "Sí",
-          },
-          {
-            id: `t${n}_postcierre_upload`,
-            type: "upload",
-            label:
-              "O subí una captura de los últimos movimientos desde el cierre",
-            helpText: "Subí una captura de los movimientos desde el cierre, si te resulta más fácil.",
-            visibleWhen: postCierreVisible,
-          },
-        ],
-      },
-    ];
-  }),
+  ...[1, 2, 3, 4, 5].map(createCardStatementStep),
 ];
 
 export function getActiveSteps(
@@ -1089,353 +1087,377 @@ export function getVisibleFields(
   );
 }
 
-export function validateStep(
-  stepOrIndex: OnboardingStep | number | undefined,
+type ValidationErrors = Record<string, string>;
+
+function resolveStep(stepOrIndex: OnboardingStep | number | undefined) {
+  return typeof stepOrIndex === "number"
+    ? onboardingSteps[stepOrIndex]
+    : stepOrIndex;
+}
+
+function numericAnswer(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== "string" || value.trim() === "") return undefined;
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
+}
+
+function monthOrder(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const [month, year] = value.trim().split("-");
+  const monthIndex = monthNames.indexOf(month);
+  return monthIndex >= 0 && /^\d{2}$/.test(year ?? "")
+    ? Number(year) * 12 + monthIndex
+    : undefined;
+}
+
+function isSupplied(value: unknown) {
+  return value !== undefined && value !== null &&
+    (typeof value !== "string" || value.trim() !== "");
+}
+
+function validateNumberField(
+  field: OnboardingField,
+  value: unknown,
+): ValidationErrors {
+  if (field.type !== "number" || !isSupplied(value)) return {};
+  const numberValue = numericAnswer(value);
+  if (typeof numberValue !== "number" || !Number.isFinite(numberValue)) {
+    return { [field.id]: "Ingresá un número válido." };
+  }
+  return numberValue < 0 ? { [field.id]: "El monto no puede ser negativo." } : {};
+}
+
+function validateCheckboxField(
+  field: OnboardingField,
+  value: unknown,
+): ValidationErrors {
+  return field.type === "checkbox" && isSupplied(value) && !Array.isArray(value)
+    ? { [field.id]: "Elegí una opción válida." }
+    : {};
+}
+
+function validateValueType(
+  field: OnboardingField,
+  value: unknown,
+): ValidationErrors {
+  const scalarField = !["number", "radio", "checkbox", "repeated"].includes(field.type);
+  return scalarField && isSupplied(value) && typeof value !== "string"
+    ? { [field.id]: "Ingresá un valor válido." }
+    : {};
+}
+
+function validateOptions(
+  field: OnboardingField,
+  value: unknown,
+): ValidationErrors {
+  if (!field.options || value === undefined || value === null || value === "") return {};
+  return isValidOption(field, value) ? {} : { [field.id]: "Elegí una opción válida." };
+}
+
+function isValidOption(field: OnboardingField, value: unknown) {
+  if (Array.isArray(value)) {
+    return field.type === "checkbox" && value.every((option) => isAllowedOption(field, option));
+  }
+  return field.type !== "checkbox" && typeof value === "string" && field.options?.includes(value);
+}
+
+function isAllowedOption(field: OnboardingField, option: unknown) {
+  return typeof option === "string" && field.options?.includes(option);
+}
+
+function validateRequired(
+  field: OnboardingField,
+  value: unknown,
+): ValidationErrors {
+  return field.required && (!isSupplied(value) || (Array.isArray(value) && value.length === 0))
+    ? { [field.id]: field.requiredMessage ?? "Este campo es requerido." }
+    : {};
+}
+
+function validateField(
+  field: OnboardingField,
   answers: OnboardingAnswers,
-): Record<string, string> {
-  let step: OnboardingStep | undefined;
-  if (typeof stepOrIndex === "number") {
-    step = onboardingSteps[stepOrIndex];
-  } else {
-    step = stepOrIndex;
-  }
-  if (!step) return {};
-
-  const normalizedAnswers = withInferredFixedExpenseMode(answers);
-  const errors: Record<string, string> = {};
-
-  const otherPairsMap: Record<string, string> = {};
-
-  const validateRepeatedExpenses = (id: string) => {
-    repeatedItems(normalizedAnswers, id).forEach((item, index) => {
-      const rawAmount = item.monto;
-      const hasAmount =
-        rawAmount !== "" && rawAmount !== undefined && rawAmount !== null;
-      const amount =
-        typeof rawAmount === "string" ? Number(rawAmount) : rawAmount;
-      if (
-        hasAmount &&
-        (typeof amount !== "number" || !Number.isFinite(amount))
-      ) {
-        errors[`${id}.${index}.monto`] = "Ingresá un número válido.";
-      } else if (hasAmount && typeof amount === "number" && amount < 0) {
-        errors[`${id}.${index}.monto`] = "El monto no puede ser negativo.";
-      } else if (
-        typeof amount === "number" &&
-        amount > 0 &&
-        item.concepto.trim() === ""
-      ) {
-        errors[`${id}.${index}.concepto`] = "Debe ingresar el concepto.";
-      }
-    });
+): ValidationErrors {
+  const value = answers[field.id];
+  return {
+    ...validateNumberField(field, value),
+    ...validateCheckboxField(field, value),
+    ...validateValueType(field, value),
+    ...validateOptions(field, value),
+    ...validateRequired(field, value),
   };
+}
 
-  for (const field of getVisibleFields(step, normalizedAnswers)) {
-    const val = normalizedAnswers[field.id];
-    const numVal =
-      typeof val === "string" && val.trim() !== "" ? Number(val) : val;
-    const hasSuppliedValue =
-      val !== undefined &&
-      val !== null &&
-      (typeof val !== "string" || val.trim() !== "");
-    if (field.type === "number" && hasSuppliedValue) {
-      if (typeof numVal !== "number" || !Number.isFinite(numVal)) {
-        errors[field.id] = "Ingresá un número válido.";
-      } else if (numVal < 0) {
-        errors[field.id] = "El monto no puede ser negativo.";
-      }
-    }
+function validateVisibleFields(
+  step: OnboardingStep,
+  answers: OnboardingAnswers,
+): ValidationErrors {
+  const errors: ValidationErrors = {};
 
-    if (field.type === "checkbox" && hasSuppliedValue && !Array.isArray(val)) {
-      errors[field.id] = "Elegí una opción válida.";
-    }
-    if (
-      field.type !== "number" &&
-      field.type !== "radio" &&
-      field.type !== "checkbox" &&
-      field.type !== "repeated" &&
-      hasSuppliedValue &&
-      typeof val !== "string"
-    ) {
-      errors[field.id] = "Ingresá un valor válido.";
-    }
-
-    if (field.options && val !== undefined && val !== null && val !== "") {
-      const isValidOption = Array.isArray(val)
-        ? field.type === "checkbox" &&
-          val.every(
-            (option) =>
-              typeof option === "string" && field.options!.includes(option),
-          )
-        : field.type !== "checkbox" &&
-          typeof val === "string" &&
-          field.options.includes(val);
-      if (!isValidOption) errors[field.id] = "Elegí una opción válida.";
-    }
-
-    const conceptId = otherPairsMap[field.id];
-    if (conceptId) {
-      const isAmtProvided =
-        typeof numVal === "number" && !isNaN(numVal) && numVal > 0;
-      const conceptVal = answers[conceptId];
-      if (
-        isAmtProvided &&
-        (typeof conceptVal !== "string" || conceptVal.trim() === "")
-      ) {
-        errors[conceptId] = "Debe ingresar el concepto.";
-      }
-    }
-    if (
-      field.required &&
-      (val === undefined ||
-        val === null ||
-        (typeof val === "string" && val.trim() === "") ||
-        (Array.isArray(val) && val.length === 0))
-    ) {
-      errors[field.id] = field.requiredMessage ?? "Este campo es requerido.";
-    }
-  }
-
-  // 2. Specific validations per step ID:
-  if (step.id === "p1") {
-    const val = answers.p1_pesa;
-    if (!val) {
-      errors.p1_pesa = "Elegí una opción para continuar.";
-    }
-  }
-
-  if (step.id === "p4") {
-    const val = answers.ing_total;
-    if (
-      val === undefined ||
-      val === null ||
-      (typeof val === "string" && val.trim() === "")
-    ) {
-      errors.ing_total = "Este campo es requerido.";
-    }
-  }
-
-  if (step.id === "p9") {
-    const modo = inferFixedExpenseMode(normalizedAnswers);
-    if (modo === "Tengo el total en la cabeza") {
-      const totalDirecto = normalizedAnswers.fijo_total_directo;
-      const numVal =
-        typeof totalDirecto === "string" && totalDirecto.trim() !== ""
-          ? Number(totalDirecto)
-          : totalDirecto;
-      if (
-        typeof numVal !== "number" ||
-        !Number.isFinite(numVal) ||
-        numVal <= 0
-      ) {
-        errors.fijo_total_directo =
-          "Ingresá un total aproximado mayor a cero.";
-      }
-    } else if (modo === "Quiero desglosar") {
-      const detailKeys = [
-        "fijo_alquiler",
-        "fijo_colegio",
-        "fijo_prepaga",
-        "fijo_prestamos",
-        "fijo_servicios",
-        "fijo_seguros",
-        "fijo_ayuda",
-        ...legacyFixedOtherAmountIds,
-      ];
-      const hasPositiveCategory = detailKeys.some((key) => {
-        const val = normalizedAnswers[key];
-        const numVal =
-          typeof val === "string" && val.trim() !== "" ? Number(val) : val;
-        return typeof numVal === "number" && Number.isFinite(numVal) && numVal > 0;
-      });
-      const hasPositiveOther =
-        Array.isArray(normalizedAnswers.fijo_otros) &&
-        (normalizedAnswers.fijo_otros as ExtraIncome[]).some((item) => {
-          const numVal =
-            typeof item?.monto === "string" && item.monto.trim() !== ""
-              ? Number(item.monto)
-              : item?.monto;
-          return (
-            typeof numVal === "number" && Number.isFinite(numVal) && numVal > 0
-          );
-        });
-
-      if (!hasPositiveCategory && !hasPositiveOther) {
-        errors.fijo_alquiler = "Ingresá al menos un gasto fijo.";
-      }
-
-      if (Array.isArray(normalizedAnswers.fijo_otros)) {
-        (normalizedAnswers.fijo_otros as ExtraIncome[]).forEach((item, index) => {
-          const rawAmount = item?.monto;
-          const hasAmount =
-            rawAmount !== undefined &&
-            rawAmount !== null &&
-            (typeof rawAmount !== "string" || rawAmount.trim() !== "");
-          const numVal =
-            typeof rawAmount === "string" && rawAmount.trim() !== ""
-              ? Number(rawAmount)
-              : rawAmount;
-          if (hasAmount && (typeof numVal !== "number" || !Number.isFinite(numVal))) {
-            errors[`fijo_otros.${index}.monto`] = "Ingresá un número válido.";
-          } else if (
-            hasAmount &&
-            typeof numVal === "number" &&
-            numVal < 0
-          ) {
-            errors[`fijo_otros.${index}.monto`] = "El monto no puede ser negativo.";
-          }
-          const isPos =
-            typeof numVal === "number" && Number.isFinite(numVal) && numVal > 0;
-          if (isPos && (!item.concepto || item.concepto.trim() === "")) {
-            errors[`fijo_otros.${index}.concepto`] =
-              "Debe ingresar el concepto.";
-          }
-        });
-      }
-    }
-  }
-
-  if (step.id === "p11") {
-    const mode = normalizedAnswers.p11_modo;
-    const detailKeys = [
-      "var_comida",
-      "var_transporte",
-      "var_farmacia",
-    ];
-    if (
-      mode === "Tengo el total en la cabeza" &&
-      !hasPositiveAmount(normalizedAnswers, "var_total_directo")
-    ) {
-      errors.var_total_directo = "Ingresá un total aproximado mayor a cero.";
-    } else if (
-      mode === "Quiero desglosar" &&
-      !detailKeys.some((key) => hasPositiveAmount(normalizedAnswers, key)) &&
-      !hasPositiveRepeatedItem(normalizedAnswers, "var_otros")
-    ) {
-      errors.var_comida = "Completá al menos un gasto de vida diaria.";
-    }
-    if (mode === "Quiero desglosar") {
-      validateRepeatedExpenses("var_otros");
-    }
-  }
-
-  if (step.id === "p12") {
-    const mode = normalizedAnswers.p12_modo;
-    const detailKeys = [
-      "d_salidas",
-      "d_ropa",
-      "d_delivery",
-      "d_susc",
-      "d_hobbies",
-    ];
-    if (
-      mode === "Tengo el total en la cabeza" &&
-      !hasPositiveAmount(normalizedAnswers, "d_total_directo")
-    ) {
-      errors.d_total_directo = "Ingresá un total aproximado mayor a cero.";
-    } else if (
-      mode === "Quiero desglosar" &&
-      !detailKeys.some((key) => hasPositiveAmount(normalizedAnswers, key)) &&
-      !hasPositiveRepeatedItem(normalizedAnswers, "d_otros")
-    ) {
-      errors.d_salidas = "Completá al menos un gasto de gustitos.";
-    }
-    if (mode === "Quiero desglosar") {
-      validateRepeatedExpenses("d_otros");
-    }
-  }
-
-  if (step.id === "p14") {
-    if (normalizedAnswers.p14_tiene_compras === "Sí") {
-      const items = repeatedItems(normalizedAnswers, "compras_necesarias");
-      if (items.length === 0) {
-        errors.compras_necesarias = 'Agregá una compra o elegí "No".';
-      } else {
-        validateRepeatedExpenses("compras_necesarias");
-        items.forEach((item, index) => {
-          if (!item.concepto || item.concepto.trim() === "") {
-            errors[`compras_necesarias.${index}.concepto`] =
-              "Este campo es requerido.";
-          }
-          const rawAmount = item.monto;
-          if (
-            rawAmount === "" ||
-            rawAmount === undefined ||
-            rawAmount === null
-          ) {
-            errors[`compras_necesarias.${index}.monto`] =
-              "Este campo es requerido.";
-          }
-          if (!item.fecha || item.fecha.trim() === "") {
-            errors[`compras_necesarias.${index}.fecha`] =
-              "Este campo es requerido.";
-          }
-        });
-      }
-    }
-  }
-
-  if (step.id === "p15") {
-    const val = answers.p15_tarjetas;
-    const cardCount =
-      typeof val === "string" && val.trim() !== "" ? Number(val) : val;
-    if (
-      typeof cardCount !== "number" ||
-      !Number.isInteger(cardCount) ||
-      cardCount < 0 ||
-      cardCount > 5
-    ) {
-      errors.p15_tarjetas = "Ingresá un número entero entre 0 y 5.";
-    }
-  }
-
-  if (step.id.endsWith("_p16")) {
-    const prefix = step.id.split("_")[0];
-    const mode = answers[`${prefix}_cuotas_modo`];
-
-    if (!mode) {
-      errors[`${prefix}_cuotas_modo`] = "Elegí una opción para continuar.";
-    } else if (mode === "Subir foto o archivo") {
-      if (!answers[`${prefix}_upload_url`])
-        errors[`${prefix}_upload_url`] = "Subí el resumen para continuar.";
-    } else if (mode === "Copiar el renglón mes a mes") {
-      if (typeof answers[`${prefix}_resumen_ars`] !== "number") {
-        errors[`${prefix}_resumen_ars`] =
-          "Debe ingresar el monto de la tarjeta.";
-      }
-      const months = [1, 2, 3, 4, 5, 6].map(
-        (month) => `${prefix}_cuotas_m${month}`,
-      );
-      if (!months.some((key) => typeof answers[key] === "number")) {
-        errors[`${prefix}_cuotas_m1`] = "Completá al menos una cuota mensual.";
-      }
-    }
-  }
-
-  if (step.id === "p23") {
-    const emailVal = answers.email;
-    if (
-      answers.contacto_canal === "Email" &&
-      typeof emailVal === "string" &&
-      emailVal.trim().length > 0
-    ) {
-      if (!/.+@.+\..+/.test(emailVal)) {
-        errors.email = "El formato del email no es válido.";
-      }
-    }
-    const phoneVal = answers.whatsapp;
-    if (
-      answers.contacto_canal === "WhatsApp" &&
-      typeof phoneVal === "string" &&
-      phoneVal.trim().length > 0
-    ) {
-      if (!/^(?=.*\d)[0-9+\s\-()]{6,}$/.test(phoneVal)) {
-        errors.whatsapp = "El formato del teléfono no es válido.";
-      }
-    }
+  for (const field of getVisibleFields(step, answers)) {
+    Object.assign(errors, validateField(field, answers));
   }
 
   return errors;
+}
+
+function validateRepeatedExpenses(
+  answers: OnboardingAnswers,
+  id: string,
+): ValidationErrors {
+  const errors: ValidationErrors = {};
+  repeatedItems(answers, id).forEach((item, index) => Object.assign(
+    errors,
+    validateRepeatedExpense(item, id, index),
+  ));
+  return errors;
+}
+
+function validateRepeatedAmount(
+  rawAmount: unknown,
+  id: string,
+  index: number,
+): ValidationErrors {
+  if (!isSupplied(rawAmount)) return {};
+  const amount = numericAnswer(rawAmount);
+  if (typeof amount !== "number") {
+    return { [`${id}.${index}.monto`]: "Ingresá un número válido." };
+  }
+  return amount < 0
+    ? { [`${id}.${index}.monto`]: "El monto no puede ser negativo." }
+    : {};
+}
+
+function validateRepeatedConcept(
+  item: ExtraIncome,
+  id: string,
+  index: number,
+): ValidationErrors {
+  const amount = numericAnswer(item.monto);
+  if (typeof amount !== "number" || amount <= 0) return {};
+  return typeof item.concepto === "string" && item.concepto.trim() !== ""
+    ? {}
+    : { [`${id}.${index}.concepto`]: "Ingresá el concepto." };
+}
+
+function validateRepeatedExpense(
+  item: ExtraIncome,
+  id: string,
+  index: number,
+): ValidationErrors {
+  return {
+    ...validateRepeatedAmount(item.monto, id, index),
+    ...validateRepeatedConcept(item, id, index),
+  };
+}
+
+function validateBasicStep(stepId: string, answers: OnboardingAnswers): ValidationErrors {
+  if (stepId === "p1" && !answers.p1_pesa) {
+    return { p1_pesa: "Elegí una opción para continuar." };
+  }
+  if (stepId === "p4" && !isSupplied(answers.ing_total)) {
+    return { ing_total: "Este campo es requerido." };
+  }
+  return {};
+}
+
+function validateFixedExpenses(answers: OnboardingAnswers): ValidationErrors {
+  const errors: ValidationErrors = {};
+  const mode = inferFixedExpenseMode(answers);
+  if (mode === "Tengo el total en la cabeza") {
+    const amount = numericAnswer(answers.fijo_total_directo);
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+      errors.fijo_total_directo = "Ingresá un total aproximado mayor a cero.";
+    }
+  }
+  if (mode === "Quiero desglosar") {
+    const detailKeys = [
+      "fijo_alquiler", "fijo_colegio", "fijo_prepaga", "fijo_prestamos",
+      "fijo_servicios", "fijo_seguros", "fijo_ayuda", ...legacyFixedOtherAmountIds,
+    ];
+    if (!detailKeys.some((key) => hasPositiveAmount(answers, key)) && !hasPositiveOther(answers)) {
+      errors.fijo_alquiler = "Ingresá al menos un gasto fijo.";
+    }
+    Object.assign(errors, validateRepeatedExpenses(answers, "fijo_otros"));
+  }
+  return errors;
+}
+
+type ExpenseGroupValidation = {
+  mode: string;
+  directTotalId: string;
+  detailIds: readonly string[];
+  repeatedId: string;
+  emptyDetailId: string;
+  emptyDetailMessage: string;
+};
+
+function validateExpenseGroup(
+  answers: OnboardingAnswers,
+  config: ExpenseGroupValidation,
+): ValidationErrors {
+  const errors: ValidationErrors = {};
+  const mode = answers[config.mode];
+  if (mode === "Tengo el total en la cabeza" && !hasPositiveAmount(answers, config.directTotalId)) {
+    errors[config.directTotalId] = "Ingresá un total aproximado mayor a cero.";
+  }
+  if (
+    mode === "Quiero desglosar" &&
+    !config.detailIds.some((id) => hasPositiveAmount(answers, id)) &&
+    !hasPositiveRepeatedItem(answers, config.repeatedId)
+  ) {
+    errors[config.emptyDetailId] = config.emptyDetailMessage;
+  }
+  if (mode === "Quiero desglosar") {
+    Object.assign(errors, validateRepeatedExpenses(answers, config.repeatedId));
+  }
+  return errors;
+}
+
+function validatePurchases(answers: OnboardingAnswers): ValidationErrors {
+  if (answers.p14_tiene_compras !== "Sí") return {};
+  const items = repeatedItems(answers, "compras_necesarias");
+  if (items.length === 0) {
+    return { compras_necesarias: 'Agregá una compra o elegí "No".' };
+  }
+
+  const errors = validateRepeatedExpenses(answers, "compras_necesarias");
+  items.forEach((item, index) => {
+    if (typeof item.concepto !== "string" || item.concepto.trim() === "") {
+      errors[`compras_necesarias.${index}.concepto`] = "Este campo es requerido.";
+    }
+    if (!isSupplied(item.monto)) {
+      errors[`compras_necesarias.${index}.monto`] = "Este campo es requerido.";
+    }
+    if (typeof item.fecha !== "string" || item.fecha.trim() === "") {
+      errors[`compras_necesarias.${index}.fecha`] = "Este campo es requerido.";
+    }
+  });
+  return errors;
+}
+
+function validateExtraIncomeItem(rawItem: unknown, index: number): ValidationErrors {
+  const item = typeof rawItem === "object" && rawItem !== null
+    ? rawItem as Partial<ExtraIncome>
+    : {};
+  const requiredErrors = Object.fromEntries(
+    (["concepto", "desde"] as const)
+      .filter((field) => typeof item[field] !== "string" || item[field]!.trim() === "")
+      .map((field) => [`ingresos_extra.${index}.${field}`, "Este campo es requerido."]),
+  );
+  const errors: ValidationErrors = {};
+  Object.assign(errors, requiredErrors);
+  if (!isSupplied(item.monto)) {
+    errors[`ingresos_extra.${index}.monto`] = "Este campo es requerido.";
+  }
+  Object.assign(errors, validateRepeatedAmount(item.monto, "ingresos_extra", index));
+  const startMonth = monthOrder(item.desde);
+  const endMonth = monthOrder(item.hasta);
+  if (startMonth !== undefined && endMonth !== undefined && endMonth < startMonth) {
+    errors[`ingresos_extra.${index}.hasta`] = "Elegí un mes igual o posterior al de inicio.";
+  }
+  return errors;
+}
+
+function validateExtraIncome(answers: OnboardingAnswers): ValidationErrors {
+  if (answers.extra_tiene !== "Sí") return {};
+  const rawItems = answers.ingresos_extra;
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    return { ingresos_extra: 'Agregá un ingreso extra o elegí "No".' };
+  }
+  return Object.assign(
+    {},
+    ...rawItems.map((rawItem, index) => validateExtraIncomeItem(rawItem, index)),
+  );
+}
+
+function validateCardStatement(
+  stepId: string,
+  answers: OnboardingAnswers,
+): ValidationErrors {
+  const prefix = stepId.split("_")[0];
+  const mode = answers[`${prefix}_cuotas_modo`];
+  if (!mode) return { [`${prefix}_cuotas_modo`]: "Elegí una opción para continuar." };
+  const uploadUrl = answers[`${prefix}_upload_url`];
+  if (mode === "Subir foto o archivo" &&
+    (typeof uploadUrl !== "string" || uploadUrl.trim() === "")) {
+    return { [`${prefix}_upload_url`]: "Subí el resumen para continuar." };
+  }
+  if (mode !== "Copiar el renglón mes a mes") return {};
+
+  const errors: ValidationErrors = {};
+  if (typeof numericAnswer(answers[`${prefix}_resumen_ars`]) !== "number") {
+    errors[`${prefix}_resumen_ars`] = "Ingresá el monto de la tarjeta.";
+  }
+  const hasMonth = [1, 2, 3, 4, 5, 6].some(
+    (month) => typeof numericAnswer(answers[`${prefix}_cuotas_m${month}`]) === "number",
+  );
+  if (!hasMonth) errors[`${prefix}_cuotas_m1`] = "Completá al menos una cuota mensual.";
+  return errors;
+}
+
+function validateContact(answers: OnboardingAnswers): ValidationErrors {
+  const errors: ValidationErrors = {};
+  const email = answers.email;
+  if (answers.contacto_canal === "Email" && typeof email === "string" && email.trim() && !/.+@.+\..+/.test(email)) {
+    errors.email = "El formato del email no es válido.";
+  }
+  const phone = answers.whatsapp;
+  if (answers.contacto_canal === "WhatsApp" && typeof phone === "string" && phone.trim() && !/^(?=.*\d)[0-9+\s\-()]{6,}$/.test(phone)) {
+    errors.whatsapp = "El formato del teléfono no es válido.";
+  }
+  return errors;
+}
+
+function validateCardCount(answers: OnboardingAnswers): ValidationErrors {
+  const count = numericAnswer(answers.p15_tarjetas);
+  return typeof count === "number" && Number.isInteger(count) && count >= 0 && count <= 5
+    ? {}
+    : { p15_tarjetas: "Ingresá un número entero entre 0 y 5." };
+}
+
+type StepValidator = (answers: OnboardingAnswers) => ValidationErrors;
+
+const specificStepValidators: Record<string, StepValidator> = {
+  p1: (answers) => validateBasicStep("p1", answers),
+  p4: (answers) => validateBasicStep("p4", answers),
+  p9: validateFixedExpenses,
+  p11: (answers) => validateExpenseGroup(answers, {
+    mode: "p11_modo", directTotalId: "var_total_directo",
+    detailIds: ["var_comida", "var_transporte", "var_farmacia"],
+    repeatedId: "var_otros", emptyDetailId: "var_comida",
+    emptyDetailMessage: "Completá al menos un gasto de vida diaria.",
+  }),
+  p12: (answers) => validateExpenseGroup(answers, {
+    mode: "p12_modo", directTotalId: "d_total_directo",
+    detailIds: ["d_salidas", "d_ropa", "d_delivery", "d_susc", "d_hobbies"],
+    repeatedId: "d_otros", emptyDetailId: "d_salidas",
+    emptyDetailMessage: "Completá al menos un gasto de gustitos.",
+  }),
+  p14: validatePurchases,
+  p7: validateExtraIncome,
+  p15: validateCardCount,
+  p23: validateContact,
+};
+
+function validateStepSpecific(step: OnboardingStep, answers: OnboardingAnswers): ValidationErrors {
+  const validator = specificStepValidators[step.id];
+  if (validator) return validator(answers);
+  return step.id.endsWith("_p16") ? validateCardStatement(step.id, answers) : {};
+}
+
+export function validateStep(
+  stepOrIndex: OnboardingStep | number | undefined,
+  answers: OnboardingAnswers,
+): ValidationErrors {
+  const step = resolveStep(stepOrIndex);
+  if (!step) return {};
+  const normalizedAnswers = withInferredFixedExpenseMode(answers);
+  return {
+    ...validateVisibleFields(step, normalizedAnswers),
+    ...validateStepSpecific(step, normalizedAnswers),
+  };
 }
 
 export function getFirstIncompleteStep(answers: OnboardingAnswers): number {

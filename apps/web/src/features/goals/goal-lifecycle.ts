@@ -8,18 +8,33 @@ import { PLANNING_ARS_PER_USD } from '../financial/financial'
 import {
   type GoalProjection,
   type GoalStatus,
+  type GoalWorkspaceItem,
+  type GoalsWorkspace,
   type GoalsWorkspaceSource,
   buildGoalsWorkspace,
   buildCurrentGoalsPlanWorkspace,
 } from './goals'
 import {
   type GoalCreationAllocation,
-  type GoalCreationAllocationEntry,
   type GoalCreationImpact,
-  calculatePercentageSum,
+  getNextCalendarMonthStr,
   rebalanceAllocationEntries,
-  recalculateAllocationAmounts,
+  selectGoalPlanSnapshot,
 } from './goal-creation'
+import {
+  addGoalAllocationAmounts,
+  buildGoalAllocationEntries,
+  calculatePercentageSum,
+} from './goal-proposal-allocation'
+import { buildGoalProposalSource } from './goal-proposal-source'
+import { findGoalInWorkspace, getAllocatedMonthlyAmounts } from './goal-proposal-workspace'
+import {
+  serializeGoalFinancialSources,
+  serializeGoalProfile,
+  serializeGoalSourceCollections,
+  serializeAllocationEntries,
+} from './goal-proposal-serialization'
+import type { GoalCreationAllocationEntry } from './goal-proposal-allocation'
 import type { GoalLifecycle } from './goal-lifecycle.schema'
 
 export interface GoalLifecycleState {
@@ -32,6 +47,7 @@ export interface GoalLifecycleContext {
   goalId: string
   lifecycle: GoalLifecycle
   goalName: string
+  goalCurrency: CurrencyCode
   currentMonth: string
   plannedMonthlyContribution?: Money
   activeGoals: Array<{
@@ -123,478 +139,460 @@ export function selectGoalLifecycleAllocation(
   }
 }
 
-function getNextCalendarMonthStr(currentMonth: string): string {
-  const [year, month] = currentMonth.slice(0, 7).split('-').map(Number)
-  const totalMonths = year * 12 + (month - 1) + 1
-  const targetYear = Math.floor(totalMonths / 12)
-  const targetMonth = (totalMonths % 12) + 1
-  return `${targetYear}-${String(targetMonth).padStart(2, '0')}`
+type LifecycleGoal = GoalsWorkspaceSource['goals'][number]
+type LifecycleAllocationDraft = NonNullable<
+  NonNullable<BuildGoalLifecycleProposalInput['draft']>['allocations']
+>
+
+function validateLifecycleTarget(
+  lifecycle: GoalLifecycle,
+  goalId: string,
+  goals: LifecycleGoal[],
+): LifecycleGoal {
+  const targetGoal = goals.find((goal) => goal.id === goalId)
+  if (!targetGoal) throw new Error('Goal not found.')
+  if (lifecycle === 'pause' && targetGoal.status !== 'active') {
+    throw new Error('Only active goals can be paused.')
+  }
+  if (lifecycle === 'resume' && targetGoal.status !== 'paused') {
+    throw new Error('Only paused goals can be resumed.')
+  }
+  return targetGoal
+}
+
+function buildLifecycleAllocationEntries(
+  sourceAllocs: GoalsWorkspaceSource['allocations'],
+  activeGoals: LifecycleGoal[],
+): GoalCreationAllocationEntry[] {
+  return buildGoalAllocationEntries({ sourceAllocs, activeGoals })
+}
+
+function buildLifecycleBaseEntries(
+  sourceAllocs: GoalsWorkspaceSource['allocations'],
+  activeGoals: LifecycleGoal[],
+): GoalCreationAllocationEntry[] {
+  if (sourceAllocs.length > 0) return buildLifecycleAllocationEntries(sourceAllocs, activeGoals)
+  return activeGoals.map((goal) => ({
+    goalId: goal.id,
+    goalName: goal.name,
+    percentage: activeGoals.length === 1 ? '100.00' : '0.00',
+    pending: false,
+  }))
+}
+
+function hasExactLifecycleDraft(
+  draftEntries: LifecycleAllocationDraft,
+  goals: LifecycleGoal[],
+): boolean {
+  const expectedIds = new Set(goals.map((goal) => goal.id))
+  const submittedIds = new Set(draftEntries.map((entry) => entry.goalId))
+  return (
+    submittedIds.size === expectedIds.size &&
+    draftEntries.length === goals.length &&
+    [...expectedIds].every((id) => submittedIds.has(id))
+  )
+}
+
+function buildPauseDraftEntries(input: {
+  targetGoal: LifecycleGoal
+  proposedActiveGoals: LifecycleGoal[]
+  draftEntries: LifecycleAllocationDraft
+}): GoalCreationAllocationEntry[] {
+  const { targetGoal, proposedActiveGoals, draftEntries } = input
+  const submittedIds = new Set(draftEntries.map((entry) => entry.goalId))
+  const targetEntry = draftEntries.find((entry) => entry.goalId === targetGoal.id)
+  const includesTargetAtZero = submittedIds.has(targetGoal.id) &&
+    new BigNumber((targetEntry?.percentage ?? '0').replace(',', '.')).isZero()
+  const effectiveSubmittedIds = new Set(
+    draftEntries.map((entry) => entry.goalId).filter((id) => id !== targetGoal.id),
+  )
+  const remainingIds = new Set(proposedActiveGoals.map((goal) => goal.id))
+  const isMatch =
+    effectiveSubmittedIds.size === remainingIds.size &&
+    [...remainingIds].every((id) => effectiveSubmittedIds.has(id)) &&
+    (draftEntries.length === proposedActiveGoals.length ||
+      (includesTargetAtZero && draftEntries.length === proposedActiveGoals.length + 1))
+  if (!isMatch) throw new Error('Allocation draft must contain exactly the active goals')
+
+  return [
+    { goalId: targetGoal.id, goalName: targetGoal.name, percentage: '0.00', pending: false },
+    ...proposedActiveGoals.map((goal) => ({
+      goalId: goal.id,
+      goalName: goal.name,
+      percentage: new BigNumber(
+        (draftEntries.find((entry) => entry.goalId === goal.id)?.percentage || '0').replace(',', '.'),
+      ).toFixed(2),
+      pending: false,
+    })),
+  ]
+}
+
+function buildPauseEntries(input: {
+  targetGoal: LifecycleGoal
+  existingActiveGoals: LifecycleGoal[]
+  proposedActiveGoals: LifecycleGoal[]
+  sourceAllocs: GoalsWorkspaceSource['allocations']
+  draft: BuildGoalLifecycleProposalInput['draft']
+  pauseMonthlyCommitment: boolean
+}): GoalCreationAllocationEntry[] {
+  const {
+    targetGoal,
+    existingActiveGoals,
+    proposedActiveGoals,
+    sourceAllocs,
+    draft,
+    pauseMonthlyCommitment,
+  } = input
+  if (pauseMonthlyCommitment) {
+    return [{ goalId: targetGoal.id, goalName: targetGoal.name, percentage: '0.00', pending: false }]
+  }
+
+  const baseEntries = buildLifecycleBaseEntries(sourceAllocs, existingActiveGoals)
+  if (draft?.allocations && draft.allocations.length > 0) {
+    const entries = buildPauseDraftEntries({ targetGoal, proposedActiveGoals, draftEntries: draft.allocations })
+    const activeTotal = calculatePercentageSum(entries.filter((entry) => entry.goalId !== targetGoal.id))
+    if (!activeTotal.isEqualTo(100)) {
+      throw new Error(`Allocation percentages must sum to 100%, got ${activeTotal.toFixed(2)}%`)
+    }
+    return entries
+  }
+
+  const rebalanced = rebalanceAllocationEntries(baseEntries, targetGoal.id, '0.00')
+  const targetEntry = rebalanced.find((entry) => entry.goalId === targetGoal.id) ?? {
+    goalId: targetGoal.id,
+    goalName: targetGoal.name,
+    percentage: '0.00',
+    pending: false,
+  }
+  const otherEntries = rebalanced.filter((entry) => entry.goalId !== targetGoal.id)
+  const activeTotal = calculatePercentageSum(otherEntries)
+  if (!activeTotal.isEqualTo(100)) {
+    throw new Error(`Allocation percentages must sum to 100%, got ${activeTotal.toFixed(2)}%`)
+  }
+  return [targetEntry, ...otherEntries]
+}
+
+function buildResumeEntries(input: {
+  targetGoal: LifecycleGoal
+  existingActiveGoals: LifecycleGoal[]
+  proposedActiveGoals: LifecycleGoal[]
+  sourceAllocs: GoalsWorkspaceSource['allocations']
+  draft: BuildGoalLifecycleProposalInput['draft']
+}): GoalCreationAllocationEntry[] {
+  const { targetGoal, existingActiveGoals, proposedActiveGoals, sourceAllocs, draft } = input
+  const baseEntries = buildLifecycleBaseEntries(sourceAllocs, existingActiveGoals)
+  if (draft?.allocations) {
+    if (!hasExactLifecycleDraft(draft.allocations, proposedActiveGoals)) {
+      throw new Error('Allocation draft must contain exactly the active goals')
+    }
+    const entries = [targetGoal, ...existingActiveGoals].map((goal) => ({
+      goalId: goal.id,
+      goalName: goal.name,
+      percentage: new BigNumber(
+        (draft.allocations!.find((entry) => entry.goalId === goal.id)?.percentage || '0').replace(',', '.'),
+      ).toFixed(2),
+      pending: false,
+    }))
+    const total = calculatePercentageSum(entries)
+    if (!total.isEqualTo(100)) {
+      throw new Error(`Allocation percentages must sum to 100%, got ${total.toFixed(2)}%`)
+    }
+    return entries
+  }
+
+  const entries = [
+    {
+      goalId: targetGoal.id,
+      goalName: targetGoal.name,
+      percentage: existingActiveGoals.length === 0 ? '100.00' : '0.00',
+      pending: false,
+    },
+    ...baseEntries,
+  ]
+  const total = calculatePercentageSum(entries)
+  if (!total.isEqualTo(100)) {
+    throw new Error(`Allocation percentages must sum to 100%, got ${total.toFixed(2)}%`)
+  }
+  return entries
+}
+
+function getLifecycleMonthlyContribution(
+  state: GoalLifecycleState,
+  pauseMonthlyCommitment: boolean,
+): Money | undefined {
+  const contribution = state.source.profile?.plannedMonthlyContribution
+  if (pauseMonthlyCommitment || contribution === null || contribution === undefined) return undefined
+  return createMoney(contribution, state.source.profile?.baseCurrency ?? 'ARS')
+}
+
+function addLifecycleAllocationAmounts(input: {
+  entries: GoalCreationAllocationEntry[]
+  monthlyContribution: Money | undefined
+  allGoals: LifecycleGoal[]
+}): GoalCreationAllocationEntry[] {
+  return addGoalAllocationAmounts({
+    entries: input.entries,
+    monthlyContribution: input.monthlyContribution,
+    currencies: new Map(input.allGoals.map((goal) => [goal.id, goal.currency])),
+  })
+}
+
+function buildLifecycleProposedSource(input: {
+  state: GoalLifecycleState
+  goalId: string
+  allGoals: LifecycleGoal[]
+  nextMonthStr: string
+  nextMonthEffective: string
+  persistedEntries: Array<{ goalId: string; percentage: string }>
+  pauseMonthlyCommitment: boolean
+  nextStatus: GoalStatus
+}): GoalsWorkspaceSource {
+  const snapshotId = input.state.pendingSnapshots.find(
+    (snapshot) => snapshot.effectiveMonth === input.nextMonthEffective,
+  )?.id ?? `snap-allocation-${input.nextMonthStr}`
+  return buildGoalProposalSource({
+    source: input.state.source,
+    pendingSnapshot: input.state.pendingSnapshots.find(
+      (snapshot) => snapshot.effectiveMonth === input.nextMonthEffective,
+    ),
+    snapshotId,
+    effectiveMonth: input.nextMonthEffective,
+    entries: input.persistedEntries,
+    goals: input.allGoals.map((goal) =>
+      goal.id === input.goalId ? { ...goal, status: input.nextStatus } : goal,
+    ),
+    investmentPositions: input.state.source.investmentPositions,
+    profile: input.state.source.profile
+      ? {
+          ...input.state.source.profile,
+          plannedMonthlyContribution: input.pauseMonthlyCommitment
+            ? null
+            : input.state.source.profile.plannedMonthlyContribution,
+        }
+      : null,
+  })
+}
+
+function getLifecycleProjection(goal: GoalWorkspaceItem | undefined): GoalProjection {
+  return goal?.projection ?? { status: 'target_unavailable' }
+}
+
+function getLifecycleEntryAmount(
+  entries: GoalCreationAllocationEntry[],
+  goalId: string,
+): Money | undefined {
+  return entries.find((entry) => entry.goalId === goalId)?.allocatedDestinationAmount
+}
+
+function lifecycleAmountsChanged(before: Money | undefined, after: Money | undefined): boolean {
+  return before?.amount !== after?.amount || before?.currency !== after?.currency
+}
+
+function buildLifecycleTargetImpact(input: {
+  targetGoal: LifecycleGoal
+  beforeWorkspace: GoalsWorkspace
+  afterWorkspace: GoalsWorkspace
+  selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+}): GoalCreationImpact {
+  const { targetGoal, beforeWorkspace, afterWorkspace, selectedSnapshot } = input
+  const beforeGoal = findGoalInWorkspace(beforeWorkspace, targetGoal.id)
+  const afterGoal = findGoalInWorkspace(afterWorkspace, targetGoal.id)
+  return {
+    goalId: targetGoal.id,
+    goalName: targetGoal.name,
+    before: {
+      status: 'existing',
+      projection: beforeGoal?.projection ?? { status: 'target_unavailable' },
+      allocatedMonthlyAmounts: getAllocatedMonthlyAmounts(beforeGoal, selectedSnapshot),
+    },
+    after: afterGoal?.projection ?? { status: 'target_unavailable' },
+  }
+}
+
+function buildLifecycleOtherImpact(input: {
+  goal: LifecycleGoal
+  beforeWorkspace: GoalsWorkspace
+  afterWorkspace: GoalsWorkspace
+  selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+  displayEntries: GoalCreationAllocationEntry[]
+}): GoalCreationImpact | undefined {
+  const { goal, beforeWorkspace, afterWorkspace, selectedSnapshot, displayEntries } = input
+  const beforeGoal = findGoalInWorkspace(beforeWorkspace, goal.id)
+  const afterGoal = findGoalInWorkspace(afterWorkspace, goal.id)
+  const beforeProjection = getLifecycleProjection(beforeGoal)
+  const afterProjection = getLifecycleProjection(afterGoal)
+  const beforeAmounts = getAllocatedMonthlyAmounts(beforeGoal, selectedSnapshot)
+  const beforeAmount = beforeAmounts[0]
+  const afterAmount = getLifecycleEntryAmount(displayEntries, goal.id)
+  const amountsChanged = lifecycleAmountsChanged(beforeAmount, afterAmount)
+  if (!amountsChanged && JSON.stringify(beforeProjection) === JSON.stringify(afterProjection)) {
+    return undefined
+  }
+  return {
+    goalId: goal.id,
+    goalName: goal.name,
+    before: {
+      status: 'existing',
+      projection: beforeProjection,
+      allocatedMonthlyAmounts: beforeAmounts,
+    },
+    after: afterProjection,
+  }
+}
+
+function buildLifecycleImpacts(input: {
+  allGoals: LifecycleGoal[]
+  targetGoal: LifecycleGoal
+  beforeWorkspace: GoalsWorkspace
+  afterWorkspace: GoalsWorkspace
+  selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+  displayEntries: GoalCreationAllocationEntry[]
+}): GoalCreationImpact[] {
+  const { allGoals, targetGoal, beforeWorkspace, afterWorkspace, selectedSnapshot, displayEntries } = input
+  const impacts: GoalCreationImpact[] = [
+    buildLifecycleTargetImpact({ targetGoal, beforeWorkspace, afterWorkspace, selectedSnapshot }),
+  ]
+  for (const goal of allGoals) {
+    if (goal.id === targetGoal.id) continue
+    const impact = buildLifecycleOtherImpact({
+      goal,
+      beforeWorkspace,
+      afterWorkspace,
+      selectedSnapshot,
+      displayEntries,
+    })
+    if (impact) impacts.push(impact)
+  }
+  return impacts
+}
+
+function buildLifecycleSetup(input: BuildGoalLifecycleProposalInput) {
+  const allGoals = input.state.source.goals
+  const targetGoal = validateLifecycleTarget(input.lifecycle, input.goalId, allGoals)
+  const nextStatus: GoalStatus = input.lifecycle === 'pause' ? 'paused' : 'active'
+  const nextMonthStr = getNextCalendarMonthStr(input.currentMonth)
+  const nextMonthEffective = `${nextMonthStr}-01`
+  const existingActiveGoals = allGoals.filter((goal) => goal.status === 'active')
+  const proposedActiveGoals = input.lifecycle === 'pause'
+    ? existingActiveGoals.filter((goal) => goal.id !== input.goalId)
+    : [targetGoal, ...existingActiveGoals]
+  const pauseMonthlyCommitment = input.lifecycle === 'pause' && proposedActiveGoals.length === 0
+  const plan = selectGoalPlanSnapshot(
+    input.state.source,
+    input.state.pendingSnapshots,
+    input.state.pendingAllocations,
+    input.currentMonth,
+  )
+  return {
+    ...input,
+    allGoals,
+    targetGoal,
+    nextStatus,
+    nextMonthStr,
+    nextMonthEffective,
+    existingActiveGoals,
+    proposedActiveGoals,
+    pauseMonthlyCommitment,
+    selectedSnapshot: plan.snapshot,
+    sourceAllocs: plan.allocations,
+  }
+}
+
+function buildLifecycleAllocation(input: ReturnType<typeof buildLifecycleSetup>) {
+  const displayEntries = input.lifecycle === 'pause'
+    ? buildPauseEntries({
+        targetGoal: input.targetGoal,
+        existingActiveGoals: input.existingActiveGoals,
+        proposedActiveGoals: input.proposedActiveGoals,
+        sourceAllocs: input.sourceAllocs,
+        draft: input.draft,
+        pauseMonthlyCommitment: input.pauseMonthlyCommitment,
+      })
+    : buildResumeEntries({
+        targetGoal: input.targetGoal,
+        existingActiveGoals: input.existingActiveGoals,
+        proposedActiveGoals: input.proposedActiveGoals,
+        sourceAllocs: input.sourceAllocs,
+        draft: input.draft,
+      })
+  const persistedEntries = displayEntries
+    .filter((entry) => input.lifecycle !== 'pause' || entry.goalId !== input.targetGoal.id)
+    .map((entry) => ({ goalId: entry.goalId, percentage: entry.percentage }))
+  const monthlyContribution = getLifecycleMonthlyContribution(
+    input.state,
+    input.pauseMonthlyCommitment,
+  )
+  const entries = addLifecycleAllocationAmounts({
+    entries: displayEntries,
+    monthlyContribution,
+    allGoals: input.allGoals,
+  })
+  const totalPercentage = input.pauseMonthlyCommitment
+    ? '0.00'
+    : calculatePercentageSum(
+        input.lifecycle === 'pause'
+          ? entries.filter((entry) => entry.goalId !== input.targetGoal.id)
+          : entries,
+      ).toFixed(2)
+  return {
+    displayEntries: entries,
+    persistedEntries,
+    persistedAllocation: { effectiveMonth: input.nextMonthEffective, entries: persistedEntries },
+    allocation: {
+      monthlyContribution,
+      effectiveMonth: input.nextMonthEffective,
+      entries,
+      totalPercentage,
+    } satisfies GoalCreationAllocation,
+  }
+}
+
+function buildLifecycleWorkspaces(
+  input: ReturnType<typeof buildLifecycleSetup>,
+  allocation: ReturnType<typeof buildLifecycleAllocation>,
+) {
+  const beforeWorkspace = buildCurrentGoalsPlanWorkspace(input.state, input.currentMonth)
+  const proposedSource = buildLifecycleProposedSource({
+    state: input.state,
+    goalId: input.goalId,
+    allGoals: input.allGoals,
+    nextMonthStr: input.nextMonthStr,
+    nextMonthEffective: input.nextMonthEffective,
+    persistedEntries: allocation.persistedEntries,
+    pauseMonthlyCommitment: input.pauseMonthlyCommitment,
+    nextStatus: input.nextStatus,
+  })
+  const afterWorkspace = buildGoalsWorkspace(proposedSource, input.currentMonth)
+  const impacts = buildLifecycleImpacts({
+    allGoals: input.allGoals,
+    targetGoal: input.targetGoal,
+    beforeWorkspace,
+    afterWorkspace,
+    selectedSnapshot: input.selectedSnapshot,
+    displayEntries: allocation.displayEntries,
+  })
+  return { proposedSource, impacts }
 }
 
 export function buildGoalLifecycleProposal(
   input: BuildGoalLifecycleProposalInput,
 ): GoalLifecycleProposal {
-  const { lifecycle, goalId, state, currentMonth, draft } = input
-
-  const allGoals = state.source.goals ?? []
-  const targetGoal = allGoals.find((g) => g.id === goalId)
-
-  if (!targetGoal) {
-    throw new Error('Goal not found.')
-  }
-
-  if (lifecycle === 'pause' && targetGoal.status !== 'active') {
-    throw new Error('Only active goals can be paused.')
-  }
-
-  if (lifecycle === 'resume' && targetGoal.status !== 'paused') {
-    throw new Error('Only paused goals can be resumed.')
-  }
-
-  const nextStatus: GoalStatus = lifecycle === 'pause' ? 'paused' : 'active'
-  const nextMonthStr = getNextCalendarMonthStr(currentMonth)
-  const nextMonthEffective = `${nextMonthStr}-01`
-
-  const existingActiveGoals = allGoals.filter((g) => g.status === 'active')
-  const proposedActiveGoals =
-    lifecycle === 'pause'
-      ? existingActiveGoals.filter((g) => g.id !== goalId)
-      : [targetGoal, ...existingActiveGoals]
-
-  const pauseMonthlyCommitment = lifecycle === 'pause' && proposedActiveGoals.length === 0
-
-  // 1. Snapshot selection (prefer pending next snapshot, then source next snapshot, then latest current/past snapshot)
-  const pendingNextSnapshot = state.pendingSnapshots?.find(
-    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
-  )
-  const sourceNextSnapshot = state.source.snapshots?.find(
-    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
-  )
-  const currentSnapshot = state.source.snapshots
-    ?.filter((s) => s.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
-    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
-
-  const selectedSnapshot = pendingNextSnapshot ?? sourceNextSnapshot ?? currentSnapshot
-
-  const sourceAllocs = selectedSnapshot
-    ? (pendingNextSnapshot ? state.pendingAllocations : state.source.allocations)?.filter(
-        (a) => a.snapshotId === selectedSnapshot.id,
-      ) ?? []
-    : []
-
-  // 2. Build entries
-  let displayEntries: GoalCreationAllocationEntry[] = []
-
-  if (lifecycle === 'pause') {
-    if (pauseMonthlyCommitment) {
-      displayEntries = [
-        {
-          goalId: targetGoal.id,
-          goalName: targetGoal.name,
-          percentage: '0.00',
-          pending: false,
-        },
-      ]
-    } else {
-      // Build initial entries for existing active goals
-      let baseEntries: GoalCreationAllocationEntry[] = []
-      if (sourceAllocs.length > 0) {
-        const activeAllocGoalIds = new Set(
-          sourceAllocs.map((a) => a.goalId).filter((id) => existingActiveGoals.some((g) => g.id === id)),
-        )
-
-        for (const a of sourceAllocs) {
-          const existingGoal = existingActiveGoals.find((g) => g.id === a.goalId)
-          if (existingGoal) {
-            baseEntries.push({
-              goalId: a.goalId,
-              goalName: existingGoal.name,
-              percentage: new BigNumber(a.percentage).toFixed(2),
-              pending: false,
-            })
-          }
-        }
-
-        for (const g of existingActiveGoals) {
-          if (!activeAllocGoalIds.has(g.id)) {
-            baseEntries.push({
-              goalId: g.id,
-              goalName: g.name,
-              percentage: '0.00',
-              pending: false,
-            })
-          }
-        }
-      } else {
-        baseEntries = existingActiveGoals.map((g) => ({
-          goalId: g.id,
-          goalName: g.name,
-          percentage: '0.00',
-          pending: false,
-        }))
-      }
-
-      if (draft !== undefined && draft.allocations !== undefined && draft.allocations.length > 0) {
-        const remainingGoalIds = new Set(proposedActiveGoals.map((g) => g.id))
-        const submittedIds = new Set(draft.allocations.map((e) => e.goalId))
-
-        const includesTargetAtZero =
-          submittedIds.has(targetGoal.id) &&
-          new BigNumber((draft.allocations.find((e) => e.goalId === targetGoal.id)?.percentage ?? '0').replace(',', '.')).isZero()
-
-        const effectiveSubmittedIds = new Set(
-          draft.allocations.map((e) => e.goalId).filter((id) => id !== targetGoal.id),
-        )
-
-        const isMatch =
-          effectiveSubmittedIds.size === remainingGoalIds.size &&
-          [...remainingGoalIds].every((id) => effectiveSubmittedIds.has(id)) &&
-          (draft.allocations.length === proposedActiveGoals.length ||
-            (includesTargetAtZero && draft.allocations.length === proposedActiveGoals.length + 1))
-
-        if (!isMatch) {
-          throw new Error('Allocation draft must contain exactly the active goals')
-        }
-
-        const remainingEntries: GoalCreationAllocationEntry[] = proposedActiveGoals.map((g) => {
-          const subEntry = draft.allocations!.find((e) => e.goalId === g.id)
-          const parsedPct = new BigNumber((subEntry?.percentage || '0').replace(',', '.'))
-          return {
-            goalId: g.id,
-            goalName: g.name,
-            percentage: parsedPct.toFixed(2),
-            pending: false,
-          }
-        })
-
-        displayEntries = [
-          {
-            goalId: targetGoal.id,
-            goalName: targetGoal.name,
-            percentage: '0.00',
-            pending: false,
-          },
-          ...remainingEntries,
-        ]
-      } else {
-        const rebalanced = rebalanceAllocationEntries(baseEntries, targetGoal.id, '0.00')
-        const targetEntry = rebalanced.find((e) => e.goalId === targetGoal.id) ?? {
-          goalId: targetGoal.id,
-          goalName: targetGoal.name,
-          percentage: '0.00',
-          pending: false,
-        }
-        const otherEntries = rebalanced.filter((e) => e.goalId !== targetGoal.id)
-        displayEntries = [targetEntry, ...otherEntries]
-      }
-
-      const activeSum = calculatePercentageSum(displayEntries.filter((e) => e.goalId !== targetGoal.id))
-      if (!activeSum.isEqualTo(100)) {
-        throw new Error(`Allocation percentages must sum to 100%, got ${activeSum.toFixed(2)}%`)
-      }
-    }
-  } else {
-    // Resume lifecycle
-    let baseRemainingEntries: GoalCreationAllocationEntry[] = []
-    if (sourceAllocs.length > 0) {
-      const activeAllocGoalIds = new Set(
-        sourceAllocs.map((a) => a.goalId).filter((id) => existingActiveGoals.some((g) => g.id === id)),
-      )
-
-      for (const a of sourceAllocs) {
-        const existingGoal = existingActiveGoals.find((g) => g.id === a.goalId)
-        if (existingGoal) {
-          baseRemainingEntries.push({
-            goalId: a.goalId,
-            goalName: existingGoal.name,
-            percentage: new BigNumber(a.percentage).toFixed(2),
-            pending: false,
-          })
-        }
-      }
-
-      for (const g of existingActiveGoals) {
-        if (!activeAllocGoalIds.has(g.id)) {
-          baseRemainingEntries.push({
-            goalId: g.id,
-            goalName: g.name,
-            percentage: '0.00',
-            pending: false,
-          })
-        }
-      }
-    } else {
-      baseRemainingEntries = existingActiveGoals.map((g) => ({
-        goalId: g.id,
-        goalName: g.name,
-        percentage: existingActiveGoals.length === 1 ? '100.00' : '0.00',
-        pending: false,
-      }))
-    }
-
-    if (draft !== undefined && draft.allocations !== undefined) {
-      const proposedIds = new Set(proposedActiveGoals.map((g) => g.id))
-      const submittedIds = new Set(draft.allocations.map((e) => e.goalId))
-      const isExactMatch =
-        submittedIds.size === proposedIds.size &&
-        draft.allocations.length === proposedActiveGoals.length &&
-        [...proposedIds].every((id) => submittedIds.has(id))
-
-      if (!isExactMatch) {
-        throw new Error('Allocation draft must contain exactly the active goals')
-      }
-
-      displayEntries = [
-        targetGoal,
-        ...existingActiveGoals,
-      ].map((g) => {
-        const subEntry = draft.allocations!.find((e) => e.goalId === g.id)
-        const parsedPct = new BigNumber((subEntry?.percentage || '0').replace(',', '.'))
-        return {
-          goalId: g.id,
-          goalName: g.name,
-          percentage: parsedPct.toFixed(2),
-          pending: false,
-        }
-      })
-    } else {
-      const defaultTargetPct = existingActiveGoals.length === 0 ? '100.00' : '0.00'
-      displayEntries = [
-        {
-          goalId: targetGoal.id,
-          goalName: targetGoal.name,
-          percentage: defaultTargetPct,
-          pending: false,
-        },
-        ...baseRemainingEntries,
-      ]
-    }
-
-    const totalBn = calculatePercentageSum(displayEntries)
-    if (!totalBn.isEqualTo(100)) {
-      throw new Error(`Allocation percentages must sum to 100%, got ${totalBn.toFixed(2)}%`)
-    }
-  }
-
-  // 3. Persisted allocations
-  const persistedEntries =
-    lifecycle === 'pause'
-      ? displayEntries
-          .filter((e) => e.goalId !== targetGoal.id)
-          .map((e) => ({ goalId: e.goalId, percentage: e.percentage }))
-      : displayEntries.map((e) => ({ goalId: e.goalId, percentage: e.percentage }))
-
-  const persistedAllocation = {
-    effectiveMonth: nextMonthEffective,
-    entries: persistedEntries,
-  }
-
-  // 4. Monthly contribution & amount calculations
-  let monthlyContribution: Money | undefined
-  if (
-    !pauseMonthlyCommitment &&
-    state.source.profile?.plannedMonthlyContribution !== null &&
-    state.source.profile?.plannedMonthlyContribution !== undefined
-  ) {
-    const baseCurr = state.source.profile.baseCurrency ?? 'ARS'
-    monthlyContribution = createMoney(state.source.profile.plannedMonthlyContribution, baseCurr)
-  }
-
-  const entriesCurrencyMap = new Map<string, CurrencyCode>()
-  for (const g of allGoals) {
-    entriesCurrencyMap.set(g.id, g.currency)
-  }
-
-  if (monthlyContribution) {
-    const amountsMap = recalculateAllocationAmounts({
-      monthlyContribution,
-      entries: displayEntries.map((e) => ({
-        goalId: e.goalId,
-        percentage: e.percentage,
-        currency: entriesCurrencyMap.get(e.goalId) ?? 'ARS',
-      })),
-    })
-
-    displayEntries = displayEntries.map((entry) => {
-      const amounts = amountsMap.get(entry.goalId)
-      return {
-        ...entry,
-        allocatedBaseAmount: amounts?.allocatedBaseAmount,
-        allocatedDestinationAmount: amounts?.allocatedDestinationAmount,
-      }
-    })
-  }
-
-  const totalPercentage = pauseMonthlyCommitment
-    ? '0.00'
-    : calculatePercentageSum(
-        lifecycle === 'pause'
-          ? displayEntries.filter((e) => e.goalId !== targetGoal.id)
-          : displayEntries,
-      ).toFixed(2)
-
-  const allocation: GoalCreationAllocation = {
-    monthlyContribution,
-    effectiveMonth: nextMonthEffective,
-    entries: displayEntries,
-    totalPercentage,
-  }
-
-  // 5. Workspaces: Before & After
-  const beforeWorkspace = buildCurrentGoalsPlanWorkspace(state, currentMonth)
-
-  // Build proposed source
-  const proposedSnapshots = [...(state.source.snapshots ?? [])]
-  const proposedAllocations = [...(state.source.allocations ?? [])]
-
-  const snapshotId = pendingNextSnapshot?.id ?? `snap-allocation-${nextMonthStr}`
-
-  const newSnapshot = {
-    id: snapshotId,
-    userId: state.source.profile?.userId,
-    effectiveMonth: nextMonthEffective,
-  }
-
-  const existingSnapIndex = proposedSnapshots.findIndex(
-    (s) => s.effectiveMonth === nextMonthEffective,
-  )
-  if (existingSnapIndex >= 0) {
-    proposedSnapshots[existingSnapIndex] = newSnapshot
-  } else {
-    proposedSnapshots.push(newSnapshot)
-  }
-
-  const filteredAllocations = proposedAllocations.filter((a) => a.snapshotId !== snapshotId)
-  const newAllocRows = persistedEntries.map((entry) => ({
-    id: `alloc-${snapshotId}-${entry.goalId}`,
-    snapshotId,
-    goalId: entry.goalId,
-    percentage: entry.percentage,
-  }))
-
-  proposedAllocations.length = 0
-  proposedAllocations.push(...filteredAllocations, ...newAllocRows)
-
-  const proposedProfile = state.source.profile
-    ? {
-        ...state.source.profile,
-        plannedMonthlyContribution: pauseMonthlyCommitment
-          ? null
-          : state.source.profile.plannedMonthlyContribution,
-      }
-    : null
-
-  const proposedGoals = allGoals.map((g) => (g.id === goalId ? { ...g, status: nextStatus } : g))
-
-  const proposedSource: GoalsWorkspaceSource = {
-    profile: proposedProfile,
-    goals: proposedGoals,
-    savingsPositions: state.source.savingsPositions,
-    investmentPositions: state.source.investmentPositions,
-    snapshots: proposedSnapshots,
-    allocations: proposedAllocations,
-    incomes: state.source.incomes,
-    expenses: state.source.expenses,
-    contributions: state.source.contributions,
-    savingContributions: state.source.savingContributions,
-    completionWithdrawals: state.source.completionWithdrawals,
-  }
-
-  const afterWorkspace = buildGoalsWorkspace(proposedSource, currentMonth)
-
-  // 6. Impacts calculation (Transitioning goal must be first in impacts)
-  const beforeGoals = beforeWorkspace.groups.flatMap((g) => g.goals)
-  const afterGoals = afterWorkspace.groups.flatMap((g) => g.goals)
-
-  const impacts: GoalCreationImpact[] = []
-
-  const targetBeforeGoal = beforeGoals.find((g) => g.id === targetGoal.id)
-  const targetAfterGoal = afterGoals.find((g) => g.id === targetGoal.id)
-
-  const targetBeforeAllocatedAmounts: Money[] = []
-  const targetBeforeFundingRow = targetBeforeGoal?.funding?.find(
-    (f) => f.effectiveMonth === selectedSnapshot?.effectiveMonth,
-  ) ?? targetBeforeGoal?.funding?.[0]
-
-  if (targetBeforeFundingRow?.allocatedDestinationAmount) {
-    targetBeforeAllocatedAmounts.push(targetBeforeFundingRow.allocatedDestinationAmount)
-  }
-
-  impacts.push({
-    goalId: targetGoal.id,
-    goalName: targetGoal.name,
-    before: {
-      status: 'existing',
-      projection: targetBeforeGoal?.projection ?? { status: 'target_unavailable' },
-      allocatedMonthlyAmounts: targetBeforeAllocatedAmounts,
-    },
-    after: targetAfterGoal?.projection ?? { status: 'target_unavailable' },
-  })
-
-  for (const goal of allGoals) {
-    if (goal.id === targetGoal.id) continue
-
-    const beforeGoal = beforeGoals.find((g) => g.id === goal.id)
-    const afterGoal = afterGoals.find((g) => g.id === goal.id)
-
-    const beforeProjection: GoalProjection = beforeGoal?.projection ?? {
-      status: 'target_unavailable',
-    }
-    const afterProjection: GoalProjection = afterGoal?.projection ?? {
-      status: 'target_unavailable',
-    }
-
-    const beforeAllocatedAmounts: Money[] = []
-    let amountsChanged = false
-
-    const beforeFundingRow = beforeGoal?.funding?.find(
-      (f) => f.effectiveMonth === selectedSnapshot?.effectiveMonth,
-    ) ?? beforeGoal?.funding?.[0]
-
-    if (beforeFundingRow?.allocatedDestinationAmount) {
-      beforeAllocatedAmounts.push(beforeFundingRow.allocatedDestinationAmount)
-    }
-
-    const afterEntry = displayEntries.find((e) => e.goalId === goal.id)
-    const afterDestAmount = afterEntry?.allocatedDestinationAmount
-
-    if (
-      beforeFundingRow?.allocatedDestinationAmount?.amount !== afterDestAmount?.amount ||
-      beforeFundingRow?.allocatedDestinationAmount?.currency !== afterDestAmount?.currency
-    ) {
-      amountsChanged = true
-    }
-
-    const projectionChanged =
-      JSON.stringify(beforeProjection) !== JSON.stringify(afterProjection)
-
-    if (projectionChanged || amountsChanged) {
-      impacts.push({
-        goalId: goal.id,
-        goalName: goal.name,
-        before: {
-          status: 'existing',
-          projection: beforeProjection,
-          allocatedMonthlyAmounts: beforeAllocatedAmounts,
-        },
-        after: afterProjection,
-      })
-    }
-  }
-
+  const setup = buildLifecycleSetup(input)
+  const allocation = buildLifecycleAllocation(setup)
+  const workspaces = buildLifecycleWorkspaces(setup, allocation)
   return {
-    lifecycle,
-    goalId,
-    nextStatus,
+    lifecycle: input.lifecycle,
+    goalId: input.goalId,
+    nextStatus: setup.nextStatus,
     transition: {
-      goalId,
-      status: nextStatus,
+      goalId: input.goalId,
+      status: setup.nextStatus,
     },
-    pauseMonthlyCommitment,
-    allocation,
-    persistedAllocation,
-    impacts,
-    proposedSource,
+    pauseMonthlyCommitment: setup.pauseMonthlyCommitment,
+    allocation: allocation.allocation,
+    persistedAllocation: allocation.persistedAllocation,
+    impacts: workspaces.impacts,
+    proposedSource: workspaces.proposedSource,
   }
 }
 
@@ -626,117 +624,12 @@ export function serializeGoalLifecycleState(
     goalId,
     currentMonth,
     planningArsPerUsd: PLANNING_ARS_PER_USD,
-    profile: source.profile
-      ? {
-          userId: source.profile.userId,
-          baseCurrency: source.profile.baseCurrency,
-          expensesKnowledge: source.profile.expensesKnowledge,
-          plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
-          onboardingCompleted: source.profile.onboardingCompleted,
-        }
-      : null,
-    incomes: (source.incomes ?? [])
-      .map((income) => ({
-        id: income.id,
-        sourceKind: income.sourceKind,
-        sourceId: income.sourceId ?? null,
-        sourceName: income.sourceName ?? null,
-        concept: income.concept ?? null,
-        amount: income.amount,
-        currency: income.currency,
-        recurring: income.recurring,
-        effectiveMonth: income.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    expenses: (source.expenses ?? [])
-      .map((expense) => ({
-        id: expense.id,
-        sourceKind: expense.sourceKind,
-        sourceId: expense.sourceId ?? null,
-        sourceName: expense.sourceName ?? null,
-        concept: expense.concept ?? null,
-        amount: expense.amount,
-        currency: expense.currency,
-        recurring: expense.recurring,
-        effectiveMonth: expense.effectiveMonth,
-        endMonth: expense.endMonth ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    goals: (source.goals ?? [])
-      .map((g) => ({
-        id: g.id,
-        userId: g.userId ?? null,
-        name: g.name,
-        type: g.type,
-        targetAmount: g.targetAmount ?? null,
-        currency: g.currency,
-        priority: g.priority,
-        strategy: g.strategy,
-        status: g.status,
-        desiredDate: g.desiredDate ?? null,
-        completedAt: g.completedAt ?? null,
-        emergencyFundMonths: g.emergencyFundMonths ?? null,
-        createdAt: g.createdAt,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    savingsPositions: (source.savingsPositions ?? [])
-      .map((s) => ({
-        id: s.id,
-        goalId: s.goalId,
-        amount: s.amount,
-        currency: s.currency,
-        location: s.location ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    investmentPositions: (source.investmentPositions ?? [])
-      .map((i) => ({
-        id: i.id,
-        goalId: i.goalId,
-        currentValue: i.currentValue,
-        currency: i.currency,
-        annualReturnRate: i.annualReturnRate ?? null,
-        availability: i.availability ?? null,
-        availableFrom: i.availableFrom ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    snapshots: (source.snapshots ?? [])
-      .map((s) => ({
-        id: s.id,
-        userId: s.userId ?? null,
-        effectiveMonth: s.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    allocations: (source.allocations ?? [])
-      .map((a) => ({
-        id: a.id,
-        snapshotId: a.snapshotId,
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    pendingSnapshots: (pendingSnapshots ?? [])
-      .map((s) => ({
-        id: s.id,
-        userId: s.userId ?? null,
-        effectiveMonth: s.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    pendingAllocations: (pendingAllocations ?? [])
-      .map((a) => ({
-        id: a.id,
-        snapshotId: a.snapshotId,
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
+    profile: serializeGoalProfile(source.profile, true),
+    ...serializeGoalFinancialSources(source),
+    ...serializeGoalSourceCollections(source, pendingSnapshots, pendingAllocations),
     draft: draft
       ? {
-          allocations: (draft.allocations ?? [])
-            .map((e) => ({
-              goalId: e.goalId,
-              percentage: new BigNumber((e.percentage || '0').replace(',', '.')).toFixed(2),
-            }))
-            .sort((a, b) => a.goalId.localeCompare(b.goalId)),
+           allocations: serializeAllocationEntries(draft.allocations ?? []),
         }
       : null,
   }

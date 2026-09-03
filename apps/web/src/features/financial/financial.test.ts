@@ -3,6 +3,7 @@ import {
   PLANNING_ARS_PER_USD,
   convertCommitmentToDestination,
   deriveEmergencyFundTarget,
+  getArsEquivalent,
   getNextCalendarMonth,
   getPreviousCalendarMonth,
   projectCompletionMonth,
@@ -70,6 +71,12 @@ describe('financial domain helpers', () => {
     it('uses the previous UTC calendar month', () => {
       expect(getPreviousCalendarMonth(new Date('2026-08-21T18:00:00Z'))).toBe('2026-07')
       expect(getPreviousCalendarMonth(new Date('2026-01-01T00:00:00Z'))).toBe('2025-12')
+    })
+  })
+
+  describe('getArsEquivalent', () => {
+    it('converts a positive USD input at the planning rate', () => {
+      expect(getArsEquivalent('1.250,50', 'USD')?.toFixed(2)).toBe('1875750.00')
     })
   })
 })

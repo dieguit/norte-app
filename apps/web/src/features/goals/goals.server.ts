@@ -1,9 +1,13 @@
 import '@tanstack/react-start/server-only'
 import BigNumber from 'bignumber.js'
 import { createMoney } from '../../lib/money'
-import { getNextCalendarMonth } from '../financial/financial'
 import { requireFinancialUser } from '../financial/auth.server'
-import { buildGoalsWorkspace, buildCurrentGoalsPlanWorkspace, type GoalsAppState } from './goals'
+import {
+  buildGoalsWorkspace,
+  buildCurrentGoalsPlanWorkspace,
+  type GoalStatus,
+  type GoalsAppState,
+} from './goals'
 import {
   confirmAllocationChangeInRepository,
   confirmGoalCreationInRepository,
@@ -44,6 +48,7 @@ import {
   type GoalCreationPreviewResult,
   type GoalCreationState,
   type GoalEditContext,
+  selectGoalPlanSnapshot,
 } from './goal-creation'
 import {
   parseGoalCreationSubmission,
@@ -111,38 +116,177 @@ type GoalCompletionContextState =
   | { profile: 'missing' }
   | { profile: 'present'; context: GoalCompletionContext }
 
+function buildGoalEditAllocations(
+  activeGoals: GoalCreationState['source']['goals'],
+  sourceAllocs: GoalCreationState['source']['allocations'],
+): Array<{ goalId: string; percentage: string }> {
+  if (sourceAllocs.length === 0) {
+    return activeGoals.map((goal) => ({
+      goalId: goal.id,
+      percentage: activeGoals.length === 1 ? '100.00' : '0.00',
+    }))
+  }
+
+  const activeGoalIds = new Set(activeGoals.map((goal) => goal.id))
+  const selected = sourceAllocs
+    .filter((allocation) => activeGoalIds.has(allocation.goalId))
+    .map((allocation) => ({
+      goalId: allocation.goalId,
+      percentage: new BigNumber(allocation.percentage).toFixed(2),
+    }))
+  const selectedGoalIds = new Set(selected.map((entry) => entry.goalId))
+
+  return [
+    ...selected,
+    ...activeGoals
+      .filter((goal) => !selectedGoalIds.has(goal.id))
+      .map((goal) => ({ goalId: goal.id, percentage: '0.00' })),
+  ]
+}
+
+function getPlannedMonthlyContribution(
+  profile: GoalCreationState['source']['profile'],
+) {
+  return profile?.plannedMonthlyContribution == null
+    ? undefined
+    : createMoney(profile.plannedMonthlyContribution, profile.baseCurrency ?? 'ARS')
+}
+
+function hasEmergencyFund(goals: GoalCreationState['source']['goals']): boolean {
+  return goals.some((goal) => goal.type === 'emergency_fund')
+}
+
+function getExpensesKnowledge(profile: GoalCreationState['source']['profile']): 'known' | 'unknown' {
+  return profile?.expensesKnowledge === 'known' ? 'known' : 'unknown'
+}
+
+function firstSnapshot<T>(snapshots: T[] | undefined): T | undefined {
+  return snapshots?.[0]
+}
+
+function mapSnapshotAllocation(
+  snapshot: { effectiveMonth: string; id: string } | undefined,
+  allocations: ReadonlyArray<{ snapshotId: string; goalId: string; percentage: string }>,
+) {
+  if (!snapshot) return undefined
+  return {
+    effectiveMonth: snapshot.effectiveMonth,
+    entries: allocations
+      .filter((allocation) => allocation.snapshotId === snapshot.id)
+      .map(({ goalId, percentage }) => ({ goalId, percentage })),
+  }
+}
+
+function mapActiveGoalProjections(
+  state: AllocationChangeState,
+  workspace: ReturnType<typeof buildCurrentGoalsPlanWorkspace>,
+) {
+  const workspaceGoals = workspace.groups.flatMap((group) => group.goals)
+  return state.source.goals
+    .filter((goal) => goal.status === 'active')
+    .map((goal) => ({
+      id: goal.id,
+      name: goal.name,
+      currency: goal.currency,
+      projection:
+        workspaceGoals.find((workspaceGoal) => workspaceGoal.id === goal.id)?.projection ??
+        ({ status: 'target_unavailable' } as const),
+    }))
+}
+
+function getLifecycleTarget(
+  state: GoalLifecycleState,
+  goalId: string,
+  lifecycle: GoalLifecycle,
+) {
+  const goal = state.source.goals.find((candidate) => candidate.id === goalId)
+  if (!goal) throw new Error('Goal not found.')
+  assertLifecycleTargetStatus(goal.status, lifecycle)
+  return goal
+}
+
+function assertLifecycleTargetStatus(
+  status: GoalStatus,
+  lifecycle: GoalLifecycle,
+): void {
+  const expectedStatus = lifecycle === 'pause' ? 'active' : 'paused'
+  if (status !== expectedStatus) {
+    throw new Error(lifecycle === 'pause'
+      ? 'Only active goals can be paused.'
+      : 'Only paused goals can be resumed.')
+  }
+}
+
+function getGoalDraftMonth(value: string | null | undefined): string {
+  return value?.slice(0, 7) ?? ''
+}
+
+function getGoalInvestmentValue(
+  investment: GoalCreationState['source']['investmentPositions'][number] | undefined,
+  field: 'annualReturnRate' | 'availability' | 'availableFrom',
+) {
+  if (!investment) return undefined
+  return investment[field]
+}
+
+function assertGoalEditFields(
+  draft: GoalCreationDraft,
+  goal: GoalCreationState['source']['goals'][number],
+): void {
+  if (draft.type !== goal.type || draft.currency !== goal.currency || draft.strategy !== goal.strategy) {
+    throw new Error('Cannot modify immutable goal fields (type, currency, strategy).')
+  }
+}
+
+function getGoalForEditContext(
+  state: GoalCreationState,
+  goalId: string,
+) {
+  const goal = state.source.goals.find(
+    (candidate) => candidate.id === goalId &&
+      (candidate.status === 'active' || candidate.status === 'paused'),
+  )
+  if (goal) return goal
+  if (state.source.goals.some((candidate) => candidate.id === goalId && candidate.status === 'completed')) {
+    throw new Error('Cannot edit a completed goal.')
+  }
+  throw new Error('Goal not found or is not active or paused.')
+}
+
+function buildGoalEditDraft(
+  goal: GoalCreationState['source']['goals'][number],
+  investment: GoalCreationState['source']['investmentPositions'][number] | undefined,
+  allocations: Array<{ goalId: string; percentage: string }>,
+): GoalCreationDraft {
+  return {
+    type: goal.type as GoalCreationDraft['type'],
+    name: goal.name,
+    targetAmount: goal.targetAmount || '',
+    currency: goal.currency,
+    desiredMonth: getGoalDraftMonth(goal.desiredDate),
+    priority: goal.priority,
+    strategy: goal.strategy,
+    annualReturnRate: getGoalInvestmentValue(investment, 'annualReturnRate') || '8',
+    availability: (getGoalInvestmentValue(investment, 'availability') || 'available_now') as GoalCreationDraft['availability'],
+    availableFromMonth: getGoalDraftMonth(getGoalInvestmentValue(investment, 'availableFrom')),
+    allocations,
+  }
+}
+
 export function mapGoalCreationContext(
   state: GoalCreationState,
   currentMonth: string,
 ): GoalCreationContext {
   const profile = state.source.profile
-  const plannedMonthlyContribution =
-    profile?.plannedMonthlyContribution !== null && profile?.plannedMonthlyContribution !== undefined
-      ? createMoney(profile.plannedMonthlyContribution, profile.baseCurrency ?? 'ARS')
-      : undefined
-
-  const winningSnapshot = state.source.snapshots?.[0]
-  let currentAllocation: GoalCreationContext['currentAllocation'] = undefined
-
-  if (winningSnapshot) {
-    const entries = (state.source.allocations ?? [])
-      .filter((a) => a.snapshotId === winningSnapshot.id)
-      .map((a) => ({
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-    currentAllocation = {
-      effectiveMonth: winningSnapshot.effectiveMonth,
-      entries,
-    }
-  }
+  const plannedMonthlyContribution = getPlannedMonthlyContribution(profile)
+  const winningSnapshot = firstSnapshot(state.source.snapshots)
 
   return {
     currentMonth,
-    expensesKnowledge: profile?.expensesKnowledge === 'known' ? 'known' : 'unknown',
-    hasEmergencyFund: state.source.goals.some((goal) => goal.type === 'emergency_fund'),
+    expensesKnowledge: getExpensesKnowledge(profile),
+    hasEmergencyFund: hasEmergencyFund(state.source.goals),
     plannedMonthlyContribution,
-    currentAllocation,
+    currentAllocation: mapSnapshotAllocation(winningSnapshot, state.source.allocations ?? []),
   }
 }
 
@@ -225,88 +369,22 @@ export function mapGoalEditContext(
   currentMonth: string,
   goalId: string,
 ): GoalEditContext {
-  const goal = state.source.goals.find(
-    (g) => g.id === goalId && (g.status === 'active' || g.status === 'paused'),
-  )
-  if (!goal) {
-    const anyGoal = state.source.goals.find((g) => g.id === goalId)
-    if (anyGoal?.status === 'completed') {
-      throw new Error('Cannot edit a completed goal.')
-    }
-    throw new Error('Goal not found or is not active or paused.')
-  }
+  const goal = getGoalForEditContext(state, goalId)
   const activeGoals = state.source.goals.filter((g) => g.status === 'active')
-  const nextMonthStr = `${getNextCalendarMonth(new Date(`${currentMonth.slice(0, 7)}-01T00:00:00Z`))}`
-
-  const pendingNextSnapshot = state.pendingSnapshots?.find(
-    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
+  const { allocations: sourceAllocs } = selectGoalPlanSnapshot(
+    state.source,
+    state.pendingSnapshots,
+    state.pendingAllocations,
+    currentMonth,
   )
-  const sourceNextSnapshot = state.source.snapshots?.find(
-    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
-  )
-  const currentSnapshot = state.source.snapshots
-    ?.filter((s) => s.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
-    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
-
-  const selectedSnapshot = pendingNextSnapshot ?? sourceNextSnapshot ?? currentSnapshot
-
-  const sourceAllocs = selectedSnapshot
-    ? (pendingNextSnapshot ? state.pendingAllocations : state.source.allocations)?.filter(
-        (a) => a.snapshotId === selectedSnapshot.id,
-      ) ?? []
-    : []
-
-  let selectedAllocationEntries: Array<{ goalId: string; percentage: string }> = []
-
-  if (sourceAllocs.length > 0) {
-    const activeAllocGoalIds = new Set(
-      sourceAllocs.map((a) => a.goalId).filter((id) => activeGoals.some((g) => g.id === id)),
-    )
-
-    for (const a of sourceAllocs) {
-      if (activeGoals.some((g) => g.id === a.goalId)) {
-        selectedAllocationEntries.push({
-          goalId: a.goalId,
-          percentage: new BigNumber(a.percentage).toFixed(2),
-        })
-      }
-    }
-
-    for (const g of activeGoals) {
-      if (!activeAllocGoalIds.has(g.id)) {
-        selectedAllocationEntries.push({
-          goalId: g.id,
-          percentage: '0.00',
-        })
-      }
-    }
-  } else if (activeGoals.length > 0) {
-    selectedAllocationEntries = activeGoals.map((g) => ({
-      goalId: g.id,
-      percentage: activeGoals.length === 1 ? '100.00' : '0.00',
-    }))
-  }
+  const selectedAllocationEntries = buildGoalEditAllocations(activeGoals, sourceAllocs)
 
   const investment = state.source.investmentPositions?.find((p) => p.goalId === goalId)
-
-  const draft: GoalCreationDraft = {
-    type: goal.type as GoalCreationDraft['type'],
-    name: goal.name,
-    targetAmount: goal.targetAmount ?? '',
-    currency: goal.currency,
-    desiredMonth: goal.desiredDate?.slice(0, 7) ?? '',
-    priority: goal.priority,
-    strategy: goal.strategy,
-    annualReturnRate: investment?.annualReturnRate ?? '8',
-    availability: investment?.availability ?? 'available_now',
-    availableFromMonth: investment?.availableFrom?.slice(0, 7) ?? '',
-    allocations: selectedAllocationEntries,
-  }
 
   return {
     goalId,
     status: goal.status,
-    draft,
+    draft: buildGoalEditDraft(goal, investment, selectedAllocationEntries),
     context: mapGoalCreationContext(state, currentMonth),
   }
 }
@@ -340,24 +418,9 @@ export async function previewGoalEditServer({
   if (!state) {
     throw new Error('Completá tu perfil financiero antes de editar un objetivo.')
   }
-  const selectedGoal = state.source.goals.find(
-    (g) => g.id === data.goalId && (g.status === 'active' || g.status === 'paused'),
-  )
-  if (!selectedGoal) {
-    const anyGoal = state.source.goals.find((g) => g.id === data.goalId)
-    if (anyGoal?.status === 'completed') {
-      throw new Error('Cannot edit a completed goal.')
-    }
-    throw new Error('Goal not found or is not active or paused.')
-  }
+  const selectedGoal = getGoalForEditContext(state, data.goalId)
   const draft = parseGoalCreationSubmission(data.draft, currentMonth)
-  if (
-    draft.type !== selectedGoal.type ||
-    draft.currency !== selectedGoal.currency ||
-    draft.strategy !== selectedGoal.strategy
-  ) {
-    throw new Error('Cannot modify immutable goal fields (type, currency, strategy).')
-  }
+  assertGoalEditFields(draft, selectedGoal)
 
   const proposal = buildGoalCreationProposal({
     draft,
@@ -403,65 +466,20 @@ export function mapAllocationChangeContext(
   currentMonth: string,
 ): AllocationChangeContext {
   const profile = state.source.profile
-  const plannedMonthlyContribution =
-    profile?.plannedMonthlyContribution !== null && profile?.plannedMonthlyContribution !== undefined
-      ? createMoney(profile.plannedMonthlyContribution, profile.baseCurrency ?? 'ARS')
-      : undefined
-
+  const plannedMonthlyContribution = getPlannedMonthlyContribution(profile)
   const workspace = buildCurrentGoalsPlanWorkspace(state, currentMonth)
   const financialSummary = workspace.financialSummary
-
-  const workspaceGoals = workspace.groups.flatMap((group) => group.goals)
-  const activeGoals = (state.source.goals ?? [])
-    .filter((g) => g.status === 'active')
-    .map((g) => ({
-      id: g.id,
-      name: g.name,
-      currency: g.currency,
-      projection:
-        workspaceGoals.find((workspaceGoal) => workspaceGoal.id === g.id)?.projection ??
-        ({ status: 'target_unavailable' } as const),
-    }))
-
-  const winningSnapshot = state.source.snapshots?.[0]
-  let currentAllocation: AllocationChangeContext['currentAllocation'] = undefined
-
-  if (winningSnapshot) {
-    const entries = (state.source.allocations ?? [])
-      .filter((a) => a.snapshotId === winningSnapshot.id)
-      .map((a) => ({
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-    currentAllocation = {
-      effectiveMonth: winningSnapshot.effectiveMonth,
-      entries,
-    }
-  }
-
-  const pendingSnapshot = state.pendingSnapshots?.[0]
-  let pendingAllocation: AllocationChangeContext['pendingAllocation'] = undefined
-
-  if (pendingSnapshot) {
-    const entries = (state.pendingAllocations ?? [])
-      .filter((a) => a.snapshotId === pendingSnapshot.id)
-      .map((a) => ({
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-    pendingAllocation = {
-      effectiveMonth: pendingSnapshot.effectiveMonth,
-      entries,
-    }
-  }
+  const activeGoals = mapActiveGoalProjections(state, workspace)
+  const winningSnapshot = firstSnapshot(state.source.snapshots)
+  const pendingSnapshot = firstSnapshot(state.pendingSnapshots)
 
   return {
     currentMonth,
     financialSummary,
     plannedMonthlyContribution,
     activeGoals,
-    currentAllocation,
-    pendingAllocation,
+    currentAllocation: mapSnapshotAllocation(winningSnapshot, state.source.allocations ?? []),
+    pendingAllocation: mapSnapshotAllocation(pendingSnapshot, state.pendingAllocations ?? []),
   }
 }
 
@@ -525,23 +543,9 @@ export function mapGoalLifecycleContext(
   goalId: string,
   lifecycle: GoalLifecycle,
 ): GoalLifecycleContext {
-  const goal = state.source.goals.find((g) => g.id === goalId)
-  if (!goal) {
-    throw new Error('Goal not found.')
-  }
-  if (lifecycle === 'pause' && goal.status !== 'active') {
-    throw new Error('Only active goals can be paused.')
-  }
-  if (lifecycle === 'resume' && goal.status !== 'paused') {
-    throw new Error('Only paused goals can be resumed.')
-  }
-
+  const goal = getLifecycleTarget(state, goalId, lifecycle)
   const profile = state.source.profile
-  const plannedMonthlyContribution =
-    profile?.plannedMonthlyContribution !== null && profile?.plannedMonthlyContribution !== undefined
-      ? createMoney(profile.plannedMonthlyContribution, profile.baseCurrency ?? 'ARS')
-      : undefined
-
+  const plannedMonthlyContribution = getPlannedMonthlyContribution(profile)
   const activeGoals = (state.source.goals ?? [])
     .filter((g) => g.status === 'active')
     .map((g) => ({
@@ -567,6 +571,7 @@ export function mapGoalLifecycleContext(
     goalId,
     lifecycle,
     goalName: goal.name,
+    goalCurrency: goal.currency,
     currentMonth,
     plannedMonthlyContribution,
     activeGoals,

@@ -168,6 +168,7 @@ describe('getSavingContributionContext', () => {
       ],
       eligibleInvestmentGoals: [],
       eligibleInvestmentGoalsUsd: [],
+      investmentState: { ars: { status: 'ready' }, usd: { status: 'ready' } },
     }
 
     vi.mocked(getSavingContributionState).mockResolvedValue(mockState)
@@ -186,6 +187,7 @@ describe('getSavingContributionContext', () => {
 
     vi.useRealTimers()
   })
+
 })
 
 describe('previewSavingContribution', () => {
@@ -256,10 +258,54 @@ describe('previewSavingContribution', () => {
     ],
     eligibleInvestmentGoals: [],
     eligibleInvestmentGoalsUsd: [],
+    investmentState: { ars: { status: 'ready' }, usd: { status: 'ready' } },
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('surfaces incomplete investment data when an active investment goal has no position', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getSavingContributionState).mockResolvedValue({
+      ...mockState,
+      source: {
+        ...mockState.source,
+        goals: [...mockState.source.goals, {
+           id: 'investment-goal',
+           userId: 'user_456',
+           name: 'Cedears',
+           type: 'investment',
+           currency: 'USD',
+           targetAmount: '1000.00',
+          priority: 'high',
+          strategy: 'invest',
+          status: 'active',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        }],
+        investmentPositions: [],
+      },
+      investmentState: {
+        ars: { status: 'ready' },
+        usd: { status: 'incomplete', reason: 'missing_investment_position' },
+      },
+    })
+
+    const result = await getSavingContributionContext()
+
+    expect(result).toMatchObject({
+      profile: 'present',
+      context: {
+        investmentState: {
+          ars: { status: 'ready' },
+          usd: { status: 'incomplete', reason: 'missing_investment_position' },
+        },
+      },
+    })
+
+    vi.useRealTimers()
   })
 
   it('redirects to /sign-in/$ when user is not authenticated', async () => {
@@ -365,6 +411,26 @@ describe('previewSavingContribution', () => {
     expect(result.preview.allocations).toHaveLength(1)
     expect(result.preview.allocations[0].goalId).toBe('g1')
     expect(result.preview.allocations[0].amount).toEqual({ amount: '100.00', currency: 'USD' })
+
+    vi.useRealTimers()
+  })
+
+  it('rejects incomplete investment data before constructing a preview for the selected currency', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00Z'))
+    vi.mocked(auth).mockResolvedValue({ isAuthenticated: true, userId: 'user_456' } as never)
+    vi.mocked(getSavingContributionState).mockResolvedValue({
+      ...mockState,
+      eligibleInvestmentGoalsUsd: [{ id: 'g_inv_usd', name: 'Cedears USD', percentage: '100.00' }],
+      investmentState: {
+        ars: { status: 'ready' },
+        usd: { status: 'incomplete', reason: 'missing_investment_position' },
+      },
+    } as any)
+
+    await expect(previewSavingContribution({ data: { ...validUsdDraft, kind: 'investment' } })).rejects.toThrow(
+      'Falta asociar una posición de inversión en USD a uno o más objetivos. Configurala para continuar.',
+    )
 
     vi.useRealTimers()
   })

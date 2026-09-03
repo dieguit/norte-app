@@ -552,7 +552,7 @@ describe('onboarding draft', () => {
     expect(validateStep(p9, {
       fijo_otro1_concepto: '',
       fijo_otro1_monto: 2000,
-    })).toEqual({ 'fijo_otros.0.concepto': 'Debe ingresar el concepto.' })
+    })).toEqual({ 'fijo_otros.0.concepto': 'Ingresá el concepto.' })
   })
 
   it('rejects an invalid fixed-other amount even when another category is positive', () => {
@@ -598,7 +598,7 @@ describe('onboarding draft', () => {
     expect(validateStep(p9, {
       p9_modo: 'Quiero desglosar',
       fijo_otros: [{ concepto: '', monto: 2000, desde: '', hasta: '' }],
-    })).toEqual({ 'fijo_otros.0.concepto': 'Debe ingresar el concepto.' })
+    })).toEqual({ 'fijo_otros.0.concepto': 'Ingresá el concepto.' })
   })
 
 
@@ -705,7 +705,7 @@ describe('onboarding draft', () => {
     expect(validateStep(p11, {
       p11_modo: 'Quiero desglosar',
       var_otros: [{ concepto: '', monto: 500, desde: '', hasta: '' }],
-    })).toEqual({ 'var_otros.0.concepto': 'Debe ingresar el concepto.' })
+    })).toEqual({ 'var_otros.0.concepto': 'Ingresá el concepto.' })
   })
 
   it('shows direct total mode and fixed reduction choices for discretionary spending', () => {
@@ -787,7 +787,7 @@ describe('onboarding draft', () => {
       t1_upload_url: 'Subí el resumen para continuar.',
     })
     expect(validateStep(step, { t1_cuotas_modo: 'Copiar el renglón mes a mes' })).toEqual({
-      t1_resumen_ars: 'Debe ingresar el monto de la tarjeta.',
+      t1_resumen_ars: 'Ingresá el monto de la tarjeta.',
       t1_cuotas_m1: 'Completá al menos una cuota mensual.',
     })
     expect(validateStep(step, {

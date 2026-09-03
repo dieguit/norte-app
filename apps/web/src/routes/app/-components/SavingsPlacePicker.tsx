@@ -1,5 +1,4 @@
-import { Field, FieldDescription, FieldError, FieldLabel } from '../../../components/ui/field'
-import { Input } from '../../../components/ui/input'
+import { Field, FieldError, FieldLabel } from '../../../components/ui/field'
 import {
   Select,
   SelectContent,
@@ -7,15 +6,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../components/ui/select'
+import { SavingsPlaceNameField } from './SavingsPlaceNameField'
 
 const NEW_PLACE_VALUE = '__new__'
 
+export type SavingsPlaceValue =
+  | { kind: 'existing'; placeId: string }
+  | { kind: 'new'; name: string }
+  | null
+
+export function getSavingsPlaceSelection(value: string | null): SavingsPlaceValue | undefined {
+  if (!value) return undefined
+  return value === NEW_PLACE_VALUE ? { kind: 'new', name: '' } : { kind: 'existing', placeId: value }
+}
+
 export interface SavingsPlacePickerProps {
   places: Array<{ id: string; name: string }>
-  value: { kind: 'existing'; placeId: string } | { kind: 'new'; name: string } | null
-  onChange: (
-    value: { kind: 'existing'; placeId: string } | { kind: 'new'; name: string } | null,
-  ) => void
+  value: SavingsPlaceValue
+  onChange: (value: SavingsPlaceValue) => void
   className?: string
   disabled?: boolean
   error?: string
@@ -35,21 +43,13 @@ export function SavingsPlacePicker({
   const isNewPlace = value?.kind === 'new'
   const errorId = isNewPlace ? 'new-savings-place-error' : 'savings-place-error'
 
-  function handlePlaceChange(nextValue: string | null) {
-    if (!nextValue) return
-
-    if (nextValue === NEW_PLACE_VALUE) {
-      onChange({ kind: 'new', name: '' })
-      return
-    }
-
-    onChange({ kind: 'existing', placeId: nextValue })
-  }
-
   return (
     <Field data-invalid={!!error} data-disabled={disabled} className={className}>
       <FieldLabel htmlFor="savings-place-trigger">¿Dónde está este ahorro?</FieldLabel>
-      <Select items={selectItems} value={selectedValue} onValueChange={handlePlaceChange}>
+        <Select items={selectItems} value={selectedValue} onValueChange={(nextValue) => {
+          const nextSelection = getSavingsPlaceSelection(nextValue)
+          if (nextSelection) onChange(nextSelection)
+        }}>
         <SelectTrigger
           id="savings-place-trigger"
           aria-label="¿Dónde está este ahorro?"
@@ -70,20 +70,13 @@ export function SavingsPlacePicker({
         </SelectContent>
       </Select>
       {isNewPlace && (
-        <Field data-invalid={!!error}>
-          <FieldLabel htmlFor="new-savings-place-name">Nombre del lugar nuevo</FieldLabel>
-          <Input
-            id="new-savings-place-name"
-            aria-label="Nombre del lugar nuevo"
-            aria-invalid={error ? 'true' : undefined}
-            aria-describedby={error ? errorId : undefined}
-            value={value.name}
-            onChange={(event) => onChange({ kind: 'new', name: event.target.value })}
-            disabled={disabled}
-          />
-          <FieldDescription>Este lugar se va a guardar para que puedas volver a usarlo</FieldDescription>
-          {error && <FieldError id={errorId}>{error}</FieldError>}
-        </Field>
+        <SavingsPlaceNameField
+          name={value.name}
+          error={error}
+          disabled={disabled}
+          errorId={errorId}
+          onChange={(name) => onChange({ kind: 'new', name })}
+        />
       )}
       {!isNewPlace && error && <FieldError id={errorId}>{error}</FieldError>}
     </Field>

@@ -265,6 +265,122 @@ describe('goal completion context and proposal', () => {
 })
 
 describe('serializeGoalCompletionState', () => {
+  it('characterizes the complete serialized shape and stable ordering', () => {
+    const state = createCompletionState()
+    const stateWithDedication: GoalCompletionState = {
+      ...state,
+      source: {
+        ...state.source,
+        profile: { ...state.source.profile!, goalDedicationPercentage: '85.00' },
+      },
+    }
+    const draft = {
+      goalId: 'goal-complete',
+      withdrawals: [
+        { placeId: 'cash', amount: '400' },
+        { placeId: 'bank', amount: '600.00' },
+      ],
+      allocations: [{ goalId: 'goal-other', percentage: '100' }],
+    }
+
+    expect(JSON.parse(serializeGoalCompletionState(stateWithDedication, '2026-08', draft))).toEqual({
+      currentMonth: '2026-08',
+      planningArsPerUsd: '1500',
+      goalId: 'goal-complete',
+      targetAmount: { amount: '1000.00', currency: 'ARS' },
+      goal: {
+        id: 'goal-complete',
+        userId: 'user-1',
+        name: 'Notebook',
+        type: 'purchase',
+        targetAmount: '1000.00',
+        currency: 'ARS',
+        priority: 'high',
+        strategy: 'save',
+        status: 'active',
+        desiredDate: null,
+        completedAt: null,
+        emergencyFundMonths: null,
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+      profile: {
+        userId: 'user-1',
+        baseCurrency: 'ARS',
+        expensesKnowledge: 'known',
+        plannedMonthlyContribution: '60000.00',
+        goalDedicationPercentage: '85.00',
+        onboardingCompleted: true,
+      },
+      incomes: [],
+      expenses: [],
+      savingsPlaces: [
+        { id: 'bank', name: 'Banco', balance: { amount: '700.00', currency: 'ARS' } },
+        { id: 'cash', name: 'Efectivo', balance: { amount: '500.00', currency: 'ARS' } },
+        { id: 'empty', name: 'Vacío', balance: { amount: '0.00', currency: 'ARS' } },
+        { id: 'usd', name: 'Dólares', balance: { amount: '100.00', currency: 'USD' } },
+      ],
+      goals: [
+        {
+          id: 'goal-complete',
+          userId: 'user-1',
+          name: 'Notebook',
+          type: 'purchase',
+          targetAmount: '1000.00',
+          currency: 'ARS',
+          priority: 'high',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          emergencyFundMonths: null,
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'goal-other',
+          userId: 'user-1',
+          name: 'Viaje',
+          type: 'other',
+          targetAmount: '5000.00',
+          currency: 'ARS',
+          priority: 'medium',
+          strategy: 'save',
+          status: 'active',
+          desiredDate: null,
+          completedAt: null,
+          emergencyFundMonths: null,
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ],
+      savingsPositions: [
+        { id: 'saving-1', goalId: 'goal-complete', amount: '1000.00', currency: 'ARS', location: null },
+      ],
+      investmentPositions: [],
+      completionWithdrawals: [],
+      snapshots: [
+        { id: 'snapshot-current', userId: 'user-1', effectiveMonth: '2026-08-01' },
+      ],
+      allocations: [
+        { id: 'allocation-complete', snapshotId: 'snapshot-current', goalId: 'goal-complete', percentage: '60.00' },
+        { id: 'allocation-other', snapshotId: 'snapshot-current', goalId: 'goal-other', percentage: '40.00' },
+      ],
+      pendingSnapshots: [
+        { id: 'snapshot-pending', userId: 'user-1', effectiveMonth: '2026-09-01' },
+      ],
+      pendingAllocations: [
+        { id: 'pending-complete', snapshotId: 'snapshot-pending', goalId: 'goal-complete', percentage: '50.00' },
+        { id: 'pending-other', snapshotId: 'snapshot-pending', goalId: 'goal-other', percentage: '50.00' },
+      ],
+      draft: {
+        goalId: 'goal-complete',
+        withdrawals: [
+          { placeId: 'bank', amount: '600.00' },
+          { placeId: 'cash', amount: '400.00' },
+        ],
+        allocations: [{ goalId: 'goal-other', percentage: '100.00' }],
+      },
+    })
+  })
+
   it('serializes canonical values deterministically', () => {
     const state = createCompletionState()
     const reordered: GoalCompletionState = {

@@ -344,6 +344,79 @@ describe('buildAllocationChangeProposal', () => {
       expect(candidate.after).toEqual(candidate.before.projection)
     }
   })
+
+  it('uses the saved dedication percentage when no draft is provided', () => {
+    const source = createBaseWorkspaceSource()
+    const state: AllocationChangeState = {
+      source,
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    }
+
+    const proposal = buildAllocationChangeProposal({
+      state,
+      currentMonth: '2026-08',
+    })
+
+    expect(proposal.dedicationPercentage).toBe(90)
+  })
+
+  it('keeps a December allocation change in December', () => {
+    const source = createBaseWorkspaceSource()
+    const proposal = buildAllocationChangeProposal({
+      state: { source, pendingSnapshots: [], pendingAllocations: [] },
+      currentMonth: '2026-12',
+      draft: {
+        dedicationPercentage: 90,
+        allocations: [
+          { goalId: 'goal-1', percentage: '25.00' },
+          { goalId: 'goal-2', percentage: '75.00' },
+        ],
+      },
+    })
+
+    expect(proposal.allocation.effectiveMonth).toBe('2026-12-01')
+    expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe('2026-12-01')
+  })
+
+  it('uses a new snapshot ID when the baseline is from an earlier month', () => {
+    const source = createBaseWorkspaceSource()
+    const proposal = buildAllocationChangeProposal({
+      state: { source, pendingSnapshots: [], pendingAllocations: [] },
+      currentMonth: '2026-09',
+      draft: {
+        dedicationPercentage: 90,
+        allocations: [
+          { goalId: 'goal-1', percentage: '25.00' },
+          { goalId: 'goal-2', percentage: '75.00' },
+        ],
+      },
+    })
+
+    const snapshot = proposal.proposedSource.snapshots.find(
+      (candidate) => candidate.effectiveMonth === '2026-09-01',
+    )
+    expect(snapshot?.id).toBe('snap-allocation-2026-09')
+    const proposedAllocations = proposal.proposedSource.allocations.filter(
+      (allocation) => allocation.snapshotId === snapshot?.id,
+    )
+    expect(proposedAllocations).toEqual([
+      expect.objectContaining({ snapshotId: 'snap-allocation-2026-09', goalId: 'goal-1' }),
+      expect.objectContaining({ snapshotId: 'snap-allocation-2026-09', goalId: 'goal-2' }),
+    ])
+  })
+
+  it('reuses the selected snapshot ID when the baseline matches the effective month', () => {
+    const source = createBaseWorkspaceSource()
+    const proposal = buildAllocationChangeProposal({
+      state: { source, pendingSnapshots: [], pendingAllocations: [] },
+      currentMonth: '2026-08',
+    })
+
+    expect(proposal.proposedSource.snapshots.find((candidate) => candidate.effectiveMonth === '2026-08-01')?.id).toBe(
+      'snap-global-aug',
+    )
+  })
 })
 
 describe('serializeAllocationChangeState', () => {

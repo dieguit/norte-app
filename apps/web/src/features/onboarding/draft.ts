@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { filterAnswersForActiveSteps, type OnboardingAnswers, onboardingAnswerSchema } from './definition'
 
-export const DRAFT_KEY = 'onboarding-draft'
+const DRAFT_KEY = 'onboarding-draft'
 
 const localDraftSchema = z.object({
   deviceId: z.uuid(),

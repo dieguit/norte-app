@@ -4,13 +4,8 @@ import type { CreateExpenseInput, DeleteExpenseInput, UpdateExpenseInput } from 
 import {
   createExpenseInRepository,
   deleteExpenseInRepository,
-  getExpensesWorkspaceState,
   updateExpenseInRepository,
 } from './expenses.repository.server'
-
-export async function getExpensesWorkspaceServer() {
-  return getExpensesWorkspaceState(await requireFinancialUser())
-}
 
 export async function createExpenseServer({ data }: { data: CreateExpenseInput }) {
   return createExpenseInRepository(await requireFinancialUser(), data.draft, data.effectiveMonth)

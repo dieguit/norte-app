@@ -10,6 +10,8 @@ function Slider({
   max = 100,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
   ...props
 }: SliderPrimitive.Root.Props & { "aria-label"?: string; "aria-labelledby"?: string }) {
   const _values = Array.isArray(value)
@@ -47,6 +49,12 @@ function Slider({
             key={index}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}
+            aria-describedby={ariaDescribedBy}
+            inputRef={(input) => {
+              if (!input) return
+              if (ariaInvalid === undefined) input.removeAttribute("aria-invalid")
+              else input.setAttribute("aria-invalid", String(ariaInvalid))
+            }}
             className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
           />
         ))}

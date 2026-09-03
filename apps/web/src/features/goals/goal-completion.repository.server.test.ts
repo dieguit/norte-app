@@ -185,7 +185,10 @@ describe('goal-completion.repository.server', () => {
     const token = createGoalCompletionPreviewToken(state!, '2026-08', draft)
 
     expect(token).toMatch(/^[a-f0-9]{64}$/)
-    await expect(confirmGoalCompletionInRepository({ userId: 'user_1', currentMonth: '2026-08', draft, previewToken: 'f'.repeat(64) })).rejects.toBeInstanceOf(StaleGoalCompletionPreviewError)
+    const staleError = await confirmGoalCompletionInRepository({ userId: 'user_1', currentMonth: '2026-08', draft, previewToken: 'f'.repeat(64) }).catch((error: unknown) => error)
+    expect(staleError).toBeInstanceOf(StaleGoalCompletionPreviewError)
+    if (!(staleError instanceof StaleGoalCompletionPreviewError)) throw staleError
+    expect(staleError.code).toBe('STALE_GOAL_COMPLETION_PREVIEW')
     expect(tx.update).not.toHaveBeenCalled()
     expect(tx.insert).not.toHaveBeenCalled()
   })
@@ -213,6 +216,7 @@ describe('goal-completion.repository.server', () => {
 
     expect(error).toBeInstanceOf(StaleGoalCompletionPreviewError)
     if (!(error instanceof StaleGoalCompletionPreviewError)) throw error
+    expect(error.code).toBe('STALE_GOAL_COMPLETION_PREVIEW')
     expect(error.refreshedPreview).toEqual({ proposal: refreshedProposal, previewToken: refreshedToken })
     expect(tx.insert).not.toHaveBeenCalled()
     expect(tx.update).not.toHaveBeenCalled()
@@ -233,6 +237,7 @@ describe('goal-completion.repository.server', () => {
 
     expect(error).toBeInstanceOf(GoalCompletionStateInvalidError)
     if (!(error instanceof GoalCompletionStateInvalidError)) throw error
+    expect(error.code).toBe('INVALID_GOAL_COMPLETION_STATE')
     expect(error.message).toBe('No se puede completar el objetivo con el estado actual.')
     expect('refreshedPreview' in error).toBe(false)
     expect(tx.insert).not.toHaveBeenCalled()

@@ -4,7 +4,7 @@ import { z } from 'zod'
 const credentialsSchema = z.object({ username: z.string(), password: z.string() })
 const sessionPassword = 'norte-admin-session-signing-key-change-before-production'
 
-export function hasValidAdminCredentials(credentials: z.infer<typeof credentialsSchema>) {
+function hasValidAdminCredentials(credentials: z.infer<typeof credentialsSchema>) {
   return credentials.username === 'admin' && credentials.password === 'N0rt3!'
 }
 
@@ -22,10 +22,6 @@ export async function loginAdminServer(data: z.infer<typeof credentialsSchema>) 
   const session = await useAdminSession()
   await session.update({ authenticated: true })
   return { ok: true as const }
-}
-
-export async function getAdminSessionServer() {
-  return Boolean((await useAdminSession()).data.authenticated)
 }
 
 export async function requireAdminSession() {

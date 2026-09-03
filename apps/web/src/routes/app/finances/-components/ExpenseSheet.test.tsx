@@ -1,19 +1,26 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
 import { createExpense, deleteExpense, updateExpense } from '../../../../features/financial/financial.functions'
 import { ExpenseSheet } from './ExpenseSheet'
 
+const routerInvalidate = vi.fn()
+
 vi.mock('@tanstack/react-router', () => ({
-  useRouter: () => ({ invalidate: vi.fn() }),
+  useRouter: () => ({ invalidate: routerInvalidate }),
 }))
 
 const posthogCapture = vi.fn()
 
 vi.mock('@posthog/react', () => ({
   usePostHog: () => ({ capture: posthogCapture }),
+}))
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }))
 
 vi.mock('../../../../features/financial/financial.functions', () => ({
@@ -24,7 +31,10 @@ vi.mock('../../../../features/financial/financial.functions', () => ({
 
 describe('ExpenseSheet', () => {
   afterEach(cleanup)
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.resetAllMocks()
+    routerInvalidate.mockResolvedValue(undefined)
+  })
 
   function renderSheet(
     expense?: Parameters<typeof ExpenseSheet>[0]['expense'],
@@ -173,6 +183,25 @@ describe('ExpenseSheet', () => {
     })
   })
 
+  it('uses the selected workspace month when saving an untouched recurring edit', async () => {
+    const user = userEvent.setup()
+    renderSheet({
+      id: 'exp_1', sourceKind: 'housing', sourceId: null, sourceName: 'Alquiler / vivienda',
+      amount: '100.00', concept: 'Alquiler mensual', currency: 'ARS', recurring: true,
+      effectiveMonth: '2026-06-01', endMonth: null,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(updateExpense).toHaveBeenCalledWith({
+      data: {
+        expenseId: 'exp_1',
+        draft: expect.objectContaining({ concept: 'Alquiler mensual' }),
+        effectiveMonth: '2026-08',
+      },
+    })
+  })
+
   it('uses a currency Select and shows the USD equivalent', async () => {
     const user = userEvent.setup()
     renderSheet()
@@ -254,6 +283,141 @@ describe('ExpenseSheet', () => {
     const amountField = screen.getByRole('textbox', { name: 'Monto' }).closest('[data-slot="field"]')
     expect(amountField).toHaveAttribute('data-invalid', 'true')
     expect(amountField).toHaveTextContent('Ingresá un monto mayor a cero.')
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveAttribute('aria-describedby', 'expense-amount-error')
+    expect(screen.getByText('Ingresá un monto mayor a cero.')).toHaveAttribute('id', 'expense-amount-error')
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveFocus()
+  })
+
+  it('links an invalid month control to its visible error', async () => {
+    const user = userEvent.setup()
+    render(
+      <ExpenseSheet
+        open
+        onOpenChange={vi.fn()}
+        month=""
+        sources={[]}
+      />,
+    )
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const month = screen.getByRole('button', { name: 'Mes del gasto' })
+    expect(month).toHaveAttribute('aria-invalid', 'true')
+    expect(month).toHaveAttribute('aria-describedby', 'expense-month-error')
+    expect(screen.getByText('Ingresá un mes válido.')).toHaveAttribute('id', 'expense-month-error')
+  })
+
+  it('locks every field and the sheet while saving', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    let resolveCreate!: () => void
+    vi.mocked(createExpense).mockImplementation(
+      () => new Promise<void>((resolve) => { resolveCreate = resolve }),
+    )
+    render(
+      <ExpenseSheet open onOpenChange={onOpenChange} month="2026-08" sources={[]} />,
+    )
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(document.querySelector('form')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('textbox', { name: 'Monto' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'Concepto' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Moneda' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Es gasto recurrente' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'Mes del gasto' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    resolveCreate()
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
+  it('closes and reports refresh failure after a successful create', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    routerInvalidate.mockRejectedValueOnce(new Error('No se pudo actualizar la vista.'))
+    render(<ExpenseSheet open onOpenChange={onOpenChange} month="2026-08" sources={[]} />)
+
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(createExpense).toHaveBeenCalledTimes(1)
+    expect(toast.success).toHaveBeenCalledWith('Gasto agregado.')
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+      'El gasto se guardó, pero no pudimos actualizar la vista.',
+    ))
+    expect(createExpense).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes and reports refresh failure after a successful update', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    routerInvalidate.mockRejectedValueOnce(new Error('No se pudo actualizar la vista.'))
+    render(
+      <ExpenseSheet
+        open
+        onOpenChange={onOpenChange}
+        month="2026-08"
+        sources={[]}
+        expense={{
+          id: 'exp_1', sourceKind: 'housing', sourceId: null, sourceName: 'Alquiler / vivienda',
+          amount: '100.00', concept: 'Alquiler mensual', currency: 'ARS', recurring: true,
+          effectiveMonth: '2026-08-01', endMonth: null,
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(updateExpense).toHaveBeenCalledTimes(1)
+    expect(toast.success).toHaveBeenCalledWith('Gasto actualizado.')
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+      'El gasto se guardó, pero no pudimos actualizar la vista.',
+    ))
+    expect(updateExpense).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes and reports refresh failure after a successful delete', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    routerInvalidate.mockRejectedValueOnce(new Error('No se pudo actualizar la vista.'))
+    render(
+      <ExpenseSheet
+        open
+        onOpenChange={onOpenChange}
+        month="2026-08"
+        sources={[]}
+        expense={{
+          id: 'exp_1', sourceKind: 'housing', sourceId: null, sourceName: 'Alquiler / vivienda',
+          amount: '100.00', concept: 'Alquiler mensual', currency: 'ARS', recurring: true,
+          effectiveMonth: '2026-08-01', endMonth: null,
+        }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(deleteExpense).toHaveBeenCalledTimes(1)
+    expect(toast.success).toHaveBeenCalledWith('Gasto eliminado.')
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+      'El gasto se eliminó, pero no pudimos actualizar la vista.',
+    ))
+    expect(deleteExpense).toHaveBeenCalledTimes(1)
+    confirmSpy.mockRestore()
   })
 
   it('rejects a missing concept without creating an expense', async () => {
@@ -296,7 +460,7 @@ describe('ExpenseSheet', () => {
       data: {
         expenseId: 'exp_1',
         draft: expect.objectContaining({ source: { kind: 'custom', sourceId }, concept: 'Membresía' }),
-        effectiveMonth: '2026-06',
+        effectiveMonth: '2026-08',
       },
     })
   })

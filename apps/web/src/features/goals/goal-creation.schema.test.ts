@@ -212,6 +212,16 @@ describe('Goal Creation Schemas', () => {
       })
       expect(invalidFormat.success).toBe(false)
     })
+
+    it('does not require a month for investment availability that is not available_from', () => {
+      expect(goalPlanSchema.safeParse({
+        ...baseDraft,
+        strategy: 'invest',
+        availability: 'long_term',
+        annualReturnRate: '8.25',
+        availableFromMonth: '',
+      }).success).toBe(true)
+    })
   })
 
   describe('goalImpactSchema & allocationEntrySchema', () => {
@@ -400,4 +410,3 @@ describe('Goal Creation Schemas', () => {
     })
   })
 })
-

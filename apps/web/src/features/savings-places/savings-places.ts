@@ -2,8 +2,7 @@ import BigNumber from 'bignumber.js'
 import type { SavingContribution } from '@/db/schema'
 import type { SavingsPlaceTransfer } from '@/db/schema'
 import type { GoalCompletionWithdrawal } from '@/db/schema'
-
-export type CurrencyCode = 'ARS' | 'USD'
+import type { CurrencyCode } from '../../lib/money'
 
 export interface SavingsPlaceSummary {
   id: string
@@ -68,7 +67,7 @@ export function getSavingsPlaceEntries(
     .slice(0, 20)
 }
 
-export function calculateSavingsPlacesWorkspace(input: {
+type SavingsPlacesInput = {
   places: Array<{ id: string; name: string }>
   contributions: Pick<SavingContribution, 'id' | 'placeId' | 'amount' | 'currency' | 'createdAt'>[]
   transfers: (Pick<SavingsPlaceTransfer, 'id' | 'fromPlaceId' | 'toPlaceId' | 'amount' | 'currency' | 'createdAt'> & {
@@ -79,50 +78,65 @@ export function calculateSavingsPlacesWorkspace(input: {
     goalName: string
     placeName: string
   })[]
-}): SavingsPlacesWorkspace {
-  const { places, contributions, transfers, completionWithdrawals = [] } = input
+}
 
-  const placeMap = new Map(places.map((p) => [p.id, p.name]))
+type Contribution = SavingsPlacesInput['contributions'][number]
+type Transfer = SavingsPlacesInput['transfers'][number]
+type CompletionWithdrawal = NonNullable<SavingsPlacesInput['completionWithdrawals']>[number]
+type PlaceBalances = Record<CurrencyCode, BigNumber>
 
-  const balances = new Map<string, Record<CurrencyCode, BigNumber>>()
+function createPlaceBalances(places: SavingsPlacesInput['places']) {
+  const balances = new Map<string, PlaceBalances>()
   for (const place of places) {
     balances.set(place.id, { ARS: new BigNumber(0), USD: new BigNumber(0) })
   }
+  return balances
+}
 
-  for (const c of contributions) {
-    const placeBalances = balances.get(c.placeId)
+function applyContributions(
+  balances: Map<string, PlaceBalances>,
+  contributions: Contribution[],
+) {
+  for (const contribution of contributions) {
+    const placeBalances = balances.get(contribution.placeId)
     if (placeBalances) {
-      placeBalances[c.currency as CurrencyCode] = placeBalances[c.currency as CurrencyCode].plus(
-        c.amount,
-      )
+      const currency = contribution.currency as CurrencyCode
+      placeBalances[currency] = placeBalances[currency].plus(contribution.amount)
     }
   }
+}
 
-  for (const t of transfers) {
-    const fromBalances = balances.get(t.fromPlaceId)
-    const toBalances = balances.get(t.toPlaceId)
-    if (fromBalances) {
-      fromBalances[t.currency as CurrencyCode] = fromBalances[t.currency as CurrencyCode].minus(
-        t.amount,
-      )
-    }
-    if (toBalances) {
-      toBalances[t.currency as CurrencyCode] = toBalances[t.currency as CurrencyCode].plus(
-        t.amount,
-      )
-    }
+function applyTransfers(balances: Map<string, PlaceBalances>, transfers: Transfer[]) {
+  for (const transfer of transfers) {
+    const fromBalances = balances.get(transfer.fromPlaceId)
+    const toBalances = balances.get(transfer.toPlaceId)
+    const currency = transfer.currency as CurrencyCode
+    if (fromBalances) fromBalances[currency] = fromBalances[currency].minus(transfer.amount)
+    if (toBalances) toBalances[currency] = toBalances[currency].plus(transfer.amount)
   }
+}
 
-  for (const withdrawal of completionWithdrawals) {
+function applyCompletionWithdrawals(
+  balances: Map<string, PlaceBalances>,
+  withdrawals: CompletionWithdrawal[],
+) {
+  for (const withdrawal of withdrawals) {
     const placeBalances = balances.get(withdrawal.placeId)
     if (placeBalances) {
-      placeBalances[withdrawal.currency as CurrencyCode] = placeBalances[
-        withdrawal.currency as CurrencyCode
-      ].minus(withdrawal.amount)
+      const currency = withdrawal.currency as CurrencyCode
+      placeBalances[currency] = placeBalances[currency].minus(withdrawal.amount)
     }
   }
+}
 
-  const placeSummaries: SavingsPlaceSummary[] = places
+function buildPlaceSummaries(
+  places: SavingsPlacesInput['places'],
+  balances: Map<string, PlaceBalances>,
+  contributions: Contribution[],
+  transfers: Transfer[],
+  withdrawals: CompletionWithdrawal[],
+) {
+  return places
     .map((place) => {
       const placeBalances = balances.get(place.id)!
       return {
@@ -134,34 +148,47 @@ export function calculateSavingsPlacesWorkspace(input: {
         },
         hasMovements: contributions.some((c) => c.placeId === place.id) ||
           transfers.some((t) => t.fromPlaceId === place.id || t.toPlaceId === place.id) ||
-          completionWithdrawals.some((withdrawal) => withdrawal.placeId === place.id),
+          withdrawals.some((withdrawal) => withdrawal.placeId === place.id),
       }
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'es-AR'))
+}
 
-  const contributionMovements: SavingsMovement[] = contributions.map((c) => ({
+function toMovementTimestamp(createdAt: Date | unknown) {
+  return createdAt instanceof Date ? createdAt.toISOString() : String(createdAt)
+}
+
+function buildContributionMovements(
+  contributions: Contribution[],
+  placeMap: Map<string, string>,
+): SavingsMovement[] {
+  return contributions.map((contribution) => ({
     kind: 'contribution' as const,
-    id: c.id,
-    placeId: c.placeId,
-    placeName: placeMap.get(c.placeId) ?? '',
-    amount: c.amount,
-    currency: c.currency as CurrencyCode,
-    createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),
+    id: contribution.id,
+    placeId: contribution.placeId,
+    placeName: placeMap.get(contribution.placeId) ?? '',
+    amount: contribution.amount,
+    currency: contribution.currency as CurrencyCode,
+    createdAt: toMovementTimestamp(contribution.createdAt),
   }))
+}
 
-  const transferMovements: SavingsMovement[] = transfers.map((t) => ({
+function buildTransferMovements(transfers: Transfer[]): SavingsMovement[] {
+  return transfers.map((transfer) => ({
     kind: 'transfer' as const,
-    id: t.id,
-    fromPlaceId: t.fromPlaceId,
-    fromPlaceName: t.fromPlaceName,
-    toPlaceId: t.toPlaceId,
-    toPlaceName: t.toPlaceName,
-    amount: t.amount,
-    currency: t.currency as CurrencyCode,
-    createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
+    id: transfer.id,
+    fromPlaceId: transfer.fromPlaceId,
+    fromPlaceName: transfer.fromPlaceName,
+    toPlaceId: transfer.toPlaceId,
+    toPlaceName: transfer.toPlaceName,
+    amount: transfer.amount,
+    currency: transfer.currency as CurrencyCode,
+    createdAt: toMovementTimestamp(transfer.createdAt),
   }))
+}
 
-  const completionMovements: SavingsMovement[] = completionWithdrawals.map((withdrawal) => ({
+function buildCompletionMovements(withdrawals: CompletionWithdrawal[]): SavingsMovement[] {
+  return withdrawals.map((withdrawal) => ({
     kind: 'completion' as const,
     id: withdrawal.id,
     goalId: withdrawal.goalId,
@@ -170,17 +197,27 @@ export function calculateSavingsPlacesWorkspace(input: {
     placeName: withdrawal.placeName,
     amount: withdrawal.amount,
     currency: withdrawal.currency as CurrencyCode,
-    createdAt:
-      withdrawal.createdAt instanceof Date
-        ? withdrawal.createdAt.toISOString()
-        : String(withdrawal.createdAt),
+    createdAt: toMovementTimestamp(withdrawal.createdAt),
   }))
+}
 
-  const allMovements = [...contributionMovements, ...transferMovements, ...completionMovements]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+export function calculateSavingsPlacesWorkspace(input: SavingsPlacesInput): SavingsPlacesWorkspace {
+  const { places, contributions, transfers, completionWithdrawals = [] } = input
+
+  const placeMap = new Map(places.map((p) => [p.id, p.name]))
+  const balances = createPlaceBalances(places)
+  applyContributions(balances, contributions)
+  applyTransfers(balances, transfers)
+  applyCompletionWithdrawals(balances, completionWithdrawals)
+
+  const allMovements = [
+    ...buildContributionMovements(contributions, placeMap),
+    ...buildTransferMovements(transfers),
+    ...buildCompletionMovements(completionWithdrawals),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
   return {
-    places: placeSummaries,
+    places: buildPlaceSummaries(places, balances, contributions, transfers, completionWithdrawals),
     movements: allMovements,
   }
 }

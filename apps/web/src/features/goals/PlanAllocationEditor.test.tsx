@@ -295,6 +295,12 @@ describe('PlanAllocationEditor component', () => {
       const inputs = screen.getAllByRole('textbox')
       for (const input of inputs) {
         expect(input).toHaveAttribute('aria-invalid', 'true')
+        expect(input).toHaveAttribute('aria-describedby', 'allocation-total-error')
+      }
+      const sliders = screen.getAllByRole('slider', { hidden: true })
+      for (const slider of sliders) {
+        expect(slider).toHaveAttribute('aria-invalid', 'true')
+        expect(slider).toHaveAttribute('aria-describedby', 'allocation-total-error')
       }
     })
 

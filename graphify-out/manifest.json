@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "apps/web/package.json": {
-    "mtime": 1787252000.3748965,
-    "seen": 1788294079.252269,
-    "ast_hash": "47f1c34667b426f07a363a4e0b219404",
+    "mtime": 1788307577.8006792,
+    "seen": 1788309004.9400508,
+    "ast_hash": "68e6037426289711d3998b83b1ae0cca",
     "semantic_hash": ""
   },
   "apps/web/posthog-proxy.ts": {
@@ -579,12 +579,6 @@
     "mtime": 1782945509.622972,
     "seen": 1788294079.25227,
     "ast_hash": "49b913e254d1270fbdb23f6e6ef48359",
-    "semantic_hash": ""
-  },
-  "apps/web/src/components/DatePicker.tsx": {
-    "mtime": 1787252000.3748965,
-    "seen": 1788294079.2522707,
-    "ast_hash": "d0806ed236f82ffb61856ce822f294e5",
     "semantic_hash": ""
   },
   "apps/web/src/components/FinancialSummaryCards.test.tsx": {
@@ -1500,9 +1494,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/routes/app/-components/Roadmap.test.tsx": {
-    "mtime": 1788299506.1541412,
-    "seen": 1788301335.8004057,
-    "ast_hash": "fac547ee8421c83c92899e3b9a2292fd",
+    "mtime": 1788308951.6770575,
+    "seen": 1788309004.9401457,
+    "ast_hash": "08b21d1c68e688c4f98f2e7b15e7a6c8",
     "semantic_hash": ""
   },
   "apps/web/src/routes/app/-components/Roadmap.tsx": {
@@ -2082,9 +2076,9 @@
     "semantic_hash": ""
   },
   "apps/web/AGENTS.md": {
-    "mtime": 1788301515.6899931,
-    "seen": 1788301583.0375738,
-    "ast_hash": "1a27d3c7ad91ca3b6ba6221f1d5b514a",
+    "mtime": 1788305305.447995,
+    "seen": 1788309004.9402044,
+    "ast_hash": "e416b7dc89cb203c7427ac771fdeb96e",
     "semantic_hash": ""
   },
   "apps/web/DESIGN.md": {
@@ -2406,9 +2400,9 @@
     "semantic_hash": ""
   },
   "apps/web/.fallowrc.json": {
-    "mtime": 1788294084.287479,
-    "seen": 1788296483.404561,
-    "ast_hash": "f6d81495f769144d8d3cda326a607747",
+    "mtime": 1788306512.6781483,
+    "seen": 1788309004.9400175,
+    "ast_hash": "84dcf47fb1b5933fecc02cbe3b192467",
     "semantic_hash": ""
   },
   "apps/web/drizzle/0019_goal_completion_withdrawals.sql": {
@@ -2487,6 +2481,54 @@
     "mtime": 1788294084.3011215,
     "seen": 1788296483.4046857,
     "ast_hash": "769aaf7786dc9fbb54eee329ec4d7c00",
+    "semantic_hash": ""
+  },
+  ".agents/skills/fallow/SKILL.md": {
+    "mtime": 1788305260.7234359,
+    "seen": 1788309004.940193,
+    "ast_hash": "c83a30c875b5518a198e39cdc7ef659c",
+    "semantic_hash": ""
+  },
+  ".agents/skills/fallow/agents/openai.yaml": {
+    "mtime": 1788305260.7234359,
+    "seen": 1788309004.940194,
+    "ast_hash": "9b9141c748e7f1716f9825b5f07bc26f",
+    "semantic_hash": ""
+  },
+  ".agents/skills/fallow/references/cli-reference.md": {
+    "mtime": 1788305260.7234359,
+    "seen": 1788309004.9401941,
+    "ast_hash": "47d6b069d88a19badf9fa2d796650815",
+    "semantic_hash": ""
+  },
+  ".agents/skills/fallow/references/gotchas.md": {
+    "mtime": 1788305260.728945,
+    "seen": 1788309004.9401946,
+    "ast_hash": "7c6a38dbbe64d5915009d18c950463c4",
+    "semantic_hash": ""
+  },
+  ".agents/skills/fallow/references/mcp.md": {
+    "mtime": 1788305260.7289667,
+    "seen": 1788309004.9401953,
+    "ast_hash": "23cb5bff5f5e26fe10f47cfd0eb9dd7e",
+    "semantic_hash": ""
+  },
+  ".agents/skills/fallow/references/node-bindings.md": {
+    "mtime": 1788305260.728983,
+    "seen": 1788309004.940196,
+    "ast_hash": "c074f105894a20082d28078c8b5d7d92",
+    "semantic_hash": ""
+  },
+  ".agents/skills/fallow/references/patterns.md": {
+    "mtime": 1788305260.728992,
+    "seen": 1788309004.9401965,
+    "ast_hash": "0f48228cfd6041b6d024a8b632d137d6",
+    "semantic_hash": ""
+  },
+  ".agents/skills/fallow/references/similar-code.md": {
+    "mtime": 1788306034.1445894,
+    "seen": 1788309004.9401972,
+    "ast_hash": "f0ae704b1d2cbe1cce0722f654cfd3f7",
     "semantic_hash": ""
   }
 }

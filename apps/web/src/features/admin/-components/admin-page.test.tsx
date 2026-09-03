@@ -3,13 +3,23 @@ import '@testing-library/jest-dom/vitest'
 import { render, screen, cleanup, fireEvent, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AdminPage } from './admin-page'
+import { AdminPage, getResultStatus } from './admin-page'
 import { loginAdmin } from '../admin.functions'
 import { listAdminResults, getAdminResultFiles, listAdminCsvRows, getAdminCsvRow, saveAdminReport, setAdminReportSent } from '../admin.functions'
 import { csvHeaders } from '../csv'
 import demoReport from '@/features/informe/demo.json'
 
 const posthogOptOut = vi.fn()
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+  return { promise, resolve, reject }
+}
 
 vi.mock('@posthog/react', () => ({
   usePostHog: () => ({ optOut: posthogOptOut }),
@@ -31,6 +41,13 @@ describe('AdminPage', () => {
     cleanup()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+  })
+
+  it('prioritizes sent and ready report states over the draft status', () => {
+    expect(getResultStatus({ status: 'draft', hasReport: true, reportSentOn: new Date() })).toBe('report-sent')
+    expect(getResultStatus({ status: 'draft', hasReport: true, reportSentOn: null })).toBe('report-ready')
+    expect(getResultStatus({ status: 'completed', hasReport: false, reportSentOn: null })).toBe('completed')
+    expect(getResultStatus({ status: 'draft', hasReport: false, reportSentOn: null })).toBe('draft')
   })
 
   it('submits the Spanish login form and reports invalid credentials', async () => {
@@ -167,7 +184,7 @@ describe('AdminPage', () => {
       await user.click(rowCsvButton)
       expect(getAdminCsvRow).toHaveBeenCalledWith({ data: { deviceId: 'device-ana' } })
       expect(createObjectURLMock).toHaveBeenCalled()
-      expect(clickMock).toHaveBeenCalledWith('blob:mock-url', 'norte-device-ana-ana.csv')
+      expect(clickMock).toHaveBeenCalledWith('blob:mock-url', 'norte-device-ana.csv')
 
       // Check download link is displayed
       const downloadLink = await screen.findByRole('link', {
@@ -214,6 +231,27 @@ describe('AdminPage', () => {
       await user.click(retryBtn)
 
       expect(await screen.findByText('Ana')).toBeInTheDocument()
+    })
+
+    it('renders a CSV error when the all-results download fails', async () => {
+      vi.mocked(listAdminResults).mockResolvedValue([{
+        deviceId: 'device-ana',
+        name: 'Ana',
+        contactMethod: null,
+        contactValue: null,
+        status: 'completed',
+        updatedAt: new Date('2026-07-16T12:00:00Z'),
+        hasReport: false,
+        reportSentOn: null,
+      }])
+      vi.mocked(listAdminCsvRows).mockRejectedValue(new Error('CSV failed'))
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+
+      await user.click(screen.getByRole('button', { name: 'Descargar CSV' }))
+
+      expect(await screen.findByText('Error al descargar el CSV.')).toBeInTheDocument()
     })
 
     it('handles no files state for an expanded row', async () => {
@@ -264,6 +302,34 @@ describe('AdminPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'Ana' }))
       expect(await screen.findByText('Error al cargar archivos.')).toBeInTheDocument()
+    })
+
+    it('allows retrying a failed file load', async () => {
+      vi.mocked(getAdminResultFiles).mockClear()
+      vi.mocked(listAdminResults).mockResolvedValue([{
+        deviceId: 'device-ana',
+        name: 'Ana',
+        contactMethod: null,
+        contactValue: null,
+        status: 'completed',
+        updatedAt: new Date('2026-07-16T12:00:00Z'),
+        hasReport: false,
+        reportSentOn: null,
+      }])
+      vi.mocked(getAdminResultFiles)
+        .mockRejectedValueOnce(new Error('File load failed'))
+        .mockResolvedValueOnce([])
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+      await user.click(await screen.findByRole('button', { name: 'Ana' }))
+      expect(await screen.findByText('Error al cargar archivos.')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Ana' }))
+      await user.click(screen.getByRole('button', { name: 'Ana' }))
+
+      expect(getAdminResultFiles).toHaveBeenCalledTimes(2)
+      expect(await screen.findByText('No se encontraron archivos.')).toBeInTheDocument()
     })
 
     it('manages report creation, replacement, sent status, and copying link', async () => {
@@ -416,6 +482,105 @@ describe('AdminPage', () => {
       writeTextMock.mockRejectedValueOnce(new Error('Clipboard error'))
       await user.click(copyBtn)
       expect(await screen.findByText('No se pudo copiar el enlace.')).toBeInTheDocument()
+    })
+
+    it('keeps the report editor open and reports save failures', async () => {
+      vi.mocked(listAdminResults).mockResolvedValue([
+        {
+          deviceId: 'device-ana',
+          name: 'Ana',
+          contactMethod: null,
+          contactValue: null,
+          status: 'completed',
+          updatedAt: new Date('2026-07-16T12:00:00Z'),
+          hasReport: false,
+          reportSentOn: null,
+        },
+      ])
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+      await user.click(await screen.findByRole('button', { name: 'Ana' }))
+      await user.click(screen.getByRole('button', { name: 'Cargar informe' }))
+      fireEvent.change(screen.getByLabelText('JSON del informe'), {
+        target: { value: JSON.stringify(demoReport) },
+      })
+      vi.mocked(saveAdminReport).mockRejectedValue(new Error('Save failed'))
+
+      await user.click(screen.getByRole('button', { name: 'Guardar informe' }))
+
+      expect(await screen.findByText('No se pudo guardar el informe. Intentá nuevamente.')).toBeInTheDocument()
+      expect(screen.getByLabelText('JSON del informe')).toBeInTheDocument()
+    })
+
+    it('surfaces report delivery failures without changing the checkbox optimistically', async () => {
+      vi.mocked(listAdminResults).mockResolvedValue([{
+        deviceId: 'device-ana',
+        name: 'Ana',
+        contactMethod: null,
+        contactValue: null,
+        status: 'completed',
+        updatedAt: new Date('2026-07-16T12:00:00Z'),
+        hasReport: true,
+        reportSentOn: null,
+      }])
+      vi.mocked(setAdminReportSent).mockRejectedValue(new Error('Delivery failed'))
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+      await user.click(await screen.findByRole('button', { name: 'Ana' }))
+      const checkbox = screen.getByLabelText('Informe enviado')
+
+      await user.click(checkbox)
+
+      expect(checkbox).not.toBeChecked()
+      expect(await screen.findByText('No se pudo actualizar el estado de envío.')).toBeInTheDocument()
+    })
+
+    it('prevents duplicate CSV downloads and exposes pending state', async () => {
+      vi.mocked(listAdminCsvRows).mockClear()
+      const csvRequest = deferred<{ headers: readonly string[]; rows: Record<string, any>[] }>()
+      vi.mocked(listAdminResults).mockResolvedValue([{
+        deviceId: 'device-ana',
+        name: 'Ana',
+        contactMethod: null,
+        contactValue: null,
+        status: 'completed',
+        updatedAt: new Date('2026-07-16T12:00:00Z'),
+        hasReport: false,
+        reportSentOn: null,
+      }])
+      vi.mocked(listAdminCsvRows).mockReturnValue(csvRequest.promise as any)
+
+      const user = userEvent.setup()
+      render(<AdminPage authenticated />)
+      const button = await screen.findByRole('button', { name: 'Descargar CSV' })
+      await user.click(button)
+      expect(button).toBeDisabled()
+      expect(button).toHaveTextContent('Descargando CSV...')
+      await user.click(button)
+      expect(listAdminCsvRows).toHaveBeenCalledTimes(1)
+
+      csvRequest.resolve({ headers: csvHeaders, rows: [] })
+    })
+
+    it('disables CSV download when there are no completed results', async () => {
+      vi.mocked(listAdminCsvRows).mockClear()
+      vi.mocked(listAdminResults).mockResolvedValue([{
+        deviceId: 'device-draft',
+        name: 'Borrador',
+        contactMethod: null,
+        contactValue: null,
+        status: 'draft',
+        updatedAt: new Date('2026-07-16T12:00:00Z'),
+        hasReport: false,
+        reportSentOn: null,
+      }])
+
+      render(<AdminPage authenticated />)
+
+      expect(await screen.findByRole('button', { name: 'Descargar CSV' })).toBeDisabled()
+      expect(listAdminCsvRows).not.toHaveBeenCalled()
     })
 
     it('renders Informe Enviado green chip and Informe Listo chip based on report state', async () => {

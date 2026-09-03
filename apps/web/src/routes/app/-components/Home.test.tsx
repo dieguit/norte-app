@@ -133,7 +133,8 @@ describe('Home component', () => {
           { id: 'goal-inv-ars', name: 'CEDEARs ARS', percentage: '100.00' },
         ],
         eligibleInvestmentGoalsUsd: [],
-      places: [],
+        places: [],
+        investmentState: { ars: { status: 'ready' }, usd: { status: 'ready' } },
     },
     })
     const shortfalls: PreviousMonthShortfall[] = [
@@ -201,7 +202,8 @@ describe('Home component', () => {
           { id: 'goal-inv-ars', name: 'CEDEARs ARS', percentage: '100.00' },
         ],
         eligibleInvestmentGoalsUsd: [],
-      places: [],
+        places: [],
+        investmentState: { ars: { status: 'ready' }, usd: { status: 'ready' } },
     },
     })
 

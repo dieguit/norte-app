@@ -20,7 +20,7 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn() },
 }))
 
 vi.mock('../../../../features/savings-places/savings-places.functions', () => ({
@@ -113,6 +113,23 @@ describe('SavingsPlaceSheet', () => {
     expect(toast.success).toHaveBeenCalledWith('Lugar creado.')
   })
 
+  it('closes after create succeeds even when refresh fails', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    vi.mocked(createSavingsPlace).mockResolvedValue({ placeId: 'new-place' })
+    routerInvalidate.mockRejectedValue(new Error('refresh failed'))
+
+    render(<SavingsPlaceSheet open onOpenChange={onOpenChange} />)
+    await user.type(screen.getByRole('textbox', { name: 'Nombre del lugar' }), 'Efectivo')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(toast.error).toHaveBeenCalledWith('El lugar se guardó, pero no pudimos actualizar la vista.')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(createSavingsPlace).toHaveBeenCalledTimes(1)
+  })
+
   it('populates and renames the selected place', async () => {
     const user = userEvent.setup()
     vi.mocked(renameSavingsPlace).mockResolvedValue(undefined)
@@ -147,6 +164,23 @@ describe('SavingsPlaceSheet', () => {
     expect(toast.success).toHaveBeenCalledWith('Lugar renombrado.')
     expect(routerInvalidate).toHaveBeenCalled()
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('closes after rename succeeds even when refresh fails', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    vi.mocked(renameSavingsPlace).mockResolvedValue(undefined)
+    routerInvalidate.mockRejectedValue(new Error('refresh failed'))
+
+    render(<SavingsPlaceSheet open onOpenChange={onOpenChange} place={bank} />)
+    const input = screen.getByRole('textbox', { name: 'Nombre del lugar' })
+    await user.clear(input)
+    await user.type(input, 'Banco Galicia')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(toast.error).toHaveBeenCalledWith('El lugar se guardó, pero no pudimos actualizar la vista.')
   })
 
   it('preserves the renamed name and displays a server error when rename fails', async () => {
@@ -317,5 +351,20 @@ describe('SavingsPlaceSheet', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(toast.success).toHaveBeenCalledWith('Lugar eliminado.')
     vi.restoreAllMocks()
+  })
+
+  it('closes after delete succeeds even when refresh fails', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(deleteSavingsPlace).mockResolvedValue(undefined)
+    routerInvalidate.mockRejectedValue(new Error('refresh failed'))
+    render(<SavingsPlaceSheet open onOpenChange={onOpenChange} place={bank} />)
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }))
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(toast.error).toHaveBeenCalledWith('El lugar se eliminó, pero no pudimos actualizar la vista.')
   })
 })

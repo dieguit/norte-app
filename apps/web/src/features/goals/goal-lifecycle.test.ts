@@ -295,6 +295,67 @@ describe('buildGoalLifecycleProposal', () => {
     ])
   })
 
+  it('advances a December pause to January and preserves converted cent rounding', () => {
+    const proposal = buildGoalLifecycleProposal({
+      lifecycle: 'pause',
+      goalId: 'travel',
+      state: {
+        source: createThreeGoalsWorkspaceSource('active'),
+        pendingSnapshots: [],
+        pendingAllocations: [],
+      },
+      currentMonth: '2026-12',
+      draft: {
+        allocations: [
+          { goalId: 'travel', percentage: '0.00' },
+          { goalId: 'emergency', percentage: '33.33' },
+          { goalId: 'retirement', percentage: '66.67' },
+        ],
+      },
+    })
+
+    expect(proposal.allocation.effectiveMonth).toBe('2027-01-01')
+    expect(proposal.persistedAllocation.entries.map((entry) => entry.goalId)).toEqual([
+      'emergency',
+      'retirement',
+    ])
+    expect(proposal.allocation.entries[1]).toMatchObject({
+      goalId: 'emergency',
+      allocatedBaseAmount: { amount: '19998.00', currency: 'ARS' },
+      allocatedDestinationAmount: { amount: '13.33', currency: 'USD' },
+    })
+    expect(proposal.allocation.entries[2]).toMatchObject({
+      goalId: 'retirement',
+      allocatedBaseAmount: { amount: '40002.00', currency: 'ARS' },
+      allocatedDestinationAmount: { amount: '26.67', currency: 'USD' },
+    })
+    expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe('2027-01-01')
+  })
+
+  it('rejects a pause draft whose remaining active goals do not total 100%', () => {
+    const state: GoalLifecycleState = {
+      source: createThreeGoalsWorkspaceSource('active'),
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    }
+
+    expect(() =>
+      buildGoalLifecycleProposal({
+        lifecycle: 'pause',
+        goalId: 'travel',
+        state,
+        currentMonth: '2026-08',
+        draft: {
+          allocations: [
+            { goalId: 'travel', percentage: '0.00' },
+            { goalId: 'emergency', percentage: '50.00' },
+            { goalId: 'retirement', percentage: '20.00' },
+          ],
+        },
+      }),
+    ).toThrow('sum to 100%')
+  })
+
   it('accepts a valid resume draft and applies it correctly', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('paused'),
@@ -347,6 +408,46 @@ describe('buildGoalLifecycleProposal', () => {
     expect(proposal.proposedSource.investmentPositions).toEqual(state.source.investmentPositions)
   })
 
+  it('preserves optional source records while changing lifecycle state', () => {
+    const state: GoalLifecycleState = {
+      source: {
+        ...createThreeGoalsWorkspaceSource('active'),
+        incomes: [{
+          id: 'income-1',
+          sourceKind: 'salary',
+          sourceId: null,
+          sourceName: 'Salary',
+          concept: null,
+          amount: '100000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-08-01',
+        }],
+        completionWithdrawals: [{
+          id: 'withdrawal-1',
+          goalId: 'travel',
+          placeId: 'place-1',
+          placeName: 'Bank',
+          amount: '100.00',
+          currency: 'USD',
+          createdAt: '2026-08-01T00:00:00Z',
+        }],
+      },
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    }
+
+    const proposal = buildGoalLifecycleProposal({
+      lifecycle: 'pause',
+      goalId: 'travel',
+      state,
+      currentMonth: '2026-08',
+    })
+
+    expect(proposal.proposedSource.incomes).toBe(state.source.incomes)
+    expect(proposal.proposedSource.completionWithdrawals).toBe(state.source.completionWithdrawals)
+  })
+
   it('rejects invalid status transitions', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('active'),
@@ -371,6 +472,26 @@ describe('buildGoalLifecycleProposal', () => {
         currentMonth: '2026-08',
       }),
     ).toThrow('Goal not found.')
+  })
+
+  it('changes the preview token when goal dedication percentage changes', () => {
+    const source = createThreeGoalsWorkspaceSource()
+    const state: GoalLifecycleState = {
+      source,
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    }
+    const changedState: GoalLifecycleState = {
+      ...state,
+      source: {
+        ...source,
+        profile: { ...source.profile!, goalDedicationPercentage: '80.00' },
+      },
+    }
+
+    expect(serializeGoalLifecycleState('pause', 'travel', state, '2026-08')).not.toBe(
+      serializeGoalLifecycleState('pause', 'travel', changedState, '2026-08'),
+    )
   })
 
   it('serializes state deterministically', () => {

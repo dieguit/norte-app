@@ -1,7 +1,7 @@
 import { useForm } from '@tanstack/react-form'
 import type { GoalCreationDraft } from '../../../../features/goals/goal-creation.schema'
 
-export const defaultGoalCreationDraft: GoalCreationDraft = {
+const defaultGoalCreationDraft: GoalCreationDraft = {
   type: 'purchase',
   name: '',
   targetAmount: '',

@@ -23,7 +23,7 @@ const cardHeaders = [1, 2, 3, 4, 5].flatMap((number) => {
 
 export const csvHeaders = [
   'timestamp', 'nombre', 'contacto_canal', 'whatsapp', 'email', 'p1_pesa', 'p1_otra',
-  'p2_ultimo', 'p3_primero', 'ing_total', 'p5_fuentes', 'ing_tercero_falla',
+  'p2_ultimo_1', 'p2_ultimo_2', 'p3_primero_1', 'p3_primero_2', 'ing_total', 'p5_fuentes', 'ing_tercero_falla',
   'ing_tercero_monto', 'p8a_tiene_vencimiento', 'ing_sueldo_fijo_hasta',
   'ing_trabajos_propios_hasta', 'ing_aportes_tercero_hasta', 'ing_jubilacion_pension_hasta',
   'ing_otro_hasta', 'aumento_tipo', 'aumento_meses', 'aumento_pct', 'aumento_proximo',
@@ -62,7 +62,8 @@ export const csvHeaders = [
     `compra_necesaria_${number}_monto`,
     `compra_necesaria_${number}_fecha`,
   ]),
-  'p14_tiene_compras', 'p15_tarjetas', ...cardHeaders,
+  'p14_tiene_compras', 'n1_concepto', 'n1_monto', 'n2_concepto', 'n2_monto', 'n3_concepto', 'n3_monto',
+  'p15_tarjetas', ...cardHeaders,
 ] as const
 
 const value = (answers: OnboardingAnswers, key: string): CsvValue => {
@@ -80,38 +81,68 @@ const fixedOtherAmount = (answer: unknown): CsvValue => {
   return normalized !== '' && Number.isFinite(Number(normalized)) ? normalized : ''
 }
 
-export function toAdminCsvRow(draft: CompletedDraft): CsvRow {
-  if (!draft.completedAt) throw new Error('Only completed drafts can be exported.')
-  const answers = draft.answers
+function listValue(answers: OnboardingAnswers, key: string, index: number): CsvValue {
+  const answer = answers[key]
+  if (Array.isArray(answer)) {
+    const item = answer[index]
+    return typeof item === 'string' || (typeof item === 'number' && Number.isFinite(item)) ? item : ''
+  }
+  return index === 0 ? value(answers, key) : ''
+}
+
+function normalizeCardMode(answer: CsvValue): CsvValue {
+  if (answer === 'A' || answer === 'B' || answer === 'C') return answer
+  if (answer === 'Subir foto o archivo') return 'A'
+  if (answer === 'Copiar el renglón mes a mes') return 'B'
+  if (answer === 'No lo tengo a mano, que Norte me lo pida después por WhatsApp') return 'C'
+  return ''
+}
+
+type CsvItem = Record<string, unknown>
+type SlotSerializer = (number: number, item?: CsvItem) => Partial<CsvRow>
+
+function serializeSlots(source: unknown, count: number, serialize: SlotSerializer) {
+  const items = Array.isArray(source) ? source : []
+  const row: Partial<CsvRow> = {}
+  for (let index = 0; index < count; index++) {
+    const item = items[index]
+    Object.assign(row, serialize(index + 1, item && typeof item === 'object' ? item : undefined))
+  }
+  return row
+}
+
+function serializeScalarAnswers(answers: OnboardingAnswers): CsvRow {
   const row = Object.fromEntries(csvHeaders.map((header) => [header, ''])) as CsvRow
   for (const header of csvHeaders) row[header] = value(answers, header)
-  row.timestamp = draft.completedAt.toISOString()
+  row.p2_ultimo_1 = listValue(answers, 'p2_ultimo', 0)
+  row.p2_ultimo_2 = listValue(answers, 'p2_ultimo', 1)
+  row.p3_primero_1 = listValue(answers, 'p3_primero', 0)
+  row.p3_primero_2 = listValue(answers, 'p3_primero', 1)
   row.p5_fuentes = Array.isArray(answers.p5_fuentes) ? answers.p5_fuentes.join(' | ') : ''
-
-  for (let index = 0; index < 10; index++) {
-    const prefix = `ingresos_extra${index + 1}`
-    row[`${prefix}_concepto`] = ''
-    row[`${prefix}_monto`] = ''
-    row[`${prefix}_desde`] = ''
-    row[`${prefix}_hasta`] = ''
-    const item = Array.isArray(answers.ingresos_extra) ? answers.ingresos_extra[index] : undefined
-    if (!item || typeof item !== 'object') continue
-    row[`${prefix}_concepto`] = fixedOtherValue(item.concepto)
-    row[`${prefix}_monto`] = fixedOtherAmount(item.monto)
-    row[`${prefix}_desde`] = fixedOtherValue(item.desde)
-    row[`${prefix}_hasta`] = fixedOtherValue(item.hasta)
+  for (let number = 1; number <= 5; number++) {
+    row[`t${number}_cuotas_modo`] = normalizeCardMode(row[`t${number}_cuotas_modo`])
   }
+  return row
+}
 
-  for (let index = 0; index < 5; index++) {
-    row[`fijo_otro${index + 1}_concepto`] = ''
-    row[`fijo_otro${index + 1}_monto`] = ''
-    row[`fijo_otro${index + 1}_hasta`] = ''
-    const item = Array.isArray(answers.fijo_otros) ? answers.fijo_otros[index] : undefined
-    if (!item || typeof item !== 'object') continue
-    row[`fijo_otro${index + 1}_concepto`] = fixedOtherValue(item.concepto)
-    row[`fijo_otro${index + 1}_monto`] = fixedOtherAmount(item.monto)
-    row[`fijo_otro${index + 1}_hasta`] = fixedOtherValue(item.hasta)
-  }
+function serializeExtraIncomeFields(answers: OnboardingAnswers) {
+  return serializeSlots(answers.ingresos_extra, 10, (number, item) => {
+    const prefix = `ingresos_extra${number}`
+    return {
+      [`${prefix}_concepto`]: fixedOtherValue(item?.concepto),
+      [`${prefix}_monto`]: fixedOtherAmount(item?.monto),
+      [`${prefix}_desde`]: fixedOtherValue(item?.desde),
+      [`${prefix}_hasta`]: fixedOtherValue(item?.hasta),
+    }
+  })
+}
+
+function serializeFixedOtherFields(answers: OnboardingAnswers) {
+  const row = serializeSlots(answers.fijo_otros, 5, (number, item) => ({
+    [`fijo_otro${number}_concepto`]: fixedOtherValue(item?.concepto),
+    [`fijo_otro${number}_monto`]: fixedOtherAmount(item?.monto),
+    [`fijo_otro${number}_hasta`]: fixedOtherValue(item?.hasta),
+  }))
   if (answers.fijo_otros === undefined) {
     for (let index = 1; index <= 2; index++) {
       row[`fijo_otro${index}_concepto`] = fixedOtherValue(answers[`fijo_otro${index}_concepto`])
@@ -119,50 +150,66 @@ export function toAdminCsvRow(draft: CompletedDraft): CsvRow {
       row[`fijo_otro${index}_hasta`] = fixedOtherValue(answers[`fijo_otro${index}_hasta`])
     }
   }
+  return row
+}
 
-  for (let index = 0; index < 5; index++) {
-    const number = index + 1
-    const item = Array.isArray(answers.var_otros) ? answers.var_otros[index] : undefined
-    row[`gasto_diario_adicional_${number}_concepto`] =
-      item && typeof item === 'object' ? fixedOtherValue(item.concepto) : ''
-    row[`gasto_diario_adicional_${number}_monto`] =
-      item && typeof item === 'object' ? fixedOtherAmount(item.monto) : ''
-  }
+function serializeDailyExpenseFields(answers: OnboardingAnswers) {
+  return serializeSlots(answers.var_otros, 5, (number, item) => ({
+    [`gasto_diario_adicional_${number}_concepto`]: fixedOtherValue(item?.concepto),
+    [`gasto_diario_adicional_${number}_monto`]: fixedOtherAmount(item?.monto),
+  }))
+}
 
-  for (let index = 0; index < 5; index++) {
-    const number = index + 1
-    const item = Array.isArray(answers.d_otros) ? answers.d_otros[index] : undefined
-    row[`gustito_adicional_${number}_concepto`] =
-      item && typeof item === 'object' ? fixedOtherValue(item.concepto) : ''
-    row[`gustito_adicional_${number}_monto`] =
-      item && typeof item === 'object' ? fixedOtherAmount(item.monto) : ''
-    row[`decision_gustito_adicional_${number}`] =
-      value(answers, `e13_gustito_adicional${number}`)
-  }
+function serializeDiscretionaryExpenseFields(answers: OnboardingAnswers) {
+  return serializeSlots(answers.d_otros, 5, (number, item) => ({
+    [`gustito_adicional_${number}_concepto`]: fixedOtherValue(item?.concepto),
+    [`gustito_adicional_${number}_monto`]: fixedOtherAmount(item?.monto),
+    [`decision_gustito_adicional_${number}`]: value(answers, `e13_gustito_adicional${number}`),
+  }))
+}
 
-  for (let index = 0; index < 5; index++) {
-    const number = index + 1
-    const item = Array.isArray(answers.compras_necesarias)
-      ? answers.compras_necesarias[index]
-      : undefined
-    row[`compra_necesaria_${number}_concepto`] =
-      item && typeof item === 'object' ? fixedOtherValue(item.concepto) : ''
-    row[`compra_necesaria_${number}_monto`] =
-      item && typeof item === 'object' ? fixedOtherAmount(item.monto) : ''
-    row[`compra_necesaria_${number}_fecha`] =
-      item && typeof item === 'object' ? fixedOtherValue(item.fecha) : ''
-  }
+function serializeNecessaryPurchaseFields(answers: OnboardingAnswers) {
+  return serializeSlots(answers.compras_necesarias, 5, (number, item) => ({
+    [`compra_necesaria_${number}_concepto`]: fixedOtherValue(item?.concepto),
+    [`compra_necesaria_${number}_monto`]: fixedOtherAmount(item?.monto),
+    [`compra_necesaria_${number}_fecha`]: fixedOtherValue(item?.fecha),
+  }))
+}
+
+function serializeNecessaryPurchaseAnswers(answers: OnboardingAnswers) {
+  return Object.fromEntries(
+    [1, 2, 3].flatMap((number) => [
+      [`n${number}_concepto`, value(answers, `n${number}_concepto`)],
+      [`n${number}_monto`, value(answers, `n${number}_monto`)],
+    ]),
+  ) as Partial<CsvRow>
+}
+
+export function toAdminCsvRow(draft: CompletedDraft): CsvRow {
+  if (!draft.completedAt) throw new Error('Only completed drafts can be exported.')
+  const row = serializeScalarAnswers(draft.answers)
+  row.timestamp = draft.completedAt.toISOString()
+  Object.assign(
+    row,
+    serializeExtraIncomeFields(draft.answers),
+    serializeFixedOtherFields(draft.answers),
+    serializeDailyExpenseFields(draft.answers),
+    serializeDiscretionaryExpenseFields(draft.answers),
+    serializeNecessaryPurchaseFields(draft.answers),
+    serializeNecessaryPurchaseAnswers(draft.answers),
+  )
 
   return row
 }
 
 function escapeCsvValue(value: CsvValue) {
   const text = String(value).replace(/\r\n|\r|\n/g, '\r\n')
-  return /[,"\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+  const safeText = typeof value === 'string' && /^[=+\-@]/.test(text) ? `'${text}` : text
+  return /[;"\r\n]/.test(safeText) ? `"${safeText.replaceAll('"', '""')}"` : safeText
 }
 
 export function serializeCsv(headers: readonly string[], rows: CsvRow[]) {
   return `\uFEFF${[headers, ...rows.map((row) => headers.map((header) => row[header] ?? ''))]
-    .map((values) => values.map(escapeCsvValue).join(','))
+    .map((values) => values.map(escapeCsvValue).join(';'))
     .join('\r\n')}`
 }

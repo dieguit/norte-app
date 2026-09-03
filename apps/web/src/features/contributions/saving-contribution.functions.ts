@@ -32,9 +32,3 @@ export const deleteSavingContribution = createServerFn({ method: 'POST' })
   .validator((data) => deleteSavingContributionSchema.parse(data))
   .handler(deleteSavingContributionServer)
 
-export const previewContribution = previewSavingContribution
-export const confirmContribution = confirmSavingContribution
-export const updateContribution = updateSavingContribution
-export const deleteContribution = deleteSavingContribution
-export const getContributionContext = getSavingContributionContext
-

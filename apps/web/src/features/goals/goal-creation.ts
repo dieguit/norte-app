@@ -2,14 +2,12 @@ import BigNumber from 'bignumber.js'
 import {
   type CurrencyCode,
   type Money,
-  calculateAllocationAmounts,
   createMoney,
   isPositiveMoney,
   parseMoneyInput,
 } from '../../lib/money'
 import {
   PLANNING_ARS_PER_USD,
-  convertCommitmentToDestination,
   deriveEmergencyFundTarget,
 } from '../financial/financial'
 import { getExpenseTotalArs } from '../financial/expenses'
@@ -18,12 +16,30 @@ import {
   type GoalProjection,
   type GoalStatus,
   type GoalStrategy,
+  type GoalsWorkspace,
   type GoalsWorkspaceSource,
   type InvestmentAvailability,
   buildGoalsWorkspace,
   buildCurrentGoalsPlanWorkspace,
 } from './goals'
 import type { GoalCreationDraft } from './goal-creation.schema'
+import {
+  addGoalAllocationAmounts,
+  buildGoalAllocationEntries,
+  calculatePercentageSum,
+  overlayGoalAllocationPercentages,
+} from './goal-proposal-allocation'
+import { buildGoalProposalSource } from './goal-proposal-source'
+import { findGoalInWorkspace, getAllocatedMonthlyAmounts } from './goal-proposal-workspace'
+import {
+  serializeAllocationEntries,
+  serializeGoalProfile,
+  serializeGoalSourceCollections,
+} from './goal-proposal-serialization'
+import type { GoalCreationAllocationEntry } from './goal-proposal-allocation'
+
+export type { GoalCreationAllocationEntry } from './goal-proposal-allocation'
+export { calculatePercentageSum, recalculateAllocationAmounts } from './goal-proposal-allocation'
 
 export const PENDING_GOAL_ID = 'pending-goal'
 
@@ -52,15 +68,6 @@ export interface GoalCreationState {
   source: GoalsWorkspaceSource
   pendingSnapshots: GoalsWorkspaceSource['snapshots']
   pendingAllocations: GoalsWorkspaceSource['allocations']
-}
-
-export interface GoalCreationAllocationEntry {
-  goalId: string
-  goalName: string
-  percentage: string
-  allocatedBaseAmount?: Money
-  allocatedDestinationAmount?: Money
-  pending: boolean
 }
 
 export interface GoalCreationAllocation {
@@ -107,7 +114,7 @@ export interface GoalCreationPreviewResult {
   previewToken: string
 }
 
-function getNextCalendarMonthStr(currentMonth: string): string {
+export function getNextCalendarMonthStr(currentMonth: string): string {
   const [year, month] = currentMonth.slice(0, 7).split('-').map(Number)
   const totalMonths = year * 12 + (month - 1) + 1
   const targetYear = Math.floor(totalMonths / 12)
@@ -115,56 +122,91 @@ function getNextCalendarMonthStr(currentMonth: string): string {
   return `${targetYear}-${String(targetMonth).padStart(2, '0')}`
 }
 
-export function calculatePercentageSum(entries: Array<{ percentage: string }>): BigNumber {
-  return entries.reduce((sum, e) => {
-    try {
-      const normalized = (e.percentage || '0').trim().replace(',', '.')
-      const bn = new BigNumber(normalized)
-      return bn.isFinite() && !bn.isNaN() ? sum.plus(bn) : sum.plus(NaN)
-    } catch {
-      return sum.plus(NaN)
-    }
-  }, new BigNumber(0))
+export function selectGoalPlanSnapshot(
+  source: Pick<GoalsWorkspaceSource, 'snapshots' | 'allocations'>,
+  pendingSnapshots: GoalsWorkspaceSource['snapshots'] | undefined,
+  pendingAllocations: GoalsWorkspaceSource['allocations'] | undefined,
+  currentMonth: string,
+): {
+  snapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+  allocations: GoalsWorkspaceSource['allocations']
+  pendingSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+} {
+  const nextMonthStr = getNextCalendarMonthStr(currentMonth)
+  const pendingNextSnapshot = pendingSnapshots?.find(
+    (snapshot) => snapshot.effectiveMonth.slice(0, 7) === nextMonthStr,
+  )
+  const sourceNextSnapshot = source.snapshots.find(
+    (snapshot) => snapshot.effectiveMonth.slice(0, 7) === nextMonthStr,
+  )
+  const currentSnapshot = source.snapshots
+    .filter((snapshot) => snapshot.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
+    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
+  const snapshot = pendingNextSnapshot ?? sourceNextSnapshot ?? currentSnapshot
+  const allocations = snapshot
+    ? (pendingNextSnapshot ? (pendingAllocations ?? []) : source.allocations).filter(
+        (allocation) => allocation.snapshotId === snapshot.id,
+      )
+    : []
+
+  return { snapshot, allocations, pendingSnapshot: pendingNextSnapshot }
 }
 
-export function rebalanceAllocationEntries<T extends { goalId: string; percentage: string }>(
-  entries: T[],
-  selectedGoalId: string,
-  nextPercentage: string,
-): T[] {
-  const normalizedInput = (nextPercentage ?? '').trim().replace(',', '.')
-  let selected: BigNumber | null = null
+export function allocationEntriesMatch(
+  draftEntries: ReadonlyArray<{ goalId: string; percentage: string }>,
+  proposalEntries: ReadonlyArray<{ goalId: string; percentage: string }>,
+): boolean {
+  if (draftEntries.length !== proposalEntries.length) return false
+  const draftIds = new Set(draftEntries.map((entry) => entry.goalId))
+  const proposalIds = new Set(proposalEntries.map((entry) => entry.goalId))
+  if (draftIds.size !== draftEntries.length || proposalIds.size !== proposalEntries.length) return false
+  if (![...draftIds].every((goalId) => proposalIds.has(goalId))) return false
 
-  if (normalizedInput !== '') {
+  return draftEntries.every((draftEntry) => {
+    const proposalEntry = proposalEntries.find((entry) => entry.goalId === draftEntry.goalId)
+    if (!proposalEntry) return false
+
     try {
-      const bn = new BigNumber(normalizedInput)
+      const draftPercentage = new BigNumber(
+        (draftEntry.percentage || '0').trim().replace(',', '.'),
+      )
+      const proposalPercentage = new BigNumber(
+        (proposalEntry.percentage || '0').trim().replace(',', '.'),
+      )
       if (
-        bn.isFinite() &&
-        !bn.isNaN() &&
-        bn.isGreaterThanOrEqualTo(0) &&
-        bn.isLessThanOrEqualTo(100)
+        !draftPercentage.isFinite() ||
+        draftPercentage.isNaN() ||
+        !proposalPercentage.isFinite() ||
+        proposalPercentage.isNaN()
       ) {
-        selected = bn
+        return false
       }
+      return draftPercentage.toFixed(2) === proposalPercentage.toFixed(2)
     } catch {
-      selected = null
+      return false
     }
-  }
+  })
+}
 
-  if (selected === null) {
-    return entries.map((entry) =>
-      entry.goalId === selectedGoalId ? { ...entry, percentage: nextPercentage } : entry,
-    )
+function parseRebalancePercentage(nextPercentage: string): BigNumber | null {
+  const normalizedInput = (nextPercentage ?? '').trim().replace(',', '.')
+  if (normalizedInput === '') return null
+  try {
+    const percentage = new BigNumber(normalizedInput)
+    return percentage.isFinite() && !percentage.isNaN() && percentage.isGreaterThanOrEqualTo(0) &&
+      percentage.isLessThanOrEqualTo(100)
+      ? percentage
+      : null
+  } catch {
+    return null
   }
+}
 
-  const others = entries.filter((entry) => entry.goalId !== selectedGoalId)
-  if (others.length === 0) {
-    return entries.map((entry) =>
-      entry.goalId === selectedGoalId ? { ...entry, percentage: '100.00' } : entry,
-    )
-  }
-
-  const remaining = new BigNumber(100).minus(selected)
+function rebalanceOtherEntries<T extends { goalId: string; percentage: string }>(
+  others: T[],
+  remaining: BigNumber,
+): Map<string, string> {
+  const arithmeticEntries = [...others].sort((a, b) => a.goalId.localeCompare(b.goalId))
   const percentageOf = (entry: { percentage: string }) => {
     try {
       const bn = new BigNumber((entry.percentage || '0').replace(',', '.'))
@@ -173,17 +215,17 @@ export function rebalanceAllocationEntries<T extends { goalId: string; percentag
       return new BigNumber(0)
     }
   }
-  const previousTotal = others.reduce((sum, e) => sum.plus(percentageOf(e)), new BigNumber(0))
+  const previousTotal = arithmeticEntries.reduce((sum, e) => sum.plus(percentageOf(e)), new BigNumber(0))
   const shares = previousTotal.isZero()
-    ? others.map(() => new BigNumber(1).dividedBy(others.length))
-    : others.map((entry) => percentageOf(entry).dividedBy(previousTotal))
+    ? arithmeticEntries.map(() => new BigNumber(1).dividedBy(arithmeticEntries.length))
+    : arithmeticEntries.map((entry) => percentageOf(entry).dividedBy(previousTotal))
 
   const allocatedOthersMap = new Map<string, string>()
   let accumulatedBn = new BigNumber(0)
 
-  for (let i = 0; i < others.length; i++) {
-    const other = others[i]
-    if (i === others.length - 1) {
+  for (let i = 0; i < arithmeticEntries.length; i++) {
+    const other = arithmeticEntries[i]
+    if (i === arithmeticEntries.length - 1) {
       const lastAmountBn = remaining.minus(accumulatedBn)
       allocatedOthersMap.set(other.goalId, lastAmountBn.toFixed(2))
     } else {
@@ -193,104 +235,54 @@ export function rebalanceAllocationEntries<T extends { goalId: string; percentag
       allocatedOthersMap.set(other.goalId, roundedStr)
     }
   }
+  return allocatedOthersMap
+}
+
+export function rebalanceAllocationEntries<T extends { goalId: string; percentage: string }>(
+  entries: T[],
+  selectedGoalId: string,
+  nextPercentage: string,
+): T[] {
+  const selected = parseRebalancePercentage(nextPercentage)
+  if (selected === null) {
+    return entries.map((entry) =>
+      entry.goalId === selectedGoalId ? { ...entry, percentage: nextPercentage } : entry,
+    )
+  }
+  const others = entries.filter((entry) => entry.goalId !== selectedGoalId)
+  if (others.length === 0) {
+    return entries.map((entry) =>
+      entry.goalId === selectedGoalId ? { ...entry, percentage: '100.00' } : entry,
+    )
+  }
+  const allocatedOthersMap = rebalanceOtherEntries(others, new BigNumber(100).minus(selected))
 
   return entries.map((entry) => {
     if (entry.goalId === selectedGoalId) {
-      return { ...entry, percentage: selected!.toFixed(2) }
+      return { ...entry, percentage: selected.toFixed(2) }
     }
     return { ...entry, percentage: allocatedOthersMap.get(entry.goalId)! }
   })
 }
 
-export function recalculateAllocationAmounts(input: {
-  monthlyContribution?: Money
-  entries: Array<{
-    goalId: string
-    percentage: string
-    currency: CurrencyCode
-  }>
-}): Map<string, { allocatedBaseAmount?: Money; allocatedDestinationAmount?: Money }> {
-  const { monthlyContribution, entries } = input
-  const map = new Map<string, { allocatedBaseAmount?: Money; allocatedDestinationAmount?: Money }>()
-
-  if (!monthlyContribution) {
-    for (const entry of entries) {
-      map.set(entry.goalId, {})
-    }
-    return map
-  }
-
-  const totalBn = calculatePercentageSum(entries)
-
-  if (totalBn.isEqualTo(100)) {
-    const allocatedBaseList = calculateAllocationAmounts(
-      monthlyContribution,
-      entries.map((e) => ({
-        id: e.goalId,
-        percentage: (e.percentage || '0').replace(',', '.'),
-      })),
-    )
-
-    for (const entry of entries) {
-      const allocated = allocatedBaseList.find((a) => a.id === entry.goalId)
-      if (allocated) {
-        const allocatedBaseAmount = allocated.amount
-        const allocatedDestinationAmount = convertCommitmentToDestination(
-          allocatedBaseAmount,
-          entry.currency,
-        )
-        map.set(entry.goalId, {
-          allocatedBaseAmount,
-          allocatedDestinationAmount,
-        })
-      } else {
-        map.set(entry.goalId, {})
-      }
-    }
-  } else {
-    for (const entry of entries) {
-      let pctBn: BigNumber | null = null
-      try {
-        const normalized = (entry.percentage || '0').trim().replace(',', '.')
-        const bn = new BigNumber(normalized)
-        if (bn.isFinite() && !bn.isNaN() && bn.isGreaterThanOrEqualTo(0)) {
-          pctBn = bn
-        }
-      } catch {
-        pctBn = null
-      }
-
-      if (pctBn) {
-        const amountBn = new BigNumber(monthlyContribution.amount).times(pctBn).dividedBy(100)
-        const allocatedBaseAmount = createMoney(amountBn.toFixed(2), monthlyContribution.currency)
-        const allocatedDestinationAmount = convertCommitmentToDestination(
-          allocatedBaseAmount,
-          entry.currency,
-        )
-        map.set(entry.goalId, {
-          allocatedBaseAmount,
-          allocatedDestinationAmount,
-        })
-      } else {
-        map.set(entry.goalId, {})
-      }
-    }
-  }
-
-  return map
-}
-
-export function buildGoalCreationProposal(input: {
+type GoalCreationInput = {
   draft: GoalCreationDraft
   state: GoalCreationState
   currentMonth: string
   subjectGoalId?: string
-}): GoalCreationProposal {
-  const { draft, state, currentMonth } = input
+}
+
+type GoalCreationSubject = {
+  isEditing: boolean
+  subjectGoalId: string
+  subjectGoal: GoalsWorkspaceSource['goals'][number] | undefined
+}
+
+function resolveGoalCreationSubject(input: GoalCreationInput): GoalCreationSubject {
   const isEditing = input.subjectGoalId !== undefined
   const subjectGoalId = input.subjectGoalId ?? PENDING_GOAL_ID
   const subjectGoal = isEditing
-    ? state.source.goals.find(
+    ? input.state.source.goals.find(
         (goal) => goal.id === subjectGoalId && (goal.status === 'active' || goal.status === 'paused'),
       )
     : undefined
@@ -299,338 +291,420 @@ export function buildGoalCreationProposal(input: {
     throw new Error('Goal not found or is not active.')
   }
 
-  // 1. Normalize goal and investment details
-  const name = draft.name.trim()
-  const type = draft.type
-  const currency = draft.currency
-  const priority = draft.priority
-  const strategy = draft.strategy
+  return { isEditing, subjectGoalId, subjectGoal }
+}
 
-  let desiredDate: string | undefined
-  if (draft.desiredMonth && draft.desiredMonth.trim() !== '') {
-    desiredDate = `${draft.desiredMonth.slice(0, 7)}-01`
+function normalizeDesiredDate(desiredMonth: string | undefined): string | undefined {
+  return desiredMonth && desiredMonth.trim() !== ''
+    ? `${desiredMonth.slice(0, 7)}-01`
+    : undefined
+}
+
+function deriveCreationEmergencyFundTarget(
+  state: GoalCreationState,
+  currentMonth: string,
+): Money | undefined {
+  const profile = state.source.profile
+  const expenses = state.source.expenses
+  if (profile?.expensesKnowledge !== 'known' || !expenses) return undefined
+
+  const expensesTotal = getExpenseTotalArs(
+    expenses.map((row) => ({
+      amount: createMoney(row.amount, row.currency),
+      recurring: row.recurring,
+      effectiveMonth: row.effectiveMonth,
+      endMonth: row.endMonth,
+    })),
+    currentMonth,
+  )
+  return isPositiveMoney(expensesTotal)
+    ? deriveEmergencyFundTarget(expensesTotal, 3)
+    : undefined
+}
+
+function normalizeCreationInvestment(
+  draft: GoalCreationDraft,
+): GoalCreationProposal['investment'] {
+  if (draft.strategy !== 'invest') return undefined
+  return {
+    annualReturnRate: (draft.annualReturnRate || '8.0').replace(',', '.'),
+    availability: draft.availability,
+    availableFrom:
+      draft.availability === 'available_from' && draft.availableFromMonth
+        ? `${draft.availableFromMonth.slice(0, 7)}-01`
+        : undefined,
   }
+}
 
-  let emergencyFundMonths: number | undefined
-  let targetAmount: Money | undefined
-
-  if (type === 'emergency_fund') {
-    emergencyFundMonths = 3
-    if (
-      state.source.profile?.expensesKnowledge === 'known' &&
-      state.source.expenses
-    ) {
-      const expensesTotal = getExpenseTotalArs(
-        state.source.expenses.map((row) => ({
-          amount: createMoney(row.amount, row.currency),
-          recurring: row.recurring,
-          effectiveMonth: row.effectiveMonth,
-          endMonth: row.endMonth,
-        })),
-        currentMonth,
-      )
-      if (isPositiveMoney(expensesTotal)) {
-        targetAmount = deriveEmergencyFundTarget(expensesTotal, emergencyFundMonths)
-      }
-    }
-  } else if (draft.targetAmount) {
-    targetAmount = parseMoneyInput(draft.targetAmount, currency) ?? undefined
-  }
-
+function normalizeGoalCreationDetails(input: Pick<GoalCreationInput, 'draft' | 'state' | 'currentMonth'>): Pick<
+  GoalCreationProposal,
+  'normalizedGoal' | 'investment'
+> {
+  const { draft, state, currentMonth } = input
   const normalizedGoal: GoalCreationProposal['normalizedGoal'] = {
-    name,
-    type,
-    targetAmount,
-    currency,
-    priority,
-    strategy,
-    desiredDate,
-    emergencyFundMonths,
+    name: draft.name.trim(),
+    type: draft.type,
+    targetAmount:
+      draft.type === 'emergency_fund'
+        ? deriveCreationEmergencyFundTarget(state, currentMonth)
+        : draft.targetAmount
+          ? parseMoneyInput(draft.targetAmount, draft.currency) ?? undefined
+          : undefined,
+    currency: draft.currency,
+    priority: draft.priority,
+    strategy: draft.strategy,
+    desiredDate: normalizeDesiredDate(draft.desiredMonth),
+    emergencyFundMonths: draft.type === 'emergency_fund' ? 3 : undefined,
   }
 
-  const investment: GoalCreationProposal['investment'] =
-    strategy === 'invest'
-      ? {
-          annualReturnRate: (draft.annualReturnRate || '8.0').replace(',', '.'),
-          availability: draft.availability,
-          availableFrom:
-            draft.availability === 'available_from' && draft.availableFromMonth
-              ? `${draft.availableFromMonth.slice(0, 7)}-01`
-              : undefined,
-        }
-      : undefined
+  return { normalizedGoal, investment: normalizeCreationInvestment(draft) }
+}
 
-  // 2. Next effective month
+function buildUpdatedGoal(input: {
+  state: GoalCreationState
+  normalizedGoal: GoalCreationProposal['normalizedGoal']
+  subjectGoal: GoalsWorkspaceSource['goals'][number]
+}): GoalsWorkspaceSource['goals'][number] {
+  const { state, normalizedGoal, subjectGoal } = input
+  return {
+    id: subjectGoal.id,
+    userId: subjectGoal.userId ?? state.source.profile?.userId,
+    name: normalizedGoal.name,
+    type: normalizedGoal.type,
+    targetAmount: normalizedGoal.targetAmount?.amount ?? null,
+    currency: normalizedGoal.currency,
+    priority: normalizedGoal.priority,
+    strategy: normalizedGoal.strategy,
+    status: subjectGoal.status,
+    desiredDate: normalizedGoal.desiredDate ?? null,
+    completedAt: subjectGoal.completedAt ?? null,
+    emergencyFundMonths: normalizedGoal.emergencyFundMonths ?? null,
+    createdAt: subjectGoal.createdAt,
+  }
+}
+
+function buildPendingGoal(
+  state: GoalCreationState,
+  currentMonth: string,
+  normalizedGoal: GoalCreationProposal['normalizedGoal'],
+): GoalsWorkspaceSource['goals'][number] {
+  return {
+    id: PENDING_GOAL_ID,
+    userId: state.source.profile?.userId,
+    name: normalizedGoal.name,
+    type: normalizedGoal.type,
+    targetAmount: normalizedGoal.targetAmount?.amount ?? null,
+    currency: normalizedGoal.currency,
+    priority: normalizedGoal.priority,
+    strategy: normalizedGoal.strategy,
+    status: 'active',
+    desiredDate: normalizedGoal.desiredDate ?? null,
+    emergencyFundMonths: normalizedGoal.emergencyFundMonths ?? null,
+    createdAt: `${currentMonth}-01T00:00:00.000Z`,
+  }
+}
+
+function buildProposedGoal(input: {
+  state: GoalCreationState
+  currentMonth: string
+  normalizedGoal: GoalCreationProposal['normalizedGoal']
+  subject: GoalCreationSubject
+}): GoalsWorkspaceSource['goals'] {
+  const { state, currentMonth, normalizedGoal, subject } = input
+  if (subject.isEditing && subject.subjectGoal) {
+    const updatedGoal = buildUpdatedGoal({ state, normalizedGoal, subjectGoal: subject.subjectGoal })
+    return state.source.goals.map((goal) =>
+      goal.id === subject.subjectGoalId ? updatedGoal : goal,
+    )
+  }
+  return [...state.source.goals, buildPendingGoal(state, currentMonth, normalizedGoal)]
+}
+
+function buildInvestmentPosition(input: {
+  id: string
+  goalId: string
+  currency: CurrencyCode
+  investment: GoalCreationProposal['investment']
+  existingPosition?: GoalsWorkspaceSource['investmentPositions'][number]
+}): GoalsWorkspaceSource['investmentPositions'][number] {
+  const { id, goalId, currency, investment, existingPosition } = input
+  return {
+    id,
+    goalId,
+    currentValue: existingPosition?.currentValue ?? '0.00',
+    currency,
+    annualReturnRate: investment?.annualReturnRate ?? null,
+    availability: investment?.availability ?? null,
+    availableFrom: investment?.availableFrom ?? null,
+  }
+}
+
+function buildProposedInvestmentPositions(input: {
+  state: GoalCreationState
+  normalizedGoal: GoalCreationProposal['normalizedGoal']
+  investment: GoalCreationProposal['investment']
+  subject: GoalCreationSubject
+}): GoalsWorkspaceSource['investmentPositions'] {
+  const { state, normalizedGoal, investment, subject } = input
+  const positions = state.source.investmentPositions
+
+  if (subject.isEditing) {
+    const otherPositions = positions.filter((position) => position.goalId !== subject.subjectGoalId)
+    const existingPosition = positions.find((position) => position.goalId === subject.subjectGoalId)
+    return normalizedGoal.strategy === 'invest'
+      ? [
+          ...otherPositions,
+          buildInvestmentPosition({
+            id: existingPosition?.id ?? `pos-${subject.subjectGoalId}`,
+            goalId: subject.subjectGoalId,
+            currency: normalizedGoal.currency,
+            investment,
+            existingPosition,
+          }),
+        ]
+      : otherPositions
+  }
+
+  return normalizedGoal.strategy === 'invest'
+    ? [
+        ...positions,
+        buildInvestmentPosition({
+          id: `pos-${PENDING_GOAL_ID}`,
+          goalId: PENDING_GOAL_ID,
+          currency: normalizedGoal.currency,
+          investment,
+        }),
+      ]
+    : positions
+}
+
+function buildExistingAllocationEntries(input: {
+  sourceAllocs: GoalsWorkspaceSource['allocations']
+  activeGoals: GoalsWorkspaceSource['goals']
+  renamedGoalId?: string
+  renamedGoalName?: string
+}): GoalCreationAllocationEntry[] {
+  return buildGoalAllocationEntries(input)
+}
+
+function buildEmptyCreationEntries(
+  activeGoals: GoalsWorkspaceSource['goals'],
+  subject: GoalCreationSubject,
+  goalName: string,
+): GoalCreationAllocationEntry[] {
+  const entries = activeGoals.map((goal) => ({
+    goalId: goal.id,
+    goalName: subject.isEditing && goal.id === subject.subjectGoalId ? goalName : goal.name,
+    percentage: subject.isEditing && activeGoals.length === 1 ? '100.00' : '0.00',
+    pending: false,
+  }))
+
+  if (!subject.isEditing) {
+    return [
+      ...entries,
+      { goalId: PENDING_GOAL_ID, goalName, percentage: '100.00', pending: true },
+    ]
+  }
+
+  if (entries.length > 0 && calculatePercentageSum(entries).isZero()) {
+    const subjectIndex = entries.findIndex((entry) => entry.goalId === subject.subjectGoalId)
+    entries[subjectIndex >= 0 ? subjectIndex : 0].percentage = '100.00'
+  }
+  return entries
+}
+
+function buildGoalCreationEntries(input: {
+  sourceAllocs: GoalsWorkspaceSource['allocations']
+  activeGoals: GoalsWorkspaceSource['goals']
+  subject: GoalCreationSubject
+  goalName: string
+}): GoalCreationAllocationEntry[] {
+  const { sourceAllocs, activeGoals, subject, goalName } = input
+  if (sourceAllocs.length === 0) return buildEmptyCreationEntries(activeGoals, subject, goalName)
+
+  const existingEntries = buildExistingAllocationEntries({
+    sourceAllocs,
+    activeGoals,
+    renamedGoalId: subject.isEditing ? subject.subjectGoalId : undefined,
+    renamedGoalName: subject.isEditing ? goalName : undefined,
+  })
+  if (subject.isEditing) return existingEntries
+
+  return [
+    ...existingEntries,
+    { goalId: PENDING_GOAL_ID, goalName, percentage: '0.00', pending: true },
+  ]
+}
+
+function overlayGoalCreationAllocations(
+  entries: GoalCreationAllocationEntry[],
+  draft: GoalCreationDraft,
+  isEditing: boolean,
+): GoalCreationAllocationEntry[] {
+  return overlayGoalAllocationPercentages(entries, draft.allocations, isEditing)
+}
+
+function validateAllocationTotal(entries: GoalCreationAllocationEntry[], allowEmpty: boolean): BigNumber {
+  const total = calculatePercentageSum(entries)
+  if ((!allowEmpty || entries.length > 0) && !total.isEqualTo(100)) {
+    throw new Error(`Allocation percentages must sum to 100%, got ${total.toFixed(2)}%`)
+  }
+  return total
+}
+
+function getPlannedMonthlyContribution(state: GoalCreationState): Money | undefined {
+  const contribution = state.source.profile?.plannedMonthlyContribution
+  if (contribution === null || contribution === undefined) return undefined
+  return createMoney(contribution, state.source.profile?.baseCurrency ?? 'ARS')
+}
+
+function addGoalCreationAllocationAmounts(input: {
+  entries: GoalCreationAllocationEntry[]
+  monthlyContribution: Money | undefined
+  activeGoals: GoalsWorkspaceSource['goals']
+  normalizedGoal: GoalCreationProposal['normalizedGoal']
+  subject: GoalCreationSubject
+}): GoalCreationAllocationEntry[] {
+  const currencies = new Map(
+    input.activeGoals.map((goal) => [
+      goal.id,
+      input.subject.isEditing && goal.id === input.subject.subjectGoalId
+        ? input.normalizedGoal.currency
+        : goal.currency,
+    ]),
+  )
+  if (!input.subject.isEditing) currencies.set(PENDING_GOAL_ID, input.normalizedGoal.currency)
+  return addGoalAllocationAmounts({
+    entries: input.entries,
+    monthlyContribution: input.monthlyContribution,
+    currencies,
+  })
+}
+
+function buildGoalCreationProposedSource(input: {
+  state: GoalCreationState
+  entries: GoalCreationAllocationEntry[]
+  proposedGoals: GoalsWorkspaceSource['goals']
+  proposedInvestmentPositions: GoalsWorkspaceSource['investmentPositions']
+  nextMonthStr: string
+  nextMonthEffective: string
+}): GoalsWorkspaceSource {
+  const pendingSnapshot = input.state.pendingSnapshots.find(
+    (snapshot) => snapshot.effectiveMonth === input.nextMonthEffective,
+  )
+  return buildGoalProposalSource({
+    source: input.state.source,
+    pendingSnapshot,
+    snapshotId: pendingSnapshot?.id ?? `snap-allocation-${input.nextMonthStr}`,
+    effectiveMonth: input.nextMonthEffective,
+    entries: input.entries,
+    goals: input.proposedGoals,
+    investmentPositions: input.proposedInvestmentPositions,
+    profile: input.state.source.profile,
+  })
+}
+
+function buildGoalCreationImpact(input: {
+  goal: GoalsWorkspaceSource['goals'][number]
+  beforeWorkspace: GoalsWorkspace
+  afterWorkspace: GoalsWorkspace
+  selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+  isSubject: boolean
+  subjectName: string
+}): GoalCreationImpact {
+  const { goal, beforeWorkspace, afterWorkspace, selectedSnapshot, isSubject, subjectName } = input
+  const beforeGoal = findGoalInWorkspace(beforeWorkspace, goal.id)
+  const afterGoal = findGoalInWorkspace(afterWorkspace, goal.id)
+  return {
+    goalId: goal.id,
+    goalName: isSubject ? subjectName : goal.name,
+    before: {
+      status: 'existing',
+      projection: beforeGoal?.projection ?? { status: 'target_unavailable' },
+      allocatedMonthlyAmounts: getAllocatedMonthlyAmounts(beforeGoal, selectedSnapshot),
+    },
+    after: afterGoal?.projection ?? { status: 'target_unavailable' },
+  }
+}
+
+function buildGoalCreationImpacts(input: {
+  state: GoalCreationState
+  beforeWorkspace: GoalsWorkspace
+  afterWorkspace: GoalsWorkspace
+  selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+  subject: GoalCreationSubject
+  goalName: string
+}): GoalCreationImpact[] {
+  const { state, beforeWorkspace, afterWorkspace, selectedSnapshot, subject, goalName } = input
+  const impacts: GoalCreationImpact[] = []
+  const afterGoals = afterWorkspace.groups.flatMap((group) => group.goals)
+  if (!subject.isEditing) {
+    impacts.push({
+      goalId: PENDING_GOAL_ID,
+      goalName,
+      before: { status: 'not_created' },
+      after: afterGoals.find((goal) => goal.id === PENDING_GOAL_ID)?.projection ?? {
+        status: 'target_unavailable',
+      },
+    })
+  }
+
+  for (const goal of state.source.goals) {
+    if (goal.status !== 'active' && goal.id !== subject.subjectGoalId) continue
+    impacts.push(
+      buildGoalCreationImpact({
+        goal,
+        beforeWorkspace,
+        afterWorkspace,
+        selectedSnapshot,
+        isSubject: subject.isEditing && goal.id === subject.subjectGoalId,
+        subjectName: goalName,
+      }),
+    )
+  }
+  return impacts
+}
+
+function buildGoalCreationAllocation(input: {
+  draft: GoalCreationDraft
+  state: GoalCreationState
+  currentMonth: string
+  subject: GoalCreationSubject
+  normalizedGoal: GoalCreationProposal['normalizedGoal']
+}): {
+  allocation: GoalCreationAllocation
+  selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+  nextMonthStr: string
+  nextMonthEffective: string
+} {
+  const { draft, state, currentMonth, subject, normalizedGoal } = input
   const nextMonthStr = getNextCalendarMonthStr(currentMonth)
   const nextMonthEffective = `${nextMonthStr}-01`
-
-  // 3. Goal workspace item and investment position for simulation
-  let proposedGoals: GoalsWorkspaceSource['goals']
-  if (isEditing && subjectGoal) {
-    const updatedGoal: GoalsWorkspaceSource['goals'][number] = {
-      id: subjectGoal.id,
-      userId: subjectGoal.userId ?? state.source.profile?.userId,
-      name: normalizedGoal.name,
-      type: normalizedGoal.type,
-      targetAmount: normalizedGoal.targetAmount ? normalizedGoal.targetAmount.amount : null,
-      currency: normalizedGoal.currency,
-      priority: normalizedGoal.priority,
-      strategy: normalizedGoal.strategy,
-      status: subjectGoal.status,
-      desiredDate: normalizedGoal.desiredDate ?? null,
-      completedAt: subjectGoal.completedAt ?? null,
-      emergencyFundMonths: normalizedGoal.emergencyFundMonths ?? null,
-      createdAt: subjectGoal.createdAt,
-    }
-    proposedGoals = (state.source.goals ?? []).map((g) => (g.id === subjectGoalId ? updatedGoal : g))
-  } else {
-    const pendingGoal: GoalsWorkspaceSource['goals'][number] = {
-      id: PENDING_GOAL_ID,
-      userId: state.source.profile?.userId,
-      name: normalizedGoal.name,
-      type: normalizedGoal.type,
-      targetAmount: normalizedGoal.targetAmount ? normalizedGoal.targetAmount.amount : null,
-      currency: normalizedGoal.currency,
-      priority: normalizedGoal.priority,
-      strategy: normalizedGoal.strategy,
-      status: 'active' as const,
-      desiredDate: normalizedGoal.desiredDate ?? null,
-      emergencyFundMonths: normalizedGoal.emergencyFundMonths ?? null,
-      createdAt: `${currentMonth}-01T00:00:00.000Z`,
-    }
-    proposedGoals = [...(state.source.goals ?? []), pendingGoal]
-  }
-
-  let proposedInvestmentPositions: GoalsWorkspaceSource['investmentPositions']
-  if (isEditing) {
-    const otherInvestmentPositions = (state.source.investmentPositions ?? []).filter(
-      (p) => p.goalId !== subjectGoalId,
-    )
-    if (strategy === 'invest') {
-      const existingPosition = (state.source.investmentPositions ?? []).find(
-        (p) => p.goalId === subjectGoalId,
-      )
-      const updatedPosition = {
-        id: existingPosition?.id ?? `pos-${subjectGoalId}`,
-        goalId: subjectGoalId,
-        currentValue: existingPosition?.currentValue ?? '0.00',
-        currency: normalizedGoal.currency,
-        annualReturnRate: investment?.annualReturnRate ?? null,
-        availability: investment?.availability ?? null,
-        availableFrom: investment?.availableFrom ?? null,
-      }
-      proposedInvestmentPositions = [...otherInvestmentPositions, updatedPosition]
-    } else {
-      proposedInvestmentPositions = otherInvestmentPositions
-    }
-  } else {
-    const pendingInvestmentPosition =
-      strategy === 'invest'
-        ? {
-            id: `pos-${PENDING_GOAL_ID}`,
-            goalId: PENDING_GOAL_ID,
-            currentValue: '0.00',
-            currency: normalizedGoal.currency,
-            annualReturnRate: investment?.annualReturnRate ?? null,
-            availability: investment?.availability ?? null,
-            availableFrom: investment?.availableFrom ?? null,
-          }
-        : null
-    proposedInvestmentPositions = pendingInvestmentPosition
-      ? [...(state.source.investmentPositions ?? []), pendingInvestmentPosition]
-      : (state.source.investmentPositions ?? [])
-  }
-
-  // 4. Candidate active existing goals
-  const activeExistingGoals = (state.source.goals ?? []).filter((g) => g.status === 'active')
-
-  // 5. Selected snapshot for allocation baseline
-  const pendingNextSnapshot = state.pendingSnapshots?.find(
-    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
+  const activeExistingGoals = state.source.goals.filter((goal) => goal.status === 'active')
+  const { snapshot: selectedSnapshot, allocations: sourceAllocs } = selectGoalPlanSnapshot(
+    state.source,
+    state.pendingSnapshots,
+    state.pendingAllocations,
+    currentMonth,
   )
-  const sourceNextSnapshot = state.source.snapshots?.find(
-    (s) => s.effectiveMonth.slice(0, 7) === nextMonthStr,
-  )
-  const currentSnapshot = state.source.snapshots
-    ?.filter((s) => s.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7))
-    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0]
 
-  const selectedSnapshot = pendingNextSnapshot ?? sourceNextSnapshot ?? currentSnapshot
+  let entries = buildGoalCreationEntries({
+    sourceAllocs,
+    activeGoals: activeExistingGoals,
+    subject,
+    goalName: normalizedGoal.name,
+  })
+  entries = overlayGoalCreationAllocations(entries, draft, subject.isEditing)
+  const totalBn = validateAllocationTotal(entries, true)
 
-  const sourceAllocs = selectedSnapshot
-    ? (pendingNextSnapshot ? state.pendingAllocations : state.source.allocations)?.filter(
-        (a) => a.snapshotId === selectedSnapshot.id,
-      ) ?? []
-    : []
-
-  // 6. Assemble entries
-  let entries: GoalCreationAllocationEntry[] = []
-
-  if (isEditing) {
-    if (sourceAllocs.length > 0) {
-      const activeAllocGoalIds = new Set(
-        sourceAllocs.map((a) => a.goalId).filter((id) => activeExistingGoals.some((g) => g.id === id)),
-      )
-
-      for (const a of sourceAllocs) {
-        const existingGoal = activeExistingGoals.find((g) => g.id === a.goalId)
-        if (existingGoal) {
-          entries.push({
-            goalId: a.goalId,
-            goalName: existingGoal.id === subjectGoalId ? normalizedGoal.name : existingGoal.name,
-            percentage: new BigNumber(a.percentage).toFixed(2),
-            pending: false,
-          })
-        }
-      }
-
-      for (const g of activeExistingGoals) {
-        if (!activeAllocGoalIds.has(g.id)) {
-          entries.push({
-            goalId: g.id,
-            goalName: g.id === subjectGoalId ? normalizedGoal.name : g.name,
-            percentage: '0.00',
-            pending: false,
-          })
-        }
-      }
-    } else {
-      entries = activeExistingGoals.map((g) => ({
-        goalId: g.id,
-        goalName: g.id === subjectGoalId ? normalizedGoal.name : g.name,
-        percentage: activeExistingGoals.length === 1 ? '100.00' : '0.00',
-        pending: false,
-      }))
-      if (entries.length > 0 && calculatePercentageSum(entries).isZero()) {
-        const subjectIdx = entries.findIndex((e) => e.goalId === subjectGoalId)
-        if (subjectIdx >= 0) {
-          entries[subjectIdx].percentage = '100.00'
-        } else {
-          entries[0].percentage = '100.00'
-        }
-      }
-    }
-  } else {
-    if (sourceAllocs.length > 0) {
-      const activeAllocGoalIds = new Set(
-        sourceAllocs.map((a) => a.goalId).filter((id) => activeExistingGoals.some((g) => g.id === id)),
-      )
-
-      for (const a of sourceAllocs) {
-        const existingGoal = activeExistingGoals.find((g) => g.id === a.goalId)
-        if (existingGoal) {
-          entries.push({
-            goalId: a.goalId,
-            goalName: existingGoal.name,
-            percentage: new BigNumber(a.percentage).toFixed(2),
-            pending: false,
-          })
-        }
-      }
-
-      for (const g of activeExistingGoals) {
-        if (!activeAllocGoalIds.has(g.id)) {
-          entries.push({
-            goalId: g.id,
-            goalName: g.name,
-            percentage: '0.00',
-            pending: false,
-          })
-        }
-      }
-
-      entries.push({
-        goalId: PENDING_GOAL_ID,
-        goalName: normalizedGoal.name,
-        percentage: '0.00',
-        pending: true,
-      })
-    } else {
-      entries = activeExistingGoals.map((g) => ({
-        goalId: g.id,
-        goalName: g.name,
-        percentage: '0.00',
-        pending: false,
-      }))
-
-      entries.push({
-        goalId: PENDING_GOAL_ID,
-        goalName: normalizedGoal.name,
-        percentage: '100.00',
-        pending: true,
-      })
-    }
-  }
-
-  // 7. Overlay user-submitted draft allocations if valid
-  if (draft.allocations && draft.allocations.length > 0) {
-    const expectedIds = new Set(entries.map((e) => e.goalId))
-    const submittedIds = new Set(draft.allocations.map((e) => e.goalId))
-    const isExactMatch =
-      submittedIds.size === expectedIds.size &&
-      draft.allocations.length === expectedIds.size &&
-      [...expectedIds].every((id) => submittedIds.has(id))
-
-    if (isExactMatch) {
-      entries = entries.map((entry) => {
-        const subEntry = draft.allocations.find((e) => e.goalId === entry.goalId)
-        if (subEntry) {
-          const parsedPct = new BigNumber((subEntry.percentage || '0').replace(',', '.'))
-          return {
-            ...entry,
-            percentage: parsedPct.toFixed(2),
-          }
-        }
-        return entry
-      })
-    } else if (isEditing) {
-      throw new Error('Allocation draft must contain exactly the active goals')
-    }
-  }
-
-  // 8. Verify total percentage equals 100%
-  const totalBn = calculatePercentageSum(entries)
-  if (entries.length > 0 && !totalBn.isEqualTo(100)) {
-    throw new Error(`Allocation percentages must sum to 100%, got ${totalBn.toFixed(2)}%`)
-  }
-
-  // 9. Monthly contribution and allocation amounts
-  let monthlyContribution: Money | undefined
-  if (
-    state.source.profile?.plannedMonthlyContribution !== null &&
-    state.source.profile?.plannedMonthlyContribution !== undefined
-  ) {
-    const baseCurr = state.source.profile.baseCurrency ?? 'ARS'
-    monthlyContribution = createMoney(state.source.profile.plannedMonthlyContribution, baseCurr)
-  }
-
-  const entriesCurrencyMap = new Map<string, CurrencyCode>()
-  for (const g of activeExistingGoals) {
-    entriesCurrencyMap.set(g.id, g.id === subjectGoalId ? normalizedGoal.currency : g.currency)
-  }
-  if (!isEditing) {
-    entriesCurrencyMap.set(PENDING_GOAL_ID, normalizedGoal.currency)
-  }
-
-  if (monthlyContribution) {
-    const amountsMap = recalculateAllocationAmounts({
-      monthlyContribution,
-      entries: entries.map((e) => ({
-        goalId: e.goalId,
-        percentage: e.percentage,
-        currency: entriesCurrencyMap.get(e.goalId) ?? 'ARS',
-      })),
-    })
-
-    entries = entries.map((entry) => {
-      const amounts = amountsMap.get(entry.goalId)
-      return {
-        ...entry,
-        allocatedBaseAmount: amounts?.allocatedBaseAmount,
-        allocatedDestinationAmount: amounts?.allocatedDestinationAmount,
-      }
-    })
-  }
+  const monthlyContribution = getPlannedMonthlyContribution(state)
+  entries = addGoalCreationAllocationAmounts({
+    entries,
+    monthlyContribution,
+    activeGoals: activeExistingGoals,
+    normalizedGoal,
+    subject,
+  })
 
   const allocation: GoalCreationAllocation = {
     monthlyContribution,
@@ -638,107 +712,67 @@ export function buildGoalCreationProposal(input: {
     entries,
     totalPercentage: totalBn.toFixed(2),
   }
+  return { allocation, selectedSnapshot, nextMonthStr, nextMonthEffective }
+}
 
-  // 10. Build before workspace from current source
-  const beforeWorkspace = buildCurrentGoalsPlanWorkspace(state, currentMonth)
+function buildGoalCreationWorkspaces(input: {
+  state: GoalCreationState
+  currentMonth: string
+  entries: GoalCreationAllocationEntry[]
+  proposedGoals: GoalsWorkspaceSource['goals']
+  proposedInvestmentPositions: GoalsWorkspaceSource['investmentPositions']
+  selectedSnapshot: GoalsWorkspaceSource['snapshots'][number] | undefined
+  subject: GoalCreationSubject
+  goalName: string
+  nextMonthStr: string
+  nextMonthEffective: string
+}): { proposedSource: GoalsWorkspaceSource; impacts: GoalCreationImpact[] } {
+  const beforeWorkspace = buildCurrentGoalsPlanWorkspace(input.state, input.currentMonth)
+  const proposedSource = buildGoalCreationProposedSource(input)
+  const afterWorkspace = buildGoalsWorkspace(proposedSource, input.currentMonth)
+  const impacts = buildGoalCreationImpacts({
+    state: input.state,
+    beforeWorkspace,
+    afterWorkspace,
+    selectedSnapshot: input.selectedSnapshot,
+    subject: input.subject,
+    goalName: input.goalName,
+  })
+  return { proposedSource, impacts }
+}
 
-  // 11. Build proposed source and after workspace
-  const proposedSnapshots = [...(state.source.snapshots ?? [])]
-  const proposedAllocations = [...(state.source.allocations ?? [])]
-
-  const pendingSnap = state.pendingSnapshots?.find((s) => s.effectiveMonth === nextMonthEffective)
-  const snapshotId = pendingSnap?.id ?? `snap-allocation-${nextMonthStr}`
-
-  const newSnapshot = {
-    id: snapshotId,
-    userId: state.source.profile?.userId,
-    effectiveMonth: nextMonthEffective,
-  }
-
-  const existingSnapIndex = proposedSnapshots.findIndex(
-    (s) => s.effectiveMonth === nextMonthEffective,
-  )
-  if (existingSnapIndex >= 0) {
-    proposedSnapshots[existingSnapIndex] = newSnapshot
-  } else {
-    proposedSnapshots.push(newSnapshot)
-  }
-
-  const filteredAllocations = proposedAllocations.filter((a) => a.snapshotId !== snapshotId)
-  const newAllocRows = entries.map((entry) => ({
-    id: `alloc-${snapshotId}-${entry.goalId}`,
-    snapshotId,
-    goalId: entry.goalId,
-    percentage: entry.percentage,
-  }))
-
-  proposedAllocations.length = 0
-  proposedAllocations.push(...filteredAllocations, ...newAllocRows)
-
-  const proposedSource: GoalsWorkspaceSource = {
-    profile: state.source.profile,
-    goals: proposedGoals,
-    savingsPositions: state.source.savingsPositions,
-    investmentPositions: proposedInvestmentPositions,
-    snapshots: proposedSnapshots,
-    allocations: proposedAllocations,
-  }
-
-  const afterWorkspace = buildGoalsWorkspace(proposedSource, currentMonth)
-
-  const beforeGoals = beforeWorkspace.groups.flatMap((g) => g.goals)
-  const afterGoals = afterWorkspace.groups.flatMap((g) => g.goals)
-
-  // 12. Assemble impacts
-  const impacts: GoalCreationImpact[] = []
-
-  if (!isEditing) {
-    // Pending goal impact
-    const afterPendingGoal = afterGoals.find((g) => g.id === PENDING_GOAL_ID)
-    impacts.push({
-      goalId: PENDING_GOAL_ID,
-      goalName: normalizedGoal.name,
-      before: { status: 'not_created' },
-      after: afterPendingGoal?.projection ?? { status: 'target_unavailable' },
-    })
-  }
-
-  // Existing goals impact
-  for (const goal of state.source.goals ?? []) {
-    if (goal.status !== 'active' && goal.id !== subjectGoalId) continue
-
-    const beforeGoal = beforeGoals.find((g) => g.id === goal.id)
-    const afterGoal = afterGoals.find((g) => g.id === goal.id)
-    const beforeProjection: GoalProjection = beforeGoal?.projection ?? {
-      status: 'target_unavailable',
-    }
-    const afterProjection: GoalProjection = afterGoal?.projection ?? {
-      status: 'target_unavailable',
-    }
-    const beforeFundingRow =
-      beforeGoal?.funding?.find(
-        (funding) => funding.effectiveMonth === selectedSnapshot?.effectiveMonth,
-      ) ?? beforeGoal?.funding?.[0]
-    const isSubject = isEditing && goal.id === subjectGoalId
-
-    impacts.push({
-      goalId: goal.id,
-      goalName: isSubject ? normalizedGoal.name : goal.name,
-      before: {
-        status: 'existing',
-        projection: beforeProjection,
-        allocatedMonthlyAmounts: beforeFundingRow?.allocatedDestinationAmount
-          ? [beforeFundingRow.allocatedDestinationAmount]
-          : [],
-      },
-      after: afterProjection,
-    })
-  }
-
+export function buildGoalCreationProposal(input: GoalCreationInput): GoalCreationProposal {
+  const subject = resolveGoalCreationSubject(input)
+  const { normalizedGoal, investment } = normalizeGoalCreationDetails(input)
+  const proposedGoals = buildProposedGoal({
+    state: input.state,
+    currentMonth: input.currentMonth,
+    normalizedGoal,
+    subject,
+  })
+  const proposedInvestmentPositions = buildProposedInvestmentPositions({
+    state: input.state,
+    normalizedGoal,
+    investment,
+    subject,
+  })
+  const plan = buildGoalCreationAllocation({ ...input, subject, normalizedGoal })
+  const { proposedSource, impacts } = buildGoalCreationWorkspaces({
+    state: input.state,
+    currentMonth: input.currentMonth,
+    entries: plan.allocation.entries,
+    proposedGoals,
+    proposedInvestmentPositions,
+    selectedSnapshot: plan.selectedSnapshot,
+    subject,
+    goalName: normalizedGoal.name,
+    nextMonthStr: plan.nextMonthStr,
+    nextMonthEffective: plan.nextMonthEffective,
+  })
   return {
     normalizedGoal,
     investment,
-    allocation,
+    allocation: plan.allocation,
     impacts,
     proposedSource,
   }
@@ -748,6 +782,15 @@ export function serializeGoalCreationState(
   stateOrSource: GoalCreationState | GoalsWorkspaceSource,
   currentMonth: string,
   draft?: GoalCreationDraft,
+): string {
+  return serializeGoalState(stateOrSource, currentMonth, draft)
+}
+
+function serializeGoalState(
+  stateOrSource: GoalCreationState | GoalsWorkspaceSource,
+  currentMonth: string,
+  draft: GoalCreationDraft | undefined,
+  goalId?: string,
 ): string {
   const state: GoalCreationState =
     'source' in stateOrSource && stateOrSource.source
@@ -761,84 +804,11 @@ export function serializeGoalCreationState(
   const { source, pendingSnapshots, pendingAllocations } = state
 
   const normalized = {
+    ...(goalId ? { goalId } : {}),
     currentMonth,
     planningArsPerUsd: PLANNING_ARS_PER_USD,
-    profile: source.profile
-      ? {
-          userId: source.profile.userId,
-          baseCurrency: source.profile.baseCurrency,
-          expensesKnowledge: source.profile.expensesKnowledge,
-          plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
-          onboardingCompleted: source.profile.onboardingCompleted,
-        }
-      : null,
-    goals: (source.goals ?? [])
-      .map((g) => ({
-        id: g.id,
-        userId: g.userId ?? null,
-        name: g.name,
-        type: g.type,
-        targetAmount: g.targetAmount ?? null,
-        currency: g.currency,
-        priority: g.priority,
-        strategy: g.strategy,
-        status: g.status,
-        desiredDate: g.desiredDate ?? null,
-        completedAt: g.completedAt ?? null,
-        emergencyFundMonths: g.emergencyFundMonths ?? null,
-        createdAt: g.createdAt,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    savingsPositions: (source.savingsPositions ?? [])
-      .map((s) => ({
-        id: s.id,
-        goalId: s.goalId,
-        amount: s.amount,
-        currency: s.currency,
-        location: s.location ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    investmentPositions: (source.investmentPositions ?? [])
-      .map((i) => ({
-        id: i.id,
-        goalId: i.goalId,
-        currentValue: i.currentValue,
-        currency: i.currency,
-        annualReturnRate: i.annualReturnRate ?? null,
-        availability: i.availability ?? null,
-        availableFrom: i.availableFrom ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    snapshots: (source.snapshots ?? [])
-      .map((s) => ({
-        id: s.id,
-        userId: s.userId ?? null,
-        effectiveMonth: s.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    allocations: (source.allocations ?? [])
-      .map((a) => ({
-        id: a.id,
-        snapshotId: a.snapshotId,
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    pendingSnapshots: (pendingSnapshots ?? [])
-      .map((s) => ({
-        id: s.id,
-        userId: s.userId ?? null,
-        effectiveMonth: s.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    pendingAllocations: (pendingAllocations ?? [])
-      .map((a) => ({
-        id: a.id,
-        snapshotId: a.snapshotId,
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
+    profile: serializeGoalProfile(source.profile, true),
+    ...serializeGoalSourceCollections(source, pendingSnapshots, pendingAllocations),
     draft: draft
       ? {
           type: draft.type,
@@ -851,12 +821,7 @@ export function serializeGoalCreationState(
           annualReturnRate: draft.annualReturnRate,
           availability: draft.availability,
           availableFromMonth: draft.availableFromMonth ?? null,
-          allocations: (draft.allocations ?? [])
-            .map((e) => ({
-              goalId: e.goalId,
-              percentage: new BigNumber((e.percentage || '0').replace(',', '.')).toFixed(2),
-            }))
-            .sort((a, b) => a.goalId.localeCompare(b.goalId)),
+            allocations: serializeAllocationEntries(draft.allocations ?? []),
         }
       : null,
   }
@@ -870,118 +835,5 @@ export function serializeGoalEditState(
   goalId: string,
   draft?: GoalCreationDraft,
 ): string {
-  const state: GoalCreationState =
-    'source' in stateOrSource && stateOrSource.source
-      ? (stateOrSource as GoalCreationState)
-      : {
-          source: stateOrSource as GoalsWorkspaceSource,
-          pendingSnapshots: [],
-          pendingAllocations: [],
-        }
-
-  const { source, pendingSnapshots, pendingAllocations } = state
-
-  const normalized = {
-    goalId,
-    currentMonth,
-    planningArsPerUsd: PLANNING_ARS_PER_USD,
-    profile: source.profile
-      ? {
-          userId: source.profile.userId,
-          baseCurrency: source.profile.baseCurrency,
-          expensesKnowledge: source.profile.expensesKnowledge,
-          plannedMonthlyContribution: source.profile.plannedMonthlyContribution ?? null,
-          onboardingCompleted: source.profile.onboardingCompleted,
-        }
-      : null,
-    goals: (source.goals ?? [])
-      .map((g) => ({
-        id: g.id,
-        userId: g.userId ?? null,
-        name: g.name,
-        type: g.type,
-        targetAmount: g.targetAmount ?? null,
-        currency: g.currency,
-        priority: g.priority,
-        strategy: g.strategy,
-        status: g.status,
-        desiredDate: g.desiredDate ?? null,
-        completedAt: g.completedAt ?? null,
-        emergencyFundMonths: g.emergencyFundMonths ?? null,
-        createdAt: g.createdAt,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    savingsPositions: (source.savingsPositions ?? [])
-      .map((s) => ({
-        id: s.id,
-        goalId: s.goalId,
-        amount: s.amount,
-        currency: s.currency,
-        location: s.location ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    investmentPositions: (source.investmentPositions ?? [])
-      .map((i) => ({
-        id: i.id,
-        goalId: i.goalId,
-        currentValue: i.currentValue,
-        currency: i.currency,
-        annualReturnRate: i.annualReturnRate ?? null,
-        availability: i.availability ?? null,
-        availableFrom: i.availableFrom ?? null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    snapshots: (source.snapshots ?? [])
-      .map((s) => ({
-        id: s.id,
-        userId: s.userId ?? null,
-        effectiveMonth: s.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    allocations: (source.allocations ?? [])
-      .map((a) => ({
-        id: a.id,
-        snapshotId: a.snapshotId,
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    pendingSnapshots: (pendingSnapshots ?? [])
-      .map((s) => ({
-        id: s.id,
-        userId: s.userId ?? null,
-        effectiveMonth: s.effectiveMonth,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    pendingAllocations: (pendingAllocations ?? [])
-      .map((a) => ({
-        id: a.id,
-        snapshotId: a.snapshotId,
-        goalId: a.goalId,
-        percentage: a.percentage,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    draft: draft
-      ? {
-          type: draft.type,
-          name: draft.name.trim(),
-          targetAmount: draft.targetAmount,
-          currency: draft.currency,
-          desiredMonth: draft.desiredMonth ?? null,
-          priority: draft.priority,
-          strategy: draft.strategy,
-          annualReturnRate: draft.annualReturnRate,
-          availability: draft.availability,
-          availableFromMonth: draft.availableFromMonth ?? null,
-          allocations: (draft.allocations ?? [])
-            .map((e) => ({
-              goalId: e.goalId,
-              percentage: new BigNumber((e.percentage || '0').replace(',', '.')).toFixed(2),
-            }))
-            .sort((a, b) => a.goalId.localeCompare(b.goalId)),
-        }
-      : null,
-  }
-
-  return JSON.stringify(normalized)
+  return serializeGoalState(stateOrSource, currentMonth, draft, goalId)
 }
