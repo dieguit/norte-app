@@ -97,7 +97,7 @@ function FinancialRecordGroup<
       <ul className="mt-2 flex flex-col gap-2">
         {groups.map((group) => (
           <li
-            key={`${group.category}-${group.currency}`}
+            key={`${group.category}\0${group.currency}`}
             className="min-w-0 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-3 text-xs sm:text-sm"
           >
             <span className="block break-words font-semibold text-[var(--sea-ink)]">
