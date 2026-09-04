@@ -124,20 +124,24 @@ describe("RoadmapParts - Financial grouping", () => {
     render(<RoadmapTimeline futureMonths={[]} currentMonth={currentMonth} />);
 
     const arsCategory = screen.getByRole("button", {
-      name: /Alquiler \/ vivienda:\s*\$ 176,00/,
+      name: /Alquiler \/ vivienda:\s*\$176,00/,
     });
 
     expect(arsCategory).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Alquiler: $ 151,00")).not.toBeInTheDocument();
-    expect(screen.getByText("$ 176,00")).toBeInTheDocument();
+    expect(screen.queryByText("Alquiler: $151,00")).not.toBeInTheDocument();
+    expect(screen.getByText("$176,00")).toBeInTheDocument();
 
     await user.click(arsCategory);
 
     expect(arsCategory).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Alquiler: $ 151,00")).toBeInTheDocument();
-    expect(screen.getByText("Sin concepto: $ 25,00")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Alquiler \/ vivienda:\s*US\$ 10,00/ })
+      screen.getByText((_, element) => element?.textContent === "Alquiler: $151,00")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) => element?.textContent === "Sin concepto: $25,00")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Alquiler \/ vivienda:\s*US\$10,00/ })
     ).toBeInTheDocument();
 
     // Verify contribution remains itemized and rendered once with label and amount

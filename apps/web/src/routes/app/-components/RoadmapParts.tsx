@@ -77,6 +77,10 @@ function groupRecords<
   return [...groups.values()];
 }
 
+function formatInlineMoney(money: { amount: string; currency: "ARS" | "USD" }) {
+  return formatMoney(money).replace(/\s+/g, "");
+}
+
 function FinancialRecordGroup<
   T extends { amount: string; currency: "ARS" | "USD"; concept: string | null },
 >({
@@ -106,26 +110,29 @@ function FinancialRecordGroup<
             className="min-w-0 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-3 text-xs sm:text-sm"
           >
             <Collapsible>
-              <CollapsibleTrigger className="group flex min-h-11 w-full items-start justify-between gap-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--lagoon-deep)]">
+              <CollapsibleTrigger className="group flex min-h-11 w-full items-start gap-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--lagoon-deep)]">
+                <ChevronRight
+                  className="mt-0.5 size-4 shrink-0 text-[var(--sea-ink-soft)] transition-transform motion-reduce:transition-none group-aria-expanded:rotate-90"
+                  aria-hidden="true"
+                />
                 <span className="min-w-0 flex-1 break-words text-[var(--sea-ink)]">
                   {group.category}:{" "}
                   <span className="tabular-nums">
-                    {formatMoney({
+                    {formatInlineMoney({
                       amount: group.total.toFixed(2),
                       currency: group.currency,
                     })}
                   </span>
                 </span>
-                <ChevronRight
-                  className="mt-0.5 size-4 shrink-0 text-[var(--sea-ink-soft)] transition-transform motion-reduce:transition-none group-aria-expanded:rotate-90"
-                  aria-hidden="true"
-                />
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <ul className="mt-2 border-t border-[var(--line)] pt-2 text-left">
+                <ul className="mt-2 border-t border-[var(--line)] pl-5 pt-2 text-left">
                   {[...group.concepts].map(([concept, total]) => (
                     <li key={concept} className="break-words text-[var(--sea-ink-soft)]">
-                      {concept}: {formatMoney({ amount: total.toFixed(2), currency: group.currency })}
+                      {concept}:{" "}
+                      <span className="tabular-nums">
+                        {formatInlineMoney({ amount: total.toFixed(2), currency: group.currency })}
+                      </span>
                     </li>
                   ))}
                 </ul>
