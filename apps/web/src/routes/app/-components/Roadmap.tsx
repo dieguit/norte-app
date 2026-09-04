@@ -25,7 +25,7 @@ function hasRoadmapActivity(roadmap: RoadmapData) {
 }
 
 export function Roadmap({ roadmap }: { roadmap: RoadmapData }) {
-  const [visibleHistoryCount, setVisibleHistoryCount] = useState(1);
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState(0);
   const visibleHistory = roadmap.historyMonths.slice(0, visibleHistoryCount);
   const nextHistory = roadmap.historyMonths[visibleHistoryCount];
 
@@ -42,19 +42,19 @@ export function Roadmap({ roadmap }: { roadmap: RoadmapData }) {
           Tu plan, tus aportes y los hitos que proyectan tus objetivos.
         </p>
       </header>
-      <RoadmapUndatedObjectives objectives={roadmap.undatedObjectives} />
-      <RoadmapTimeline
-        futureMonths={roadmap.futureMonths}
-        currentMonth={roadmap.currentMonth}
-      />
-      <RoadmapHistory months={visibleHistory} />
-      {!hasRoadmapActivity(roadmap) && <RoadmapEmptyState />}
       {nextHistory && (
         <LoadMoreHistory
           month={nextHistory.month}
           onLoad={() => setVisibleHistoryCount((count) => count + 1)}
         />
       )}
+      <RoadmapHistory months={visibleHistory} />
+      <RoadmapTimeline
+        futureMonths={roadmap.futureMonths}
+        currentMonth={roadmap.currentMonth}
+      />
+      <RoadmapUndatedObjectives objectives={roadmap.undatedObjectives} />
+      {!hasRoadmapActivity(roadmap) && <RoadmapEmptyState />}
     </section>
   );
 }

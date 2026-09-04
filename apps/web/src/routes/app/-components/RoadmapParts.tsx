@@ -313,7 +313,9 @@ function MonthGroup({
         {kind === "today" ? `Hoy · ${label}` : label}
       </h3>
       <RoadmapObjectives objectives={group.objectives} />
-      {hasSideContent && <RoadmapMonthRecords group={group} label={label} />}
+      {kind !== "future" && hasSideContent && (
+        <RoadmapMonthRecords group={group} label={label} />
+      )}
     </section>
   );
 }
@@ -364,11 +366,17 @@ export function RoadmapTimeline({
   currentMonth: RoadmapMonth;
 }) {
   return (
-    <div className="relative mt-8 before:absolute before:inset-y-0 before:left-1/2 before:-ml-[1px] before:border-l-2 before:border-dashed before:border-[var(--palm)]">
-      {futureMonths.map((month) => (
-        <MonthGroup key={month.month} group={month} kind="future" />
-      ))}
-      <MonthGroup group={currentMonth} kind="today" />
+    <div className="mt-8">
+      <div className="relative before:absolute before:inset-y-0 before:left-1/2 before:-ml-[1px] before:border-l-2 before:border-solid before:border-[var(--palm)]">
+        <MonthGroup group={currentMonth} kind="today" />
+      </div>
+      {futureMonths.length > 0 && (
+        <div className="relative before:absolute before:inset-y-0 before:left-1/2 before:-ml-[1px] before:border-l-2 before:border-dashed before:border-[var(--palm)]">
+          {futureMonths.map((month) => (
+            <MonthGroup key={month.month} group={month} kind="future" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -383,7 +391,7 @@ export function RoadmapHistory({
       <p className="relative z-10 mx-auto w-fit bg-[var(--sand)] px-2 text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">
         Historial
       </p>
-      {months.map((month) => (
+      {[...months].reverse().map((month) => (
         <MonthGroup key={month.month} group={month} kind="history" />
       ))}
     </div>

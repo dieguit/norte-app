@@ -132,7 +132,7 @@ const roadmap: RoadmapData = {
 };
 
 describe("Roadmap component", () => {
-  it("renders roadmap topology, objectives, regions, and progressive history disclosure", async () => {
+  it("renders topology and progressively discloses chronological history", async () => {
     const user = userEvent.setup();
     render(<Roadmap roadmap={roadmap} />);
 
@@ -154,18 +154,6 @@ describe("Roadmap component", () => {
         name: "Ingresos y aportes para Agosto de 2026",
       }),
     ).toHaveAttribute("data-side", "right");
-    const futureExpenses = screen.getByRole("region", {
-      name: "Gastos previstos para Septiembre de 2026",
-    });
-    const futureIncomes = screen.getByRole("region", {
-      name: "Ingresos y aportes para Septiembre de 2026",
-    });
-    expect(
-      within(futureExpenses).getByText("Gastos recurrentes"),
-    ).toBeVisible();
-    expect(
-      within(futureIncomes).getByText("Ingresos recurrentes"),
-    ).toBeVisible();
     expect(
       screen.getByRole("heading", { name: "Colchón de 3 meses" }),
     ).toHaveAttribute("data-roadmap-objective", "full-width");
@@ -177,8 +165,16 @@ describe("Roadmap component", () => {
     expect(
       screen.getByRole("heading", { name: "Viaje" }).closest("article"),
     ).toHaveClass("bg-[var(--surface-strong)]");
-    expect(screen.getByText("Julio de 2026")).toBeVisible();
+    expect(screen.queryByText("Julio de 2026")).not.toBeInTheDocument();
     expect(screen.queryByText("Junio de 2026")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cargar Julio de 2026" }),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole("button", { name: "Cargar Julio de 2026" }),
+    );
+    expect(screen.getByText("Julio de 2026")).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Cargar Junio de 2026" }),
     ).toBeVisible();
@@ -190,6 +186,41 @@ describe("Roadmap component", () => {
     expect(
       screen.queryByRole("button", { name: /^Cargar/ }),
     ).not.toBeInTheDocument();
+
+    expect(
+      [...screen.getByText("Historial").parentElement!.querySelectorAll("h3")].map(
+        (heading) => heading.textContent,
+      ),
+    ).toEqual(["Junio de 2026", "Julio de 2026"]);
+  });
+
+  it("does not render income or expense sections for future months", () => {
+    render(<Roadmap roadmap={roadmap} />);
+
+    expect(
+      screen.queryByRole("region", {
+        name: "Gastos previstos para Septiembre de 2026",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", {
+        name: "Ingresos y aportes para Septiembre de 2026",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders undated objectives after the timeline", () => {
+    render(<Roadmap roadmap={roadmap} />);
+
+    const todayHeading = screen.getByRole("heading", { name: /Hoy/ });
+    const undatedHeading = screen.getByRole("heading", {
+      name: "Sin fecha proyectada",
+    });
+
+    expect(
+      todayHeading.compareDocumentPosition(undatedHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("renders empty roadmap state when there is no activity", () => {
