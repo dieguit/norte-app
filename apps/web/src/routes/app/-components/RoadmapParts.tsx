@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import BigNumber from "bignumber.js";
 import { CircleCheck } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { FIXED_EXPENSE_SOURCES } from "../../../features/financial/expenses";
@@ -36,6 +37,100 @@ const expenseLabel = (expense: RoadmapMonth["oneTimeExpenses"][number]) =>
     : (FIXED_EXPENSE_SOURCES[
         expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES
       ] ?? expense.sourceName);
+
+function groupRecords<
+  T extends { amount: string; currency: "ARS" | "USD"; concept: string | null },
+>(items: T[], getCategory: (item: T) => string) {
+  const groups = new Map<
+    string,
+    {
+      category: string;
+      currency: T["currency"];
+      total: BigNumber;
+      concepts: Map<string, BigNumber>;
+    }
+  >();
+
+  for (const item of items) {
+    const category = getCategory(item);
+    const key = `${category}\0${item.currency}`;
+    const group = groups.get(key) ?? {
+      category,
+      currency: item.currency,
+      total: new BigNumber(0),
+      concepts: new Map(),
+    };
+    const concept = item.concept?.trim() || "Sin concepto";
+    group.total = group.total.plus(item.amount);
+    group.concepts.set(
+      concept,
+      group.concepts.get(concept)?.plus(item.amount) ?? new BigNumber(item.amount),
+    );
+    groups.set(key, group);
+  }
+
+  return [...groups.values()];
+}
+
+function FinancialRecordGroup<
+  T extends { amount: string; currency: "ARS" | "USD"; concept: string | null },
+>({
+  title,
+  items,
+  getCategory,
+  titleClassName = "text-[var(--sea-ink-soft)]",
+}: {
+  title: string;
+  items: T[];
+  getCategory: (item: T) => string;
+  titleClassName?: string;
+}) {
+  if (items.length === 0) return null;
+  const groups = groupRecords(items, getCategory);
+  return (
+    <div>
+      <p
+        className={`text-[0.65rem] font-semibold uppercase tracking-wider ${titleClassName}`}
+      >
+        {title}
+      </p>
+      <ul className="mt-2 flex flex-col gap-2">
+        {groups.map((group) => (
+          <li
+            key={`${group.category}-${group.currency}`}
+            className="min-w-0 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-3 text-xs sm:text-sm"
+          >
+            <span className="block break-words font-semibold text-[var(--sea-ink)]">
+              {group.category}
+            </span>
+            <strong className="mt-1 block break-words tabular-nums text-[var(--sea-ink)]">
+              {formatMoney({
+                amount: group.total.toFixed(2),
+                currency: group.currency,
+              })}
+            </strong>
+            <ul className="mt-2 border-t border-[var(--line)] pt-2">
+              {[...group.concepts].map(([concept, total]) => (
+                <li
+                  key={concept}
+                  className="flex justify-between gap-2 text-[var(--sea-ink-soft)]"
+                >
+                  <span className="min-w-0 break-words">{concept}</span>
+                  <span className="shrink-0 tabular-nums">
+                    {formatMoney({
+                      amount: total.toFixed(2),
+                      currency: group.currency,
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function RecordGroup<
   T extends { id: string; amount: string; currency: "ARS" | "USD" },
@@ -129,22 +224,22 @@ function RoadmapMonthRecords({ group, label }: { group: RoadmapMonth; label: str
         aria-label={`Gastos previstos para ${label}`}
         className="flex min-w-0 flex-col gap-3 text-right"
       >
-        <RecordGroup
+        <FinancialRecordGroup
           title="Gastos únicos"
           items={group.oneTimeExpenses}
-          getLabel={expenseLabel}
+          getCategory={expenseLabel}
           titleClassName="text-[var(--error)]"
         />
-        <RecordGroup
+        <FinancialRecordGroup
           title="Gastos recurrentes"
           items={group.recurringExpenses}
-          getLabel={expenseLabel}
+          getCategory={expenseLabel}
           titleClassName="text-[var(--error)]"
         />
-        <RecordGroup
+        <FinancialRecordGroup
           title="Finalizan este mes"
           items={group.endingExpenses}
-          getLabel={expenseLabel}
+          getCategory={expenseLabel}
         />
       </section>
       <section
@@ -152,16 +247,16 @@ function RoadmapMonthRecords({ group, label }: { group: RoadmapMonth; label: str
         aria-label={`Ingresos y aportes para ${label}`}
         className="flex min-w-0 flex-col gap-3 text-left"
       >
-        <RecordGroup
+        <FinancialRecordGroup
           title="Ingresos únicos"
           items={group.oneTimeIncomes}
-          getLabel={incomeLabel}
+          getCategory={incomeLabel}
           titleClassName="text-[var(--palm)]"
         />
-        <RecordGroup
+        <FinancialRecordGroup
           title="Ingresos recurrentes"
           items={group.recurringIncomes}
-          getLabel={incomeLabel}
+          getCategory={incomeLabel}
           titleClassName="text-[var(--palm)]"
         />
         <RecordGroup
