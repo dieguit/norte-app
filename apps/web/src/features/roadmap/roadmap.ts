@@ -179,31 +179,14 @@ function addCompletedFutureMonths(
   }
 }
 
-function addFinanceFutureMonths(
-  months: Set<string>,
-  currentMonth: string,
-  finances: RoadmapFinances,
-) {
-  for (const income of finances.incomes.incomes) {
-    addFutureMonth(months, currentMonth, income.effectiveMonth.slice(0, 7))
-  }
-  for (const expense of finances.expenses.expenses) {
-    addFutureMonth(months, currentMonth, expense.effectiveMonth.slice(0, 7))
-    const endMonth = expense.endMonth?.slice(0, 7)
-    if (endMonth) addFutureMonth(months, currentMonth, endMonth)
-  }
-}
-
 function collectFutureMonthKeys(
   currentMonth: string,
   datedObjectives: GoalWorkspaceItem[],
   completedObjectives: GoalWorkspaceItem[],
-  finances: RoadmapFinances,
 ) {
   const futureMonthKeys = new Set<string>()
   addGoalFutureMonths(futureMonthKeys, currentMonth, datedObjectives)
   addCompletedFutureMonths(futureMonthKeys, currentMonth, completedObjectives)
-  addFinanceFutureMonths(futureMonthKeys, currentMonth, finances)
   return futureMonthKeys
 }
 
@@ -264,7 +247,6 @@ export function buildRoadmap({
     currentMonth,
     datedObjectives,
     completedObjectives,
-    finances,
   )
   const earliestHistoryMonth = getEarliestHistoryMonth(
     currentMonth,
@@ -276,7 +258,7 @@ export function buildRoadmap({
 
   return {
     undatedObjectives,
-    futureMonths: [...futureMonthKeys].sort().reverse().map(buildMonth),
+    futureMonths: [...futureMonthKeys].sort().map(buildMonth),
     currentMonth: buildMonth(currentMonth),
     historyMonths,
   }

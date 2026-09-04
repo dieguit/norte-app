@@ -101,19 +101,36 @@ const finances: RoadmapFinances = {
 }
 
 describe('buildRoadmap', () => {
-  it('builds sparse future months from events and fills them with active recurring records', () => {
-    const roadmap = buildRoadmap({ goals, finances, currentMonth: '2026-08' })
+  it('orders future months chronologically from closest to furthest and includes only months with objectives', () => {
+    const goalsWithFutureObjectives = structuredClone(goals)
+    goalsWithFutureObjectives.groups[0].goals = [
+      {
+        ...goals.groups[0].goals[0],
+        id: 'g1',
+        projection: { status: 'available', completionMonth: '2026-11' },
+      },
+      {
+        ...goals.groups[0].goals[0],
+        id: 'g2',
+        projection: { status: 'available', completionMonth: '2026-09' },
+      },
+    ]
+    const financesWithExpense = structuredClone(finances)
+    financesWithExpense.incomes.incomes = []
+    financesWithExpense.expenses.expenses = [
+      { ...finances.expenses.expenses[0], id: 'expense', effectiveMonth: '2026-10' },
+    ]
+
+    const roadmap = buildRoadmap({
+      goals: goalsWithFutureObjectives,
+      finances: financesWithExpense,
+      currentMonth: '2026-08',
+    })
 
     expect(roadmap.futureMonths.map(({ month }) => month)).toEqual([
-      '2027-03',
-      '2026-12',
       '2026-09',
+      '2026-11',
     ])
-    expect(roadmap.futureMonths[0].objectives.map(({ id }) => id)).toEqual(['goal-1'])
-    expect(roadmap.futureMonths[1].recurringIncomes.map(({ id }) => id)).toEqual(['salary'])
-    expect(roadmap.futureMonths[1].oneTimeIncomes.map(({ id }) => id)).toEqual(['bonus'])
-    expect(roadmap.futureMonths[1].recurringExpenses.map(({ id }) => id)).toEqual(['rent'])
-    expect(roadmap.futureMonths[1].oneTimeExpenses.map(({ id }) => id)).toEqual(['notebook'])
   })
 
   it('keeps same-month items in deterministic domain order regardless of input order', () => {
@@ -156,14 +173,6 @@ describe('buildRoadmap', () => {
 
     expect(actual).toEqual(expected)
     expect(actual.futureMonths[0].objectives.map(({ id }) => id)).toEqual(['goal-0', 'goal-1'])
-    expect(actual.futureMonths[2].recurringIncomes.map(({ id }) => id)).toEqual([
-      'side-income',
-      'salary',
-    ])
-    expect(actual.futureMonths[2].recurringExpenses.map(({ id }) => id)).toEqual([
-      'rent',
-      'utilities',
-    ])
   })
 
   it('deduplicates contributions shared by goals and builds newest-first activity history', () => {
@@ -273,8 +282,8 @@ describe('buildRoadmap', () => {
     })
 
     expect(roadmap.currentMonth.objectives.map(({ id }) => id)).toEqual(['completed-current'])
-    expect(roadmap.futureMonths.map(({ month }) => month)).toEqual(['2027-03', '2026-10'])
-    expect(roadmap.futureMonths[1].objectives.map(({ id }) => id)).toEqual(['completed-future'])
+    expect(roadmap.futureMonths.map(({ month }) => month)).toEqual(['2026-10', '2027-03'])
+    expect(roadmap.futureMonths[0].objectives.map(({ id }) => id)).toEqual(['completed-future'])
     expect(roadmap.historyMonths.map(({ month }) => month)).toEqual(['2026-06'])
     expect(roadmap.historyMonths[0].objectives.map(({ id }) => id)).toEqual(['completed-history'])
     expect(roadmap.undatedObjectives).toEqual([])
@@ -287,16 +296,14 @@ describe('buildRoadmap', () => {
 
   it('includes a recurring expense ending in a future month in that month', () => {
     const endingFinances = structuredClone(finances)
-    endingFinances.expenses.expenses[0].endMonth = '2026-12-01'
+    endingFinances.expenses.expenses[0].endMonth = '2027-03-01'
 
     const roadmap = buildRoadmap({ goals, finances: endingFinances, currentMonth: '2026-08' })
 
     expect(roadmap.futureMonths.map(({ month }) => month)).toEqual([
       '2027-03',
-      '2026-12',
-      '2026-09',
     ])
-    expect(roadmap.futureMonths[1].endingExpenses.map(({ id }) => id)).toEqual(['rent'])
+    expect(roadmap.futureMonths[0].endingExpenses.map(({ id }) => id)).toEqual(['rent'])
   })
 
   it('moves a recurring expense out of active events when it ends in the selected month', () => {
