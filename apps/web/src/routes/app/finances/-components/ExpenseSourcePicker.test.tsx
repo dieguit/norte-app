@@ -18,7 +18,9 @@ describe('ExpenseSourcePicker', () => {
     expect(await screen.findByRole('option', { name: 'Alquiler / vivienda' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Compra de ropa' })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Gimnasio' })).toBeInTheDocument()
-    expect((await screen.findAllByRole('option')).at(-1)).toHaveTextContent('Otro (agregar nuevo)')
+    const options = await screen.findAllByRole('option')
+    expect(options.at(-2)).toHaveTextContent('Sin categoría')
+    expect(options.at(-1)).toHaveTextContent('Otro (agregar nuevo)')
   })
 
   it('lists one-time fixed and custom sources, ending with the new-source option', async () => {
@@ -30,7 +32,24 @@ describe('ExpenseSourcePicker', () => {
     expect(await screen.findByRole('option', { name: 'Compra de ropa' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Alquiler / vivienda' })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Gimnasio' })).toBeInTheDocument()
-    expect((await screen.findAllByRole('option')).at(-1)).toHaveTextContent('Otro (agregar nuevo)')
+    const options = await screen.findAllByRole('option')
+    expect(options.at(-2)).toHaveTextContent('Sin categoría')
+    expect(options.at(-1)).toHaveTextContent('Otro (agregar nuevo)')
+  })
+
+  it('shows the category placeholder when no category is selected', () => {
+    render(
+      <ExpenseSourcePicker
+        recurring
+        sources={[]}
+        value={undefined}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveTextContent(
+      'Seleccionar categoría',
+    )
   })
 
   it('shows a name input and keeps the other option selected', async () => {

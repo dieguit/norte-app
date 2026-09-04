@@ -43,15 +43,19 @@ describe('FinancialOnboarding', () => {
 
   async function addSalary(user: ReturnType<typeof userEvent.setup>, amount = '125000') {
     await user.click(screen.getByRole('button', { name: 'Agregar ingreso' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), amount)
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo principal')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo principal')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
   }
 
   async function addHousingExpense(user: ReturnType<typeof userEvent.setup>, amount = '100000') {
     await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), amount)
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
   }
 
@@ -135,10 +139,12 @@ describe('FinancialOnboarding', () => {
     expect(screen.queryByRole('switch', { name: 'Es ingreso recurrente' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
     await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo principal')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo principal')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(screen.getByRole('heading', { name: 'Ingresos recurrentes' })).toBeVisible()
@@ -161,7 +167,7 @@ describe('FinancialOnboarding', () => {
     await addSalary(user)
 
     await user.click(screen.getByRole('button', { name: 'Editar ingreso Sueldo' }))
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Sueldo principal')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Sueldo principal')
     const amount = screen.getByRole('textbox', { name: 'Monto' })
     await user.clear(amount)
     await user.type(amount, '200000')
@@ -185,14 +191,14 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Consultoría')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '50000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Honorarios')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Honorarios')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(screen.getByText('Consultoría')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Editar ingreso Consultoría' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Eliminar ingreso Consultoría' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Editar ingreso Consultoría' }))
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Honorarios')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Honorarios')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
   })
 
@@ -210,18 +216,20 @@ describe('FinancialOnboarding', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '75000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     await user.click(screen.getByRole('button', { name: 'Editar gasto Alquiler / vivienda' }))
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Alquiler')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await user.click(screen.getByRole('button', { name: 'Volver' }))
     expect(screen.getByText('Sueldo')).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Editar ingreso Sueldo' }))
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Sueldo principal')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Sueldo principal')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
     await user.click(screen.getByRole('button', { name: 'Volver' }))
     expect(screen.getByLabelText('Nombre del objetivo')).toHaveValue('Viaje al sur')
@@ -243,12 +251,14 @@ describe('FinancialOnboarding', () => {
     await reachExpenseStep(user)
 
     await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     await user.click(screen.getByRole('button', { name: 'Editar gasto Alquiler / vivienda' }))
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Alquiler')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Alquiler')
     const amount = screen.getByRole('textbox', { name: 'Monto' })
     await user.clear(amount)
     await user.type(amount, '200000')
@@ -271,14 +281,14 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Gimnasio')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '50000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Cuota mensual')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Cuota mensual')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(screen.getByText('Gimnasio')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Editar gasto Gimnasio' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Eliminar gasto Gimnasio' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Editar gasto Gimnasio' }))
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Cuota mensual')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Cuota mensual')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
   })
 
@@ -302,10 +312,12 @@ describe('FinancialOnboarding', () => {
     expect(screen.queryByRole('switch', { name: 'Es gasto recurrente' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
     await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(screen.getByRole('heading', { name: 'Gastos recurrentes' })).toBeVisible()

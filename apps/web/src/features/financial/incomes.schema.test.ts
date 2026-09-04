@@ -43,17 +43,38 @@ describe('income payloads', () => {
     ).toBe('Sueldo')
   })
 
-  it('rejects missing, empty, whitespace-only, and overly long concepts', () => {
+  it('normalizes absent and blank concepts to null while preserving valid concepts', () => {
     const draftWithoutConcept = Object.fromEntries(
       Object.entries(validDraft).filter(([key]) => key !== 'concept'),
     )
 
-    expect(() => createIncomeSchema.parse({ draft: draftWithoutConcept })).toThrow()
-    for (const concept of ['', '   ']) {
-      expect(() => createIncomeSchema.parse({ draft: { ...validDraft, concept } })).toThrow('Ingresá un concepto.')
-    }
-    const maxConcept = createIncomeSchema.parse({ draft: { ...validDraft, concept: 'a'.repeat(120) } }).draft.concept
+    expect(createIncomeSchema.parse({ draft: draftWithoutConcept }).draft.concept).toBeNull()
+    expect(createIncomeSchema.parse({ draft: { ...validDraft, concept: '' } }).draft.concept).toBeNull()
+    expect(createIncomeSchema.parse({ draft: { ...validDraft, concept: '   ' } }).draft.concept).toBeNull()
+    expect(
+      createIncomeSchema.parse({ draft: { ...validDraft, concept: '  Sueldo  ' } }).draft.concept,
+    ).toBe('Sueldo')
+
+    const maxConcept = createIncomeSchema.parse({
+      draft: { ...validDraft, concept: 'a'.repeat(120) },
+    }).draft.concept
     expect(maxConcept).toHaveLength(120)
-    expect(() => createIncomeSchema.parse({ draft: { ...validDraft, concept: 'a'.repeat(121) } })).toThrow()
+    expect(() =>
+      createIncomeSchema.parse({ draft: { ...validDraft, concept: 'a'.repeat(121) } }),
+    ).toThrow('Máximo 120 caracteres.')
+
+    const parsedOnce = createIncomeSchema.parse({ draft: { ...validDraft, concept: '' } })
+    const reparsed = createIncomeSchema.parse(parsedOnce)
+    expect(reparsed.draft.concept).toBeNull()
+  })
+
+  it('requires a category', () => {
+    const draftWithoutSource = Object.fromEntries(
+      Object.entries(validDraft).filter(([key]) => key !== 'source'),
+    )
+
+    expect(() => createIncomeSchema.parse({ draft: draftWithoutSource })).toThrow(
+      'Seleccioná una categoría.',
+    )
   })
 })

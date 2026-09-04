@@ -9,6 +9,7 @@ export const RECURRING_INCOME_SOURCES = {
   rent: 'Alquileres',
   investments: 'Inversiones',
   family_support: 'Ayuda familiar',
+  uncategorized: 'Sin categoría',
 } as const
 
 export const ONE_TIME_INCOME_SOURCES = {
@@ -18,6 +19,7 @@ export const ONE_TIME_INCOME_SOURCES = {
   gift_inheritance: 'Regalo / herencia',
   refund: 'Reintegro / devolución',
   extraordinary_income: 'Rescate o cobro extraordinario',
+  uncategorized: 'Sin categoría',
 } as const
 
 export const FIXED_INCOME_SOURCES = {

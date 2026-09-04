@@ -89,22 +89,34 @@ describe('expense payloads', () => {
       ).toBe('Alquiler')
     })
 
-    it('rejects missing, empty, whitespace-only, and overly long concepts', () => {
+    it('normalizes absent and blank concepts to null while preserving valid concepts', () => {
       const draftWithoutConcept = Object.fromEntries(
         Object.entries(validDraft).filter(([key]) => key !== 'concept'),
       )
 
-      expect(() =>
-        createExpenseSchema.parse({ draft: draftWithoutConcept, effectiveMonth: '2026-09' }),
-      ).toThrow()
-      for (const concept of ['', '   ']) {
-        expect(() =>
-          createExpenseSchema.parse({
-            draft: { ...validDraft, concept },
-            effectiveMonth: '2026-09',
-          }),
-        ).toThrow('Ingresá un concepto.')
-      }
+      expect(
+        createExpenseSchema.parse({ draft: draftWithoutConcept, effectiveMonth: '2026-09' }).draft
+          .concept,
+      ).toBeNull()
+      expect(
+        createExpenseSchema.parse({
+          draft: { ...validDraft, concept: '' },
+          effectiveMonth: '2026-09',
+        }).draft.concept,
+      ).toBeNull()
+      expect(
+        createExpenseSchema.parse({
+          draft: { ...validDraft, concept: '   ' },
+          effectiveMonth: '2026-09',
+        }).draft.concept,
+      ).toBeNull()
+      expect(
+        createExpenseSchema.parse({
+          draft: { ...validDraft, concept: '  Alquiler  ' },
+          effectiveMonth: '2026-09',
+        }).draft.concept,
+      ).toBe('Alquiler')
+
       const maxConcept = createExpenseSchema.parse({
         draft: { ...validDraft, concept: 'a'.repeat(120) },
         effectiveMonth: '2026-09',
@@ -115,7 +127,24 @@ describe('expense payloads', () => {
           draft: { ...validDraft, concept: 'a'.repeat(121) },
           effectiveMonth: '2026-09',
         }),
-      ).toThrow()
+      ).toThrow('Máximo 120 caracteres.')
+
+      const parsedOnce = createExpenseSchema.parse({
+        draft: { ...validDraft, concept: '' },
+        effectiveMonth: '2026-09',
+      })
+      const reparsed = createExpenseSchema.parse(parsedOnce)
+      expect(reparsed.draft.concept).toBeNull()
+    })
+
+    it('requires a category', () => {
+      const draftWithoutSource = Object.fromEntries(
+        Object.entries(validDraft).filter(([key]) => key !== 'source'),
+      )
+
+      expect(() =>
+        createExpenseSchema.parse({ draft: draftWithoutSource, effectiveMonth: '2026-09' }),
+      ).toThrow('Seleccioná una categoría.')
     })
 
     it('rejects create payload without effectiveMonth', () => {

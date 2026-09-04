@@ -10,6 +10,7 @@ import { FIXED_INCOME_SOURCES } from "../../../../features/financial/incomes";
 import {
   createIncomeSchema,
   type IncomeDraft,
+  type IncomeDraftInput,
 } from "../../../../features/financial/incomes.schema";
 import { formatMoneyInput, parseMoneyInput } from "../../../../lib/money";
 import {
@@ -44,9 +45,9 @@ type IncomeSheetProps = {
 
 type ValidationIssue = { path: PropertyKey[]; message: string };
 
-function defaultDraft(month: string): IncomeDraft {
+function defaultDraft(month: string): IncomeDraftInput {
   return {
-    source: { kind: "salary" },
+    source: undefined,
     amount: "",
     concept: "",
     currency: "ARS",
@@ -60,13 +61,15 @@ function getIncomeDraft(
   initialDraft: IncomeDraft | undefined,
   month: string,
   recurringOnly: boolean,
-): IncomeDraft {
+): IncomeDraftInput {
   if (income) {
     return {
       source:
         income.sourceKind === "custom"
           ? { kind: "custom", sourceId: income.sourceId! }
-          : { kind: income.sourceKind as keyof typeof FIXED_INCOME_SOURCES },
+          : income.sourceKind === "uncategorized"
+            ? { kind: "uncategorized" }
+            : { kind: income.sourceKind as keyof typeof FIXED_INCOME_SOURCES },
       amount: formatMoneyInput(income.amount.replace(".", ",")),
       concept: income.concept ?? "",
       currency: income.currency,
@@ -77,6 +80,7 @@ function getIncomeDraft(
   if (!initialDraft) return defaultDraft(month);
   return {
     ...initialDraft,
+    concept: initialDraft.concept ?? "",
     amount: formatMoneyInput(initialDraft.amount.replace(".", ",")),
     recurring: recurringOnly ? true : initialDraft.recurring,
     effectiveMonth: recurringOnly ? month : initialDraft.effectiveMonth,
@@ -113,7 +117,7 @@ function useIncomeDraftState({
   income,
   draft: initialDraft,
   recurringOnly = false,
-}: Pick<IncomeSheetProps, "open" | "month" | "income" | "draft" | "recurringOnly">): FinancialDraftState<IncomeDraft> {
+}: Pick<IncomeSheetProps, "open" | "month" | "income" | "draft" | "recurringOnly">): FinancialDraftState<IncomeDraftInput> {
   const initialDraftValue = getIncomeDraft(income, initialDraft, month, recurringOnly);
   return useFinancialDraftState({
     open,
@@ -140,10 +144,10 @@ async function persistIncomeForm(
   });
 }
 
-function focusFirstInvalidIncomeField(draft: IncomeDraft, errors: Record<string, string>) {
+function focusFirstInvalidIncomeField(draft: IncomeDraftInput, errors: Record<string, string>) {
   const fields = [
     ["amount", "income-amount"],
-    ["source", draft.source.kind === "custom" && "name" in draft.source ? "new-income-name" : "income-source-trigger"],
+    ["source", draft.source?.kind === "custom" && "name" in draft.source ? "new-income-name" : "income-source-trigger"],
     ["concept", "income-concept"],
     ["effectiveMonth", "income-month-picker"],
   ] as const;
@@ -151,8 +155,8 @@ function focusFirstInvalidIncomeField(draft: IncomeDraft, errors: Record<string,
   if (id) document.getElementById(id)?.focus();
 }
 
-type IncomeSheetActionProps = IncomeSheetProps &
-  FinancialDraftState<IncomeDraft> & {
+type IncomeSheetActionProps = Omit<IncomeSheetProps, "draft"> &
+  FinancialDraftState<IncomeDraftInput> & {
     router: ReturnType<typeof useRouter>;
     posthog: ReturnType<typeof usePostHog>;
   };

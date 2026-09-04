@@ -141,6 +141,13 @@
       "when": 1788220800000,
       "tag": "0019_goal_completion_withdrawals",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788525485409,
+      "tag": "0020_stiff_thunderbolt_ross",
+      "breakpoints": true
     }
   ]
 }

@@ -553,6 +553,95 @@ describe('saving-contribution domain', () => {
         serializeContributionState({ kind: 'saving', draft, eligibleGoals, currentMonth }),
       )
     })
+
+    it('changes serialized representation when financial-plan rows change', () => {
+      const workspaceSource: GoalsWorkspaceSource = {
+        profile: {
+          userId: 'user-1',
+          baseCurrency: 'ARS',
+          expensesKnowledge: 'known',
+          onboardingCompleted: true,
+        },
+        goals: [
+          {
+            id: 'goal-1',
+            userId: 'user-1',
+            name: 'Objetivo',
+            type: 'purchase',
+            targetAmount: '500000.00',
+            currency: 'ARS',
+            priority: 'high',
+            strategy: 'save',
+            status: 'active',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        savingsPositions: [],
+        investmentPositions: [],
+        snapshots: [
+          {
+            id: 'snap-1',
+            userId: 'user-1',
+            effectiveMonth: '2026-08-01',
+          },
+        ],
+        allocations: [
+          {
+            id: 'alloc-1',
+            snapshotId: 'snap-1',
+            goalId: 'goal-1',
+            percentage: '100.00',
+          },
+        ],
+        incomes: [
+          {
+            id: 'income-1',
+            sourceKind: 'fixed',
+            sourceId: null,
+            sourceName: 'Sueldo',
+            concept: null,
+            amount: '100000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-01-01',
+          },
+        ],
+        expenses: [
+          {
+            id: 'expense-1',
+            sourceKind: 'fixed',
+            sourceId: null,
+            sourceName: 'Alquiler',
+            concept: null,
+            amount: '40000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-01-01',
+            endMonth: null,
+          },
+        ],
+      }
+
+      const baseline = serializeContributionState({
+        draft: { currency: 'ARS', amount: '100.00' },
+        eligibleGoals: [{ id: 'goal-1', name: 'Objetivo', percentage: '100.00' }],
+        currentMonth: '2026-08',
+        workspaceSource,
+      })
+      const changedIncome = serializeContributionState({
+        draft: { currency: 'ARS', amount: '100.00' },
+        eligibleGoals: [{ id: 'goal-1', name: 'Objetivo', percentage: '100.00' }],
+        currentMonth: '2026-08',
+        workspaceSource: {
+          ...workspaceSource,
+          incomes: workspaceSource.incomes?.map((income, index) =>
+            index === 0 ? { ...income, amount: '100001.00' } : income,
+          ),
+        },
+      })
+
+      expect(changedIncome).not.toBe(baseline)
+    })
   })
 
   describe('buildSavingPreview with investment kind', () => {

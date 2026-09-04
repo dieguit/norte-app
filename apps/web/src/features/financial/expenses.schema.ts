@@ -14,7 +14,12 @@ const amountSchema = z.string().refine(
   'Ingresá un monto mayor a cero.',
 )
 
-const conceptSchema = z.string().trim().min(1, 'Ingresá un concepto.').max(120, 'Máximo 120 caracteres.')
+const conceptSchema = z
+  .string()
+  .trim()
+  .max(120, 'Máximo 120 caracteres.')
+  .nullish()
+  .transform((concept) => concept || null)
 
 const fixedSourceSchema = z.object({
   kind: z.enum(
@@ -33,9 +38,13 @@ const customSourceSchema = z.union([
   }),
 ])
 
+const sourceSchema = z.union([fixedSourceSchema, customSourceSchema], {
+  error: 'Seleccioná una categoría.',
+})
+
 export const expenseDraftSchema = z.object({
   concept: conceptSchema,
-  source: z.union([fixedSourceSchema, customSourceSchema]),
+  source: sourceSchema,
   amount: amountSchema,
   currency: z.enum(['ARS', 'USD']),
   recurring: z.boolean(),
@@ -57,7 +66,11 @@ export const deleteExpenseSchema = z.object({
   effectiveMonth: monthSchema,
 })
 
-export type ExpenseDraft = z.infer<typeof expenseDraftSchema>
+export type ExpenseDraft = z.output<typeof expenseDraftSchema>
+type ExpenseDraftSchemaInput = z.input<typeof expenseDraftSchema>
+export type ExpenseDraftInput = Omit<ExpenseDraftSchemaInput, 'source'> & {
+  source?: ExpenseDraftSchemaInput['source']
+}
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>
 export type DeleteExpenseInput = z.infer<typeof deleteExpenseSchema>

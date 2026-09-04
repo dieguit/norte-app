@@ -3,7 +3,7 @@ import {
   ONE_TIME_INCOME_SOURCES,
   RECURRING_INCOME_SOURCES,
 } from '../../../../features/financial/incomes'
-import type { IncomeDraft } from '../../../../features/financial/incomes.schema'
+import type { IncomeDraft, IncomeDraftInput } from '../../../../features/financial/incomes.schema'
 import { buildFinancialSourcePickerProps } from './FinancialFormPrimitives'
 import { FinancialSourcePicker } from './FinancialSourcePicker'
 
@@ -27,7 +27,7 @@ export function IncomeSourcePicker({
 }: {
   recurring: boolean
   sources: Array<{ id: string; name: string }>
-  value: IncomeDraft['source']
+  value: IncomeDraftInput['source']
   error?: string
   onChange: (source: IncomeDraft['source']) => void
   showPersistenceHint?: boolean

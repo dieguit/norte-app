@@ -107,7 +107,9 @@ describe('IncomeSheet', () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
@@ -219,7 +221,7 @@ describe('IncomeSheet', () => {
     })
 
     expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Sueldo mensual')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Sueldo mensual')
   })
 
   it('initializes a legacy income without a concept as empty', () => {
@@ -235,7 +237,7 @@ describe('IncomeSheet', () => {
       effectiveMonth: '2026-08-01',
     })
 
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('')
   })
 
   it('uses the recurrence Switch to show the one-time month picker', async () => {
@@ -247,7 +249,7 @@ describe('IncomeSheet', () => {
     expect(screen.getByRole('button', { name: 'Mes del ingreso' })).toBeInTheDocument()
   })
 
-  it('shows the category selector after recurrence and resets a fixed source for one-time incomes', async () => {
+  it('shows the category selector after recurrence and clears a fixed source when recurrence changes', async () => {
     const user = userEvent.setup()
     renderSheet()
 
@@ -255,10 +257,27 @@ describe('IncomeSheet', () => {
     const category = screen.getByRole('combobox', { name: 'Categoría del ingreso' })
     expect(recurrence.compareDocumentPosition(category) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
+    await user.click(category)
+    await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
+    expect(category).toHaveTextContent('Sueldo')
+
     await user.click(recurrence)
-    expect(category).toHaveTextContent('Venta de bienes / usados')
+    expect(category).toHaveTextContent('Seleccionar categoría')
     await user.click(category)
     expect(await screen.findByRole('option', { name: 'Bono / aguinaldo / premio' })).toBeInTheDocument()
+  })
+
+  it('keeps an uncategorized source selected when recurrence changes', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    const category = screen.getByRole('combobox', { name: 'Categoría del ingreso' })
+    await user.click(category)
+    await user.click(await screen.findByRole('option', { name: 'Sin categoría' }))
+    expect(category).toHaveTextContent('Sin categoría')
+
+    await user.click(screen.getByRole('switch', { name: 'Es ingreso recurrente' }))
+    expect(category).toHaveTextContent('Sin categoría')
   })
 
   it('keeps a custom source selected when recurrence changes', async () => {
@@ -279,7 +298,7 @@ describe('IncomeSheet', () => {
     await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Consultoría')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Honorarios')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Honorarios')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
@@ -330,7 +349,7 @@ describe('IncomeSheet', () => {
     )
 
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo')
     await user.click(screen.getByRole('switch', { name: 'Es ingreso recurrente' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
@@ -356,14 +375,18 @@ describe('IncomeSheet', () => {
       />,
     )
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo')
     await user.click(screen.getByRole('switch', { name: 'Es ingreso recurrente' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Venta de bienes / usados' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(document.querySelector('form')).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('textbox', { name: 'Monto' })).toBeDisabled()
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'Moneda' })).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Es ingreso recurrente' })).toHaveAttribute('aria-disabled', 'true')
@@ -381,8 +404,10 @@ describe('IncomeSheet', () => {
     routerInvalidate.mockRejectedValueOnce(new Error('No se pudo actualizar la vista.'))
     render(<IncomeSheet open onOpenChange={onOpenChange} month="2026-08" sources={[]} />)
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
@@ -454,19 +479,94 @@ describe('IncomeSheet', () => {
     confirmSpy.mockRestore()
   })
 
-  it('rejects a missing concept without creating an income', async () => {
+  it('shows unselected category initially and validates category on submit', async () => {
     const user = userEvent.setup()
     renderSheet()
+
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveTextContent(
+      'Seleccionar categoría',
+    )
 
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    const conceptField = screen.getByRole('textbox', { name: 'Concepto' }).closest('[data-slot="field"]')
-    expect(conceptField).toHaveAttribute('data-invalid', 'true')
-    expect(conceptField).toHaveTextContent('Ingresá un concepto.')
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveAttribute('aria-describedby', 'income-concept-error')
-    expect(screen.getByRole('alert')).toHaveAttribute('id', 'income-concept-error')
+    expect(createIncome).not.toHaveBeenCalled()
+    expect(screen.getByText('Seleccioná una categoría.')).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveFocus()
+    expect(screen.getByRole('combobox', { name: 'Categoría del ingreso' })).toHaveAttribute(
+      'aria-describedby',
+      'income-source-error',
+    )
+  })
+
+  it('creates an income with uncategorized source and null concept when concept is omitted', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sin categoría' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(createIncome).toHaveBeenCalledWith({
+      data: {
+        draft: expect.objectContaining({
+          concept: null,
+          source: { kind: 'uncategorized' },
+          amount: '125000.00',
+        }),
+      },
+    })
+  })
+
+  it('updates an existing income clearing concept to null while preserving category', async () => {
+    const user = userEvent.setup()
+    renderSheet({
+      id: 'income_1',
+      sourceKind: 'salary',
+      sourceId: null,
+      sourceName: 'Sueldo',
+      amount: '100.00',
+      concept: 'Sueldo mensual',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-08-01',
+    })
+
+    const concept = screen.getByRole('textbox', { name: 'Concepto (opcional)' })
+    await user.clear(concept)
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(updateIncome).toHaveBeenCalledWith({
+      data: {
+        incomeId: 'income_1',
+        draft: expect.objectContaining({
+          concept: null,
+          source: { kind: 'salary' },
+        }),
+      },
+    })
+  })
+
+  it('renders optional concept label, helper description, and validates oversized concept', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    const concept = screen.getByRole('textbox', { name: 'Concepto (opcional)' })
+    expect(screen.getByText('Agregá una descripción para diferenciar este ingreso.')).toBeVisible()
+    expect(concept).toHaveAttribute('aria-describedby', 'income-concept-description')
+
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sin categoría' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.type(concept, 'a'.repeat(121))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(concept).toHaveAttribute(
+      'aria-describedby',
+      'income-concept-description income-concept-error',
+    )
+    expect(screen.getByText('Máximo 120 caracteres.')).toBeVisible()
     expect(createIncome).not.toHaveBeenCalled()
   })
 
@@ -515,8 +615,10 @@ describe('IncomeSheet', () => {
     const onSaveDraft = vi.fn()
     renderDraftSheet({ onSaveDraft })
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(onSaveDraft).toHaveBeenCalledWith({
@@ -549,7 +651,7 @@ describe('IncomeSheet', () => {
 
     expect(screen.getByRole('heading', { name: 'Editar ingreso recurrente' })).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Honorarios')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Honorarios')
     expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toHaveValue('Consultoría')
 
     const amount = screen.getByRole('textbox', { name: 'Monto' })
@@ -578,8 +680,10 @@ describe('IncomeSheet', () => {
     vi.mocked(createIncome).mockRejectedValueOnce(new Error('Sensitive database column error'))
     renderSheet()
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
+    await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Sueldo')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     const formError = await screen.findByText('No pudimos guardar el ingreso.')

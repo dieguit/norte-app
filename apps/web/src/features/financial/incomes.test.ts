@@ -11,10 +11,13 @@ describe('income sources', () => {
   it('defines separated recurring, one-time, and combined fixed income maps', () => {
     expect(RECURRING_INCOME_SOURCES.salary).toBe('Sueldo')
     expect(RECURRING_INCOME_SOURCES.independent).toBe('Trabajo independiente')
+    expect(RECURRING_INCOME_SOURCES.uncategorized).toBe('Sin categoría')
     expect(ONE_TIME_INCOME_SOURCES.asset_sale).toBe('Venta de bienes / usados')
     expect(ONE_TIME_INCOME_SOURCES.bonus).toBe('Bono / aguinaldo / premio')
+    expect(ONE_TIME_INCOME_SOURCES.uncategorized).toBe('Sin categoría')
     expect(FIXED_INCOME_SOURCES.salary).toBe('Sueldo')
     expect(FIXED_INCOME_SOURCES.asset_sale).toBe('Venta de bienes / usados')
+    expect(FIXED_INCOME_SOURCES.uncategorized).toBe('Sin categoría')
   })
 })
 

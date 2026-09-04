@@ -16,7 +16,6 @@ import {
   convertCommitmentToDestination,
   deriveEmergencyFundTarget,
   getPreviousCalendarMonth,
-  projectCompletionMonth,
 } from './financial'
 import { derivePreviousMonthShortfalls, type PreviousMonthShortfall } from '../contributions/saving-contribution'
 import { getIncomeTotalArs } from './incomes'
@@ -99,7 +98,6 @@ function calculateHomeFinancialState(
   goal: HomeGoal,
   expenseRows: ExpenseCalculationRow[],
   currentMonth: string,
-  effectiveMonth: string,
 ) {
   const expensesKnowledge: 'known' | 'unknown' = profile.expensesKnowledge === 'known' ? 'known' : 'unknown'
   const expenses = getKnownExpenseTotal(profile.expensesKnowledge, expenseRows, currentMonth)
@@ -109,9 +107,6 @@ function calculateHomeFinancialState(
     monthlyCommitment,
     goal.currency as CurrencyCode,
   )
-  const projection = targetAmount
-    ? projectCompletionMonth(targetAmount, destinationAmount, effectiveMonth)
-    : { status: 'unknown_expenses' as const }
 
   return {
     expensesKnowledge,
@@ -119,7 +114,6 @@ function calculateHomeFinancialState(
     targetAmount,
     monthlyCommitment,
     destinationAmount,
-    projection,
   }
 }
 
@@ -133,7 +127,6 @@ function buildInitialHomeState({
   destinationAmount,
   effectiveMonth,
   allocationPercentage,
-  projection,
   previousMonthShortfalls,
 }: {
   income: Money
@@ -145,7 +138,6 @@ function buildInitialHomeState({
   destinationAmount: Money
   effectiveMonth: string
   allocationPercentage: string
-  projection: InitialHomeState['projection']
   previousMonthShortfalls: PreviousMonthShortfall[]
 }): InitialHomeState {
   return {
@@ -167,7 +159,6 @@ function buildInitialHomeState({
       currentAmount: createMoney('0', goal.currency as CurrencyCode),
       emergencyFundMonths: getEmergencyFundMonths(goal),
     },
-    projection,
     previousMonthShortfalls,
   }
 }
@@ -369,7 +360,6 @@ export async function getInitialHomeState(
     goal,
     expenseRows,
     currentMonth,
-    effectiveMonth,
   )
   const previousMonthShortfalls = await getPreviousMonthShortfalls(userId, now)
 

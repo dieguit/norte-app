@@ -66,7 +66,6 @@ describe('AppShell', () => {
       currentAmount: { amount: '0.00', currency: 'USD' as const },
       emergencyFundMonths: 6,
     },
-    projection: { status: 'available' as const, completionMonth: '2029-03' },
     previousMonthShortfalls: [],
   }
 

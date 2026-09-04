@@ -145,7 +145,6 @@ describe('App route layout', () => {
           currentAmount: { amount: '0.00', currency: 'USD' },
           emergencyFundMonths: 6,
         },
-        projection: { status: 'available', completionMonth: '2029-03' },
         previousMonthShortfalls: [],
       },
     })

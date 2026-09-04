@@ -1,5 +1,6 @@
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -7,7 +8,7 @@ import {
 } from "../../../../components/ui/field";
 import { Input } from "../../../../components/ui/input";
 import { MonthPickerInput } from "../../../../components/MonthPicker";
-import type { IncomeDraft } from "../../../../features/financial/incomes.schema";
+import type { IncomeDraftInput } from "../../../../features/financial/incomes.schema";
 import { FinancialAmountFields, FinancialRecurrenceField } from "./FinancialFormPrimitives";
 import { IncomeSourcePicker } from "./IncomeSourcePicker";
 import { FinancialSheetFooter } from "./FinancialSheetFooter";
@@ -15,13 +16,13 @@ import { FinancialSheetFooter } from "./FinancialSheetFooter";
 type IncomeSheetFormProps = {
   sources: Array<{ id: string; name: string }>
   recurringOnly: boolean
-  draft: IncomeDraft;
+  draft: IncomeDraftInput;
   error: string | null;
   validationErrors: Record<string, string>;
   saving: boolean;
   arsEquivalent: { toFixed: (fractionDigits: number) => string } | null;
   showPersistenceHint: boolean;
-  onDraftChange: (draft: IncomeDraft) => void;
+  onDraftChange: (draft: IncomeDraftInput) => void;
   onSave: () => void;
   onRemove?: () => void;
 }
@@ -42,16 +43,14 @@ function IncomeRecurrenceField({
       checked={draft.recurring}
       label="Es ingreso recurrente"
       saving={saving}
-      onCheckedChange={(recurring) =>
-        onDraftChange({
-          ...draft,
-          recurring,
-          source:
-            draft.source.kind === "custom"
-              ? draft.source
-              : { kind: recurring ? "salary" : "asset_sale" },
-        })
-      }
+      onCheckedChange={(recurring) => {
+        const source =
+          !draft.source || draft.source.kind === 'custom' || draft.source.kind === 'uncategorized'
+            ? draft.source
+            : undefined
+
+        onDraftChange({ ...draft, recurring, source })
+      }}
     />
   );
 }
@@ -64,17 +63,23 @@ function IncomeConceptField({
 }: Pick<IncomeSheetFormProps, "draft" | "onDraftChange" | "saving"> & { error?: string }) {
   return (
     <Field data-invalid={!!error}>
-      <FieldLabel htmlFor="income-concept">Concepto</FieldLabel>
+      <FieldLabel htmlFor="income-concept">Concepto (opcional)</FieldLabel>
       <Input
         id="income-concept"
-        aria-label="Concepto"
+        aria-label="Concepto (opcional)"
         aria-invalid={!!error}
-        aria-describedby={error ? "income-concept-error" : undefined}
+        aria-describedby={
+          error
+            ? 'income-concept-description income-concept-error'
+            : 'income-concept-description'
+        }
         disabled={saving}
-        maxLength={120}
-        value={draft.concept}
+        value={draft.concept ?? ''}
         onChange={(event) => onDraftChange({ ...draft, concept: event.target.value })}
       />
+      <FieldDescription id="income-concept-description">
+        Agregá una descripción para diferenciar este ingreso.
+      </FieldDescription>
       {error && <FieldError id="income-concept-error">{error}</FieldError>}
     </Field>
   );

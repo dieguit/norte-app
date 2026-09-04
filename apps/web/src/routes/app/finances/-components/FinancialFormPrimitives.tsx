@@ -41,20 +41,25 @@ function getFinancialSourceOptions(
   fixedSources: Record<string, string>,
   sources: Array<{ id: string; name: string }>,
 ) {
+  const fixedOptions = Object.entries(fixedSources).map(([kind, label]) => ({
+    value: `fixed:${kind}`,
+    label,
+  }))
   return [
-    ...Object.entries(fixedSources).map(([kind, label]) => ({ value: `fixed:${kind}`, label })),
+    ...fixedOptions.filter(({ value }) => value !== 'fixed:uncategorized'),
     ...sources.map((source) => ({ value: `custom:${source.id}`, label: source.name })),
+    ...fixedOptions.filter(({ value }) => value === 'fixed:uncategorized'),
   ]
 }
 
 function getFinancialSourcePickerState<TSource extends FinancialSourceValue>(
   fixedSources: Record<string, string>,
   sources: Array<{ id: string; name: string }>,
-  value: TSource,
+  value: TSource | undefined,
 ) {
   return {
     options: getFinancialSourceOptions(fixedSources, sources),
-    isOtherSource: value.kind === 'custom' && value.name !== undefined,
+    isOtherSource: value?.kind === 'custom' && value.name !== undefined,
     selectedValue: getFinancialSourceValue(value),
   }
 }
@@ -76,7 +81,7 @@ export function buildFinancialSourcePickerProps<TSource extends FinancialSourceV
 }: {
   fixedSources: Record<string, string>
   sources: Array<{ id: string; name: string }>
-  value: TSource
+  value: TSource | undefined
   label: string
   triggerId: string
   errorId: string
@@ -101,7 +106,7 @@ export function buildFinancialSourcePickerProps<TSource extends FinancialSourceV
     options,
     selectedValue,
     isOtherSource,
-    newSourceName: value.name ?? '',
+    newSourceName: value?.name ?? '',
     error,
     showPersistenceHint,
     disabled,
@@ -113,7 +118,8 @@ export function buildFinancialSourcePickerProps<TSource extends FinancialSourceV
   }
 }
 
-function getFinancialSourceValue(value: FinancialSourceValue) {
+function getFinancialSourceValue(value: FinancialSourceValue | undefined) {
+  if (!value) return null
   if (value.kind === 'custom' && value.name !== undefined) return 'other'
   if (value.kind === 'custom') return `custom:${value.sourceId}`
   return `fixed:${value.kind}`

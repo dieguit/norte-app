@@ -245,6 +245,22 @@ async function loadWorkspacePlanRows(
   return { snapshots: selectedSnapshots, allocations }
 }
 
+export async function getGoalsProjectionRowsWithExecutor(
+  executor: any,
+  userId: string,
+  currentMonth: string,
+): Promise<GoalsWorkspaceRows | null> {
+  const base = await getOwnedGoalPlanBase(executor, userId)
+  if (!base) return null
+
+  const { snapshots, allocations } = await loadWorkspacePlanRows(
+    executor,
+    base.snapshots,
+    currentMonth,
+  )
+  return { ...base, snapshots, allocations }
+}
+
 async function loadWorkspaceCompletionWithdrawals(
   executor: any,
   goalIds: string[],
@@ -355,18 +371,16 @@ export async function getGoalsWorkspaceRows(
   userId: string,
   currentMonth: string,
 ): Promise<GoalsWorkspaceRows | null> {
-  const base = await getOwnedGoalPlanBase(db, userId)
-  if (!base) {
-    return null
-  }
+  const projectionRows = await getGoalsProjectionRowsWithExecutor(db, userId, currentMonth)
+  if (!projectionRows) return null
 
-  const { snapshots, allocations } = await loadWorkspacePlanRows(db, base.snapshots, currentMonth)
-  const { contributions, completionWithdrawals } = await loadWorkspaceActivityRows(db, userId, base.goals)
-
+  const { contributions, completionWithdrawals } = await loadWorkspaceActivityRows(
+    db,
+    userId,
+    projectionRows.goals,
+  )
   return {
-    ...base,
-    snapshots,
-    allocations,
+    ...projectionRows,
     contributions,
     savingContributions: contributions,
     completionWithdrawals,

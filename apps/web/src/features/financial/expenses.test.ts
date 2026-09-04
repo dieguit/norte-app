@@ -164,6 +164,10 @@ describe('monthly balance rules', () => {
 
 describe('fixed expense sources', () => {
   it('defines the expected fixed categories', () => {
+    expect(RECURRING_EXPENSE_SOURCES.uncategorized).toBe('Sin categoría')
+    expect(ONE_TIME_EXPENSE_SOURCES.uncategorized).toBe('Sin categoría')
+    expect(FIXED_EXPENSE_SOURCES.uncategorized).toBe('Sin categoría')
+
     expect(RECURRING_EXPENSE_SOURCES).toEqual({
       housing: 'Alquiler / vivienda',
       school: 'Colegio',
@@ -173,6 +177,7 @@ describe('fixed expense sources', () => {
       insurance: 'Seguros',
       family_support: 'Ayuda a familiares',
       subscriptions: 'Suscripciones',
+      uncategorized: 'Sin categoría',
     })
 
     expect(ONE_TIME_EXPENSE_SOURCES).toEqual({
@@ -184,6 +189,7 @@ describe('fixed expense sources', () => {
       travel_leisure: 'Viaje / salida',
       technology: 'Tecnología / electrónica',
       taxes_fees: 'Trámite / impuesto',
+      uncategorized: 'Sin categoría',
     })
 
     expect(FIXED_EXPENSE_SOURCES).toEqual({

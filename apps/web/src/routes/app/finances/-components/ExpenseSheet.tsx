@@ -10,6 +10,7 @@ import { FIXED_EXPENSE_SOURCES } from '../../../../features/financial/expenses'
 import {
   createExpenseSchema,
   type ExpenseDraft,
+  type ExpenseDraftInput,
 } from '../../../../features/financial/expenses.schema'
 import { FinancialSheetFrame, type FinancialDraftState, useFinancialDraftState } from './FinancialFormPrimitives'
 import { formatMoneyInput, parseMoneyInput } from '../../../../lib/money'
@@ -28,7 +29,7 @@ type ExpenseRow = {
   endMonth?: string | null
 }
 
-type ExpenseFormDraft = ExpenseDraft & { effectiveMonth: string }
+type ExpenseFormDraft = ExpenseDraftInput & { effectiveMonth: string }
 
 type ExpenseSheetProps = {
   open: boolean
@@ -45,7 +46,7 @@ type ValidationIssue = { path: PropertyKey[]; message: string }
 
 function defaultDraft(month: string): ExpenseFormDraft {
   return {
-    source: { kind: 'housing' },
+    source: undefined,
     amount: '',
     concept: '',
     currency: 'ARS',
@@ -65,7 +66,9 @@ function getExpenseDraft(
       source:
         expense.sourceKind === 'custom'
           ? { kind: 'custom', sourceId: expense.sourceId! }
-          : { kind: expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES },
+          : expense.sourceKind === 'uncategorized'
+            ? { kind: 'uncategorized' }
+            : { kind: expense.sourceKind as keyof typeof FIXED_EXPENSE_SOURCES },
       amount: formatMoneyInput(expense.amount.replace('.', ',')),
       concept: expense.concept ?? '',
       currency: expense.currency,
@@ -76,6 +79,7 @@ function getExpenseDraft(
   if (!initialDraft) return defaultDraft(month)
   return {
     ...initialDraft,
+    concept: initialDraft.concept ?? '',
     amount: formatMoneyInput(initialDraft.amount.replace('.', ',')),
     recurring: recurringOnly ? true : initialDraft.recurring,
     effectiveMonth: month,
@@ -167,7 +171,7 @@ async function persistExpenseForm(
 function focusFirstInvalidExpenseField(draft: ExpenseFormDraft, errors: Record<string, string>) {
   const fields = [
     ['amount', 'expense-amount'],
-    ['source', draft.source.kind === 'custom' && 'name' in draft.source ? 'new-expense-name' : 'expense-source-trigger'],
+    ['source', draft.source?.kind === 'custom' && 'name' in draft.source ? 'new-expense-name' : 'expense-source-trigger'],
     ['concept', 'expense-concept'],
     ['effectiveMonth', 'expense-month-picker'],
   ] as const
@@ -175,7 +179,7 @@ function focusFirstInvalidExpenseField(draft: ExpenseFormDraft, errors: Record<s
   if (id) document.getElementById(id)?.focus()
 }
 
-type ExpenseSheetActionProps = ExpenseSheetProps & FinancialDraftState<ExpenseFormDraft> & {
+type ExpenseSheetActionProps = Omit<ExpenseSheetProps, 'draft'> & FinancialDraftState<ExpenseFormDraft> & {
   router: ReturnType<typeof useRouter>
   posthog: ReturnType<typeof usePostHog>
 }
@@ -300,8 +304,8 @@ export function ExpenseSheet(props: ExpenseSheetProps) {
       title={getTitle(recurringOnly, Boolean(draft), Boolean(expense))}
       description={
         recurringOnly
-          ? 'Indicá cuánto gastás por mes y en qué concepto.'
-          : 'Indicá el concepto y las condiciones de este gasto.'
+          ? 'Indicá cuánto gastás por mes y elegí una categoría.'
+          : 'Indicá la categoría y las condiciones de este gasto.'
       }
     >
         <ExpenseSheetForm

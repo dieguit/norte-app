@@ -16,8 +16,10 @@ import {
 import { calculateAllocationAmounts } from '../../lib/money'
 import type { GoalsWorkspaceSource } from '../goals/goals'
 import {
+  getGoalsProjectionRowsWithExecutor,
   mapRowsToGoalsWorkspaceSource,
   selectWinningSnapshots,
+  type GoalsWorkspaceRows,
 } from '../goals/goals.repository.server'
 import { resolveSavingsPlaceWithExecutor } from '../savings-places/savings-places.repository.server'
 import type { Money } from '../../lib/money'
@@ -106,53 +108,12 @@ type ContributionStateRows = {
   goals: any[]
   savingsPositions: any[]
   investmentPositions: any[]
-  winningSnapshots: any[]
+  snapshots: any[]
   allocations: any[]
+  incomes: NonNullable<GoalsWorkspaceRows['incomes']>
+  expenses: NonNullable<GoalsWorkspaceRows['expenses']>
   userContributions: any[]
   userInvestmentContributions: any[]
-}
-
-async function loadFinancialProfile(executor: any, userId: string) {
-  const profile = await executor.query.financialProfiles.findFirst({
-    where: (profiles: any, { eq }: any) => eq(profiles.userId, userId),
-  })
-  return profile
-}
-
-async function loadGoalsAndPositions(executor: any, userId: string) {
-  const goals = await executor.query.financialGoals.findMany({
-    where: (goalsTable: any, { eq }: any) => eq(goalsTable.userId, userId),
-  })
-  const goalIds = goals.map((g: any) => g.id)
-  const savingsPositions =
-    goalIds.length > 0
-      ? await executor.query.goalSavingsPositions.findMany({
-          where: (pos: any, { inArray }: any) => inArray(pos.goalId, goalIds),
-        })
-      : []
-  const investmentPositions =
-    goalIds.length > 0
-      ? await executor.query.goalInvestmentPositions.findMany({
-          where: (pos: any, { inArray }: any) => inArray(pos.goalId, goalIds),
-        })
-      : []
-  return { goals, savingsPositions, investmentPositions }
-}
-
-async function loadWinningPlan(executor: any, userId: string, currentMonth: string) {
-  const snapshots = await executor.query.allocationPlanSnapshots.findMany({
-    where: (snapshotsTable: any, { eq }: any) => eq(snapshotsTable.userId, userId),
-  })
-  const winningSnapshots = selectWinningSnapshots(snapshots, currentMonth)
-  const winningSnapshotIds = winningSnapshots.map((s: any) => s.id)
-  const allocations =
-    winningSnapshotIds.length > 0
-      ? await executor.query.allocationPlanEntries.findMany({
-          where: (allocsTable: any, { inArray }: any) =>
-            inArray(allocsTable.snapshotId, winningSnapshotIds),
-        })
-      : []
-  return { winningSnapshots, allocations }
 }
 
 async function loadContributions(executor: any, userId: string) {
@@ -169,18 +130,36 @@ async function loadContributionStateRows(
   executor: any,
   userId: string,
   currentMonth: string,
-  profile: any,
-): Promise<ContributionStateRows> {
-  const goalsAndPositions = await loadGoalsAndPositions(executor, userId)
-  const plan = await loadWinningPlan(executor, userId, currentMonth)
+): Promise<ContributionStateRows | null> {
+  const projectionRows = await getGoalsProjectionRowsWithExecutor(
+    executor,
+    userId,
+    currentMonth,
+  )
+  if (!projectionRows) return null
+
   const contributions = await loadContributions(executor, userId)
-  return { currentMonth, profile, ...goalsAndPositions, ...plan, ...contributions }
+  return {
+    currentMonth,
+    ...projectionRows,
+    incomes: projectionRows.incomes ?? [],
+    expenses: projectionRows.expenses ?? [],
+    ...contributions,
+  }
+}
+
+function getCurrentPlanAllocations(rows: ContributionStateRows) {
+  const snapshotIds = new Set(
+    selectWinningSnapshots(rows.snapshots, rows.currentMonth).map(({ id }) => id),
+  )
+  return rows.allocations.filter(({ snapshotId }) => snapshotIds.has(snapshotId))
 }
 
 function buildContributionState(rows: ContributionStateRows): SavingContributionState {
   const activeGoals = rows.goals.filter((goal: any) => goal.status === 'active')
+  const currentAllocations = getCurrentPlanAllocations(rows)
   const allocMap = new Map<string, string>()
-  for (const alloc of rows.allocations) {
+  for (const alloc of currentAllocations) {
     allocMap.set(alloc.goalId, alloc.percentage)
   }
   const mapToEligibleGoal = (goal: any): EligibleGoal => ({
@@ -218,8 +197,10 @@ function buildContributionState(rows: ContributionStateRows): SavingContribution
       goals: activeGoals,
       savingsPositions: rows.savingsPositions,
       investmentPositions: rows.investmentPositions,
-      snapshots: rows.winningSnapshots,
+      snapshots: rows.snapshots,
       allocations: rows.allocations,
+      incomes: rows.incomes,
+      expenses: rows.expenses,
     }),
     eligibleGoals,
     eligibleGoalsUsd,
@@ -241,10 +222,8 @@ async function getSavingContributionStateWithExecutor(
   userId: string,
   currentMonth: string,
 ): Promise<SavingContributionState | null> {
-  const profile = await loadFinancialProfile(executor, userId)
-  if (!profile) return null
-  const rows = await loadContributionStateRows(executor, userId, currentMonth, profile)
-  return buildContributionState(rows)
+  const rows = await loadContributionStateRows(executor, userId, currentMonth)
+  return rows ? buildContributionState(rows) : null
 }
 
 export async function getSavingContributionState(

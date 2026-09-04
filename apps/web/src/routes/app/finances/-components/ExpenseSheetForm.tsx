@@ -1,5 +1,6 @@
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -7,7 +8,7 @@ import {
 } from '../../../../components/ui/field'
 import { Input } from '../../../../components/ui/input'
 import { MonthPickerInput } from '../../../../components/MonthPicker'
-import type { ExpenseDraft } from '../../../../features/financial/expenses.schema'
+import type { ExpenseDraftInput } from '../../../../features/financial/expenses.schema'
 import { FinancialAmountFields, FinancialRecurrenceField } from './FinancialFormPrimitives'
 import { ExpenseSourcePicker } from './ExpenseSourcePicker'
 import { FinancialSheetFooter } from './FinancialSheetFooter'
@@ -15,13 +16,13 @@ import { FinancialSheetFooter } from './FinancialSheetFooter'
 type ExpenseSheetFormProps = {
   sources: Array<{ id: string; name: string }>
   recurringOnly: boolean
-  draft: ExpenseDraft & { effectiveMonth: string }
+  draft: ExpenseDraftInput & { effectiveMonth: string }
   error: string | null
   validationErrors: Record<string, string>
   saving: boolean
   arsEquivalent: { toFixed: (fractionDigits: number) => string } | null
   showPersistenceHint: boolean
-  onDraftChange: (draft: ExpenseDraft & { effectiveMonth: string }) => void
+  onDraftChange: (draft: ExpenseDraftInput & { effectiveMonth: string }) => void
   onSave: () => void
   onRemove?: () => void
 }
@@ -39,16 +40,14 @@ function ExpenseRecurrenceField({
       checked={draft.recurring}
       label="Es gasto recurrente"
       saving={saving}
-      onCheckedChange={(recurring) =>
-        onDraftChange({
-          ...draft,
-          recurring,
-          source:
-            draft.source.kind === 'custom'
-              ? draft.source
-              : { kind: recurring ? 'housing' : 'clothing' },
-        })
-      }
+      onCheckedChange={(recurring) => {
+        const source =
+          !draft.source || draft.source.kind === 'custom' || draft.source.kind === 'uncategorized'
+            ? draft.source
+            : undefined
+
+        onDraftChange({ ...draft, recurring, source })
+      }}
     />
   )
 }
@@ -61,17 +60,23 @@ function ExpenseConceptField({
 }: Pick<ExpenseSheetFormProps, 'draft' | 'onDraftChange' | 'saving'> & { error?: string }) {
   return (
     <Field data-invalid={!!error}>
-      <FieldLabel htmlFor="expense-concept">Concepto</FieldLabel>
+      <FieldLabel htmlFor="expense-concept">Concepto (opcional)</FieldLabel>
       <Input
         id="expense-concept"
-        aria-label="Concepto"
+        aria-label="Concepto (opcional)"
         aria-invalid={!!error}
-        aria-describedby={error ? 'expense-concept-error' : undefined}
+        aria-describedby={
+          error
+            ? 'expense-concept-description expense-concept-error'
+            : 'expense-concept-description'
+        }
         disabled={saving}
-        maxLength={120}
-        value={draft.concept}
+        value={draft.concept ?? ''}
         onChange={(event) => onDraftChange({ ...draft, concept: event.target.value })}
       />
+      <FieldDescription id="expense-concept-description">
+        Agregá una descripción para diferenciar este gasto.
+      </FieldDescription>
       {error && <FieldError id="expense-concept-error">{error}</FieldError>}
     </Field>
   )

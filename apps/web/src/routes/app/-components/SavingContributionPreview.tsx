@@ -1,6 +1,5 @@
 import type { SavingContributionPreviewResult } from '../../../features/contributions/saving-contribution'
 import { formatPercentage, formatMoney } from '../../../lib/format'
-import { formatGoalProjection } from '../../../features/goals/AllocationImpactComparison'
 
 interface SavingContributionPreviewProps {
   actionNoun: string
@@ -40,27 +39,23 @@ function ContributionImpactSection({ preview }: Pick<SavingContributionPreviewPr
 }
 
 function ContributionImpactRow({ allocation }: { allocation: SavingContributionPreviewResult['preview']['allocations'][number] }) {
-  const beforeDate = allocation.projectionBefore ? formatGoalProjection(allocation.projectionBefore) : null
-  const afterDate = allocation.projectionAfter ? formatGoalProjection(allocation.projectionAfter) : null
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--foam)]/20 p-4">
       <span className="text-sm font-semibold text-[var(--sea-ink)]">{allocation.goalName}</span>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <ContributionImpactCell label="Antes" progress={allocation.progressBefore} date={beforeDate} />
-        <ContributionImpactCell label="Con este aporte" progress={allocation.progressAfter} date={afterDate} emphasis />
+        <ContributionImpactCell label="Antes" progress={allocation.progressBefore} />
+        <ContributionImpactCell label="Con este aporte" progress={allocation.progressAfter} emphasis />
       </div>
     </div>
   )
 }
 
-function ContributionImpactCell({ label, progress, date, emphasis = false }: { label: string; progress?: string; date: string | null; emphasis?: boolean }) {
+function ContributionImpactCell({ label, progress, emphasis = false }: { label: string; progress?: string; emphasis?: boolean }) {
   const progressClass = emphasis ? 'font-semibold text-[var(--sea-ink)]' : 'font-medium text-[var(--sea-ink-soft)]'
-  const dateClass = emphasis ? 'text-sm font-semibold text-[var(--sea-ink)]' : 'text-sm font-medium text-[var(--sea-ink-soft)]'
   return (
     <div className={`flex flex-col gap-1 rounded-lg border border-[var(--line)] p-2.5 ${emphasis ? 'bg-[var(--foam)]/60' : 'bg-[var(--surface)]'}`}>
       <span className={`text-xs font-semibold uppercase tracking-wider ${emphasis ? 'text-[var(--pine)]' : 'text-[var(--sea-ink-soft)]'}`}>{label}</span>
       {progress !== undefined && <span className={`text-xs ${progressClass}`}>Progreso: {formatPercentage(progress)}</span>}
-      {date && <p className={dateClass}>{date}</p>}
     </div>
   )
 }

@@ -14,7 +14,12 @@ const amountSchema = z.string().refine(
   'Ingresá un monto mayor a cero.',
 )
 
-const conceptSchema = z.string().trim().min(1, 'Ingresá un concepto.').max(120, 'Máximo 120 caracteres.')
+const conceptSchema = z
+  .string()
+  .trim()
+  .max(120, 'Máximo 120 caracteres.')
+  .nullish()
+  .transform((concept) => concept || null)
 
 const fixedSourceSchema = z.object({
   kind: z.enum(Object.keys(FIXED_INCOME_SOURCES) as [keyof typeof FIXED_INCOME_SOURCES, ...Array<keyof typeof FIXED_INCOME_SOURCES>]),
@@ -28,9 +33,13 @@ const customSourceSchema = z.union([
   }),
 ])
 
+const sourceSchema = z.union([fixedSourceSchema, customSourceSchema], {
+  error: 'Seleccioná una categoría.',
+})
+
 export const incomeDraftSchema = z.object({
   concept: conceptSchema,
-  source: z.union([fixedSourceSchema, customSourceSchema]),
+  source: sourceSchema,
   amount: amountSchema,
   currency: z.enum(['ARS', 'USD']),
   recurring: z.boolean(),
@@ -41,4 +50,8 @@ export const createIncomeSchema = z.object({ draft: incomeDraftSchema })
 export const updateIncomeSchema = z.object({ incomeId: z.string().uuid(), draft: incomeDraftSchema })
 export const deleteIncomeSchema = z.object({ incomeId: z.string().uuid() })
 
-export type IncomeDraft = z.infer<typeof incomeDraftSchema>
+export type IncomeDraft = z.output<typeof incomeDraftSchema>
+type IncomeDraftSchemaInput = z.input<typeof incomeDraftSchema>
+export type IncomeDraftInput = Omit<IncomeDraftSchemaInput, 'source'> & {
+  source?: IncomeDraftSchemaInput['source']
+}

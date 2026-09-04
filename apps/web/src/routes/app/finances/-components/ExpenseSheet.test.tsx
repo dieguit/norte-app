@@ -67,7 +67,7 @@ describe('ExpenseSheet', () => {
     expect(screen.getByRole('button', { name: 'Mes del gasto' })).toBeInTheDocument()
   })
 
-  it('shows the category selector after recurrence and resets a fixed source for one-time expenses', async () => {
+  it('shows the category selector after recurrence and clears a fixed source when recurrence changes', async () => {
     const user = userEvent.setup()
     renderSheet()
 
@@ -75,10 +75,27 @@ describe('ExpenseSheet', () => {
     const category = screen.getByRole('combobox', { name: 'Categoría del gasto' })
     expect(recurrence.compareDocumentPosition(category) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
+    await user.click(category)
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
+    expect(category).toHaveTextContent('Alquiler / vivienda')
+
     await user.click(recurrence)
-    expect(category).toHaveTextContent('Compra de ropa')
+    expect(category).toHaveTextContent('Seleccionar categoría')
     await user.click(category)
     expect(await screen.findByRole('option', { name: 'Regalo' })).toBeInTheDocument()
+  })
+
+  it('keeps an uncategorized source selected when recurrence changes', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    const category = screen.getByRole('combobox', { name: 'Categoría del gasto' })
+    await user.click(category)
+    await user.click(await screen.findByRole('option', { name: 'Sin categoría' }))
+    expect(category).toHaveTextContent('Sin categoría')
+
+    await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
+    expect(category).toHaveTextContent('Sin categoría')
   })
 
   it('keeps a custom source selected when recurrence changes', async () => {
@@ -105,7 +122,9 @@ describe('ExpenseSheet', () => {
     const user = userEvent.setup()
     renderSheet()
 
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Desde el mes' }))
     await user.click(screen.getByRole('button', { name: 'Sep' }))
@@ -131,7 +150,7 @@ describe('ExpenseSheet', () => {
     await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Gimnasio')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Membresía')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Membresía')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
@@ -239,7 +258,7 @@ describe('ExpenseSheet', () => {
     })
 
     expect(screen.getByRole('textbox', { name: 'Monto' })).toHaveValue('1.250,50')
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('Alquiler mensual')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('Alquiler mensual')
   })
 
   it('initializes a legacy expense without a concept as empty', () => {
@@ -256,7 +275,7 @@ describe('ExpenseSheet', () => {
       endMonth: null,
     })
 
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveValue('')
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toHaveValue('')
   })
 
   it('rejects an empty new custom source without creating an expense', async () => {
@@ -301,7 +320,7 @@ describe('ExpenseSheet', () => {
     )
 
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
@@ -322,14 +341,18 @@ describe('ExpenseSheet', () => {
       <ExpenseSheet open onOpenChange={onOpenChange} month="2026-08" sources={[]} />,
     )
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('switch', { name: 'Es gasto recurrente' }))
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Compra de ropa' }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     expect(document.querySelector('form')).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('textbox', { name: 'Monto' })).toBeDisabled()
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'Concepto (opcional)' })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'Moneda' })).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Es gasto recurrente' })).toHaveAttribute('aria-disabled', 'true')
@@ -347,8 +370,10 @@ describe('ExpenseSheet', () => {
     routerInvalidate.mockRejectedValueOnce(new Error('No se pudo actualizar la vista.'))
     render(<ExpenseSheet open onOpenChange={onOpenChange} month="2026-08" sources={[]} />)
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
@@ -420,19 +445,97 @@ describe('ExpenseSheet', () => {
     confirmSpy.mockRestore()
   })
 
-  it('rejects a missing concept without creating an expense', async () => {
+  it('shows unselected category initially and validates category on submit', async () => {
     const user = userEvent.setup()
     renderSheet()
+
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveTextContent(
+      'Seleccionar categoría',
+    )
 
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    const conceptField = screen.getByRole('textbox', { name: 'Concepto' }).closest('[data-slot="field"]')
-    expect(conceptField).toHaveAttribute('data-invalid', 'true')
-    expect(conceptField).toHaveTextContent('Ingresá un concepto.')
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByRole('textbox', { name: 'Concepto' })).toHaveAttribute('aria-describedby', 'expense-concept-error')
-    expect(screen.getByRole('alert')).toHaveAttribute('id', 'expense-concept-error')
+    expect(createExpense).not.toHaveBeenCalled()
+    expect(screen.getByText('Seleccioná una categoría.')).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveFocus()
+    expect(screen.getByRole('combobox', { name: 'Categoría del gasto' })).toHaveAttribute(
+      'aria-describedby',
+      'expense-source-error',
+    )
+  })
+
+  it('creates an expense with uncategorized source and null concept when concept is omitted', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Sin categoría' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(createExpense).toHaveBeenCalledWith({
+      data: {
+        draft: expect.objectContaining({
+          concept: null,
+          source: { kind: 'uncategorized' },
+          amount: '125000.00',
+        }),
+        effectiveMonth: '2026-08',
+      },
+    })
+  })
+
+  it('updates an existing expense clearing concept to null while preserving category', async () => {
+    const user = userEvent.setup()
+    renderSheet({
+      id: 'exp_1',
+      sourceKind: 'housing',
+      sourceId: null,
+      sourceName: 'Alquiler / vivienda',
+      amount: '100.00',
+      concept: 'Alquiler mensual',
+      currency: 'ARS',
+      recurring: true,
+      effectiveMonth: '2026-08-01',
+      endMonth: null,
+    })
+
+    const concept = screen.getByRole('textbox', { name: 'Concepto (opcional)' })
+    await user.clear(concept)
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(updateExpense).toHaveBeenCalledWith({
+      data: {
+        expenseId: 'exp_1',
+        draft: expect.objectContaining({
+          concept: null,
+          source: { kind: 'housing' },
+        }),
+        effectiveMonth: '2026-08',
+      },
+    })
+  })
+
+  it('renders optional concept label, helper description, and validates oversized concept', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+
+    const concept = screen.getByRole('textbox', { name: 'Concepto (opcional)' })
+    expect(screen.getByText('Agregá una descripción para diferenciar este gasto.')).toBeVisible()
+    expect(concept).toHaveAttribute('aria-describedby', 'expense-concept-description')
+
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Sin categoría' }))
+    await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
+    await user.type(concept, 'a'.repeat(121))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(concept).toHaveAttribute(
+      'aria-describedby',
+      'expense-concept-description expense-concept-error',
+    )
+    expect(screen.getByText('Máximo 120 caracteres.')).toBeVisible()
     expect(createExpense).not.toHaveBeenCalled()
   })
 
@@ -583,7 +686,7 @@ describe('ExpenseSheet', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Nuevo gasto recurrente' })).toBeVisible()
-    expect(screen.getByText('Indicá cuánto gastás por mes y en qué concepto.')).toBeVisible()
+    expect(screen.getByText('Indicá cuánto gastás por mes y elegí una categoría.')).toBeVisible()
     expect(screen.queryByRole('switch', { name: 'Es gasto recurrente' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
 
@@ -599,8 +702,10 @@ describe('ExpenseSheet', () => {
     vi.mocked(createExpense).mockRejectedValueOnce(new Error('Internal server table constraint error'))
     renderSheet()
 
+    await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
+    await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
-    await user.type(screen.getByRole('textbox', { name: 'Concepto' }), 'Alquiler')
+    await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     const formError = await screen.findByText('No pudimos guardar el gasto.')

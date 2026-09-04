@@ -19,7 +19,11 @@ import {
   StaleSavingContributionPreviewError,
   updateSavingContributionInRepository,
 } from './saving-contribution.repository.server'
-import type { SavingDraftInput } from './saving-contribution'
+import {
+  buildSavingPreview,
+  type SavingDraftInput,
+} from './saving-contribution'
+import { buildGoalsWorkspace } from '../goals/goals'
 
 const mockTx = {
   select: vi.fn(),
@@ -45,6 +49,12 @@ const mockTx = {
       findFirst: vi.fn(),
     },
     allocationPlanEntries: {
+      findMany: vi.fn(),
+    },
+    incomes: {
+      findMany: vi.fn(),
+    },
+    expenses: {
       findMany: vi.fn(),
     },
     savingContributions: {
@@ -99,6 +109,12 @@ vi.mock('../../db/client', () => ({
         findFirst: vi.fn(),
       },
       allocationPlanEntries: {
+        findMany: vi.fn(),
+      },
+      incomes: {
+        findMany: vi.fn(),
+      },
+      expenses: {
         findMany: vi.fn(),
       },
       savingContributions: {
@@ -360,6 +376,8 @@ describe('saving-contribution.repository.server', () => {
     investmentPositions?: any[]
     snapshots?: any[]
     allocations?: any[]
+    incomes?: any[]
+    expenses?: any[]
     contribution?: any
     contributionAllocations?: any[]
     investmentContribution?: any
@@ -393,6 +411,8 @@ describe('saving-contribution.repository.server', () => {
         mockAllocInvestArs2,
         mockAllocInvestUsd1,
       ]
+    const incomes = overrides?.incomes ?? []
+    const expenses = overrides?.expenses ?? []
     const contribution = overrides?.contribution
     const contributionAllocations = overrides?.contributionAllocations ?? []
     const investmentContribution = overrides?.investmentContribution
@@ -408,6 +428,8 @@ describe('saving-contribution.repository.server', () => {
     })
     db.query.allocationPlanSnapshots.findMany = vi.fn().mockResolvedValue(snapshots)
     db.query.allocationPlanEntries.findMany = vi.fn().mockResolvedValue(allocations)
+    db.query.incomes.findMany = vi.fn().mockResolvedValue(incomes)
+    db.query.expenses.findMany = vi.fn().mockResolvedValue(expenses)
     db.query.savingContributions.findFirst = vi.fn().mockResolvedValue(contribution)
     db.query.savingContributions.findMany = vi.fn().mockResolvedValue(contribution ? [contribution] : [])
     db.query.savingContributionAllocations.findMany = vi.fn().mockResolvedValue(contributionAllocations)
@@ -537,6 +559,58 @@ describe('saving-contribution.repository.server', () => {
       expect(db.query.goalSavingsPositions.findMany).not.toHaveBeenCalled()
       expect(db.query.goalInvestmentPositions.findMany).not.toHaveBeenCalled()
       expect(db.query.allocationPlanEntries.findMany).not.toHaveBeenCalled()
+    })
+
+    it('keeps current contribution weights but exposes complete rows for projection', async () => {
+      const nextSnapshot = {
+        id: 'snap_next',
+        userId,
+        effectiveMonth: '2026-09-01',
+        createdAt: new Date('2026-08-01T00:00:00Z'),
+      }
+      const nextAllocation = {
+        id: 'alloc_next',
+        snapshotId: nextSnapshot.id,
+        goalId: mockGoalArs1.id,
+        percentage: '100.00',
+      }
+      const income = {
+        id: 'income-1', userId, name: 'Sueldo', amount: '100000.00', currency: 'ARS',
+        recurring: true, effectiveMonth: '2026-01-01',
+      }
+      const expense = {
+        id: 'expense-1', userId, name: 'Alquiler', amount: '40000.00', currency: 'ARS',
+        recurring: true, effectiveMonth: '2026-01-01', endMonth: null,
+      }
+      setupDbMocks({
+        snapshots: [mockSnapshotWinning, nextSnapshot],
+        allocations: [mockAllocArs1, mockAllocArs2, nextAllocation],
+        incomes: [income],
+        expenses: [expense],
+      })
+
+      const state = await getSavingContributionState(userId, currentMonth)
+
+      expect(state?.eligibleGoals).toEqual([
+        { id: 'g_ars_1', name: 'Vacaciones Bariloche', percentage: '60.00' },
+        { id: 'g_ars_2', name: 'Auto Usado', percentage: '40.00' },
+      ])
+      expect(state?.source.snapshots.map(({ id }) => id)).toEqual(['snap_winning', 'snap_next'])
+      expect(state?.source.allocations.map(({ id }) => id)).toContain('alloc_next')
+      expect(state?.source.incomes?.map(({ id }) => id)).toEqual(['income-1'])
+      expect(state?.source.expenses?.map(({ id }) => id)).toEqual(['expense-1'])
+
+      const goalsProjection = buildGoalsWorkspace(state!.source, currentMonth)
+        .groups.flatMap(({ goals }) => goals)
+        .find(({ id }) => id === mockGoalArs1.id)?.projection
+      const previewProjection = buildSavingPreview({
+        draft: { currency: 'ARS', amount: '10000.00' },
+        eligibleGoals: state!.eligibleGoals,
+        workspaceSource: state!.source,
+        currentMonth,
+      }).allocations.find(({ goalId }) => goalId === mockGoalArs1.id)?.projectionBefore
+
+      expect(previewProjection).toEqual(goalsProjection)
     })
   })
 

@@ -24,7 +24,7 @@ it('waits for a savings place before requesting an ARS preview', async () => {
   expect(previewSavingContribution).not.toHaveBeenCalled()
 })
 
-it('renders the ARS allocation and trajectory preview after debounce', async () => {
+it('renders contribution progress without projected months after debounce', async () => {
   const user = userEvent.setup()
   vi.mocked(previewSavingContribution).mockResolvedValue(arsPreview)
   renderContribution()
@@ -32,7 +32,8 @@ it('renders the ARS allocation and trajectory preview after debounce', async () 
   await user.type(screen.getByLabelText(/monto en pesos/i), '100000')
   expect(await screen.findByText('Así se distribuye tu ahorro')).toBeVisible()
   expect(screen.getByText('$ 60.000,00')).toBeVisible()
-  expect(screen.getByText('Junio de 2027')).toBeVisible()
+  expect(screen.getByText('Progreso: 40%')).toBeVisible()
+  expect(screen.queryByText('Junio de 2027')).not.toBeInTheDocument()
 })
 
 it('refreshes the preview when the savings place changes', async () => {
@@ -142,4 +143,3 @@ it('links USD inputs to validation error via aria-invalid and aria-describedby',
   expect(arsSpentInput).toHaveAttribute('aria-invalid', 'true')
   expect(arsSpentInput).toHaveAttribute('aria-describedby', 'saving-usd-validation-error')
 })
-

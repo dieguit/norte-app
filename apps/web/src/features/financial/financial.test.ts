@@ -6,7 +6,6 @@ import {
   getArsEquivalent,
   getNextCalendarMonth,
   getPreviousCalendarMonth,
-  projectCompletionMonth,
 } from './financial'
 
 describe('financial domain helpers', () => {
@@ -35,35 +34,7 @@ describe('financial domain helpers', () => {
     })
   })
 
-  describe('projectCompletionMonth', () => {
-    it('returns the month containing the final contribution', () => {
-      expect(
-        projectCompletionMonth(
-          { amount: '1000.00', currency: 'USD' },
-          { amount: '250.00', currency: 'USD' },
-          '2026-09',
-        ),
-      ).toEqual({ status: 'available', completionMonth: '2026-12' })
-    })
-
-    it('returns outside_horizon for zero commitments and projections beyond 720 months', () => {
-      expect(
-        projectCompletionMonth(
-          { amount: '1000.00', currency: 'USD' },
-          { amount: '0.00', currency: 'USD' },
-          '2026-09',
-        ),
-      ).toEqual({ status: 'outside_horizon' })
-
-      expect(
-        projectCompletionMonth(
-          { amount: '721.00', currency: 'USD' },
-          { amount: '1.00', currency: 'USD' },
-          '2026-09',
-        ),
-      ).toEqual({ status: 'outside_horizon' })
-    })
-
+  describe('calendar helpers', () => {
     it('uses the first day of the next UTC calendar month', () => {
       expect(getNextCalendarMonth(new Date('2026-12-31T23:59:59Z'))).toBe('2027-01')
     })

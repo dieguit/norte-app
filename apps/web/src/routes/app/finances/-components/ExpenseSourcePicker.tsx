@@ -3,7 +3,7 @@ import {
   ONE_TIME_EXPENSE_SOURCES,
   RECURRING_EXPENSE_SOURCES,
 } from '../../../../features/financial/expenses'
-import type { ExpenseDraft } from '../../../../features/financial/expenses.schema'
+import type { ExpenseDraft, ExpenseDraftInput } from '../../../../features/financial/expenses.schema'
 import { buildFinancialSourcePickerProps } from './FinancialFormPrimitives'
 import { FinancialSourcePicker } from './FinancialSourcePicker'
 
@@ -27,7 +27,7 @@ export function ExpenseSourcePicker({
 }: {
   recurring: boolean
   sources: Array<{ id: string; name: string }>
-  value: ExpenseDraft['source']
+  value: ExpenseDraftInput['source']
   error?: string
   onChange: (source: ExpenseDraft['source']) => void
   showPersistenceHint?: boolean

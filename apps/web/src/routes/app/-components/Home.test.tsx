@@ -75,7 +75,6 @@ describe('Home component', () => {
       currentAmount: { amount: '0.00', currency: 'ARS' },
       emergencyFundMonths: undefined,
     },
-    projection: { status: 'available', completionMonth: '2027-02' },
     previousMonthShortfalls: [],
   }
 

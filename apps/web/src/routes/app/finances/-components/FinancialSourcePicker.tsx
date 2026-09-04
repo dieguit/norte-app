@@ -84,7 +84,7 @@ type FinancialSourcePickerProps = {
   errorId: string
   newSourceId: string
   options: FinancialSourceOption[]
-  selectedValue: string
+  selectedValue: string | null
   isOtherSource: boolean
   newSourceName: string
   error?: string

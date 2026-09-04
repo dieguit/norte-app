@@ -20,6 +20,7 @@ import {
   getGoalCreationState,
   getGoalEditState,
   getGoalLifecycleState,
+  getGoalsProjectionRowsWithExecutor,
   getGoalsWorkspaceRows,
   StaleAllocationChangePreviewError,
   StaleGoalCreationPreviewError,
@@ -276,6 +277,36 @@ describe('goals.repository.server', () => {
       mockAlloc1,
       mockFutureAlloc,
     ] as never)
+    vi.mocked(db.query.incomes.findMany).mockResolvedValue([
+      {
+        id: 'income-1',
+        userId: 'user_1',
+        name: 'Sueldo',
+        amount: '100000.00',
+        currency: 'ARS',
+        recurring: true,
+        effectiveMonth: '2026-01-01',
+      },
+    ] as never)
+    vi.mocked(db.query.expenses.findMany).mockResolvedValue([
+      {
+        id: 'expense-1',
+        userId: 'user_1',
+        name: 'Alquiler',
+        amount: '40000.00',
+        currency: 'ARS',
+        recurring: true,
+        effectiveMonth: '2026-01-01',
+        endMonth: null,
+      },
+    ] as never)
+
+    const projectionResult = await getGoalsProjectionRowsWithExecutor(db, 'user_1', '2026-08')
+
+    expect(projectionResult?.snapshots).toEqual([snapshotCurrent, snapshotFuture])
+    expect(projectionResult?.allocations).toEqual([mockAlloc1, mockFutureAlloc])
+    expect(projectionResult?.incomes?.map(({ id }) => id)).toEqual(['income-1'])
+    expect(projectionResult?.expenses?.map(({ id }) => id)).toEqual(['expense-1'])
 
     const result = await getGoalsWorkspaceRows('user_1', '2026-08')
 

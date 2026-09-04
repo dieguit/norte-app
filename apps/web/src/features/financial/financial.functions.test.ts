@@ -151,12 +151,11 @@ describe('financial.server boundary', () => {
           currentAmount: { amount: '0.00', currency: 'USD' },
           emergencyFundMonths: 6,
         },
-        projection: { status: 'available', completionMonth: '2029-03' },
         previousMonthShortfalls: [],
       })
     })
 
-    it('returns unknown_expenses projection state when expenses are unknown for emergency fund', async () => {
+    it('returns unknown expenses when expenses are unknown for emergency fund', async () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
         baseCurrency: 'ARS',
@@ -203,12 +202,11 @@ describe('financial.server boundary', () => {
           currentAmount: { amount: '0.00', currency: 'USD' },
           emergencyFundMonths: 6,
         },
-        projection: { status: 'unknown_expenses' },
         previousMonthShortfalls: [],
       })
     })
 
-    it('returns available projection state for non-emergency goal even when expenses are unknown', async () => {
+    it('returns non-emergency goal target even when expenses are unknown', async () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
         baseCurrency: 'ARS',
@@ -255,12 +253,11 @@ describe('financial.server boundary', () => {
           currentAmount: { amount: '0.00', currency: 'ARS' },
           emergencyFundMonths: undefined,
         },
-        projection: { status: 'available', completionMonth: '2028-04' },
         previousMonthShortfalls: [],
       })
     })
 
-    it('returns outside_horizon projection when monthly commitment is zero', async () => {
+    it('handles zero monthly commitment', async () => {
       vi.mocked(db.query.financialProfiles.findFirst).mockResolvedValue({
         userId: 'user_1',
         baseCurrency: 'ARS',
@@ -307,7 +304,6 @@ describe('financial.server boundary', () => {
           currentAmount: { amount: '0.00', currency: 'ARS' },
           emergencyFundMonths: undefined,
         },
-        projection: { status: 'outside_horizon' },
         previousMonthShortfalls: [],
       })
     })

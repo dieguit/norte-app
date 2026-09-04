@@ -140,6 +140,7 @@ describe('financial repository.server getInitialHomeState', () => {
 
     const home = await getInitialHomeState('user_1', fixedNow)
     expect(home).not.toBeNull()
+    expect(home).not.toHaveProperty('projection')
     expect(home?.expenses).toEqual({ amount: '250000.00', currency: 'ARS' })
     expect(home?.goal.targetAmount).toEqual({ amount: '500.00', currency: 'USD' })
     expect(home?.goal.emergencyFundMonths).toBe(3)
@@ -350,7 +351,6 @@ describe('financial repository.server getInitialHomeState', () => {
     const home = await getInitialHomeState('user_target', new Date('2026-08-15T12:00:00Z'))
 
     expect(home?.goal.targetAmount).toEqual({ amount: '1000000.00', currency: 'ARS' })
-    expect(home?.projection.status).toBe('available')
   })
 
   it('uses the goal still allocated by the latest snapshot when the oldest goal is completed', async () => {

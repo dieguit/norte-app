@@ -12,11 +12,6 @@ export const PROJECTION_HORIZON_MONTHS = 720
 
 export type FundingMethod = 'save' | 'invest'
 
-export type CompletionProjection =
-  | { status: 'available'; completionMonth: string }
-  | { status: 'unknown_expenses' }
-  | { status: 'outside_horizon' }
-
 export interface InitialHomeState {
   income: Money
   expensesKnowledge: 'known' | 'unknown'
@@ -36,7 +31,6 @@ export interface InitialHomeState {
     currentAmount: Money
     emergencyFundMonths?: number
   }
-  projection: CompletionProjection
   previousMonthShortfalls: PreviousMonthShortfall[]
 }
 
@@ -81,27 +75,4 @@ export function getArsEquivalent(amount: string, currency: CurrencyCode) {
   const parsed = parseMoneyInput(amount, 'USD')
   if (!parsed || !new BigNumber(parsed.amount).isGreaterThan(0)) return null
   return new BigNumber(parsed.amount).times(PLANNING_ARS_PER_USD)
-}
-
-export function projectCompletionMonth(
-  target: Money,
-  monthlyContribution: Money,
-  effectiveMonth: string,
-): CompletionProjection {
-  if (target.currency !== monthlyContribution.currency) {
-    throw new Error('Projection currencies must match.')
-  }
-
-  const monthly = new BigNumber(monthlyContribution.amount)
-  if (!monthly.isGreaterThan(0)) return { status: 'outside_horizon' }
-
-  const months = new BigNumber(target.amount).dividedBy(monthly).integerValue(BigNumber.ROUND_CEIL).toNumber()
-  if (months > PROJECTION_HORIZON_MONTHS) return { status: 'outside_horizon' }
-
-  const [year, month] = effectiveMonth.split('-').map(Number)
-  const completion = new Date(Date.UTC(year, month - 1 + Math.max(months - 1, 0), 1))
-  return {
-    status: 'available',
-    completionMonth: `${completion.getUTCFullYear()}-${String(completion.getUTCMonth() + 1).padStart(2, '0')}`,
-  }
 }

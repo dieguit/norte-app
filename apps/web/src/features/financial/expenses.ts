@@ -11,6 +11,7 @@ export const RECURRING_EXPENSE_SOURCES = {
   insurance: 'Seguros',
   family_support: 'Ayuda a familiares',
   subscriptions: 'Suscripciones',
+  uncategorized: 'Sin categoría',
 } as const
 
 export const ONE_TIME_EXPENSE_SOURCES = {
@@ -22,6 +23,7 @@ export const ONE_TIME_EXPENSE_SOURCES = {
   travel_leisure: 'Viaje / salida',
   technology: 'Tecnología / electrónica',
   taxes_fees: 'Trámite / impuesto',
+  uncategorized: 'Sin categoría',
 } as const
 
 export const FIXED_EXPENSE_SOURCES = {
