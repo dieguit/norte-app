@@ -1,7 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import BigNumber from "bignumber.js";
-import { CircleCheck } from "lucide-react";
+import { ChevronRight, CircleCheck } from "lucide-react";
 import { Button } from "../../../components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../../../components/ui/collapsible";
 import { FIXED_EXPENSE_SOURCES } from "../../../features/financial/expenses";
 import { FIXED_INCOME_SOURCES } from "../../../features/financial/incomes";
 import type { GoalWorkspaceItem } from "../../../features/goals/goals";
@@ -100,31 +105,32 @@ function FinancialRecordGroup<
             key={`${group.category}\0${group.currency}`}
             className="min-w-0 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-3 text-xs sm:text-sm"
           >
-            <span className="block break-words font-semibold text-[var(--sea-ink)]">
-              {group.category}
-            </span>
-            <strong className="mt-1 block break-words tabular-nums text-[var(--sea-ink)]">
-              {formatMoney({
-                amount: group.total.toFixed(2),
-                currency: group.currency,
-              })}
-            </strong>
-            <ul className="mt-2 border-t border-[var(--line)] pt-2">
-              {[...group.concepts].map(([concept, total]) => (
-                <li
-                  key={concept}
-                  className="flex justify-between gap-2 text-[var(--sea-ink-soft)]"
-                >
-                  <span className="min-w-0 break-words">{concept}</span>
-                  <span className="shrink-0 tabular-nums">
+            <Collapsible>
+              <CollapsibleTrigger className="group flex min-h-11 w-full items-start justify-between gap-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--lagoon-deep)]">
+                <span className="min-w-0 flex-1 break-words text-[var(--sea-ink)]">
+                  {group.category}:{" "}
+                  <span className="tabular-nums">
                     {formatMoney({
-                      amount: total.toFixed(2),
+                      amount: group.total.toFixed(2),
                       currency: group.currency,
                     })}
                   </span>
-                </li>
-              ))}
-            </ul>
+                </span>
+                <ChevronRight
+                  className="mt-0.5 size-4 shrink-0 text-[var(--sea-ink-soft)] transition-transform motion-reduce:transition-none group-aria-expanded:rotate-90"
+                  aria-hidden="true"
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <ul className="mt-2 border-t border-[var(--line)] pt-2 text-left">
+                  {[...group.concepts].map(([concept, total]) => (
+                    <li key={concept} className="break-words text-[var(--sea-ink-soft)]">
+                      {concept}: {formatMoney({ amount: total.toFixed(2), currency: group.currency })}
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleContent>
+            </Collapsible>
           </li>
         ))}
       </ul>

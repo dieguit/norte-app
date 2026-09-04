@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RoadmapTimeline } from "./RoadmapParts";
 import type { RoadmapMonth } from "../../../features/roadmap/roadmap";
@@ -71,7 +72,8 @@ function contribution({
 }
 
 describe("RoadmapParts - Financial grouping", () => {
-  it("renders financial records by category and concept with currency separation, blank concept handling, and itemized contributions", () => {
+  it("expands a category to show inline concept totals while keeping contributions itemized", async () => {
+    const user = userEvent.setup();
     const currentMonth: RoadmapMonth = {
       month: "2026-09",
       objectives: [],
@@ -121,13 +123,22 @@ describe("RoadmapParts - Financial grouping", () => {
 
     render(<RoadmapTimeline futureMonths={[]} currentMonth={currentMonth} />);
 
-    expect(screen.getAllByText("Alquiler / vivienda")).toHaveLength(2);
-    expect(screen.getByText("Alquiler")).toBeInTheDocument();
-    expect(screen.getAllByText("Sin concepto")).toHaveLength(2);
+    const arsCategory = screen.getByRole("button", {
+      name: /Alquiler \/ vivienda:\s*\$ 176,00/,
+    });
+
+    expect(arsCategory).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Alquiler: $ 151,00")).not.toBeInTheDocument();
     expect(screen.getByText("$ 176,00")).toBeInTheDocument();
-    expect(screen.getByText("$ 151,00")).toBeInTheDocument();
-    expect(screen.getByText("$ 25,00")).toBeInTheDocument();
-    expect(screen.getAllByText("US$ 10,00")).toHaveLength(2);
+
+    await user.click(arsCategory);
+
+    expect(arsCategory).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Alquiler: $ 151,00")).toBeInTheDocument();
+    expect(screen.getByText("Sin concepto: $ 25,00")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Alquiler \/ vivienda:\s*US\$ 10,00/ })
+    ).toBeInTheDocument();
 
     // Verify contribution remains itemized and rendered once with label and amount
     expect(screen.getByText("Ahorro")).toBeInTheDocument();
