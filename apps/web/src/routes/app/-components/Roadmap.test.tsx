@@ -207,6 +207,17 @@ describe("Roadmap component", () => {
         name: "Ingresos y aportes para Septiembre de 2026",
       }),
     ).not.toBeInTheDocument();
+
+    const todaySection = screen.getByRole("region", { name: "Hoy · Agosto de 2026" });
+    const futureSection = screen.getByRole("region", {
+      name: "Septiembre de 2026",
+    });
+    expect(todaySection.parentElement?.className).toContain(
+      "before:border-solid",
+    );
+    expect(futureSection.parentElement?.className).toContain(
+      "before:border-dashed",
+    );
   });
 
   it("renders undated objectives after the timeline", () => {
