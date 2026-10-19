@@ -11,6 +11,7 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
+    "e2e": "docker compose up -d --wait postgres-test && turbo run e2e",
     "db:test:up": "docker compose up -d postgres-test",
     "db:test:down": "docker compose stop postgres-test",
     "db:test:logs": "docker compose logs -f postgres-test",
@@ -26,7 +27,9 @@
     "overrides": {
       "@nestjs/common": "11.1.27",
       "@nestjs/core": "11.1.27",
-      "@nestjs/platform-express": "11.1.27"
+      "@nestjs/platform-express": "11.1.27",
+      "@clerk/tanstack-react-start>@clerk/backend": "3.16.6",
+      "@clerk/backend@3.16.6>@clerk/shared": "4.29.1"
     },
     "onlyBuiltDependencies": [
       "@nestjs/core",
@@ -37,6 +40,7 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "turbo": "^2.10.2",
     "typescript": "^6.0.3"
   }
