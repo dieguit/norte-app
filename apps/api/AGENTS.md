@@ -2,16 +2,6 @@
 
 This project is a NestJS API using Drizzle ORM and `nestjs-zod`.
 
-Keep this file lean. For task-specific rules, load only the relevant Agent Skill in `.opencode/skills/` before editing code.
-
-## Read The Relevant Skill
-
-- Nest modules, providers, controllers, services, config, errors: `skills/nestjs-core/SKILL.md`
-- DTOs, validation, response serialization, OpenAPI: `skills/nestjs-zod/SKILL.md`
-- Database schema, queries, migrations, transactions: `skills/nestjs-drizzle/SKILL.md`
-- Unit, integration, and e2e tests: `skills/nestjs-testing/SKILL.md`
-- Auth, guards, rate limiting, output safety, logging safety: `skills/nestjs-security/SKILL.md`
-
 ## Non-Negotiables
 
 - Organize by feature module, not by technical layer.
@@ -56,8 +46,4 @@ pnpm --filter @repo/api check-types
 pnpm --filter @repo/api test
 pnpm --filter @repo/api test:e2e
 pnpm --filter @repo/api test:cov
-```
-
-```
-
 ```
