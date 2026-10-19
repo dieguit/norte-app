@@ -41,4 +41,5 @@ test('new user completes financial onboarding and lands on the roadmap', async (
   await expect(page.getByRole('heading', { name: 'Tu hoja de ruta' })).toBeVisible()
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Tu hoja de ruta' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Tu hoja de ruta', exact: true }).getByRole('heading', { name: 'Auto nuevo', exact: true })).toBeVisible()
 })
