@@ -1,4 +1,5 @@
-import { expect, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect } from './test'
 
 export async function recordSaving(page: Page, { place, amount }: { place: string; amount: string }) {
   await page.goto('/app')
