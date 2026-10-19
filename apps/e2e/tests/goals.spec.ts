@@ -8,7 +8,6 @@ test.beforeEach(async () => {
 })
 
 test('creates a goal', async ({ page }) => {
-  test.fail(true, 'Bug: first goal-creation confirm always returns stale preview (preview token bound to empty allocations draft)')
   await page.goto('/app/goals')
   await page.getByRole('button', { name: 'Nuevo objetivo' }).click()
   const sheet = page.getByRole('dialog', { name: 'Nuevo objetivo' })
@@ -17,7 +16,14 @@ test('creates a goal', async ({ page }) => {
   await sheet.getByLabel('Nombre del objetivo').fill('Viaje a Japón')
   await sheet.getByLabel('Monto objetivo').fill('3000000')
   await sheet.getByRole('button', { name: 'Continuar a la distribución' }).click()
-  await sheet.getByRole('button', { name: 'Crear objetivo y actualizar Plan' }).click()
+  const confirm = sheet.getByRole('button', { name: 'Crear objetivo y actualizar Plan' })
+  await expect(confirm).toBeDisabled()
+  const percentage = sheet.getByRole('textbox', { name: 'Porcentaje para Viaje a Japón' })
+  await expect(percentage).toHaveValue('0,00')
+  await percentage.fill('40')
+  await percentage.press('Tab')
+  await expect(confirm).toBeEnabled()
+  await confirm.click()
   await expect(page.getByText('Objetivo creado y Plan actualizado.')).toBeVisible()
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Viaje a Japón', level: 3 })).toHaveCount(1)
