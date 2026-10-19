@@ -225,6 +225,29 @@ describe('GoalCreation component (2-step flow)', () => {
   })
 
   describe('Step 2: Distribution and impact flow', () => {
+    it('disables creation at zero allocation until the new goal receives a positive share', async () => {
+      const user = userEvent.setup()
+      const zeroPreview = makeMockPreview()
+      zeroPreview.proposal.allocation.entries[0].percentage = '100.00'
+      zeroPreview.proposal.allocation.entries[1].percentage = '0.00'
+      vi.mocked(previewGoalCreation)
+        .mockResolvedValueOnce(zeroPreview)
+        .mockResolvedValue(makeMockPreview())
+
+      render(<GoalCreation context={defaultContext} onCancel={vi.fn()} onCreated={vi.fn()} />)
+      await user.type(screen.getByLabelText(/nombre/i), 'Viaje al sur')
+      await user.type(screen.getByLabelText(/monto objetivo/i), '3500000')
+      await user.click(screen.getByRole('button', { name: /continuar a la distribución/i }))
+
+      const confirm = await screen.findByRole('button', { name: 'Crear objetivo y actualizar Plan' })
+      expect(confirm).toBeDisabled()
+
+      const percentage = screen.getByRole('textbox', { name: /porcentaje para viaje al sur/i })
+      fireEvent.change(percentage, { target: { value: '40' } })
+      fireEvent.blur(percentage)
+      await waitFor(() => expect(confirm).toBeEnabled())
+    })
+
     it('validates Step 1, requests preview, seeds allocations, and enters Step 2 of 2', async () => {
       const user = userEvent.setup()
       const mockPreview = makeMockPreview()
@@ -609,4 +632,3 @@ describe('GoalCreation component (2-step flow)', () => {
     })
   })
 })
-

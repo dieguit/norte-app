@@ -16,6 +16,7 @@ import {
   confirmGoalEdit,
 } from '../../../../features/goals/goals.functions'
 import {
+  PENDING_GOAL_ID,
   allocationEntriesMatch,
   calculatePercentageSum,
 } from '../../../../features/goals/goal-creation'
@@ -90,8 +91,9 @@ function useGoalCreationState(edit: GoalCreationProps['edit']) {
     const allocations = values.allocations ?? []
     return allocations.length === 0
       ? edit?.status === 'paused'
-      : calculatePercentageSum(allocations).isEqualTo(100)
-  }, [edit?.status, values.allocations])
+      : calculatePercentageSum(allocations).isEqualTo(100) &&
+        (Boolean(edit) || Number(allocations.find((entry) => entry.goalId === PENDING_GOAL_ID)?.percentage.replace(',', '.')) > 0)
+  }, [edit, values.allocations])
 
   return {
     form,
@@ -214,7 +216,7 @@ function useGoalCreationConfirm(
   const router = useRouter()
   const posthog = usePostHog()
   return async () => {
-    if (!state.preview || !state.isPreviewSynced) return
+    if (!state.preview || !state.isPreviewSynced || !state.isAllocationsValid) return
     state.setIsSubmitting(true)
     state.setServerError(null)
     try {

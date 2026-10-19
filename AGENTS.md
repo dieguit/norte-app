@@ -1,6 +1,5 @@
 ## Agent skills
 
-Ignore apps/api for now, only work in apps/web unless user specifies.
 When doing frontend (react ui) work, use review results with playwright mcp. Always cleanup logs and artifact images after.
 Do not touch shadcn components, nor create unit tests for them. They should be treated as vendor code
 When reviewing work, always run /ponytail-review and /code-review skills.
