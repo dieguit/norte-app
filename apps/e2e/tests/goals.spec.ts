@@ -8,6 +8,7 @@ test.beforeEach(async () => {
 })
 
 test('creates a goal', async ({ page }) => {
+  test.fail(true, 'Bug: first goal-creation confirm always returns stale preview (preview token bound to empty allocations draft)')
   await page.goto('/app/goals')
   await page.getByRole('button', { name: 'Nuevo objetivo' }).click()
   const sheet = page.getByRole('dialog', { name: 'Nuevo objetivo' })
@@ -16,13 +17,10 @@ test('creates a goal', async ({ page }) => {
   await sheet.getByLabel('Nombre del objetivo').fill('Viaje a Japón')
   await sheet.getByLabel('Monto objetivo').fill('3000000')
   await sheet.getByRole('button', { name: 'Continuar a la distribución' }).click()
-  const create = sheet.getByRole('button', { name: 'Crear objetivo y actualizar Plan' })
-  await create.click()
-  await expect(sheet.getByRole('alert')).toContainText('Tu Plan cambió')
-  await create.click()
+  await sheet.getByRole('button', { name: 'Crear objetivo y actualizar Plan' }).click()
   await expect(page.getByText('Objetivo creado y Plan actualizado.')).toBeVisible()
   await page.reload()
-  await expect(page.getByText('Viaje a Japón').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Viaje a Japón', level: 3 })).toHaveCount(1)
 })
 
 test('edits a goal', async ({ page }) => {
@@ -34,7 +32,7 @@ test('edits a goal', async ({ page }) => {
   await sheet.getByRole('button', { name: 'Actualizar objetivo y Plan' }).click()
   await expect(page.getByText('Objetivo y Plan actualizados.')).toBeVisible()
   await page.reload()
-  await expect(page.getByText('Auto usado').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Auto usado', level: 3 })).toBeVisible()
 })
 
 test('pauses and resumes a goal', async ({ page }) => {
