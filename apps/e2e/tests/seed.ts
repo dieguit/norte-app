@@ -2,12 +2,14 @@ import { createClerkClient } from '@clerk/backend'
 // ponytail: seeds through web internals until the API owns the DB; then replace with API calls
 import { db } from '../../web/src/db/client'
 import { persistFinancialOnboarding } from '../../web/src/features/financial/repository.server'
+import { parseGoalCreationSubmission } from '../../web/src/features/goals/goal-creation.schema'
 
 let testUserId: string | undefined
 
 export async function getTestUserId() {
   if (testUserId) return testUserId
-  const emailAddress = process.env.E2E_CLERK_USER_EMAIL!
+  const emailAddress = process.env.E2E_CLERK_USER_EMAIL
+  if (!emailAddress) throw new Error('E2E_CLERK_USER_EMAIL is not set (see .env.test.example)')
   const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })
   const { data } = await clerk.users.getUserList({ emailAddress: [emailAddress] })
   const user = data[0] ?? (await clerk.users.createUser({ emailAddress: [emailAddress], skipPasswordRequirement: true }))
@@ -29,7 +31,7 @@ export async function seedOnboardedUser() {
   await persistFinancialOnboarding(
     await getTestUserId(),
     {
-      goal: {
+      goal: parseGoalCreationSubmission({
         type: 'purchase',
         name: 'Auto nuevo',
         targetAmount: '500000',
@@ -41,7 +43,7 @@ export async function seedOnboardedUser() {
         availability: 'available_now',
         availableFromMonth: '',
         allocations: [],
-      },
+      }, currentMonth),
       incomes: [
         { concept: null, source: { kind: 'salary' }, amount: '1500000', currency: 'ARS', recurring: true, effectiveMonth: currentMonth },
       ],
