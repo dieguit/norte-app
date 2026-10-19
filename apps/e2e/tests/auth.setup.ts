@@ -1,5 +1,5 @@
 import { clerk } from '@clerk/testing/playwright'
-import { expect, test as setup } from '@playwright/test'
+import { expect, test as setup } from './test'
 import { AUTH_FILE } from '../playwright.config'
 import { getTestUserId } from './seed'
 
