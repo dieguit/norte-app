@@ -1,13 +1,15 @@
 import { existsSync } from 'node:fs'
+import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 
-if (existsSync('.env.test')) process.loadEnvFile('.env.test')
+const envFile = path.join(import.meta.dirname, '.env.test')
+if (existsSync(envFile)) process.loadEnvFile(envFile)
 
-export const AUTH_FILE = '.auth/user.json'
+export const AUTH_FILE = path.join(import.meta.dirname, '.auth/user.json')
 
 export default defineConfig({
-  testDir: './tests',
-  globalSetup: './tests/global-setup.ts',
+  testDir: path.join(import.meta.dirname, 'tests'),
+  globalSetup: path.join(import.meta.dirname, 'tests/global-setup.ts'),
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
