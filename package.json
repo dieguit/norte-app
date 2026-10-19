@@ -11,6 +11,7 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
+    "e2e": "docker compose up -d --wait postgres-test && turbo run e2e",
     "db:test:up": "docker compose up -d postgres-test",
     "db:test:down": "docker compose stop postgres-test",
     "db:test:logs": "docker compose logs -f postgres-test",

@@ -1,0 +1,18 @@
+{
+  "name": "@repo/e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@clerk/backend": "^3.25.0",
+    "@clerk/testing": "^2.2.47",
+    "@playwright/test": "^1.62.1",
+    "@repo/web": "workspace:*",
+    "@types/node": "^26.6.5",
+    "typescript": "^6.0.3"
+  }
+}

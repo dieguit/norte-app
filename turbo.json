@@ -20,6 +20,10 @@
     },
     "check-types": {
       "dependsOn": ["^build"]
+    },
+    "e2e": {
+      "cache": false,
+      "passThroughEnv": ["PLAYWRIGHT_*", "CI", "DATABASE_URL", "VITE_CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY", "E2E_CLERK_USER_EMAIL"]
     }
   }
 }
