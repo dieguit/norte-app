@@ -10,7 +10,7 @@ test('creates, edits and deletes an income', async ({ page }) => {
   await page.goto('/app/finances')
   await page.getByRole('tab', { name: 'Ingresos' }).click()
 
-  await page.getByRole('button', { name: 'Agregar nuevo' }).click()
+  await page.getByRole('tabpanel', { name: 'Ingresos' }).getByRole('button', { name: 'Agregar nuevo' }).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel('Monto', { exact: true }).fill('250000')
   await sheet.getByLabel('Categoría del ingreso').click()

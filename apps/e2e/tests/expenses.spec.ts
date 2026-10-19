@@ -10,7 +10,7 @@ test('creates, edits and deletes an expense', async ({ page }) => {
   await page.goto('/app/finances')
   await page.getByRole('tab', { name: 'Gastos' }).click()
 
-  await page.getByRole('button', { name: 'Agregar nuevo' }).click()
+  await page.getByRole('tabpanel', { name: 'Gastos' }).getByRole('button', { name: 'Agregar nuevo' }).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel('Monto', { exact: true }).fill('45000')
   await sheet.getByLabel('Categoría del gasto').click()
