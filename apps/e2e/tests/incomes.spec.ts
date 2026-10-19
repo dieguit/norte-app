@@ -19,6 +19,7 @@ test('creates, edits and deletes an income', async ({ page }) => {
   await sheet.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Ingreso agregado.')).toBeVisible()
   await page.reload()
+  await page.getByRole('tab', { name: 'Ingresos' }).click()
   await expect(page.getByText('Bono anual')).toBeVisible()
 
   await page.getByRole('button', { name: /Editar ingreso .*Bono anual/ }).click()
@@ -26,6 +27,7 @@ test('creates, edits and deletes an income', async ({ page }) => {
   await sheet.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Ingreso actualizado.')).toBeVisible()
   await page.reload()
+  await page.getByRole('tab', { name: 'Ingresos' }).click()
   await expect(page.getByText('300.000').first()).toBeVisible()
 
   await page.getByRole('button', { name: /Editar ingreso .*Bono anual/ }).click()
@@ -33,5 +35,6 @@ test('creates, edits and deletes an income', async ({ page }) => {
   await sheet.getByRole('button', { name: 'Eliminar' }).click()
   await expect(page.getByText('Ingreso eliminado.')).toBeVisible()
   await page.reload()
+  await page.getByRole('tab', { name: 'Ingresos' }).click()
   await expect(page.getByText('Bono anual')).toBeHidden()
 })
