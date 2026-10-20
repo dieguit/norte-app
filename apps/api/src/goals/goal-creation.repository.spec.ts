@@ -3,7 +3,7 @@ import { allocationPlanEntries, allocationPlanSnapshots, financialGoals, financi
 import { buildGoalCreationProposal } from './goal-creation'
 import { buildGoalLifecycleProposal } from './goal-lifecycle'
 import { goalCreationDraftSchema } from '@repo/shared-types'
-import { confirmAllocationChangeInRepository, confirmGoalCreationInRepository, confirmGoalEditInRepository, confirmGoalLifecycleInRepository, createAllocationChangePreviewToken, createGoalCreationPreviewToken, createGoalEditPreviewToken, createGoalLifecyclePreviewToken, getGoalCreationState, getGoalEditState, getGoalLifecycleState, StaleAllocationChangePreviewError, StaleGoalLifecyclePreviewError } from './goal-creation.repository'
+import { confirmAllocationChangeInRepository, confirmGoalCreationInRepository, confirmGoalEditInRepository, confirmGoalLifecycleInRepository, createAllocationChangePreviewToken, createGoalCreationPreviewToken, createGoalEditPreviewToken, createGoalLifecyclePreviewToken, getGoalCreationState, getGoalEditState, getGoalLifecycleState, StaleAllocationChangePreviewError, StaleGoalCreationPreviewError, StaleGoalEditPreviewError, StaleGoalLifecyclePreviewError } from './goal-creation.repository'
 import { allocationChangeDraftSchema } from './allocation-change.schema'
 
 const draft = goalCreationDraftSchema.parse({
@@ -127,7 +127,7 @@ describe('goal creation repository', () => {
     }
     const db = { ...dbRead, transaction: async (callback: (executor: typeof tx) => unknown) => callback(tx) }
     const error = await confirmGoalEditInRepository(db as never, { userId: 'u', goalId: 'g', currentMonth: '2026-08', draft: editDraft, previewToken: token }).catch((caught: unknown) => caught)
-    expect(error).toMatchObject({ code: 'STALE_GOAL_EDIT_PREVIEW' })
+    expect(error).toBeInstanceOf(StaleGoalEditPreviewError)
     expect((error as any).refreshedPreview.previewToken).not.toBe(token)
     expect((error as any).refreshedPreview.proposal.normalizedGoal.name).toBe('Auto')
     expect(writes).toEqual([])
@@ -258,7 +258,8 @@ describe('goal creation repository', () => {
     const refreshedState = await getGoalCreationState(db as never, 'u', '2026-08')
     const expectedRefreshedToken = createGoalCreationPreviewToken(refreshedState!, '2026-08', draft)
     const error = await confirmGoalCreationInRepository(db as never, { userId: 'u', currentMonth: '2026-08', draft, previewToken }).catch((caught: unknown) => caught)
-    expect(error).toMatchObject({ code: 'STALE_GOAL_CREATION_PREVIEW', refreshedPreview: { previewToken: expectedRefreshedToken } })
+    expect(error).toBeInstanceOf(StaleGoalCreationPreviewError)
+    expect(error).toMatchObject({ refreshedPreview: { previewToken: expectedRefreshedToken } })
     expect(error).toHaveProperty('refreshedPreview.proposal.normalizedGoal.name', 'Auto')
     expect(profileLocked).toBe(true)
     expect(transactionReloadedState).toBe(true)

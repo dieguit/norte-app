@@ -23,28 +23,24 @@ type GoalLifecycleDraft = { allocations?: Array<{ goalId: string; percentage: st
 type GoalLifecycleInput = { userId: string; goalId: string; lifecycle: GoalLifecycle; currentMonth: string; draft?: GoalLifecycleDraft; previewToken: string }
 
 export class StaleGoalCreationPreviewError extends Error {
-  readonly code = 'STALE_GOAL_CREATION_PREVIEW'
   constructor(readonly refreshedPreview: { proposal: GoalCreationProposal; previewToken: string }) {
     super('Tu Plan cambió mientras revisabas el impacto.')
   }
 }
 
 export class StaleGoalEditPreviewError extends Error {
-  readonly code = 'STALE_GOAL_EDIT_PREVIEW'
   constructor(readonly refreshedPreview: { proposal: GoalCreationProposal; previewToken: string }) {
     super('Tu Plan cambió mientras revisabas el impacto.')
   }
 }
 
 export class StaleAllocationChangePreviewError extends Error {
-  readonly code = 'STALE_ALLOCATION_CHANGE_PREVIEW'
   constructor(readonly refreshedPreview: { proposal: ReturnType<typeof buildAllocationChangeProposal>; previewToken: string }) {
     super('Tu Plan cambió mientras revisabas el impacto.')
   }
 }
 
 export class StaleGoalLifecyclePreviewError extends Error {
-  readonly code = 'STALE_GOAL_LIFECYCLE_PREVIEW'
   constructor(readonly refreshedPreview: { proposal: GoalLifecycleProposal; previewToken: string }) {
     super('Tu Plan cambió mientras revisabas el impacto.')
   }
@@ -265,14 +261,12 @@ export async function confirmAllocationChangeInRepository(db: Database, input: A
 }
 
 export class StaleGoalCompletionPreviewError extends Error {
-  readonly code = 'STALE_GOAL_COMPLETION_PREVIEW'
   constructor(readonly refreshedPreview: GoalCompletionPreviewResult) {
     super('Tu Plan cambió mientras revisabas el impacto.')
   }
 }
 
 export class GoalCompletionStateInvalidError extends Error {
-  readonly code = 'INVALID_GOAL_COMPLETION_STATE'
   constructor() {
     super('No se puede completar el objetivo con el estado actual.')
   }

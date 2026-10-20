@@ -44,7 +44,6 @@ export interface SavingContributionState {
 }
 
 export class StaleSavingContributionPreviewError extends Error {
-  readonly code = 'STALE_SAVING_CONTRIBUTION_PREVIEW';
   constructor(readonly refreshedPreview: SavingContributionPreviewResult) {
     super('Stale saving contribution preview');
   }
