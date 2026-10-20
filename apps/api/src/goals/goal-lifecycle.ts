@@ -94,11 +94,6 @@ export interface GoalLifecycleProposal {
   proposedSource: GoalsWorkspaceSource;
 }
 
-interface GoalLifecyclePreviewResult {
-  proposal: GoalLifecycleProposal;
-  previewToken: string;
-}
-
 export interface BuildGoalLifecycleProposalInput {
   lifecycle: GoalLifecycle;
   goalId: string;
@@ -781,7 +776,7 @@ export function serializeGoalLifecycleState(
 ): string {
   const state: GoalLifecycleState =
     'source' in stateOrSource && stateOrSource.source
-      ? (stateOrSource as GoalLifecycleState)
+      ? stateOrSource
       : {
           source: stateOrSource as GoalsWorkspaceSource,
           pendingSnapshots: [],

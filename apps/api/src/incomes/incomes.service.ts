@@ -10,7 +10,7 @@ import {
   type IncomeDraft,
 } from '@repo/shared-types';
 import { DATABASE_CONNECTION } from '../database/database.constants';
-import type { Database } from '../database/database.types';
+import type { Database, Transaction } from '../database/database.types';
 import { incomeSources, incomes } from '../profile/profile.schema';
 import { normalizeMoneyAmount } from '../money';
 
@@ -27,7 +27,7 @@ export class IncomesService {
   constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   private async resolveSource(
-    tx: any,
+    tx: Transaction,
     userId: string,
     source: IncomeDraft['source'],
   ) {
@@ -61,7 +61,7 @@ export class IncomesService {
     return { sourceKind: 'custom', sourceId: owned.id };
   }
 
-  private async values(tx: any, userId: string, draft: IncomeDraft) {
+  private async values(tx: Transaction, userId: string, draft: IncomeDraft) {
     const source = await this.resolveSource(tx, userId, draft.source);
     return {
       userId,
@@ -74,15 +74,16 @@ export class IncomesService {
   }
 
   async insert(
-    tx: any,
+    tx: Transaction,
     userId: string,
     draft: IncomeDraft,
     effectiveMonth: string,
-  ) {
+  ): Promise<typeof incomes.$inferSelect> {
+    const values = await this.values(tx, userId, draft);
     const [income] = await tx
       .insert(incomes)
       .values({
-        ...(await this.values(tx, userId, draft)),
+        ...values,
         effectiveMonth: `${effectiveMonth}-01`,
       })
       .returning();

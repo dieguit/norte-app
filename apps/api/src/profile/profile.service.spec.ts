@@ -12,12 +12,10 @@ describe('ProfileService.getProfile', () => {
       profile: 'missing',
     });
     expect(findFirst).toHaveBeenCalledOnce();
+    const call = findFirst.mock.calls[0] as
+      [{ where: { queryChunks: Array<{ value?: unknown }> } }] | undefined;
     expect(
-      (
-        findFirst.mock.calls[0][0].where as {
-          queryChunks: Array<{ value?: unknown }>;
-        }
-      ).queryChunks.some((chunk) => chunk.value === 'clerk-user'),
+      call?.[0].where.queryChunks.some((chunk) => chunk.value === 'clerk-user'),
     ).toBe(true);
   });
 
@@ -204,12 +202,12 @@ describe('ProfileService.getProfile', () => {
         previousMonthShortfalls: [],
       },
     });
+    const profileCall = findFirstProfile.mock.calls[0] as
+      [{ where: { queryChunks: Array<{ value?: unknown }> } }] | undefined;
     expect(
-      (
-        findFirstProfile.mock.calls[0][0].where as {
-          queryChunks: Array<{ value?: unknown }>;
-        }
-      ).queryChunks.some((chunk) => chunk.value === 'clerk-user'),
+      profileCall?.[0].where.queryChunks.some(
+        (chunk) => chunk.value === 'clerk-user',
+      ),
     ).toBe(true);
     expect(incomeFindMany).toHaveBeenCalledOnce();
     expect(expenseFindMany).toHaveBeenCalledOnce();
@@ -303,9 +301,10 @@ describe('ProfileService.getProfile', () => {
         ],
       },
     });
-    expect(JSON.parse(JSON.stringify(result)).home).not.toHaveProperty(
-      'expenses',
-    );
+    expect(
+      (JSON.parse(JSON.stringify(result)) as { home?: Record<string, unknown> })
+        .home,
+    ).not.toHaveProperty('expenses');
   });
 
   it('returns empty previousMonthShortfalls for a legacy snapshot with null plannedMonthlyContribution', async () => {
@@ -751,18 +750,20 @@ describe('ProfileService.getProfile', () => {
           findMany: vi.fn().mockResolvedValue([]),
         },
         allocationPlanEntries: {
-          findFirst: vi.fn().mockImplementation(async () => {
+          findFirst: vi.fn().mockImplementation(() => {
             allocationQueried = true;
-            return {
+            return Promise.resolve({
               snapshotId: 'snapshot_latest',
               goalId: latestGoal.id,
               percentage: '100.00',
-            };
+            });
           }),
         },
         financialGoals: {
-          findFirst: vi.fn().mockImplementation(async () => {
-            return allocationQueried ? latestGoal : oldestCompletedGoal;
+          findFirst: vi.fn().mockImplementation(() => {
+            return Promise.resolve(
+              allocationQueried ? latestGoal : oldestCompletedGoal,
+            );
           }),
         },
         incomes: { findMany: vi.fn().mockResolvedValue([]) },

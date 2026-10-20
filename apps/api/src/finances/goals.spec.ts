@@ -9,6 +9,7 @@ import {
   type GoalsWorkspaceSource,
   type GoalWorkspaceItem,
   type GoalFundingRow,
+  type ContributionSummary,
 } from './goals.engine';
 
 function fundingRow(
@@ -1689,7 +1690,7 @@ describe('buildGoalsWorkspace - contributions history', () => {
             },
           ],
         },
-      ] as any,
+      ] as ContributionSummary[],
     });
 
     const workspace = buildGoalsWorkspace(source, currentMonth);
@@ -1729,7 +1730,7 @@ describe('buildGoalsWorkspace - contributions history', () => {
             amount: '40.00',
             percentage: '40.00',
           },
-        ]),
+        ]) as never,
       }),
       expect.objectContaining({
         id: 'saving-1',

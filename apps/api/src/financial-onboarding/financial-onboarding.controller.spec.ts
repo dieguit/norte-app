@@ -4,15 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import { ExpensesService } from '../expenses/expenses.service';
 import { IncomesService } from '../incomes/incomes.service';
@@ -82,11 +74,15 @@ function fakeDatabase(
         const row = { id: `${inserts.length}-row`, ...values };
         return {
           onConflictDoNothing: () => ({
-            returning: async () =>
-              options.profileExists ? [] : [{ userId: values.userId }],
+            returning: () =>
+              Promise.resolve(
+                options.profileExists ? [] : [{ userId: values.userId }],
+              ),
           }),
-          returning: async () =>
-            table === financialGoals ? [{ id: 'goal-1' }] : [row],
+          returning: () =>
+            Promise.resolve(
+              table === financialGoals ? [{ id: 'goal-1' }] : [row],
+            ),
         };
       },
     })),
@@ -94,7 +90,7 @@ function fakeDatabase(
   return {
     inserts,
     database: {
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     },
   };
@@ -213,7 +209,9 @@ describe('/me/financial-onboarding', () => {
         .set('Authorization', 'Bearer valid')
         .send(payload)
         .expect(400)
-        .expect(({ body: response }) => expect(response.message).toBe(message));
+        .expect(({ body: response }: { body: { message?: string } }) =>
+          expect(response.message).toBe(message),
+        );
     }
     expect(database.inserts).toHaveLength(0);
   });

@@ -8,15 +8,11 @@ import {
   PLANNING_ARS_PER_USD,
   deriveEmergencyFundTarget,
   calculatePercentageSum,
-  recalculateAllocationAmounts,
-  allocationEntriesMatch,
-  rebalanceAllocationEntries,
 } from '@repo/finance-utils';
 import { getMonthlyFinancialSummary } from '../finances/goals.financial';
 import {
   type GoalPriority,
   type GoalProjection,
-  type GoalStatus,
   type GoalStrategy,
   type GoalsWorkspace,
   type GoalsWorkspaceSource,
@@ -45,27 +41,6 @@ import type { GoalCreationAllocationEntry } from './goal-proposal-allocation';
 export type { GoalCreationAllocationEntry } from './goal-proposal-allocation';
 
 export const PENDING_GOAL_ID = 'pending-goal';
-
-interface GoalCreationContext {
-  currentMonth: string;
-  expensesKnowledge: 'known' | 'unknown';
-  hasEmergencyFund: boolean;
-  plannedMonthlyContribution?: Money;
-  currentAllocation?: {
-    effectiveMonth: string;
-    entries: Array<{
-      goalId: string;
-      percentage: string;
-    }>;
-  };
-}
-
-interface GoalEditContext {
-  goalId: string;
-  status?: GoalStatus;
-  draft: GoalCreationDraft;
-  context: GoalCreationContext;
-}
 
 export interface GoalCreationState {
   source: GoalsWorkspaceSource;
@@ -116,17 +91,24 @@ export interface GoalCreationProposal {
   proposedSource: GoalsWorkspaceSource;
 }
 
-interface GoalCreationPreviewResult {
-  proposal: GoalCreationProposal;
-  previewToken: string;
-}
-
 function getNextCalendarMonthStr(currentMonth: string): string {
   const [year, month] = currentMonth.slice(0, 7).split('-').map(Number);
   const totalMonths = year * 12 + (month - 1) + 1;
   const targetYear = Math.floor(totalMonths / 12);
   const targetMonth = (totalMonths % 12) + 1;
   return `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+}
+
+export function findCurrentAllocationSnapshot(
+  snapshots: GoalsWorkspaceSource['snapshots'],
+  currentMonth: string,
+): GoalsWorkspaceSource['snapshots'][number] | undefined {
+  return snapshots
+    .filter(
+      (snapshot) =>
+        snapshot.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7),
+    )
+    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0];
 }
 
 export function selectGoalPlanSnapshot(
@@ -146,12 +128,10 @@ export function selectGoalPlanSnapshot(
   const sourceNextSnapshot = source.snapshots.find(
     (snapshot) => snapshot.effectiveMonth.slice(0, 7) === nextMonthStr,
   );
-  const currentSnapshot = source.snapshots
-    .filter(
-      (snapshot) =>
-        snapshot.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7),
-    )
-    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0];
+  const currentSnapshot = findCurrentAllocationSnapshot(
+    source.snapshots,
+    currentMonth,
+  );
   const snapshot = pendingNextSnapshot ?? sourceNextSnapshot ?? currentSnapshot;
   const allocations = snapshot
     ? (pendingNextSnapshot
@@ -761,7 +741,7 @@ function serializeGoalState(
 ): string {
   const state: GoalCreationState =
     'source' in stateOrSource && stateOrSource.source
-      ? (stateOrSource as GoalCreationState)
+      ? stateOrSource
       : {
           source: stateOrSource as GoalsWorkspaceSource,
           pendingSnapshots: [],

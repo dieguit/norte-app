@@ -139,14 +139,11 @@ export interface GoalsWorkspace {
   groups: Array<{ status: GoalStatus; goals: GoalWorkspaceItem[] }>;
 }
 
-type GoalsAppState =
-  { profile: 'missing' } | { profile: 'present'; workspace: GoalsWorkspace };
-
 export interface GoalsWorkspaceSource {
   profile?: {
     userId: string;
     baseCurrency: CurrencyCode;
-    expensesKnowledge: 'known' | 'unknown' | string;
+    expensesKnowledge: string;
     plannedMonthlyContribution?: string | null;
     goalDedicationPercentage?: string;
     onboardingCompleted: boolean;

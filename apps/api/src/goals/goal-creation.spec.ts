@@ -543,7 +543,9 @@ describe('buildGoalCreationProposal', () => {
 
     it('sets undefined amounts and commitment_absent projection when no plannedMonthlyContribution exists', () => {
       const source = createBaseWorkspaceSource();
-      source.profile!.plannedMonthlyContribution = null as any;
+      if (source.profile) {
+        source.profile.plannedMonthlyContribution = null;
+      }
       const state: GoalCreationState = {
         source,
         pendingSnapshots: [],

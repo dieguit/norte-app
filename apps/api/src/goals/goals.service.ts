@@ -7,7 +7,6 @@ import {
 import BigNumber from 'bignumber.js';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
-  AllocationChangeContextStateSchema,
   AllocationChangeConfirmationSchema,
   AllocationChangePreviewSchema,
   GoalLifecycleConfirmationSchema,
@@ -35,7 +34,6 @@ import { findUserContributions } from '../contributions/contribution-queries';
 import {
   buildCurrentGoalsPlanWorkspace,
   buildGoalsWorkspace,
-  type GoalsWorkspaceSource,
 } from '../finances/goals.engine';
 import { mapRowsToGoalsWorkspaceSource } from './goals.source';
 import { createMoney } from '@repo/finance-utils';
@@ -69,6 +67,7 @@ import {
   getGoalCreationState,
   getGoalEditState,
   getGoalLifecycleState,
+  selectWinningSnapshot,
   StaleAllocationChangePreviewError,
   StaleGoalCreationPreviewError,
   StaleGoalEditPreviewError,
@@ -134,12 +133,6 @@ const COMPLETION_DOMAIN_ERRORS = new Set([
 ]);
 
 const monthNow = () => new Date().toISOString().slice(0, 7);
-const iso = (date: Date | string | null | undefined) =>
-  date == null
-    ? date
-    : date instanceof Date
-      ? date.toISOString()
-      : String(date);
 const pick = <T extends object>(value: T, keys: readonly (keyof T)[]) =>
   Object.fromEntries(
     keys
@@ -283,7 +276,7 @@ function projectGoalPreview<
         }),
       },
     },
-  } as T;
+  };
 }
 
 export { mapRowsToGoalsWorkspaceSource } from './goals.source';
@@ -291,14 +284,7 @@ export { mapRowsToGoalsWorkspaceSource } from './goals.source';
 export function selectWorkspaceSnapshots<
   T extends { id: string; effectiveMonth: string },
 >(snapshots: T[], month: string) {
-  const eligible = snapshots
-    .filter((row) => row.effectiveMonth.slice(0, 7) <= month)
-    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth));
-  const current = eligible[0]
-    ? [eligible[0]]
-    : [...snapshots]
-        .sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth))
-        .slice(0, 1);
+  const current = selectWinningSnapshot(snapshots, month);
   const next = new Date(`${month}-01T00:00:00Z`);
   next.setUTCMonth(next.getUTCMonth() + 1);
   const nextMonth = next.toISOString().slice(0, 7);
@@ -328,7 +314,7 @@ export class GoalsService {
     return GoalCreationContextStateSchema.parse({
       profile: 'present',
       context: this.mapCreationContext(state, currentMonth),
-    }) as GoalCreationContextState;
+    });
   }
 
   async getPlanContext(userId: string, goalId?: string) {
@@ -917,7 +903,7 @@ export class GoalsService {
         'Completá tu perfil financiero antes de crear un objetivo.',
       );
     const draft = this.parseCreation(input, currentMonth);
-    let proposal;
+    let proposal!: ReturnType<typeof buildGoalCreationProposal>;
     try {
       proposal = buildGoalCreationProposal({ draft, state, currentMonth });
     } catch (error) {
@@ -1078,16 +1064,41 @@ export class GoalsService {
     > = withdrawals;
     const names = new Map(goalRows.map(({ id, name }) => [id, name]));
     const placeNames = new Map(places.map(({ id, name }) => [id, name]));
+    type ActivityRow = {
+      id: string;
+      userId?: string;
+      amount: string;
+      currency: string;
+      placeId?: string | null;
+      arsSpent: string | null;
+      effectiveRate: string | null;
+      createdAt: Date;
+    };
+    type ActivityAllocationRow = {
+      contributionId: string;
+      goalId: string;
+      amount: string;
+      percentage: string;
+    };
     const mapActivity = (
-      rows: any[],
-      activityAllocations: any[],
+      rows: ActivityRow[],
+      activityAllocations: ActivityAllocationRow[],
       kind: 'saving' | 'investment',
     ) =>
       rows.map((row) => ({
-        ...row,
+        id: row.id,
         kind,
+        userId: row.userId,
+        amount: row.amount,
+        currency: row.currency,
+        placeId: row.placeId ?? undefined,
         placeName:
-          kind === 'saving' ? (placeNames.get(row.placeId) ?? '') : undefined,
+          kind === 'saving'
+            ? (placeNames.get(row.placeId ?? '') ?? '')
+            : undefined,
+        arsSpent: row.arsSpent,
+        effectiveRate: row.effectiveRate,
+        createdAt: row.createdAt,
         allocations: activityAllocations
           .filter((allocation) => allocation.contributionId === row.id)
           .map((allocation) => ({
@@ -1128,6 +1139,6 @@ export class GoalsService {
     return GoalsWorkspaceSchema.parse({
       profile: 'present',
       workspace,
-    }) as GoalsWorkspace;
+    });
   }
 }

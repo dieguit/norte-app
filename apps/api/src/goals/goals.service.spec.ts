@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PgDialect } from 'drizzle-orm/pg-core';
+import type { SQL } from 'drizzle-orm';
 import {
   GoalsService,
   mapRowsToGoalsWorkspaceSource,
@@ -159,7 +160,7 @@ describe('GoalsService', () => {
   });
 
   it('scopes every owner query to the verified subject and returns an empty workspace', async () => {
-    const ownerQueries: Array<{ table: string; where: any }> = [];
+    const ownerQueries: Array<{ table: string; where: SQL<unknown> }> = [];
     const rows = {
       financialProfiles: {
         userId: 'subject',
@@ -181,21 +182,21 @@ describe('GoalsService', () => {
       'savingContributions',
       'investmentContributions',
     ];
-    const query = Object.fromEntries(
+    const query: Record<string, unknown> = Object.fromEntries(
       tables.map((table) => [
         table,
         {
-          findMany: vi.fn(async (args: any) => {
+          findMany: vi.fn((args: { where: SQL<unknown> }) => {
             ownerQueries.push({ table, where: args.where });
-            return [];
+            return Promise.resolve([]);
           }),
         },
       ]),
-    ) as Record<string, any>;
+    );
     query.financialProfiles = {
-      findFirst: vi.fn(async (args: any) => {
+      findFirst: vi.fn((args: { where: SQL<unknown> }) => {
         ownerQueries.push({ table: 'financialProfiles', where: args.where });
-        return rows.financialProfiles;
+        return Promise.resolve(rows.financialProfiles);
       }),
     };
     const service = new GoalsService({ query } as never);

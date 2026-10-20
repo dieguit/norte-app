@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm';
+import type { Transaction } from '../database/database.types';
 import { financialProfiles } from './profile.schema';
 
 export async function lockFinancialProfile(
-  tx: any,
+  tx: Transaction,
   userId: string,
 ): Promise<{ userId: string; plannedMonthlyContribution: string | null }> {
   const [profile] = await tx

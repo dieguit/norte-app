@@ -64,21 +64,23 @@ class TestableWhatsappAuthStoreService extends WhatsappAuthStoreService {
     super({} as never);
   }
 
-  protected override async read<T>(key: string): Promise<T | undefined> {
+  protected override read<T>(key: string): Promise<T | undefined> {
     const value = this.rows.get(key);
 
     if (value === undefined) {
-      return undefined;
+      return Promise.resolve(undefined);
     }
 
-    return this.deserialize<T>(value);
+    return Promise.resolve(this.deserialize<T>(value));
   }
 
-  protected override async write(key: string, value: unknown): Promise<void> {
+  protected override write(key: string, value: unknown): Promise<void> {
     this.rows.set(key, this.serialize(value));
+    return Promise.resolve();
   }
 
-  protected override async remove(key: string): Promise<void> {
+  protected override remove(key: string): Promise<void> {
     this.rows.delete(key);
+    return Promise.resolve();
   }
 }

@@ -49,24 +49,33 @@ const standardInput = {
 };
 
 function createHarness() {
-  const persisted = {
-    profile: null as any,
-    incomes: [] as any[],
-    expenses: [] as any[],
-    goal: null as any,
-    investment: null as any,
-    snapshot: null as any,
-    allocation: null as any,
+  type PersistedRecord = Record<string, unknown>;
+  const persisted: {
+    profile: PersistedRecord | null;
+    incomes: PersistedRecord[];
+    expenses: PersistedRecord[];
+    goal: PersistedRecord | null;
+    investment: PersistedRecord | null;
+    snapshot: PersistedRecord | null;
+    allocation: PersistedRecord | null;
+  } = {
+    profile: null,
+    incomes: [],
+    expenses: [],
+    goal: null,
+    investment: null,
+    snapshot: null,
+    allocation: null,
   };
   const tx = {
     insert: vi.fn((table: unknown) => {
       if (table === financialProfiles) {
         return {
-          values: (val: any) => {
+          values: (val: PersistedRecord) => {
             persisted.profile = val;
             return {
               onConflictDoNothing: () => ({
-                returning: () => [{ userId: val.userId }],
+                returning: () => [{ userId: val.userId as string }],
               }),
             };
           },
@@ -74,7 +83,7 @@ function createHarness() {
       }
       if (table === incomes) {
         return {
-          values: (val: any) => {
+          values: (val: PersistedRecord) => {
             persisted.incomes.push(val);
             return {
               returning: () => [
@@ -86,7 +95,7 @@ function createHarness() {
       }
       if (table === expenses) {
         return {
-          values: (val: any) => {
+          values: (val: PersistedRecord) => {
             persisted.expenses.push(val);
             return {
               returning: () => [
@@ -98,7 +107,7 @@ function createHarness() {
       }
       if (table === financialGoals) {
         return {
-          values: (val: any) => {
+          values: (val: PersistedRecord) => {
             persisted.goal = val;
             return {
               returning: () => [{ id: 'goal_1', ...val }],
@@ -108,7 +117,7 @@ function createHarness() {
       }
       if (table === goalInvestmentPositions) {
         return {
-          values: (val: any) => {
+          values: (val: PersistedRecord) => {
             persisted.investment = val;
             return { returning: vi.fn() };
           },
@@ -116,7 +125,7 @@ function createHarness() {
       }
       if (table === allocationPlanSnapshots) {
         return {
-          values: (val: any) => {
+          values: (val: PersistedRecord) => {
             persisted.snapshot = val;
             return {
               returning: () => [{ id: 'snapshot_1', ...val }],
@@ -126,7 +135,7 @@ function createHarness() {
       }
       if (table === allocationPlanEntries) {
         return {
-          values: (val: any) => {
+          values: (val: PersistedRecord) => {
             persisted.allocation = val;
             return {
               returning: () => [{ id: 'entry_1', ...val }],
@@ -142,7 +151,7 @@ function createHarness() {
     },
   };
   const db = {
-    transaction: vi.fn((callback: (executor: typeof tx) => unknown) =>
+    transaction: vi.fn(<T>(callback: (executor: typeof tx) => Promise<T>) =>
       callback(tx),
     ),
   };
@@ -181,7 +190,7 @@ describe('FinancialOnboardingService', () => {
     });
     expect(persisted.snapshot).toMatchObject({
       userId: 'user_1',
-      effectiveMonth: expect.stringMatching(/^\d{4}-\d{2}-01$/),
+      effectiveMonth: expect.stringMatching(/^\d{4}-\d{2}-01$/) as never,
       plannedMonthlyContribution: '225000.00',
     });
     expect(persisted.allocation).toEqual({
@@ -218,9 +227,9 @@ describe('FinancialOnboardingService', () => {
         incomes: [{ ...standardInput.incomes[0], effectiveMonth: '2020-01' }],
       });
 
-      expect(persisted.incomes[0].effectiveMonth).toBe('2026-08-01');
-      expect(persisted.expenses[0].effectiveMonth).toBe('2026-08-01');
-      expect(persisted.snapshot.effectiveMonth).toBe('2026-08-01');
+      expect(persisted.incomes[0]?.effectiveMonth).toBe('2026-08-01');
+      expect(persisted.expenses[0]?.effectiveMonth).toBe('2026-08-01');
+      expect(persisted.snapshot?.effectiveMonth).toBe('2026-08-01');
     } finally {
       vi.useRealTimers();
     }
@@ -253,9 +262,9 @@ describe('FinancialOnboardingService', () => {
     });
 
     expect(result).toEqual({ created: true });
-    expect(persisted.profile.plannedMonthlyContribution).toBe('135000.00');
-    expect(persisted.goal.targetAmount).toBe('300.00');
-    expect(persisted.snapshot.plannedMonthlyContribution).toBe('135000.00');
+    expect(persisted.profile?.plannedMonthlyContribution).toBe('135000.00');
+    expect(persisted.goal?.targetAmount).toBe('300.00');
+    expect(persisted.snapshot?.plannedMonthlyContribution).toBe('135000.00');
   });
 
   it('persists non-emergency goal target and desired date', async () => {
@@ -299,8 +308,8 @@ describe('FinancialOnboardingService', () => {
     });
 
     expect(result).toEqual({ created: true });
-    expect(persisted.profile.plannedMonthlyContribution).toBe('0.00');
-    expect(persisted.snapshot.plannedMonthlyContribution).toBe('0.00');
+    expect(persisted.profile?.plannedMonthlyContribution).toBe('0.00');
+    expect(persisted.snapshot?.plannedMonthlyContribution).toBe('0.00');
   });
 
   it('persists an investment goal with availability details', async () => {
@@ -320,7 +329,7 @@ describe('FinancialOnboardingService', () => {
     });
 
     expect(result).toEqual({ created: true });
-    expect(persisted.goal.targetAmount).toBe('1000000.00');
+    expect(persisted.goal?.targetAmount).toBe('1000000.00');
     expect(persisted.investment).toMatchObject({
       goalId: 'goal_1',
       currentValue: '0.00',

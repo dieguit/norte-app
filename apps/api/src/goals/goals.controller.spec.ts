@@ -15,14 +15,37 @@ import { GoalsService } from './goals.service';
 
 vi.mock('@clerk/backend', () => ({ verifyToken: vi.fn() }));
 
+interface SchemaWithProperties {
+  properties: Record<string, SchemaWithProperties>;
+  items?: SchemaWithProperties;
+}
+
+type SwaggerSchema = {
+  oneOf?: SwaggerSchema[];
+  $ref?: string;
+  type?: string;
+  properties?: Record<string, SwaggerSchema>;
+  items?: SwaggerSchema;
+  name?: string;
+  in?: string;
+};
+
+type SwaggerResponse = {
+  content?: {
+    'application/json'?: {
+      schema?: SwaggerSchema;
+    };
+  };
+};
+
 function responseSchema(
   document: OpenAPIObject,
   path: string,
   method: 'get' | 'post' | 'put' | 'patch',
-): any {
-  return (document.paths[path]![method]!.responses['200'] as any).content[
-    'application/json'
-  ].schema;
+): SwaggerSchema {
+  const endpoint = document.paths[path]?.[method];
+  const response = endpoint?.responses?.['200'] as SwaggerResponse | undefined;
+  return response?.content?.['application/json']?.schema ?? {};
 }
 
 const workspace = {
@@ -127,20 +150,22 @@ describe('GET /goals', () => {
       app,
       new DocumentBuilder().setTitle('test').setVersion('1').build(),
     );
-    const responseSchema = (
-      document.paths['/goals']?.get?.responses?.['200'] as any
-    )?.content?.['application/json']?.schema;
-    expect(responseSchema).toBeDefined();
-    expect(responseSchema.oneOf).toHaveLength(2);
-    const present = document.components?.schemas
-      ?.GoalsWorkspacePresentDto as any;
+    const endpoint = document.paths['/goals']?.get;
+    const response = endpoint?.responses?.['200'] as
+      SwaggerResponse | undefined;
+    const resSchema = response?.content?.['application/json']?.schema;
+    expect(resSchema).toBeDefined();
+    expect(resSchema?.oneOf).toHaveLength(2);
+    const schemas = document.components?.schemas;
+    const present = schemas?.GoalsWorkspacePresentDto as
+      SchemaWithProperties | undefined;
     expect(
-      present.properties.workspace.properties.financialSummary.properties
+      present?.properties.workspace.properties.financialSummary.properties
         .income,
     ).toBeDefined();
     expect(
-      present.properties.workspace.properties.groups.items.properties.goals
-        .items.properties.projection,
+      present?.properties.workspace.properties.groups.items?.properties.goals
+        .items?.properties.projection,
     ).toBeDefined();
   });
 
@@ -209,14 +234,17 @@ describe('GET /goals', () => {
     expect(allocationPreview.$ref).toContain('AllocationChangePreviewDto');
     expect(allocationConfirm.oneOf).toHaveLength(2);
     expect(document.paths['/goals/allocation/preview']).toBeDefined();
+    const schemas = document.components?.schemas;
     expect(
-      (document.components?.schemas?.GoalPlanContextPresentDto as any)
-        .properties.allocationContext,
+      (
+        schemas?.GoalPlanContextPresentDto as
+          { properties: { allocationContext: unknown } } | undefined
+      )?.properties.allocationContext,
     ).toBeDefined();
+    const planParameters = (document.paths['/goals/plan']?.get?.parameters ??
+      []) as Array<{ name?: string }>;
     expect(
-      document.paths['/goals/plan']?.get?.parameters?.some(
-        (parameter: any) => parameter.name === 'goalId',
-      ),
+      planParameters.some((parameter) => parameter.name === 'goalId'),
     ).toBe(true);
   });
 
@@ -304,18 +332,21 @@ describe('GET /goals', () => {
       app,
       new DocumentBuilder().setTitle('test').setVersion('1').build(),
     );
-    const planQuery = document.paths['/goals/plan']?.get?.parameters ?? [];
+    const planQuery = (document.paths['/goals/plan']?.get?.parameters ??
+      []) as Array<{ name?: string; in?: string }>;
     expect(
       planQuery.some(
-        (parameter: any) =>
-          parameter.name === 'action' && parameter.in === 'query',
+        (parameter) => parameter.name === 'action' && parameter.in === 'query',
       ),
     ).toBe(true);
     const planResponse = responseSchema(document, '/goals/plan', 'get');
     expect(planResponse.oneOf).toHaveLength(2);
+    const schemas = document.components?.schemas;
     expect(
-      (document.components?.schemas?.GoalPlanContextPresentDto as any)
-        .properties.lifecycleContext,
+      (
+        schemas?.GoalPlanContextPresentDto as
+          { properties: { lifecycleContext: unknown } } | undefined
+      )?.properties.lifecycleContext,
     ).toBeDefined();
     const lifecyclePreview = responseSchema(
       document,
@@ -421,9 +452,12 @@ describe('GET /goals', () => {
     expect(completionContext.oneOf).toHaveLength(2);
     expect(completionPreview.$ref).toContain('GoalCompletionPreviewDto');
     expect(completionConfirm.oneOf).toHaveLength(3);
+    const schemas = document.components?.schemas;
     expect(
-      (document.components?.schemas?.GoalCompletionContextPresentDto as any)
-        .properties.context,
+      (
+        schemas?.GoalCompletionContextPresentDto as
+          { properties: { context: unknown } } | undefined
+      )?.properties.context,
     ).toBeDefined();
   });
 });

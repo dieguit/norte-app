@@ -18,7 +18,6 @@ import {
   ConfirmAllocationChangeWireSchema,
   ConfirmGoalCreationWireSchema,
   GoalCreationContextMissingSchema,
-  GoalCreationContextPresentSchema,
   GoalCreationCreatedSchema,
   GoalCreationDraftWireSchema,
   GoalCreationPreviewSchema,

@@ -147,7 +147,7 @@ describe('HomeService', () => {
           {
             status: 'active',
             goals: [
-              { ...sampleGoalEligible, priority: 'invalid-priority' as any },
+              { ...sampleGoalEligible, priority: 'invalid-priority' as never },
             ],
           },
         ],

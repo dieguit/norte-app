@@ -20,15 +20,14 @@ import {
   SavingContributionEditPreviewSchema,
   SavingContributionPreviewSchema,
 } from '@repo/shared-types';
+import type { SavingContributionPreview } from '@repo/shared-types';
+import type { SavingContributionStaleDto } from './contributions.dto';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import {
   financialProfiles,
   savingContributions,
   investmentContributions,
   goalInvestmentPositions,
-  goalSavingsPositions,
-  savingContributionAllocations,
-  investmentContributionAllocations,
   savingsPlaces,
 } from '../profile/profile.schema';
 import { ClerkAuthGuard } from '../profile/clerk-auth.guard';
@@ -59,8 +58,13 @@ const investmentDraft = {
   amount: '200.00',
 };
 
+type WithId = { id: string };
+type WhereArg = {
+  where?: unknown;
+};
+
 function contributionDatabase() {
-  const profile: any = {
+  const profile = {
     userId: 'user-1',
     baseCurrency: 'ARS',
     expensesKnowledge: 'known',
@@ -70,7 +74,7 @@ function contributionDatabase() {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-  const goals: any[] = [
+  const goals = [
     {
       id: goalNotebook,
       userId: 'user-1',
@@ -120,7 +124,7 @@ function contributionDatabase() {
       updatedAt: new Date(),
     },
   ];
-  const places: any[] = [
+  const places = [
     {
       id: cashId,
       userId: 'user-1',
@@ -138,7 +142,7 @@ function contributionDatabase() {
       updatedAt: new Date(),
     },
   ];
-  const savingRows: any[] = [
+  const savingRows = [
     {
       id: savingContributionId,
       userId: 'user-1',
@@ -150,7 +154,7 @@ function contributionDatabase() {
       createdAt: new Date('2026-08-02T00:00:00Z'),
     },
   ];
-  const investmentRows: any[] = [
+  const investmentRows = [
     {
       id: investmentContributionId,
       userId: 'user-1',
@@ -161,7 +165,7 @@ function contributionDatabase() {
       createdAt: new Date('2026-08-03T00:00:00Z'),
     },
   ];
-  const savingAllocations: any[] = [
+  const savingAllocations = [
     {
       id: 'sal-1',
       contributionId: savingContributionId,
@@ -179,7 +183,7 @@ function contributionDatabase() {
       savingPositionId: 'sp-2',
     },
   ];
-  const investmentAllocations: any[] = [
+  const investmentAllocations = [
     {
       id: 'ial-1',
       contributionId: investmentContributionId,
@@ -189,14 +193,14 @@ function contributionDatabase() {
       investmentPositionId: 'ip-1',
     },
   ];
-  const savingPositions: any[] = [
+  const savingPositions = [
     { id: 'sp-1', goalId: goalNotebook, amount: '180.00', currency: 'ARS' },
     { id: 'sp-2', goalId: goalTrip, amount: '120.00', currency: 'ARS' },
   ];
-  const investmentPositions: any[] = [
+  const investmentPositions = [
     { id: 'ip-1', goalId: goalFund, currentValue: '1200.00', currency: 'ARS' },
   ];
-  const snapshots: any[] = [
+  const snapshots = [
     {
       id: 'snapshot-current',
       userId: 'user-1',
@@ -205,7 +209,7 @@ function contributionDatabase() {
       updatedAt: new Date(),
     },
   ];
-  const allocations: any[] = [
+  const allocations = [
     {
       id: 'plan-notebook',
       snapshotId: 'snapshot-current',
@@ -235,46 +239,54 @@ function contributionDatabase() {
     [];
   const params = (condition: unknown) =>
     new PgDialect().sqlToQuery(condition as never).params;
-  const byId = (rows: any[], condition: unknown) =>
+  const byId = <T extends WithId>(rows: T[], condition: unknown): T[] =>
     rows.filter((row) => params(condition).includes(row.id));
   const queries = {
-    financialProfiles: { findFirst: vi.fn(async () => profile) },
-    financialGoals: { findMany: vi.fn(async () => goals) },
-    incomes: { findMany: vi.fn(async () => []) },
-    expenses: { findMany: vi.fn(async () => []) },
-    allocationPlanSnapshots: { findMany: vi.fn(async () => snapshots) },
-    allocationPlanEntries: { findMany: vi.fn(async () => allocations) },
-    goalSavingsPositions: { findMany: vi.fn(async () => savingPositions) },
+    financialProfiles: { findFirst: vi.fn(() => Promise.resolve(profile)) },
+    financialGoals: { findMany: vi.fn(() => Promise.resolve(goals)) },
+    incomes: { findMany: vi.fn(() => Promise.resolve([])) },
+    expenses: { findMany: vi.fn(() => Promise.resolve([])) },
+    allocationPlanSnapshots: {
+      findMany: vi.fn(() => Promise.resolve(snapshots)),
+    },
+    allocationPlanEntries: {
+      findMany: vi.fn(() => Promise.resolve(allocations)),
+    },
+    goalSavingsPositions: {
+      findMany: vi.fn(() => Promise.resolve(savingPositions)),
+    },
     goalInvestmentPositions: {
-      findMany: vi.fn(async () => investmentPositions),
-      findFirst: vi.fn(
-        async (args: any) => filterRows(investmentPositions, args.where)[0],
+      findMany: vi.fn(() => Promise.resolve(investmentPositions)),
+      findFirst: vi.fn((args?: WhereArg) =>
+        Promise.resolve(filterRows(investmentPositions, args?.where)[0]),
       ),
     },
     savingsPlaces: {
-      findMany: vi.fn(async () => places),
-      findFirst: vi.fn(async (args: any) => filterRows(places, args.where)[0]),
+      findMany: vi.fn(() => Promise.resolve(places)),
+      findFirst: vi.fn((args?: WhereArg) =>
+        Promise.resolve(filterRows(places, args?.where)[0]),
+      ),
     },
     savingContributions: {
-      findMany: vi.fn(async () => savingRows),
-      findFirst: vi.fn(
-        async (args: any) => filterRows(savingRows, args.where)[0],
+      findMany: vi.fn(() => Promise.resolve(savingRows)),
+      findFirst: vi.fn((args?: WhereArg) =>
+        Promise.resolve(filterRows(savingRows, args?.where)[0]),
       ),
     },
     investmentContributions: {
-      findMany: vi.fn(async () => investmentRows),
-      findFirst: vi.fn(
-        async (args: any) => filterRows(investmentRows, args.where)[0],
+      findMany: vi.fn(() => Promise.resolve(investmentRows)),
+      findFirst: vi.fn((args?: WhereArg) =>
+        Promise.resolve(filterRows(investmentRows, args?.where)[0]),
       ),
     },
     savingContributionAllocations: {
-      findMany: vi.fn(async (args: any) =>
-        filterRows(savingAllocations, args.where),
+      findMany: vi.fn((args?: WhereArg) =>
+        Promise.resolve(filterRows(savingAllocations, args?.where)),
       ),
     },
     investmentContributionAllocations: {
-      findMany: vi.fn(async (args: any) =>
-        filterRows(investmentAllocations, args.where),
+      findMany: vi.fn((args?: WhereArg) =>
+        Promise.resolve(filterRows(investmentAllocations, args?.where)),
       ),
     },
   };
@@ -283,79 +295,63 @@ function contributionDatabase() {
     select: () => ({
       from: (table: unknown) => ({
         where: (condition: unknown) => ({
-          for: async () => {
-            if (table === financialProfiles) return [profile];
-            if (table === savingsPlaces) return byId(places, condition);
-            return [];
+          for: () => {
+            if (table === financialProfiles) return Promise.resolve([profile]);
+            if (table === savingsPlaces)
+              return Promise.resolve(byId(places, condition));
+            return Promise.resolve([]);
           },
         }),
       }),
     }),
     insert: (table: unknown) => ({
-      values: (values: any) => {
+      values: (values: unknown) => {
         writes.push({ table, values, params: [] });
         return Object.assign(Promise.resolve([]), {
-          returning: async () => [{ id: createdContributionId }],
+          returning: () => Promise.resolve([{ id: createdContributionId }]),
         });
       },
     }),
     update: (table: unknown) => ({
-      set: (values: any) => ({
+      set: (values: unknown) => ({
         where: (condition: unknown) => {
           writes.push({ table, values, params: params(condition) });
           return Object.assign(Promise.resolve([]), {
-            returning: async () => [{ id: 'updated' }],
+            returning: () => Promise.resolve([{ id: 'updated' }]),
           });
         },
       }),
     }),
     delete: (table: unknown) => ({
-      where: async (condition: unknown) => {
+      where: (condition: unknown) => {
         writes.push({ table, values: undefined, params: params(condition) });
+        return Promise.resolve();
       },
     }),
   };
   const db = {
     query: queries,
-    transaction: async (callback: (executor: typeof tx) => unknown) =>
-      callback(tx),
+    transaction: (callback: (executor: typeof tx) => unknown) =>
+      Promise.resolve(callback(tx)),
   };
   return { db, profile, goals, places, savingRows, investmentRows, writes };
 }
 
-const columns = new Proxy({}, { get: (_target, key) => String(key) }) as Record<
-  string,
-  string
->;
-
-function operators() {
-  return {
-    eq: (column: string, value: unknown) => ({ column, value }),
-    and: (...conditions: unknown[]) => conditions,
-    inArray: (column: string, values: unknown[]) => ({ column, values }),
-  };
-}
-
-function flattenClauses(
-  node: unknown,
-): Array<{ column: string; value?: unknown; values?: unknown[] }> {
-  if (Array.isArray(node)) return node.flatMap(flattenClauses);
-  return node
-    ? [node as { column: string; value?: unknown; values?: unknown[] }]
-    : [];
-}
-
-function filterRows(
-  rows: any[],
-  where:
-    | ((table: unknown, ops: ReturnType<typeof operators>) => unknown)
-    | undefined,
-) {
-  const clauses = flattenClauses(where?.(columns, operators()));
+// Interprets the `"column" = $n` / `"column" in ($n, ...)` clauses drizzle renders, ANDed.
+function filterRows<T extends Record<string, unknown>>(
+  rows: T[],
+  where: unknown,
+): T[] {
+  if (!where) return rows;
+  const { sql, params } = new PgDialect().sqlToQuery(where as never);
+  const clauses = [
+    ...sql.matchAll(/"(\w+)" (?:=|in) \(?(\$\d+(?:, \$\d+)*)\)?/g),
+  ].map(([, column, refs]) => ({
+    key: column.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()),
+    values: refs.split(', ').map((ref) => params[Number(ref.slice(1)) - 1]),
+  }));
   return rows.filter((row) =>
-    clauses.every(({ column, value, values }) =>
-      values ? values.includes(row[column]) : row[column] === value,
-    ),
+    clauses.every(({ key, values }) => values.includes(row[key])),
   );
 }
 
@@ -427,8 +423,8 @@ describe('contributions HTTP with actual service and repository', () => {
   });
 
   it('returns the missing profile state', async () => {
-    state.db.query.financialProfiles.findFirst = vi.fn(
-      async () => undefined,
+    state.db.query.financialProfiles.findFirst = vi.fn(() =>
+      Promise.resolve(undefined),
     ) as never;
     await request(app.getHttpServer())
       .get('/contributions/saving/context')
@@ -462,7 +458,7 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send({ ...savingDraft, amount: '0' })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe('Contribution amount must be positive'),
       );
     expect(state.writes).toHaveLength(0);
@@ -495,19 +491,23 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(savingDraft)
       .expect(200);
+    const previewBody = preview.body as SavingContributionPreview;
     const confirmed = await request(app.getHttpServer())
       .post('/contributions/saving')
       .set('Authorization', authorization)
-      .send({ draft: savingDraft, previewToken: preview.body.previewToken })
+      .send({ draft: savingDraft, previewToken: previewBody.previewToken })
       .expect(200);
     expect(SavingContributionConfirmationSchema.parse(confirmed.body)).toEqual({
       status: 'created',
-      contributionId: expect.any(String),
+      contributionId: expect.any(String) as unknown,
     });
     expect(state.writes).toContainEqual(
       expect.objectContaining({
         table: savingContributions,
-        values: expect.objectContaining({ amount: '300.00', placeId: bankId }),
+        values: expect.objectContaining({
+          amount: '300.00',
+          placeId: bankId,
+        }) as unknown,
       }),
     );
     expect(state.writes.some(({ table }) => table === financialProfiles)).toBe(
@@ -521,18 +521,20 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(savingDraft)
       .expect(200);
+    const previewBody = preview.body as SavingContributionPreview;
     state.goals.find((goal) => goal.id === goalNotebook)!.name =
       'Changed after preview';
     const writesBefore = state.writes.length;
     const stale = await request(app.getHttpServer())
       .post('/contributions/saving')
       .set('Authorization', authorization)
-      .send({ draft: savingDraft, previewToken: preview.body.previewToken })
+      .send({ draft: savingDraft, previewToken: previewBody.previewToken })
       .expect(200);
+    const staleBody = stale.body as SavingContributionStaleDto;
     expect(SavingContributionConfirmationSchema.parse(stale.body).status).toBe(
       'stale',
     );
-    expect(stale.body.preview.previewToken).not.toBe(preview.body.previewToken);
+    expect(staleBody.preview.previewToken).not.toBe(previewBody.previewToken);
     expect(state.writes).toHaveLength(writesBefore);
   });
 
@@ -542,8 +544,9 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(investmentDraft)
       .expect(200);
+    const previewBody = preview.body as SavingContributionPreview;
     expect(
-      preview.body.preview.allocations.map((allocation: any) => [
+      previewBody.preview.allocations.map((allocation) => [
         allocation.goalId,
         allocation.amount.amount,
       ]),
@@ -551,19 +554,21 @@ describe('contributions HTTP with actual service and repository', () => {
     await request(app.getHttpServer())
       .post('/contributions/saving')
       .set('Authorization', authorization)
-      .send({ draft: investmentDraft, previewToken: preview.body.previewToken })
+      .send({ draft: investmentDraft, previewToken: previewBody.previewToken })
       .expect(200)
-      .expect(({ body }) => expect(body.status).toBe('created'));
+      .expect(({ body }: { body: { status: string } }) =>
+        expect(body.status).toBe('created'),
+      );
     expect(state.writes).toContainEqual(
       expect.objectContaining({
         table: investmentContributions,
-        values: expect.objectContaining({ amount: '200.00' }),
+        values: expect.objectContaining({ amount: '200.00' }) as unknown,
       }),
     );
     expect(state.writes).toContainEqual({
       table: goalInvestmentPositions,
       values: { currentValue: '1400.00' },
-      params: expect.any(Array),
+      params: expect.any(Array) as unknown,
     });
     expect(
       state.writes.some(({ table }) => table === savingContributions),
@@ -593,7 +598,7 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(savingDraft)
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'Contribution not found or not owned by user.',
         ),
@@ -606,7 +611,7 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(savingDraft)
       .expect(200)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { previewToken: string } }) =>
         expect(body.previewToken).toMatch(/^[a-f0-9]{64}$/),
       );
   });
@@ -620,7 +625,10 @@ describe('contributions HTTP with actual service and repository', () => {
     expect(state.writes).toContainEqual(
       expect.objectContaining({
         table: savingContributions,
-        values: expect.objectContaining({ amount: '500.00', placeId: bankId }),
+        values: expect.objectContaining({
+          amount: '500.00',
+          placeId: bankId,
+        }) as unknown,
       }),
     );
   });
@@ -633,12 +641,12 @@ describe('contributions HTTP with actual service and repository', () => {
     expect(state.writes).toContainEqual({
       table: goalInvestmentPositions,
       values: { currentValue: '1000.00' },
-      params: expect.any(Array),
+      params: expect.any(Array) as unknown,
     });
     expect(state.writes).toContainEqual({
       table: investmentContributions,
       values: undefined,
-      params: expect.any(Array),
+      params: expect.any(Array) as unknown,
     });
   });
 
@@ -648,7 +656,7 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send({ draft: savingDraft })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'Contribution not found or not owned by user.',
         ),
@@ -657,7 +665,7 @@ describe('contributions HTTP with actual service and repository', () => {
       .delete(`/contributions/saving/${foreignContributionId}`)
       .set('Authorization', authorization)
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'Contribution not found or not owned by user.',
         ),
@@ -672,12 +680,13 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(foreignDraft)
       .expect(200);
+    const previewBody = preview.body as SavingContributionPreview;
     await request(app.getHttpServer())
       .post('/contributions/saving')
       .set('Authorization', authorization)
-      .send({ draft: foreignDraft, previewToken: preview.body.previewToken })
+      .send({ draft: foreignDraft, previewToken: previewBody.previewToken })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe('Lugar de ahorro no encontrado.'),
       );
     expect(state.writes).toHaveLength(0);
@@ -689,30 +698,32 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(savingDraft)
       .expect(200);
+    const previewBody = preview.body as SavingContributionPreview;
     await request(app.getHttpServer())
       .post('/contributions/saving')
       .set('Authorization', authorization)
       .send({
         draft: savingDraft,
-        previewToken: preview.body.previewToken,
+        previewToken: previewBody.previewToken,
         catchUpMonth: '2026-06',
       })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe('Solo podés regularizar el mes anterior.'),
       );
     expect(state.writes).toHaveLength(0);
   });
 
   it('hides unexpected database errors behind a generic 500 without leaking SQL', async () => {
-    state.db.query.financialProfiles.findFirst = vi.fn(async () => {
-      throw new Error('SELECT secret_column FROM financial_profiles');
-    }) as never;
+    state.db.query.financialProfiles.findFirst = vi.fn(() =>
+      Promise.reject(new Error('SELECT secret_column FROM financial_profiles')),
+    );
     const context = await request(app.getHttpServer())
       .get('/contributions/saving/context')
       .set('Authorization', authorization)
       .expect(500);
-    expect(context.body.message).toEqual(
+    const contextBody = context.body as { message: string };
+    expect(contextBody.message).toEqual(
       expect.stringMatching(/internal server error/i),
     );
     const preview = await request(app.getHttpServer())
@@ -720,8 +731,9 @@ describe('contributions HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(savingDraft)
       .expect(500);
+    const previewBody = preview.body as { message: string };
     expect(
-      JSON.stringify({ context: context.body, preview: preview.body }),
+      JSON.stringify({ context: contextBody, preview: previewBody }),
     ).not.toContain('secret_column');
   });
 });

@@ -30,7 +30,7 @@ describe('ExpensesService', () => {
     });
     const tx = { insert: vi.fn().mockReturnValue({ values }) };
     const service = new ExpensesService({
-      transaction: (callback) => callback(tx),
+      transaction: <T>(callback: (t: typeof tx) => Promise<T>) => callback(tx),
     } as never);
     await expect(
       service.create('user-1', { draft, effectiveMonth: '2026-01' }),
@@ -68,7 +68,8 @@ describe('ExpensesService', () => {
         })),
       };
       const service = new ExpensesService({
-        transaction: (callback) => callback(tx),
+        transaction: <T>(callback: (t: typeof tx) => Promise<T>) =>
+          callback(tx),
       } as never);
       const tinyDraft = { ...draft, amount: '0.0001' };
 
@@ -96,7 +97,7 @@ describe('ExpensesService', () => {
       insert: vi.fn(() => ({ values: vi.fn() })),
     };
     const service = new ExpensesService({
-      transaction: (callback) => callback(tx),
+      transaction: <T>(callback: (t: typeof tx) => Promise<T>) => callback(tx),
     } as never);
     await expect(
       service.create('user-1', {
@@ -124,7 +125,7 @@ describe('ExpensesService', () => {
       insert: vi.fn().mockReturnValue({ values: insertValues }),
     };
     const service = new ExpensesService({
-      transaction: (callback) => callback(tx),
+      transaction: <T>(callback: (t: typeof tx) => Promise<T>) => callback(tx),
     } as never);
     await service.update('user-1', uuid(1), {
       draft,
@@ -146,7 +147,7 @@ describe('ExpensesService', () => {
       delete: vi.fn(),
     };
     const service = new ExpensesService({
-      transaction: (callback) => callback(tx),
+      transaction: <T>(callback: (t: typeof tx) => Promise<T>) => callback(tx),
     } as never);
     await service.delete('user-1', uuid(1), '2026-04');
     expect(set).toHaveBeenCalledWith({ endMonth: '2026-04-01' });

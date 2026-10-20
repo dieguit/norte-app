@@ -61,9 +61,9 @@ describe('ClerkAuthGuard', () => {
     ['wrong issuer', { sub: 'subject', iss: 'https://wrong.example.test' }],
     ['missing subject', { iss: 'https://clerk.example.test' }],
   ])('rejects %s', async (_label, result) => {
-    vi.mocked(verifyToken).mockImplementationOnce(async () => {
-      if (result instanceof Error) throw result;
-      return result as never;
+    vi.mocked(verifyToken).mockImplementationOnce(() => {
+      if (result instanceof Error) return Promise.reject(result);
+      return Promise.resolve(result as never);
     });
     const guard = new ClerkAuthGuard(config as never);
     const { executionContext } = context('Bearer token');

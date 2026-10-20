@@ -1,11 +1,12 @@
 import { and, eq } from 'drizzle-orm';
+import type { Executor, Transaction } from '../database/database.types';
 import { savingsPlaces } from '../profile/profile.schema';
 
 export type SavingsPlaceSelection =
   { kind: 'existing'; placeId: string } | { kind: 'new'; name: string };
 
 export async function lockOwnedSavingsPlaces(
-  tx: any,
+  tx: Transaction,
   userId: string,
   placeIds: string[],
 ): Promise<void> {
@@ -22,7 +23,7 @@ export async function lockOwnedSavingsPlaces(
 }
 
 export async function findOrCreateSavingsPlace(
-  executor: any,
+  executor: Executor,
   userId: string,
   name: string,
 ): Promise<{ id: string; name: string } | null> {
@@ -33,21 +34,25 @@ export async function findOrCreateSavingsPlace(
     .values({ userId, name: trimmed, normalizedName })
     .onConflictDoNothing();
   const place = await executor.query.savingsPlaces.findFirst({
-    where: (table: any, { and, eq }: any) =>
-      and(eq(table.userId, userId), eq(table.normalizedName, normalizedName)),
+    where: and(
+      eq(savingsPlaces.userId, userId),
+      eq(savingsPlaces.normalizedName, normalizedName),
+    ),
   });
   return place ? { id: place.id, name: place.name } : null;
 }
 
 export async function resolveSavingsPlace(
-  executor: any,
+  executor: Executor,
   userId: string,
   selection: SavingsPlaceSelection,
 ): Promise<{ id: string; name: string }> {
   if (selection.kind === 'existing') {
     const place = await executor.query.savingsPlaces.findFirst({
-      where: (table: any, { and, eq }: any) =>
-        and(eq(table.id, selection.placeId), eq(table.userId, userId)),
+      where: and(
+        eq(savingsPlaces.id, selection.placeId),
+        eq(savingsPlaces.userId, userId),
+      ),
     });
     if (!place) throw new Error('Lugar de ahorro no encontrado.');
     return { id: place.id, name: place.name };

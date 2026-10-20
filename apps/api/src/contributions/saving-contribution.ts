@@ -5,7 +5,6 @@ import {
   type InvestmentContributionCurrencyState,
   type InvestmentContributionDataState,
   type SavingAllocationPreview,
-  type SavingContributionContext,
   type SavingContributionPreviewResult as BaseSavingContributionPreviewResult,
   type SavingDraft,
   type SavingDraftInput,
@@ -23,7 +22,6 @@ import {
 } from '@repo/finance-utils';
 import {
   type ContributionKind,
-  type GoalProjection,
   type GoalsWorkspaceSource,
   buildGoalsWorkspace,
 } from '../finances/goals.engine';
@@ -41,7 +39,7 @@ export interface EligibleGoalSource {
   id: string;
   name?: string;
   status?: string;
-  currency: CurrencyCode | string;
+  currency: string;
   strategy: string;
   percentage?: string | number;
 }
@@ -137,10 +135,6 @@ export function getInvestmentContributionDataState(
     usd: getInvestmentContributionCurrencyState(source, 'USD'),
   };
 }
-
-type SavingContributionContextState =
-  | { profile: 'missing' }
-  | { profile: 'present'; context: SavingContributionContext };
 
 export interface BuildSavingPreviewInput {
   kind?: ContributionKind;

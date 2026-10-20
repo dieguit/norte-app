@@ -323,32 +323,36 @@ describe('goal creation repository', () => {
       'p',
       editDraft,
     );
-    const updates: Array<{ table: unknown; values: any }> = [];
+    const updates: Array<{ table: unknown; values: unknown }> = [];
     const tx = {
       query: queries,
       select: () => ({
         from: () => ({
           where: () => ({
-            for: async () => [
-              { userId: 'u', plannedMonthlyContribution: '100.00' },
-            ],
-            limit: async () => [{ id: 's' }],
+            for: () =>
+              Promise.resolve([
+                { userId: 'u', plannedMonthlyContribution: '100.00' },
+              ]),
+            limit: () => Promise.resolve([{ id: 's' }]),
           }),
         }),
       }),
       update: (table: unknown) => ({
-        set: (values: any) => ({
-          where: async () => {
+        set: (values: unknown) => ({
+          where: () => {
             updates.push({ table, values });
+            return Promise.resolve();
           },
         }),
       }),
-      delete: () => ({ where: async () => [] }),
-      insert: () => ({ values: async () => ({ returning: async () => [] }) }),
+      delete: () => ({ where: () => Promise.resolve([]) }),
+      insert: () => ({
+        values: () => Promise.resolve({ returning: () => Promise.resolve([]) }),
+      }),
     };
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     };
     await confirmGoalEditInRepository(db as never, {
@@ -360,7 +364,7 @@ describe('goal creation repository', () => {
     });
     expect(updates).toContainEqual({
       table: financialGoals,
-      values: expect.objectContaining({ name: 'Renamed' }),
+      values: expect.objectContaining({ name: 'Renamed' }) as never,
     });
     const positionUpdate = updates.find(
       ({ table }) => table === goalInvestmentPositions,
@@ -402,7 +406,9 @@ describe('goal creation repository', () => {
           ]),
       },
       allocationPlanEntries: {
-        findMany: vi.fn().mockImplementation(async () => allocationRows),
+        findMany: vi
+          .fn()
+          .mockImplementation(() => Promise.resolve(allocationRows)),
       },
     });
     const dbRead = { query: queries };
@@ -420,34 +426,37 @@ describe('goal creation repository', () => {
       select: () => ({
         from: () => ({
           where: () => ({
-            for: async () => [
-              { userId: 'u', plannedMonthlyContribution: '100.00' },
-            ],
+            for: () =>
+              Promise.resolve([
+                { userId: 'u', plannedMonthlyContribution: '100.00' },
+              ]),
           }),
         }),
       }),
       update: () => ({
         set: () => ({
-          where: async () => {
+          where: () => {
             writes.push('update');
+            return Promise.resolve();
           },
         }),
       }),
       delete: () => ({
-        where: async () => {
+        where: () => {
           writes.push('delete');
+          return Promise.resolve();
         },
       }),
       insert: () => ({
-        values: async () => {
+        values: () => {
           writes.push('insert');
-          return { returning: async () => [] };
+          return Promise.resolve({ returning: () => Promise.resolve([]) });
         },
       }),
     };
     const db = {
       ...dbRead,
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     };
     const error = await confirmGoalEditInRepository(db as never, {
@@ -458,10 +467,13 @@ describe('goal creation repository', () => {
       previewToken: token,
     }).catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(StaleGoalEditPreviewError);
-    expect((error as any).refreshedPreview.previewToken).not.toBe(token);
-    expect((error as any).refreshedPreview.proposal.normalizedGoal.name).toBe(
-      'Auto',
-    );
+    expect(
+      (error as StaleGoalEditPreviewError).refreshedPreview.previewToken,
+    ).not.toBe(token);
+    expect(
+      (error as StaleGoalEditPreviewError).refreshedPreview.proposal
+        .normalizedGoal.name,
+    ).toBe('Auto');
     expect(writes).toEqual([]);
   });
 
@@ -484,15 +496,17 @@ describe('goal creation repository', () => {
     const tx = {
       query: queries,
       select: () => ({
-        from: () => ({ where: () => ({ for: async () => [{ userId: 'u' }] }) }),
+        from: () => ({
+          where: () => ({ for: () => Promise.resolve([{ userId: 'u' }]) }),
+        }),
       }),
     };
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     };
-    const invalidDraft = { ...draft, targetAmount: '-50' } as any;
+    const invalidDraft = { ...draft, targetAmount: '-50' };
     await expect(
       confirmGoalEditInRepository(db as never, {
         userId: 'u',
@@ -523,7 +537,9 @@ describe('goal creation repository', () => {
     const tx = {
       query: queries,
       select: () => ({
-        from: () => ({ where: () => ({ for: async () => [{ userId: 'u' }] }) }),
+        from: () => ({
+          where: () => ({ for: () => Promise.resolve([{ userId: 'u' }]) }),
+        }),
       }),
       update: () => {
         throw new Error('unexpected write');
@@ -537,7 +553,7 @@ describe('goal creation repository', () => {
     };
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     };
     for (const invalidDraft of [
@@ -597,32 +613,42 @@ describe('goal creation repository', () => {
       select: () => ({
         from: () => ({
           where: () => ({
-            for: async () => [
-              { userId: 'u', plannedMonthlyContribution: '200.00' },
-            ],
-            limit: async () => [snapshot],
+            for: () =>
+              Promise.resolve([
+                { userId: 'u', plannedMonthlyContribution: '200.00' },
+              ]),
+            limit: () => Promise.resolve([snapshot]),
           }),
         }),
       }),
       update: (table: unknown) => ({
-        set: (values: any) => ({
-          where: async () => {
-            if (table === financialGoals) persisted.name = values.name;
-            if (table === allocationPlanSnapshots)
+        set: (values: {
+          name?: string;
+          plannedMonthlyContribution?: string;
+        }) => ({
+          where: () => {
+            if (table === financialGoals && values.name !== undefined)
+              persisted.name = values.name;
+            if (
+              table === allocationPlanSnapshots &&
+              values.plannedMonthlyContribution !== undefined
+            )
               persisted.commitment = values.plannedMonthlyContribution;
+            return Promise.resolve();
           },
         }),
       }),
       delete: (table: unknown) => ({
-        where: async () => {
+        where: () => {
           if (table === allocationPlanEntries) persisted.entries = [];
+          return Promise.resolve();
         },
       }),
       insert: (table: unknown) => ({
-        values: async () => {
+        values: () => {
           if (table === allocationPlanEntries)
-            throw new Error('allocation insert failed');
-          return { returning: async () => [] };
+            return Promise.reject(new Error('allocation insert failed'));
+          return Promise.resolve({ returning: () => Promise.resolve([]) });
         },
       }),
     };
@@ -709,11 +735,13 @@ describe('goal creation repository', () => {
       select: () => ({
         from: () => ({
           where: () => ({
-            for: async () => {
+            for: () => {
               profileLocked = true;
-              return [{ userId: 'u', plannedMonthlyContribution: '100.00' }];
+              return Promise.resolve([
+                { userId: 'u', plannedMonthlyContribution: '100.00' },
+              ]);
             },
-            limit: async () => [],
+            limit: () => Promise.resolve([]),
           }),
         }),
       }),
@@ -721,18 +749,19 @@ describe('goal creation repository', () => {
         values: (values: unknown) => {
           inserted.push({ table, values });
           return {
-            returning: async () => [
-              { id: table === financialGoals ? 'new-goal' : 'new-snapshot' },
-            ],
+            returning: () =>
+              Promise.resolve([
+                { id: table === financialGoals ? 'new-goal' : 'new-snapshot' },
+              ]),
           };
         },
       }),
-      update: () => ({ set: () => ({ where: async () => [] }) }),
-      delete: () => ({ where: async () => [] }),
+      update: () => ({ set: () => ({ where: () => Promise.resolve([]) }) }),
+      delete: () => ({ where: () => Promise.resolve([]) }),
     };
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     };
     const before = await getGoalCreationState(db as never, 'u', '2026-08');
@@ -795,9 +824,9 @@ describe('goal creation repository', () => {
     ];
     const queries = stateQueries({
       financialGoals: {
-        findMany: vi.fn().mockImplementation(async () => {
+        findMany: vi.fn().mockImplementation(() => {
           if (inTransaction && profileLocked) transactionReloadedState = true;
-          return goals;
+          return Promise.resolve(goals);
         }),
       },
       allocationPlanSnapshots: {
@@ -812,11 +841,13 @@ describe('goal creation repository', () => {
       select: () => ({
         from: () => ({
           where: () => ({
-            for: async () => {
+            for: () => {
               profileLocked = true;
-              return [{ userId: 'u', plannedMonthlyContribution: '100.00' }];
+              return Promise.resolve([
+                { userId: 'u', plannedMonthlyContribution: '100.00' },
+              ]);
             },
-            limit: async () => [],
+            limit: () => Promise.resolve([]),
           }),
         }),
       }),
@@ -835,7 +866,7 @@ describe('goal creation repository', () => {
     };
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) => {
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) => {
         inTransaction = true;
         return callback(tx);
       },
@@ -884,10 +915,11 @@ describe('goal creation repository', () => {
       select: () => ({
         from: () => ({
           where: () => ({
-            for: async () => [
-              { userId: 'u', plannedMonthlyContribution: '100.00' },
-            ],
-            limit: async () => [],
+            for: () =>
+              Promise.resolve([
+                { userId: 'u', plannedMonthlyContribution: '100.00' },
+              ]),
+            limit: () => Promise.resolve([]),
           }),
         }),
       }),
@@ -896,11 +928,11 @@ describe('goal creation repository', () => {
           if (table === allocationPlanEntries)
             throw new Error('allocation insert failed');
           writes.push({ table, values });
-          return { returning: async () => [{ id: 'new-goal' }] };
+          return { returning: () => Promise.resolve([{ id: 'new-goal' }]) };
         },
       }),
-      update: () => ({ set: () => ({ where: async () => [] }) }),
-      delete: () => ({ where: async () => [] }),
+      update: () => ({ set: () => ({ where: () => Promise.resolve([]) }) }),
+      delete: () => ({ where: () => Promise.resolve([]) }),
     };
     const db = {
       query: queries,
@@ -963,9 +995,9 @@ describe('goal creation repository', () => {
     ];
     const queries = stateQueries({
       financialGoals: {
-        findMany: vi.fn().mockImplementation(async () => {
+        findMany: vi.fn().mockImplementation(() => {
           if (inTransaction && locked) transactionReloaded = true;
-          return [goal, paused];
+          return Promise.resolve([goal, paused]);
         }),
       },
       allocationPlanSnapshots: {
@@ -981,35 +1013,40 @@ describe('goal creation repository', () => {
       select: () => ({
         from: () => ({
           where: () => ({
-            for: async () => {
+            for: () => {
               locked = true;
-              return [{ userId: 'u', plannedMonthlyContribution: '100.00' }];
+              return Promise.resolve([
+                { userId: 'u', plannedMonthlyContribution: '100.00' },
+              ]);
             },
-            limit: async () => [{ id: 'current' }],
+            limit: () => Promise.resolve([{ id: 'current' }]),
           }),
         }),
       }),
       update: (table: unknown) => ({
         set: (values: unknown) => ({
-          where: async () => {
+          where: () => {
             writes.push({ table, values });
+            return Promise.resolve();
           },
         }),
       }),
       delete: (table: unknown) => ({
-        where: async () => {
+        where: () => {
           writes.push({ table });
+          return Promise.resolve();
         },
       }),
       insert: (table: unknown) => ({
-        values: async (values: unknown) => {
+        values: (values: unknown) => {
           writes.push({ table, values });
+          return Promise.resolve();
         },
       }),
     };
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) => {
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) => {
         inTransaction = true;
         return callback(tx);
       },
@@ -1077,7 +1114,8 @@ describe('goal creation repository', () => {
         findMany: vi.fn().mockResolvedValue(allocations),
       },
     });
-    const writes: Array<{ table: unknown; operation: string; data?: any }> = [];
+    const writes: Array<{ table: unknown; operation: string; data?: unknown }> =
+      [];
     let transactionCount = 0;
     const tx = {
       query: queries,
@@ -1088,37 +1126,45 @@ describe('goal creation repository', () => {
             table = selected;
             return {
               where: () => ({
-                for: async () => [
-                  { userId: 'u', plannedMonthlyContribution: '100.00' },
-                ],
-                limit: async () =>
-                  table === allocationPlanSnapshots ? [{ id: 'current' }] : [],
+                for: () =>
+                  Promise.resolve([
+                    { userId: 'u', plannedMonthlyContribution: '100.00' },
+                  ]),
+                limit: () =>
+                  Promise.resolve(
+                    table === allocationPlanSnapshots
+                      ? [{ id: 'current' }]
+                      : [],
+                  ),
               }),
             };
           },
         };
       },
       update: (table: unknown) => ({
-        set: (data: any) => ({
-          where: async () => {
+        set: (data: unknown) => ({
+          where: () => {
             writes.push({ table, operation: 'update', data });
+            return Promise.resolve();
           },
         }),
       }),
       delete: (table: unknown) => ({
-        where: async () => {
+        where: () => {
           writes.push({ table, operation: 'delete' });
+          return Promise.resolve();
         },
       }),
       insert: (table: unknown) => ({
-        values: async (data: any) => {
+        values: (data: unknown) => {
           writes.push({ table, operation: 'insert', data });
+          return Promise.resolve();
         },
       }),
     };
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) => {
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) => {
         transactionCount += 1;
         return callback(tx);
       },
@@ -1160,9 +1206,9 @@ describe('goal creation repository', () => {
     const inserted = writes.find(
       ({ table, operation }) =>
         table === allocationPlanEntries && operation === 'insert',
-    )?.data;
+    )?.data as Array<{ goalId: string; percentage: string }> | undefined;
     expect(
-      inserted.map(({ goalId, percentage }: any) => ({ goalId, percentage })),
+      inserted?.map(({ goalId, percentage }) => ({ goalId, percentage })),
     ).toEqual([
       { goalId: 'g1', percentage: '25.00' },
       { goalId: 'g2', percentage: '75.00' },
@@ -1203,19 +1249,20 @@ describe('goal lifecycle repository', () => {
   ) {
     const queries = stateQueries({
       financialGoals: {
-        findMany: vi.fn().mockImplementation(async () => goals),
+        findMany: vi.fn().mockImplementation(() => Promise.resolve(goals)),
       },
     });
-    const writes: Array<{ table: unknown; operation: string; data?: any }> = [];
+    const writes: Array<{ table: unknown; operation: string; data?: unknown }> =
+      [];
     let locked = false;
     let txReadsAfterLock = false;
-    queries.financialGoals.findMany.mockImplementation(async () => {
+    queries.financialGoals.findMany.mockImplementation(() => {
       if (locked) txReadsAfterLock = true;
-      return goals;
+      return Promise.resolve(goals);
     });
     const tx = {
       query: queries,
-      select: (selection: unknown) => {
+      select: () => {
         let table: unknown;
         const builder = {
           from: (source: unknown) => {
@@ -1223,40 +1270,45 @@ describe('goal lifecycle repository', () => {
             return builder;
           },
           where: () => builder,
-          for: async () => {
+          for: () => {
             locked = true;
-            return [{ userId: 'u', plannedMonthlyContribution: '100.00' }];
+            return Promise.resolve([
+              { userId: 'u', plannedMonthlyContribution: '100.00' },
+            ]);
           },
-          limit: async () => (table === allocationPlanSnapshots ? [] : []),
+          limit: () =>
+            Promise.resolve(table === allocationPlanSnapshots ? [] : []),
         };
         return builder;
       },
       update: (table: unknown) => ({
-        set: (data: any) => ({
-          where: async () => {
+        set: (data: unknown) => ({
+          where: () => {
             writes.push({ table, operation: 'update', data });
+            return Promise.resolve();
           },
         }),
       }),
       delete: (table: unknown) => ({
-        where: async () => {
+        where: () => {
           writes.push({ table, operation: 'delete' });
+          return Promise.resolve();
         },
       }),
       insert: (table: unknown) => ({
-        values: (data: any) => {
+        values: (data: unknown) => {
           if (table === allocationPlanEntries && failEntries)
             throw new Error('allocation insert failed');
           writes.push({ table, operation: 'insert', data });
           return table === allocationPlanSnapshots
-            ? { returning: async () => [{ id: 'new-snapshot' }] }
+            ? { returning: () => Promise.resolve([{ id: 'new-snapshot' }]) }
             : Promise.resolve(undefined);
         },
       }),
     };
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) => {
+      transaction: async <T>(callback: (executor: typeof tx) => Promise<T>) => {
         const before = writes.slice();
         try {
           return await callback(tx);

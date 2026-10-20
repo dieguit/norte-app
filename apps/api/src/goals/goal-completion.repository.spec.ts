@@ -135,8 +135,8 @@ function completionTx(
     select: () => ({
       from: (table: unknown) => ({
         where: () => ({
-          for: async () => lockRow(table),
-          limit: async () => [],
+          for: () => Promise.resolve(lockRow(table)),
+          limit: () => Promise.resolve([]),
         }),
       }),
     }),
@@ -145,17 +145,17 @@ function completionTx(
         where: () => {
           writes.push({ table, values });
           return Object.assign(Promise.resolve(), {
-            returning: async () => [{ id: 'g' }],
+            returning: () => Promise.resolve([{ id: 'g' }]),
           });
         },
       }),
     }),
-    delete: () => ({ where: async () => [] }),
+    delete: () => ({ where: () => Promise.resolve([]) }),
     insert: (table: unknown) => ({
       values: (values: unknown) => {
         writes.push({ table, values });
         return Object.assign(Promise.resolve([{ id: 'new-snapshot' }]), {
-          returning: async () => [{ id: 'new-snapshot' }],
+          returning: () => Promise.resolve([{ id: 'new-snapshot' }]),
         });
       },
     }),
@@ -243,11 +243,11 @@ describe('goal completion repository', () => {
       'g',
     );
     const token = createGoalCompletionPreviewToken(preview!, '2026-08', draft);
-    const writes: Array<{ table: unknown; values: any }> = [];
+    const writes: Array<{ table: unknown; values: unknown }> = [];
     const tx = completionTx(queries, writes);
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     };
 
@@ -258,7 +258,7 @@ describe('goal completion repository', () => {
         draft,
         previewToken: token,
       }),
-    ).resolves.toMatchObject({ completedAt: expect.any(String) });
+    ).resolves.toMatchObject({ completedAt: expect.any(String) as never });
 
     expect(writes).toContainEqual({
       table: goalCompletionWithdrawals,
@@ -273,11 +273,11 @@ describe('goal completion repository', () => {
           placeId: 'cash',
           amount: '300.00',
         }),
-      ]),
+      ]) as never,
     });
     expect(writes).toContainEqual({
       table: financialGoals,
-      values: expect.objectContaining({ status: 'completed' }),
+      values: expect.objectContaining({ status: 'completed' }) as never,
     });
     expect(writes.some(({ table }) => table === financialProfiles)).toBe(false);
     expect(writes).toContainEqual({
@@ -301,7 +301,7 @@ describe('goal completion repository', () => {
     const tx = completionTx(queries, writes);
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     };
 
@@ -333,7 +333,7 @@ describe('goal completion repository', () => {
     const tx = completionTx(queries, writes);
     const db = {
       query: queries,
-      transaction: async (callback: (executor: typeof tx) => unknown) =>
+      transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
         callback(tx),
     };
 

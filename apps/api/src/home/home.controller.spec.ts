@@ -129,10 +129,14 @@ describe('HomeController (GET /home)', () => {
       .set('Authorization', 'Bearer valid-token')
       .expect(200);
 
+    const body = res.body as {
+      completionGoals: Array<{ id: string }>;
+      roadmap: { currentMonth: { month: string } };
+    };
     expect(res.body).toEqual(expected);
-    expect(res.body.completionGoals).toHaveLength(1);
-    expect(res.body.completionGoals[0].id).toBe('goal-1');
-    expect(res.body.roadmap.currentMonth.month).toBe('2026-08');
+    expect(body.completionGoals).toHaveLength(1);
+    expect(body.completionGoals[0].id).toBe('goal-1');
+    expect(body.roadmap.currentMonth.month).toBe('2026-08');
     expect(getHome).toHaveBeenCalledWith('user-present', '2026-08');
   });
 
@@ -160,13 +164,24 @@ describe('HomeController (GET /home)', () => {
     const homePath = document.paths['/home']?.get;
     expect(homePath).toBeDefined();
 
-    const responseSchema = (homePath?.responses?.['200'] as any)?.content?.[
-      'application/json'
-    ]?.schema;
+    type SchemaObject = {
+      oneOf: unknown[];
+      properties: Record<string, unknown>;
+    };
+    type ResponseWithContent = {
+      content: { 'application/json': { schema: SchemaObject } };
+    };
+
+    const responseSchema = (
+      homePath?.responses['200'] as unknown as ResponseWithContent
+    ).content['application/json'].schema;
     expect(responseSchema).toBeDefined();
     expect(responseSchema.oneOf).toHaveLength(2);
 
-    const schemas = document.components?.schemas as any;
+    const schemas = document.components?.schemas as Record<
+      string,
+      SchemaObject
+    >;
     expect(schemas.HomeRoadmapMissingDto).toBeDefined();
     expect(schemas.HomeRoadmapPresentDto).toBeDefined();
     expect(schemas.HomeRoadmapPresentDto.properties.roadmap).toBeDefined();

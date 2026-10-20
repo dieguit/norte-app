@@ -26,6 +26,12 @@ import {
 import { ClerkAuthGuard } from '../profile/clerk-auth.guard';
 import { GoalsController } from './goals.controller';
 import { GoalsService } from './goals.service';
+import type {
+  GoalCompletionCompletedDto,
+  GoalCompletionStaleDto,
+  GoalCompletionInvalidDto,
+} from './goals.dto';
+import type { GoalCompletionPreview } from '@repo/shared-types';
 import {
   createGoalCompletionPreviewToken,
   getGoalCompletionState,
@@ -46,8 +52,16 @@ const draftWithdrawals = [
 ];
 const draftAllocations = [{ goalId: otherGoalId, percentage: '100.00' }];
 
+type ProfileRow = typeof financialProfiles.$inferSelect;
+type GoalRow = typeof financialGoals.$inferSelect;
+type PlaceRow = typeof savingsPlaces.$inferSelect;
+type SnapshotRow = typeof allocationPlanSnapshots.$inferSelect;
+type AllocationRow = typeof allocationPlanEntries.$inferSelect;
+type WithdrawalRow = typeof goalCompletionWithdrawals.$inferSelect;
+type WithId = { id: string };
+
 function completionDatabase() {
-  const profile: any = {
+  const profile: ProfileRow = {
     userId: 'user-1',
     baseCurrency: 'ARS',
     expensesKnowledge: 'known',
@@ -57,7 +71,7 @@ function completionDatabase() {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-  const goals: any[] = [
+  const goals: GoalRow[] = [
     {
       id: goalId,
       userId: 'user-1',
@@ -116,11 +130,12 @@ function completionDatabase() {
       location: 'Banco',
     },
   ];
-  const places: any[] = [
+  const places: PlaceRow[] = [
     {
       id: bankId,
       userId: 'user-1',
       name: 'Banco',
+      normalizedName: 'banco',
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -128,6 +143,7 @@ function completionDatabase() {
       id: cashId,
       userId: 'user-1',
       name: 'Efectivo',
+      normalizedName: 'efectivo',
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -151,54 +167,60 @@ function completionDatabase() {
     },
   ];
   const transfers: any[] = [];
-  const completionWithdrawals: any[] = [];
-  const snapshots: any[] = [
+  const completionWithdrawals: WithdrawalRow[] = [];
+  const snapshots: SnapshotRow[] = [
     {
       id: 'snapshot-current',
       userId: 'user-1',
       effectiveMonth: '2026-08-01',
+      plannedMonthlyContribution: '1000.00',
       createdAt: new Date(),
-      updatedAt: new Date(),
     },
   ];
-  const allocations: any[] = [
+  const allocations: AllocationRow[] = [
     {
       id: 'allocation-goal',
       snapshotId: 'snapshot-current',
       goalId,
       percentage: '60.00',
-      createdAt: new Date(),
-      updatedAt: new Date(),
     },
     {
       id: 'allocation-other',
       snapshotId: 'snapshot-current',
       goalId: otherGoalId,
       percentage: '40.00',
-      createdAt: new Date(),
-      updatedAt: new Date(),
     },
   ];
   const writes: Array<{ table: unknown; values: unknown; params: unknown[] }> =
     [];
   const params = (condition: unknown) =>
     new PgDialect().sqlToQuery(condition as never).params;
-  const owned = (rows: any[], condition: unknown) =>
+  const owned = <T extends WithId>(rows: T[], condition: unknown): T[] =>
     rows.filter((row) => params(condition).includes(row.id));
   const queries = {
-    financialProfiles: { findFirst: vi.fn(async () => profile) },
-    financialGoals: { findMany: vi.fn(async () => goals) },
-    incomes: { findMany: vi.fn(async () => []) },
-    expenses: { findMany: vi.fn(async () => []) },
-    allocationPlanSnapshots: { findMany: vi.fn(async () => snapshots) },
-    allocationPlanEntries: { findMany: vi.fn(async () => allocations) },
-    goalSavingsPositions: { findMany: vi.fn(async () => savingsPositions) },
-    goalInvestmentPositions: { findMany: vi.fn(async () => []) },
-    savingsPlaces: { findMany: vi.fn(async () => places) },
-    savingContributions: { findMany: vi.fn(async () => contributions) },
-    savingsPlaceTransfers: { findMany: vi.fn(async () => transfers) },
+    financialProfiles: { findFirst: vi.fn(() => Promise.resolve(profile)) },
+    financialGoals: { findMany: vi.fn(() => Promise.resolve(goals)) },
+    incomes: { findMany: vi.fn(() => Promise.resolve([])) },
+    expenses: { findMany: vi.fn(() => Promise.resolve([])) },
+    allocationPlanSnapshots: {
+      findMany: vi.fn(() => Promise.resolve(snapshots)),
+    },
+    allocationPlanEntries: {
+      findMany: vi.fn(() => Promise.resolve(allocations)),
+    },
+    goalSavingsPositions: {
+      findMany: vi.fn(() => Promise.resolve(savingsPositions)),
+    },
+    goalInvestmentPositions: { findMany: vi.fn(() => Promise.resolve([])) },
+    savingsPlaces: { findMany: vi.fn(() => Promise.resolve(places)) },
+    savingContributions: {
+      findMany: vi.fn(() => Promise.resolve(contributions)),
+    },
+    savingsPlaceTransfers: {
+      findMany: vi.fn(() => Promise.resolve(transfers)),
+    },
     goalCompletionWithdrawals: {
-      findMany: vi.fn(async () => completionWithdrawals),
+      findMany: vi.fn(() => Promise.resolve(completionWithdrawals)),
     },
   };
   const tx = {
@@ -206,84 +228,97 @@ function completionDatabase() {
     select: () => ({
       from: (table: unknown) => ({
         where: (condition: unknown) => ({
-          for: async () => {
-            if (table === financialProfiles) return [profile];
-            if (table === financialGoals) return owned(goals, condition);
-            if (table === savingsPlaces) return owned(places, condition);
-            return [];
+          for: () => {
+            if (table === financialProfiles) return Promise.resolve([profile]);
+            if (table === financialGoals)
+              return Promise.resolve(owned(goals, condition));
+            if (table === savingsPlaces)
+              return Promise.resolve(owned(places, condition));
+            return Promise.resolve([]);
           },
-          limit: async () =>
-            table === allocationPlanSnapshots
-              ? snapshots.filter((row) =>
-                  params(condition).includes(row.effectiveMonth),
-                )
-              : [],
+          limit: () =>
+            Promise.resolve(
+              table === allocationPlanSnapshots
+                ? snapshots.filter((row) =>
+                    params(condition).includes(row.effectiveMonth),
+                  )
+                : [],
+            ),
         }),
       }),
     }),
     insert: (table: unknown) => ({
-      values: (values: any) => {
+      values: (values: unknown) => {
         writes.push({ table, values, params: [] });
         if (table === allocationPlanEntries) {
+          const rows = Array.isArray(values) ? values : [values];
           allocations.push(
-            ...values.map((row: any, index: number) => ({
-              ...row,
+            ...rows.map((row: unknown, index: number) => ({
+              ...(row as AllocationRow),
               id: `allocation-created-${writes.length}-${index}`,
-              createdAt: new Date(),
-              updatedAt: new Date(),
             })),
           );
           return Object.assign(Promise.resolve(), {
-            returning: async () => [],
+            returning: () => Promise.resolve([]),
           });
         }
         if (table === goalCompletionWithdrawals) {
+          const rows = Array.isArray(values) ? values : [values];
           completionWithdrawals.push(
-            ...values.map((row: any, index: number) => ({
-              ...row,
-              id: `withdrawal-${writes.length}-${index}`,
-              createdAt: row.createdAt,
-            })),
+            ...rows.map((row: unknown, index: number) => {
+              const r = row as WithdrawalRow;
+              return {
+                ...r,
+                id: `withdrawal-${writes.length}-${index}`,
+                createdAt: r.createdAt ?? new Date(),
+              };
+            }),
           );
           return Object.assign(Promise.resolve(), {
-            returning: async () => [],
+            returning: () => Promise.resolve([]),
           });
         }
         snapshots.push({
-          ...values,
+          ...(values as SnapshotRow),
           id: 'snapshot-created',
           createdAt: new Date(),
-          updatedAt: new Date(),
         });
         return Object.assign(Promise.resolve([{ id: 'snapshot-created' }]), {
-          returning: async () => [{ id: 'snapshot-created' }],
+          returning: () => Promise.resolve([{ id: 'snapshot-created' }]),
         });
       },
     }),
     update: (table: unknown) => ({
-      set: (values: any) => ({
+      set: (values: unknown) => ({
         where: (condition: unknown) => {
           const conditionParams = params(condition);
           writes.push({ table, values, params: conditionParams });
-          const updated =
+          const updated: WithId[] =
             table === financialGoals
               ? owned(goals, condition)
               : table === allocationPlanSnapshots
                 ? owned(snapshots, condition)
                 : [];
-          if (table === financialGoals)
-            updated.forEach((goal) => Object.assign(goal, values));
-          if (table === allocationPlanSnapshots)
-            updated.forEach((row) => Object.assign(row, values));
-          if (table === financialProfiles) Object.assign(profile, values);
+          if (table === financialGoals) {
+            updated.forEach((goal) => {
+              Object.assign(goal, values as GoalRow);
+            });
+          }
+          if (table === allocationPlanSnapshots) {
+            updated.forEach((row) => {
+              Object.assign(row, values as SnapshotRow);
+            });
+          }
+          if (table === financialProfiles)
+            Object.assign(profile, values as ProfileRow);
           return Object.assign(Promise.resolve(), {
-            returning: async () => updated.map(({ id }) => ({ id })),
+            returning: () => Promise.resolve(updated.map(({ id }) => ({ id }))),
           });
         },
       }),
     }),
     delete: (table: unknown) => ({
-      where: async (condition: unknown) => {
+      where: (condition: unknown) => {
         const conditionParams = params(condition);
         writes.push({ table, values: undefined, params: conditionParams });
         if (table === allocationPlanEntries)
@@ -294,13 +329,14 @@ function completionDatabase() {
               (row) => !conditionParams.includes(row.snapshotId),
             ),
           );
+        return Promise.resolve();
       },
     }),
   };
   const db = {
     query: queries,
-    transaction: async (callback: (executor: typeof tx) => unknown) =>
-      callback(tx),
+    transaction: (callback: (executor: typeof tx) => unknown) =>
+      Promise.resolve(callback(tx)),
   };
   return {
     db,
@@ -377,8 +413,8 @@ describe('goal completion HTTP with actual service and repository', () => {
   });
 
   it('returns the missing profile state without reading goal rows', async () => {
-    state.db.query.financialProfiles.findFirst = vi.fn(
-      async () => undefined,
+    state.db.query.financialProfiles.findFirst = vi.fn(() =>
+      Promise.resolve(undefined),
     ) as never;
     await request(app.getHttpServer())
       .get(`/goals/${goalId}/completion`)
@@ -391,14 +427,14 @@ describe('goal completion HTTP with actual service and repository', () => {
       .get(`/goals/${unknownGoalId}/completion`)
       .set('Authorization', authorization)
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe('Objetivo no encontrado.'),
       );
     await request(app.getHttpServer())
       .get(`/goals/${pausedGoalId}/completion`)
       .set('Authorization', authorization)
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'El objetivo no está listo para completarse.',
         ),
@@ -434,7 +470,7 @@ describe('goal completion HTTP with actual service and repository', () => {
         allocations: draftAllocations,
       })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'Ingresá un monto mayor a cero, con hasta dos decimales.',
         ),
@@ -447,7 +483,7 @@ describe('goal completion HTTP with actual service and repository', () => {
         allocations: [{ goalId: otherGoalId, percentage: 'bad' }],
       })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'Ingresá un porcentaje entre 0% y 100%, con hasta dos decimales.',
         ),
@@ -466,8 +502,9 @@ describe('goal completion HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(previewBody)
       .expect(200);
-    expect(preview.body.previewToken).toMatch(/^[a-f0-9]{64}$/);
-    expect(preview.body.proposal).toMatchObject({
+    const previewResBody = preview.body as GoalCompletionPreview;
+    expect(previewResBody.previewToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(previewResBody.proposal).toMatchObject({
       goalId,
       goalName: 'Notebook',
       targetAmount: { amount: '1000.00', currency: 'ARS' },
@@ -486,11 +523,11 @@ describe('goal completion HTTP with actual service and repository', () => {
       pauseMonthlyCommitment: false,
     });
     expect(
-      preview.body.proposal.proposedSource.goals.find(
-        (goal: any) => goal.id === goalId,
+      previewResBody.proposal.proposedSource.goals.find(
+        (goal) => goal.id === goalId,
       ),
     ).toMatchObject({ status: 'completed' });
-    expect(JSON.stringify(preview.body)).not.toMatch(/updatedAt/);
+    expect(JSON.stringify(previewResBody)).not.toMatch(/updatedAt/);
     expect(state.writes).toHaveLength(0);
   });
 
@@ -500,14 +537,16 @@ describe('goal completion HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(previewBody)
       .expect(200);
+    const previewResBody = preview.body as GoalCompletionPreview;
     const confirmed = await request(app.getHttpServer())
       .post(`/goals/${goalId}/completion`)
       .set('Authorization', authorization)
-      .send({ ...previewBody, previewToken: preview.body.previewToken })
+      .send({ ...previewBody, previewToken: previewResBody.previewToken })
       .expect(200);
-    expect(confirmed.body).toEqual({
+    const confirmedBody = confirmed.body as GoalCompletionCompletedDto;
+    expect(confirmedBody).toEqual({
       status: 'completed',
-      completedAt: expect.any(String),
+      completedAt: expect.any(String) as unknown,
     });
     expect(state.goals.find((goal) => goal.id === goalId)).toMatchObject({
       status: 'completed',
@@ -533,19 +572,23 @@ describe('goal completion HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(previewBody)
       .expect(200);
+    const previewResBody = preview.body as GoalCompletionPreview;
     state.goals.find((goal) => goal.id === goalId)!.name =
       'Changed after preview';
     const writesBefore = state.writes.length;
     const stale = await request(app.getHttpServer())
       .post(`/goals/${goalId}/completion`)
       .set('Authorization', authorization)
-      .send({ ...previewBody, previewToken: preview.body.previewToken })
+      .send({ ...previewBody, previewToken: previewResBody.previewToken })
       .expect(200);
-    expect(stale.body.status).toBe('stale');
-    expect(stale.body.preview.previewToken).not.toBe(preview.body.previewToken);
+    const staleBody = stale.body as GoalCompletionStaleDto;
+    expect(staleBody.status).toBe('stale');
+    expect(staleBody.preview.previewToken).not.toBe(
+      previewResBody.previewToken,
+    );
     expect(
-      stale.body.preview.proposal.proposedSource.goals.find(
-        (goal: any) => goal.id === goalId,
+      staleBody.preview.proposal.proposedSource.goals.find(
+        (goal) => goal.id === goalId,
       ),
     ).toMatchObject({ name: 'Changed after preview' });
     expect(state.writes).toHaveLength(writesBefore);
@@ -560,14 +603,16 @@ describe('goal completion HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(previewBody)
       .expect(200);
+    const previewResBody = preview.body as GoalCompletionPreview;
     state.goals.find((goal) => goal.id === goalId)!.status = 'paused';
     const writesBefore = state.writes.length;
     const confirmed = await request(app.getHttpServer())
       .post(`/goals/${goalId}/completion`)
       .set('Authorization', authorization)
-      .send({ ...previewBody, previewToken: preview.body.previewToken })
+      .send({ ...previewBody, previewToken: previewResBody.previewToken })
       .expect(200);
-    expect(confirmed.body).toEqual({
+    const confirmedBody = confirmed.body as GoalCompletionInvalidDto;
+    expect(confirmedBody).toEqual({
       status: 'invalid',
       message: 'No se puede completar el objetivo con el estado actual.',
     });
@@ -593,7 +638,7 @@ describe('goal completion HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send({ ...previewBody, previewToken })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'El objetivo no está listo para completarse.',
         ),
@@ -610,7 +655,7 @@ describe('goal completion HTTP with actual service and repository', () => {
         allocations: draftAllocations,
       })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe('Lugar de ahorro no encontrado.'),
       );
     const preview = await request(app.getHttpServer())
@@ -618,16 +663,17 @@ describe('goal completion HTTP with actual service and repository', () => {
       .set('Authorization', authorization)
       .send(previewBody)
       .expect(200);
+    const previewResBody = preview.body as GoalCompletionPreview;
     await request(app.getHttpServer())
       .post(`/goals/${goalId}/completion`)
       .set('Authorization', authorization)
       .send({
         withdrawals: [{ placeId: foreignPlaceId, amount: '1000.00' }],
         allocations: draftAllocations,
-        previewToken: preview.body.previewToken,
+        previewToken: previewResBody.previewToken,
       })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe('Lugar de ahorro no encontrado.'),
       );
     expect(state.writes).toHaveLength(0);
@@ -652,7 +698,9 @@ describe('goal completion HTTP with actual service and repository', () => {
         .set('Authorization', authorization)
         .send({ withdrawals: draftWithdrawals, allocations })
         .expect(400)
-        .expect(({ body }) => expect(body.message).toBe(message));
+        .expect(({ body }: { body: { message: string } }) =>
+          expect(body.message).toBe(message),
+        );
 
       const loaded = await getGoalCompletionState(
         state.db as never,
@@ -670,35 +718,40 @@ describe('goal completion HTTP with actual service and repository', () => {
         .set('Authorization', authorization)
         .send({ withdrawals: draftWithdrawals, allocations, previewToken })
         .expect(400)
-        .expect(({ body }) => expect(body.message).toBe(message));
+        .expect(({ body }: { body: { message: string } }) =>
+          expect(body.message).toBe(message),
+        );
       expect(state.writes).toHaveLength(0);
     },
   );
 
   it('hides unexpected database errors behind a generic 500 without leaking SQL', async () => {
-    state.db.query.financialProfiles.findFirst = vi.fn(async () => {
-      throw new Error('SELECT secret_column FROM financial_profiles');
-    }) as never;
+    state.db.query.financialProfiles.findFirst = vi.fn(() =>
+      Promise.reject(new Error('SELECT secret_column FROM financial_profiles')),
+    );
     const context = await request(app.getHttpServer())
       .get(`/goals/${goalId}/completion`)
       .set('Authorization', authorization)
       .expect(500);
-    expect(context.body.message).toBe('Internal Server Error');
+    const contextBody = context.body as { message: string };
+    expect(contextBody.message).toBe('Internal Server Error');
     const preview = await request(app.getHttpServer())
       .post(`/goals/${goalId}/completion/preview`)
       .set('Authorization', authorization)
       .send(previewBody)
       .expect(500);
+    const previewResBody = preview.body as { message: string };
     const confirm = await request(app.getHttpServer())
       .post(`/goals/${goalId}/completion`)
       .set('Authorization', authorization)
       .send({ ...previewBody, previewToken: 'a'.repeat(64) })
       .expect(500);
+    const confirmBody = confirm.body as { message: string };
     expect(
       JSON.stringify({
-        context: context.body,
-        preview: preview.body,
-        confirm: confirm.body,
+        context: contextBody,
+        preview: previewResBody,
+        confirm: confirmBody,
       }),
     ).not.toContain('secret_column');
   });

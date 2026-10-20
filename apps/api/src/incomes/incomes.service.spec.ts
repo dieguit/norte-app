@@ -46,7 +46,11 @@ describe('IncomesService', () => {
     tx.insert.mockImplementation((table: unknown) =>
       table === incomeSources ? sourceInsert : incomeInsert,
     );
-    const db = { transaction: vi.fn((callback) => callback(tx)) };
+    const db = {
+      transaction: vi.fn(<T>(callback: (t: typeof tx) => Promise<T>) =>
+        callback(tx),
+      ),
+    };
     const service = new IncomesService(db as never);
 
     await expect(
@@ -94,7 +98,7 @@ describe('IncomesService', () => {
       .mockReturnValue({ returning: vi.fn().mockResolvedValue([income]) });
     const tx = { insert: vi.fn().mockReturnValue({ values }) };
     const service = new IncomesService({
-      transaction: (callback) => callback(tx),
+      transaction: <T>(callback: (t: typeof tx) => Promise<T>) => callback(tx),
     } as never);
 
     await service.create('user-1', {
@@ -162,7 +166,8 @@ describe('IncomesService', () => {
         })),
       };
       const service = new IncomesService({
-        transaction: (callback) => callback(tx),
+        transaction: <T>(callback: (t: typeof tx) => Promise<T>) =>
+          callback(tx),
       } as never);
       const draft = {
         source: { kind: 'salary' as const },
@@ -207,7 +212,7 @@ describe('IncomesService', () => {
       update: vi.fn().mockReturnValue({ set }),
     };
     const service = new IncomesService({
-      transaction: (callback) => callback(tx),
+      transaction: <T>(callback: (t: typeof tx) => Promise<T>) => callback(tx),
     } as never);
     await service.update('user-1', income.id, {
       draft: {
@@ -229,7 +234,11 @@ describe('IncomesService', () => {
       query: { incomes: { findFirst: vi.fn().mockResolvedValue(undefined) } },
       update: vi.fn(),
     };
-    const db = { transaction: vi.fn((callback) => callback(tx)) };
+    const db = {
+      transaction: vi.fn(<T>(callback: (t: typeof tx) => Promise<T>) =>
+        callback(tx),
+      ),
+    };
     const service = new IncomesService(db as never);
     await expect(
       service.update('user-1', '00000000-0000-4000-8000-000000000003', {
@@ -248,7 +257,11 @@ describe('IncomesService', () => {
         values: vi.fn(() => ({ onConflictDoNothing: vi.fn() })),
       })),
     };
-    const db = { transaction: vi.fn((callback) => callback(tx)) };
+    const db = {
+      transaction: vi.fn(<T>(callback: (t: typeof tx) => Promise<T>) =>
+        callback(tx),
+      ),
+    };
     const service = new IncomesService(db as never);
     await expect(
       service.create('user-1', {

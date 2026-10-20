@@ -84,7 +84,7 @@ describe('Goal Creation Schemas', () => {
       expect(
         goalCreationDraftSchema.safeParse({
           ...baseDraft,
-          strategy: 'both' as any,
+          strategy: 'both' as never,
         }).success,
       ).toBe(false);
     });

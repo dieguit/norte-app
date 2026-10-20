@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 import BigNumber from 'bignumber.js';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Database } from '../database/database.types';
 import type { GoalsWorkspaceSource } from '../finances/goals.engine';
 import { calculateAllocationAmounts, type Money } from '@repo/finance-utils';
 import { getGoalPlanStateWithExecutor } from '../goals/goal-creation.repository';
 import { lockFinancialProfile } from '../profile/financial-profile.lock';
 import {
+  financialGoals,
   goalInvestmentPositions,
   goalSavingsPositions,
   investmentContributionAllocations,
@@ -150,11 +151,11 @@ async function getSavingContributionStateWithExecutor(
   );
   if (!plan) return null;
   const userContributions = await executor.query.savingContributions.findMany({
-    where: (table: any, { eq }: any) => eq(table.userId, userId),
+    where: eq(savingContributions.userId, userId),
   });
   const userInvestmentContributions =
     await executor.query.investmentContributions.findMany({
-      where: (table: any, { eq }: any) => eq(table.userId, userId),
+      where: eq(investmentContributions.userId, userId),
     });
   return buildContributionState(
     plan.source,
@@ -256,10 +257,12 @@ async function assertContributionGoalsAreMutable(
   const goalIds = [...new Set(allocations.map(({ goalId }) => goalId))];
   if (!goalIds.length) return;
   const goals = await tx.query.financialGoals.findMany({
-    where: (table: any, { and, eq, inArray }: any) =>
-      and(eq(table.userId, userId), inArray(table.id, goalIds)),
+    where: and(
+      eq(financialGoals.userId, userId),
+      inArray(financialGoals.id, goalIds),
+    ),
   });
-  if (goals.some((goal: any) => goal.status === 'completed')) {
+  if (goals.some((goal) => goal.status === 'completed')) {
     throw new Error('No se pueden modificar aportes de objetivos completados.');
   }
 }
@@ -315,7 +318,7 @@ async function persistSavingContribution(
       savingPositionId: position.id,
     });
   }
-  return { contributionId: contribution.id as string };
+  return { contributionId: contribution.id };
 }
 
 async function resolveInvestmentPosition(
@@ -327,7 +330,7 @@ async function resolveInvestmentPosition(
   const position =
     existing ??
     (await tx.query.goalInvestmentPositions.findFirst({
-      where: (table: any, { eq }: any) => eq(table.goalId, goalId),
+      where: eq(goalInvestmentPositions.goalId, goalId),
     }));
   if (!position)
     throw new Error(`Investment position not found for goal ${goalId}`);
@@ -376,7 +379,7 @@ async function persistInvestmentContribution(
       investmentPositionId: positions.get(allocation.goalId)!.id,
     })),
   );
-  return { contributionId: contribution.id as string };
+  return { contributionId: contribution.id };
 }
 
 async function createContributionInTransaction(
@@ -432,43 +435,55 @@ type OwnedContribution =
   | { kind: 'saving'; row: typeof savingContributions.$inferSelect }
   | { kind: 'investment'; row: typeof investmentContributions.$inferSelect };
 
+async function findOwnedSavingContribution(
+  tx: Executor,
+  userId: string,
+  contributionId: string,
+) {
+  return tx.query.savingContributions.findFirst({
+    where: and(
+      eq(savingContributions.id, contributionId),
+      eq(savingContributions.userId, userId),
+    ),
+  });
+}
+
+async function findOwnedInvestmentContribution(
+  tx: Executor,
+  userId: string,
+  contributionId: string,
+) {
+  return tx.query.investmentContributions.findFirst({
+    where: and(
+      eq(investmentContributions.id, contributionId),
+      eq(investmentContributions.userId, userId),
+    ),
+  });
+}
+
 async function requireOwnedContribution(
   tx: Executor,
   userId: string,
   contributionId: string,
 ): Promise<OwnedContribution> {
-  const saving = await tx.query.savingContributions.findFirst({
-    where: (table: any, { and, eq }: any) =>
-      and(eq(table.id, contributionId), eq(table.userId, userId)),
-  });
+  const saving = await findOwnedSavingContribution(tx, userId, contributionId);
   if (saving) return { kind: 'saving', row: saving };
-  const investment = await tx.query.investmentContributions.findFirst({
-    where: (table: any, { and, eq }: any) =>
-      and(eq(table.id, contributionId), eq(table.userId, userId)),
-  });
+  const investment = await findOwnedInvestmentContribution(
+    tx,
+    userId,
+    contributionId,
+  );
   if (investment) return { kind: 'investment', row: investment };
   throw new Error('Contribution not found or not owned by user.');
-}
-
-function findAllocations(
-  tx: any,
-  table: 'investmentContributionAllocations' | 'savingContributionAllocations',
-  contributionId: string,
-) {
-  return tx.query[table].findMany({
-    where: (t: any, { eq }: any) => eq(t.contributionId, contributionId),
-  });
 }
 
 async function loadSavingAllocations(
   tx: Executor,
   contributionId: string,
 ): Promise<AllocationRow[]> {
-  const allocations = await findAllocations(
-    tx,
-    'savingContributionAllocations',
-    contributionId,
-  );
+  const allocations = await tx.query.savingContributionAllocations.findMany({
+    where: eq(savingContributionAllocations.contributionId, contributionId),
+  });
   if (!allocations.length)
     throw new Error('No allocations found for contribution.');
   return allocations;
@@ -478,10 +493,13 @@ async function loadInvestmentAllocations(
   tx: Executor,
   contributionId: string,
 ): Promise<AllocationRow[]> {
-  const allocations = await findAllocations(
-    tx,
-    'investmentContributionAllocations',
-    contributionId,
+  const allocations = await tx.query.investmentContributionAllocations.findMany(
+    {
+      where: eq(
+        investmentContributionAllocations.contributionId,
+        contributionId,
+      ),
+    },
   );
   if (!allocations.length)
     throw new Error('No allocations found for contribution.');
@@ -523,11 +541,18 @@ async function loadInvestmentPositions(
   tx: Transaction,
   allocations: AllocationRow[],
 ) {
-  const positions = new Map<string, any>();
+  const positions = new Map<
+    string,
+    typeof goalInvestmentPositions.$inferSelect
+  >();
   for (const allocation of allocations) {
+    if (!allocation.investmentPositionId) {
+      throw new Error(
+        `Investment position not found for goal ${allocation.goalId}`,
+      );
+    }
     const position = await tx.query.goalInvestmentPositions.findFirst({
-      where: (table: any, { eq }: any) =>
-        eq(table.id, allocation.investmentPositionId),
+      where: eq(goalInvestmentPositions.id, allocation.investmentPositionId),
     });
     if (!position)
       throw new Error(
@@ -536,6 +561,23 @@ async function loadInvestmentPositions(
     positions.set(allocation.id, position);
   }
   return positions;
+}
+
+async function updateInvestmentPositionValue(
+  tx: Transaction,
+  positionId: string,
+  newValue: string,
+  goalId: string,
+): Promise<void> {
+  const updated = await tx
+    .update(goalInvestmentPositions)
+    .set({ currentValue: newValue })
+    .where(eq(goalInvestmentPositions.id, positionId))
+    .returning({ id: goalInvestmentPositions.id });
+  if (!updated.length)
+    throw new Error(
+      `Investment position update affected no rows for goal ${goalId}`,
+    );
 }
 
 async function updateInvestmentAllocations(
@@ -559,15 +601,12 @@ async function updateInvestmentAllocations(
     const newValue = new BigNumber(position.currentValue)
       .plus(delta)
       .toFixed(2);
-    const updated = await tx
-      .update(goalInvestmentPositions)
-      .set({ currentValue: newValue })
-      .where(eq(goalInvestmentPositions.id, allocation.investmentPositionId!))
-      .returning({ id: goalInvestmentPositions.id });
-    if (!updated.length)
-      throw new Error(
-        `Investment position update affected no rows for goal ${allocation.goalId}`,
-      );
+    await updateInvestmentPositionValue(
+      tx,
+      allocation.investmentPositionId!,
+      newValue,
+      allocation.goalId,
+    );
     await tx
       .update(investmentContributionAllocations)
       .set({ amount })
@@ -653,15 +692,12 @@ async function deleteInvestmentPositionValues(
     const newValue = new BigNumber(position.currentValue)
       .minus(new BigNumber(allocation.amount))
       .toFixed(2);
-    const updated = await tx
-      .update(goalInvestmentPositions)
-      .set({ currentValue: newValue })
-      .where(eq(goalInvestmentPositions.id, allocation.investmentPositionId!))
-      .returning({ id: goalInvestmentPositions.id });
-    if (!updated.length)
-      throw new Error(
-        `Investment position update affected no rows for goal ${allocation.goalId}`,
-      );
+    await updateInvestmentPositionValue(
+      tx,
+      allocation.investmentPositionId!,
+      newValue,
+      allocation.goalId,
+    );
   }
 }
 
@@ -677,11 +713,13 @@ export function deleteSavingContributionInRepository(
       input.contributionId,
     );
     if (owned.kind === 'investment') {
-      const allocations = await findAllocations(
-        tx,
-        'investmentContributionAllocations',
-        input.contributionId,
-      );
+      const allocations =
+        await tx.query.investmentContributionAllocations.findMany({
+          where: eq(
+            investmentContributionAllocations.contributionId,
+            input.contributionId,
+          ),
+        });
       await assertContributionGoalsAreMutable(tx, input.userId, allocations);
       await deleteInvestmentPositionValues(tx, allocations);
       await tx
@@ -690,11 +728,12 @@ export function deleteSavingContributionInRepository(
       return;
     }
     await lockOwnedSavingsPlaces(tx, input.userId, [owned.row.placeId]);
-    const allocations = await findAllocations(
-      tx,
-      'savingContributionAllocations',
-      input.contributionId,
-    );
+    const allocations = await tx.query.savingContributionAllocations.findMany({
+      where: eq(
+        savingContributionAllocations.contributionId,
+        input.contributionId,
+      ),
+    });
     await assertContributionGoalsAreMutable(tx, input.userId, allocations);
     await deleteSavingPositions(tx, allocations);
     await tx
@@ -734,13 +773,12 @@ export async function previewSavingContributionEdit(
     owned.row.currency,
   );
   const goals = await db.query.financialGoals.findMany({
-    where: (table: any, { inArray }: any) =>
-      inArray(
-        table.id,
-        allocations.map(({ goalId }) => goalId),
-      ),
+    where: inArray(
+      financialGoals.id,
+      allocations.map(({ goalId }) => goalId),
+    ),
   });
-  const goalNames = new Map(goals.map((goal: any) => [goal.id, goal.name]));
+  const goalNames = new Map(goals.map((goal) => [goal.id, goal.name]));
   const eligibleGoals = allocations.map((allocation) => ({
     id: allocation.goalId,
     name: goalNames.get(allocation.goalId) ?? '',

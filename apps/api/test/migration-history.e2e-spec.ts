@@ -105,7 +105,7 @@ describe('operator rollout ownership', () => {
     const targetLine = invocations.find((line) => !rehearsal.includes(line))!;
     const target = rollout.indexOf(targetLine);
     expect(targetLine).not.toContain('REHEARSAL');
-    expect(rollout.indexOf(rehearsal[0]!)).toBeLessThan(target);
+    expect(rollout.indexOf(rehearsal[0])).toBeLessThan(target);
     expect(
       rollout.slice(rollout.indexOf('8. **Execute once.**'), target),
     ).toContain('only target invocation');
@@ -254,7 +254,7 @@ describe('migration history adoption', () => {
       tag: '0021_api_database_ownership',
       breakpoints: true,
     });
-    expect(active.entries[21]!.when).toBeGreaterThan(
+    expect(active.entries[21].when).toBeGreaterThan(
       Math.max(
         ...[...manifest.web.entries, ...manifest.api.entries].map(
           (entry) => entry.when,
@@ -265,10 +265,21 @@ describe('migration history adoption', () => {
     expect(existsSync(resolve('drizzle/meta/0018_snapshot.json'))).toBe(false);
   });
 
+  type SnapshotTable = {
+    name: string;
+    foreignKeys: Record<string, { name: string }>;
+    [key: string]: unknown;
+  };
+  type Snapshot = {
+    id: string;
+    prevId: string;
+    tables: Record<string, SnapshotTable>;
+  };
+
   it('links the complete new snapshot and has no generation churn on two isolated runs', () => {
     const snapshot = JSON.parse(
       readFileSync(resolve('drizzle/meta/0021_snapshot.json'), 'utf8'),
-    );
+    ) as Snapshot;
     expect(snapshot.prevId).toBe('ed6ec25a-e6ae-486f-948a-a065274f50fc');
     expect(snapshot.id).not.toBe(snapshot.prevId);
     expect(
@@ -278,20 +289,20 @@ describe('migration history adoption', () => {
     ).toEqual(tables);
     const old = JSON.parse(
       readFileSync(resolve('drizzle/meta/0020_snapshot.json'), 'utf8'),
-    );
-    for (const [name, table] of Object.entries(old.tables) as [
-      string,
-      Record<string, unknown>,
-    ][]) {
+    ) as Snapshot;
+    for (const [name, table] of Object.entries(old.tables)) {
       const { foreignKeys: _historicalNames, ...semantics } = table;
       const { foreignKeys: _canonicalNames, ...actual } = snapshot.tables[name];
       expect(actual, name).toEqual(semantics);
       const fkSemantics = (keys: Record<string, { name: string }>) =>
         Object.values(keys)
-          .map(({ name: _name, ...fk }) => JSON.stringify(fk))
+          .map(({ name, ...fk }) => {
+            void name;
+            return JSON.stringify(fk);
+          })
           .sort();
       expect(fkSemantics(_canonicalNames), name).toEqual(
-        fkSemantics(_historicalNames as Record<string, { name: string }>),
+        fkSemantics(_historicalNames),
       );
     }
     for (const [table, names] of [

@@ -18,11 +18,21 @@ import {
   allocationPlanEntries,
   allocationPlanSnapshots,
   financialGoals,
-  goalInvestmentPositions,
 } from '../profile/profile.schema';
 import { ClerkAuthGuard } from '../profile/clerk-auth.guard';
 import { GoalsController } from './goals.controller';
 import { GoalsService } from './goals.service';
+import type {
+  GoalPlanContextPresentDto,
+  GoalEditUpdatedDto,
+  GoalEditStaleDto,
+} from './goals.dto';
+import type {
+  AllocationChangeConfirmation,
+  AllocationChangePreview,
+  GoalCreationConfirmation,
+  GoalCreationPreview,
+} from '@repo/shared-types';
 
 vi.mock('@clerk/backend', () => ({ verifyToken: vi.fn() }));
 
@@ -52,6 +62,9 @@ const editDraft = {
   allocations: [{ goalId: activeGoalId, percentage: '100.00' }],
 };
 
+type GoalRow = typeof financialGoals.$inferSelect;
+type AllocationRow = typeof allocationPlanEntries.$inferSelect;
+
 function creationDatabase() {
   const profile = {
     userId: 'user-1',
@@ -63,7 +76,7 @@ function creationDatabase() {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-  const goals: any[] = [
+  const goals: GoalRow[] = [
     {
       id: activeGoalId,
       userId: 'user-1',
@@ -137,26 +150,28 @@ function creationDatabase() {
       updatedAt: new Date(),
     },
   ];
-  const allocations: any[] = [
+  const allocations: AllocationRow[] = [
     {
       id: 'allocation-old',
       snapshotId: 'snapshot-current',
       goalId: activeGoalId,
       percentage: '100.00',
-      createdAt: new Date(),
-      updatedAt: new Date(),
     },
   ];
   let writes = 0;
   const queries = {
-    financialProfiles: { findFirst: vi.fn(async () => profile) },
-    financialGoals: { findMany: vi.fn(async () => goals) },
-    incomes: { findMany: vi.fn(async () => incomes) },
-    expenses: { findMany: vi.fn(async () => expenses) },
-    allocationPlanSnapshots: { findMany: vi.fn(async () => snapshots) },
-    goalSavingsPositions: { findMany: vi.fn(async () => []) },
-    goalInvestmentPositions: { findMany: vi.fn(async () => []) },
-    allocationPlanEntries: { findMany: vi.fn(async () => allocations) },
+    financialProfiles: { findFirst: vi.fn(() => Promise.resolve(profile)) },
+    financialGoals: { findMany: vi.fn(() => Promise.resolve(goals)) },
+    incomes: { findMany: vi.fn(() => Promise.resolve(incomes)) },
+    expenses: { findMany: vi.fn(() => Promise.resolve(expenses)) },
+    allocationPlanSnapshots: {
+      findMany: vi.fn(() => Promise.resolve(snapshots)),
+    },
+    goalSavingsPositions: { findMany: vi.fn(() => Promise.resolve([])) },
+    goalInvestmentPositions: { findMany: vi.fn(() => Promise.resolve([])) },
+    allocationPlanEntries: {
+      findMany: vi.fn(() => Promise.resolve(allocations)),
+    },
   };
   const tx = {
     query: queries,
@@ -167,70 +182,75 @@ function creationDatabase() {
           table = selected;
           return {
             where: () => ({
-              for: async () => [profile],
-              limit: async () =>
-                table === allocationPlanSnapshots
-                  ? snapshots.filter(
-                      (row) => row.effectiveMonth === '2026-08-01',
-                    )
-                  : [],
+              for: () => Promise.resolve([profile]),
+              limit: () =>
+                Promise.resolve(
+                  table === allocationPlanSnapshots
+                    ? snapshots.filter(
+                        (row) => row.effectiveMonth === '2026-08-01',
+                      )
+                    : [],
+                ),
             }),
           };
         },
       };
     },
     insert: (table: unknown) => ({
-      values: (values: any) =>
-        table === allocationPlanEntries
-          ? (writes++,
-            allocations.push(
-              ...values.map((row: any, index: number) => ({
-                ...row,
-                id: `allocation-${writes}-${index}`,
+      values: (values: unknown) => {
+        if (table === allocationPlanEntries) {
+          writes++;
+          const rows = Array.isArray(values) ? values : [values];
+          allocations.push(
+            ...rows.map((row: unknown, index: number) => ({
+              ...(row as AllocationRow),
+              id: `allocation-${writes}-${index}`,
+            })),
+          );
+          return Promise.resolve();
+        }
+        return {
+          returning: () => {
+            writes++;
+            if (table === financialGoals)
+              goals.push({
+                ...(values as GoalRow),
+                id: 'goal-created',
                 createdAt: new Date(),
                 updatedAt: new Date(),
-              })),
-            ),
-            Promise.resolve())
-          : {
-              returning: async () => {
-                writes++;
-                if (table === financialGoals)
-                  goals.push({
-                    ...values,
-                    id: 'goal-created',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                  });
-                return [
-                  {
-                    id:
-                      table === financialGoals
-                        ? 'goal-created'
-                        : 'snapshot-created',
-                  },
-                ];
+              });
+            return Promise.resolve([
+              {
+                id:
+                  table === financialGoals
+                    ? 'goal-created'
+                    : 'snapshot-created',
               },
-            },
+            ]);
+          },
+        };
+      },
     }),
     update: () => ({
       set: () => ({
-        where: async () => {
+        where: () => {
           writes++;
+          return Promise.resolve();
         },
       }),
     }),
     delete: (table: unknown) => ({
-      where: async () => {
+      where: () => {
         writes++;
         if (table === allocationPlanEntries) allocations.splice(0);
+        return Promise.resolve();
       },
     }),
   };
   const db = {
     query: queries,
-    transaction: async (callback: (executor: typeof tx) => unknown) =>
-      callback(tx),
+    transaction: (callback: (executor: typeof tx) => unknown) =>
+      Promise.resolve(callback(tx)),
   };
   return { db, goals, allocations, snapshots, writes: () => writes };
 }
@@ -278,28 +298,29 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send(draft)
       .expect(200);
-    expect(response.body.proposal.normalizedGoal.name).toBe('Trip');
-    expect(response.body.proposal.proposedSource.goals[0]).not.toHaveProperty(
+    const body = response.body as GoalCreationPreview;
+    expect(body.proposal.normalizedGoal.name).toBe('Trip');
+    expect(body.proposal.proposedSource.goals[0]).not.toHaveProperty(
       'updatedAt',
     );
-    expect(response.body.proposal.proposedSource.incomes[0]).not.toHaveProperty(
+    expect(body.proposal.proposedSource.incomes?.[0]).not.toHaveProperty(
       'userId',
     );
-    expect(response.body.proposal.proposedSource.incomes[0]).not.toHaveProperty(
+    expect(body.proposal.proposedSource.incomes?.[0]).not.toHaveProperty(
       'createdAt',
     );
-    expect(response.body.proposal.proposedSource.incomes[0]).not.toHaveProperty(
+    expect(body.proposal.proposedSource.incomes?.[0]).not.toHaveProperty(
       'updatedAt',
     );
-    expect(
-      response.body.proposal.proposedSource.expenses[0],
-    ).not.toHaveProperty('userId');
-    expect(
-      response.body.proposal.proposedSource.expenses[0],
-    ).not.toHaveProperty('createdAt');
-    expect(
-      response.body.proposal.proposedSource.expenses[0],
-    ).not.toHaveProperty('updatedAt');
+    expect(body.proposal.proposedSource.expenses?.[0]).not.toHaveProperty(
+      'userId',
+    );
+    expect(body.proposal.proposedSource.expenses?.[0]).not.toHaveProperty(
+      'createdAt',
+    );
+    expect(body.proposal.proposedSource.expenses?.[0]).not.toHaveProperty(
+      'updatedAt',
+    );
   });
 
   it('routes static allocation preview before the UUID edit route and returns safe parsed preview plus source-driven stale result', async () => {
@@ -315,14 +336,13 @@ describe('goal creation HTTP with actual service and repository', () => {
       snapshotId: 'snapshot-pending',
       goalId: activeGoalId,
       percentage: '100.00',
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
     const plan = await request(app.getHttpServer())
       .get('/goals/plan')
       .set('Authorization', 'Bearer token')
       .expect(200);
-    expect(plan.body.allocationContext).toMatchObject({
+    const planBody = plan.body as GoalPlanContextPresentDto;
+    expect(planBody.allocationContext).toMatchObject({
       currentMonth: '2026-08',
       financialSummary: { month: '2026-08' },
       plannedMonthlyContribution: { amount: '1000.00', currency: 'ARS' },
@@ -346,33 +366,38 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send(allocationDraft)
       .expect(200);
-    expect(preview.body).toMatchObject({
+    const previewBody = preview.body as AllocationChangePreview;
+    expect(previewBody).toMatchObject({
       proposal: {
         dedicationPercentage: 70,
         allocation: { effectiveMonth: '2026-08-01', totalPercentage: '100.00' },
       },
     });
-    expect(preview.body.proposal.proposedSource.goals[0]).not.toHaveProperty(
+    expect(previewBody.proposal.proposedSource.goals[0]).not.toHaveProperty(
       'updatedAt',
     );
-    expect(preview.body.proposal.proposedSource.incomes[0]).not.toHaveProperty(
+    expect(previewBody.proposal.proposedSource.incomes?.[0]).not.toHaveProperty(
       'userId',
     );
-    expect(preview.body.previewToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(previewBody.previewToken).toMatch(/^[a-f0-9]{64}$/);
 
     state.goals[0].name = 'Changed after allocation preview';
     const writesBeforeStale = state.writes();
     const stale = await request(app.getHttpServer())
       .put('/goals/allocation')
       .set('Authorization', 'Bearer token')
-      .send({ draft: allocationDraft, previewToken: preview.body.previewToken })
+      .send({ draft: allocationDraft, previewToken: previewBody.previewToken })
       .expect(200);
-    expect(stale.body.status).toBe('stale');
-    expect(stale.body.preview.proposal.proposedSource.goals[0].name).toBe(
+    const staleBody = stale.body as Extract<
+      AllocationChangeConfirmation,
+      { status: 'stale' }
+    >;
+    expect(staleBody.status).toBe('stale');
+    expect(staleBody.preview.proposal.proposedSource.goals[0].name).toBe(
       'Changed after allocation preview',
     );
     expect(
-      stale.body.preview.proposal.proposedSource.goals[0],
+      staleBody.preview.proposal.proposedSource.goals[0],
     ).not.toHaveProperty('updatedAt');
     expect(state.writes()).toBe(writesBeforeStale);
   });
@@ -394,7 +419,7 @@ describe('goal creation HTTP with actual service and repository', () => {
         allocations: [{ goalId: activeGoalId, percentage: 'bad' }],
       })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'Ingresá un porcentaje entre 0% y 100%, con hasta dos decimales.',
         ),
@@ -416,7 +441,7 @@ describe('goal creation HTTP with actual service and repository', () => {
         allocations: [{ goalId: 'not-owned', percentage: '100.00' }],
       })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'Allocation draft must contain exactly the active goals',
         ),
@@ -429,7 +454,9 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send({ ...draft, name: '' })
       .expect(400)
-      .expect(({ body }) => expect(body.message).toBe('Ingresá un nombre.'));
+      .expect(({ body }: { body: { message: string } }) =>
+        expect(body.message).toBe('Ingresá un nombre.'),
+      );
   });
 
   it('returns actual created result and refreshed stale preview without stale writes', async () => {
@@ -438,12 +465,14 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send(draft)
       .expect(200);
+    const previewBody = preview.body as GoalCreationPreview;
     const created = await request(app.getHttpServer())
       .post('/goals')
       .set('Authorization', 'Bearer token')
-      .send({ draft, previewToken: preview.body.previewToken })
+      .send({ draft, previewToken: previewBody.previewToken })
       .expect(200);
-    expect(created.body).toEqual({ status: 'created', goalId: 'goal-created' });
+    const createdBody = created.body as GoalCreationConfirmation;
+    expect(createdBody).toEqual({ status: 'created', goalId: 'goal-created' });
     expect(state.writes()).toBeGreaterThan(0);
 
     const refreshedFixture = creationDatabase();
@@ -453,19 +482,24 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send(draft)
       .expect(200);
+    const freshPreviewBody = freshPreview.body as GoalCreationPreview;
     refreshedFixture.goals[0].name = 'Changed after preview';
     const beforeStaleWrites = refreshedFixture.writes();
     const stale = await request(freshApp.getHttpServer())
       .post('/goals')
       .set('Authorization', 'Bearer token')
-      .send({ draft, previewToken: freshPreview.body.previewToken })
+      .send({ draft, previewToken: freshPreviewBody.previewToken })
       .expect(200);
-    expect(stale.body.status).toBe('stale');
-    expect(stale.body.preview.proposal.proposedSource.goals[0].name).toBe(
+    const staleBody = stale.body as Extract<
+      GoalCreationConfirmation,
+      { status: 'stale' }
+    >;
+    expect(staleBody.status).toBe('stale');
+    expect(staleBody.preview.proposal.proposedSource.goals[0].name).toBe(
       'Changed after preview',
     );
     expect(
-      stale.body.preview.proposal.proposedSource.goals[0],
+      staleBody.preview.proposal.proposedSource.goals[0],
     ).not.toHaveProperty('updatedAt');
     expect(refreshedFixture.writes()).toBe(beforeStaleWrites);
     await freshApp.close();
@@ -476,29 +510,32 @@ describe('goal creation HTTP with actual service and repository', () => {
       .get(`/goals/plan?goalId=${editGoalId}`)
       .set('Authorization', 'Bearer token')
       .expect(200);
-    expect(context.body.editContext).toMatchObject({
+    const contextBody = context.body as GoalPlanContextPresentDto;
+    expect(contextBody.editContext).toMatchObject({
       goalId: editGoalId,
       status: 'paused',
       draft: { name: 'Paused goal' },
     });
-    expect(context.body.editContext).not.toHaveProperty('updatedAt');
+    expect(contextBody.editContext).not.toHaveProperty('updatedAt');
     const preview = await request(app.getHttpServer())
       .post(`/goals/${editGoalId}/preview`)
       .set('Authorization', 'Bearer token')
       .send(editDraft)
       .expect(200);
-    expect(preview.body.previewToken).toMatch(/^[a-f0-9]{64}$/);
+    const previewBody = preview.body as GoalCreationPreview;
+    expect(previewBody.previewToken).toMatch(/^[a-f0-9]{64}$/);
     expect(
-      preview.body.proposal.proposedSource.goals.find(
-        (goal: any) => goal.id === editGoalId,
+      previewBody.proposal.proposedSource.goals.find(
+        (goal) => goal.id === editGoalId,
       ),
     ).not.toHaveProperty('updatedAt');
     const updated = await request(app.getHttpServer())
       .patch(`/goals/${editGoalId}`)
       .set('Authorization', 'Bearer token')
-      .send({ draft: editDraft, previewToken: preview.body.previewToken })
+      .send({ draft: editDraft, previewToken: previewBody.previewToken })
       .expect(200);
-    expect(updated.body).toEqual({ status: 'updated' });
+    const updatedBody = updated.body as GoalEditUpdatedDto;
+    expect(updatedBody).toEqual({ status: 'updated' });
   });
 
   it('includes active target state and returns first Spanish draft issue for edit preview', async () => {
@@ -506,7 +543,8 @@ describe('goal creation HTTP with actual service and repository', () => {
       .get(`/goals/plan?goalId=${activeGoalId}`)
       .set('Authorization', 'Bearer token')
       .expect(200);
-    expect(context.body.editContext).toMatchObject({
+    const contextBody = context.body as GoalPlanContextPresentDto;
+    expect(contextBody.editContext).toMatchObject({
       goalId: activeGoalId,
       status: 'active',
       draft: { name: 'Old goal' },
@@ -516,7 +554,9 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send({ ...editDraft, name: '' })
       .expect(400)
-      .expect(({ body }) => expect(body.message).toBe('Ingresá un nombre.'));
+      .expect(({ body }: { body: { message: string } }) =>
+        expect(body.message).toBe('Ingresá un nombre.'),
+      );
   });
 
   it('uses zero for an unallocated active goal when selected pending allocations belong only to paused goals', async () => {
@@ -533,14 +573,14 @@ describe('goal creation HTTP with actual service and repository', () => {
       snapshotId: 'snapshot-pending',
       goalId: editGoalId,
       percentage: '100.00',
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
     const withPausedAllocation = await request(app.getHttpServer())
       .get(`/goals/plan?goalId=${editGoalId}`)
       .set('Authorization', 'Bearer token')
       .expect(200);
-    expect(withPausedAllocation.body.editContext.draft.allocations).toEqual([
+    const withPausedBody =
+      withPausedAllocation.body as GoalPlanContextPresentDto;
+    expect(withPausedBody.editContext?.draft.allocations).toEqual([
       { goalId: activeGoalId, percentage: '0.00' },
     ]);
 
@@ -549,7 +589,9 @@ describe('goal creation HTTP with actual service and repository', () => {
       .get(`/goals/plan?goalId=${editGoalId}`)
       .set('Authorization', 'Bearer token')
       .expect(200);
-    expect(withoutAllocations.body.editContext.draft.allocations).toEqual([
+    const withoutAllocationsBody =
+      withoutAllocations.body as GoalPlanContextPresentDto;
+    expect(withoutAllocationsBody.editContext?.draft.allocations).toEqual([
       { goalId: activeGoalId, percentage: '100.00' },
     ]);
   });
@@ -565,7 +607,7 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send({ ...editDraft, strategy: 'invest', annualReturnRate: '8' })
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe(
           'Cannot modify immutable goal fields (type, currency, strategy).',
         ),
@@ -575,7 +617,7 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send(editDraft)
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe('Goal not found or is not active.'),
       );
     state.goals.push({
@@ -599,7 +641,7 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send(editDraft)
       .expect(400)
-      .expect(({ body }) =>
+      .expect(({ body }: { body: { message: string } }) =>
         expect(body.message).toBe('Cannot edit a completed goal.'),
       );
     await request(app.getHttpServer())
@@ -619,33 +661,36 @@ describe('goal creation HTTP with actual service and repository', () => {
       .set('Authorization', 'Bearer token')
       .send(editDraft)
       .expect(200);
+    const previewBody = preview.body as GoalCreationPreview;
     state.goals[1].name = 'Changed after preview';
     const beforeWrites = state.writes();
     const stale = await request(app.getHttpServer())
       .patch(`/goals/${editGoalId}`)
       .set('Authorization', 'Bearer token')
-      .send({ draft: editDraft, previewToken: preview.body.previewToken })
+      .send({ draft: editDraft, previewToken: previewBody.previewToken })
       .expect(200);
-    expect(stale.body.status).toBe('stale');
-    expect(stale.body.preview.previewToken).not.toBe(preview.body.previewToken);
+    const staleBody = stale.body as GoalEditStaleDto;
+    expect(staleBody.status).toBe('stale');
+    expect(staleBody.preview.previewToken).not.toBe(previewBody.previewToken);
     expect(
-      stale.body.preview.proposal.proposedSource.goals.find(
-        (goal: any) => goal.id === editGoalId,
+      staleBody.preview.proposal.proposedSource.goals.find(
+        (goal) => goal.id === editGoalId,
       ),
     ).not.toHaveProperty('updatedAt');
     expect(state.writes()).toBe(beforeWrites);
   });
 
   it('hides unexpected database errors behind a generic 500', async () => {
-    state.db.query.financialProfiles.findFirst = vi.fn(async () => {
-      throw new Error('SELECT secret_column FROM financial_profiles');
-    });
+    state.db.query.financialProfiles.findFirst = vi.fn(() =>
+      Promise.reject(new Error('SELECT secret_column FROM financial_profiles')),
+    );
     const response = await request(app.getHttpServer())
       .get(`/goals/plan?goalId=${editGoalId}`)
       .set('Authorization', 'Bearer token')
       .expect(500);
-    expect(response.body.message).toBe('Internal Server Error');
-    expect(JSON.stringify(response.body)).not.toContain('secret_column');
+    const responseBody = response.body as { message: string };
+    expect(responseBody.message).toBe('Internal Server Error');
+    expect(JSON.stringify(responseBody)).not.toContain('secret_column');
     const preview = await request(app.getHttpServer())
       .post('/goals/allocation/preview')
       .set('Authorization', 'Bearer token')
@@ -654,7 +699,8 @@ describe('goal creation HTTP with actual service and repository', () => {
         allocations: [{ goalId: activeGoalId, percentage: '100.00' }],
       })
       .expect(500);
-    expect(preview.body.message).toMatch(/^internal server error$/i);
+    const previewBody = preview.body as { message: string };
+    expect(previewBody.message).toMatch(/^internal server error$/i);
     const confirm = await request(app.getHttpServer())
       .put('/goals/allocation')
       .set('Authorization', 'Bearer token')
@@ -666,9 +712,10 @@ describe('goal creation HTTP with actual service and repository', () => {
         previewToken: 'a'.repeat(64),
       })
       .expect(500);
-    expect(confirm.body.message).toMatch(/^internal server error$/i);
+    const confirmBody = confirm.body as { message: string };
+    expect(confirmBody.message).toMatch(/^internal server error$/i);
     expect(
-      JSON.stringify({ preview: preview.body, confirm: confirm.body }),
+      JSON.stringify({ preview: previewBody, confirm: confirmBody }),
     ).not.toContain('secret_column');
   });
 });

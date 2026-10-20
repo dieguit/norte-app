@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 import BigNumber from 'bignumber.js';
 import { and, eq, gt, inArray } from 'drizzle-orm';
-import type { Database } from '../database/database.types';
+import type {
+  Database,
+  Executor,
+  Transaction,
+} from '../database/database.types';
 import { mapRowsToGoalsWorkspaceSource } from './goals.source';
 import {
   buildGoalCreationProposal,
@@ -22,13 +26,17 @@ import {
   parseGoalCreationSubmission,
   type GoalCreationDraft,
 } from '@repo/shared-types';
+import type { CurrencyCode } from '@repo/finance-utils';
 import {
   allocationPlanEntries,
   allocationPlanSnapshots,
+  expenses,
   financialGoals,
   financialProfiles,
   goalCompletionWithdrawals,
   goalInvestmentPositions,
+  goalSavingsPositions,
+  incomes,
   savingContributions,
   savingsPlaceTransfers,
   savingsPlaces,
@@ -51,7 +59,6 @@ import { calculateSavingsBalances } from '../finances/savings-projection';
 import { lockOwnedSavingsPlaces } from '../savings-places/savings-places.data';
 import { lockFinancialProfile } from '../profile/financial-profile.lock';
 
-type Executor = any;
 type CreationInput = {
   userId: string;
   currentMonth: string;
@@ -127,7 +134,9 @@ function nextMonth(month: string): string {
   return date.toISOString().slice(0, 7);
 }
 
-function winningSnapshot(snapshots: any[], month: string) {
+export function selectWinningSnapshot<
+  T extends { id?: string; effectiveMonth: string },
+>(snapshots: T[], month: string): T[] {
   const eligible = snapshots
     .filter((row) => row.effectiveMonth.slice(0, 7) <= month)
     .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth));
@@ -145,81 +154,76 @@ export async function getGoalPlanStateWithExecutor(
   includeAllOwnedGoals: boolean,
 ): Promise<GoalCreationState | null> {
   const profile = await executor.query.financialProfiles.findFirst({
-    where: (table: any, { eq }: any) => eq(table.userId, userId),
+    where: eq(financialProfiles.userId, userId),
   });
   if (!profile) return null;
-  const [allGoals, incomes, expenses, snapshots] = await Promise.all([
+  const [allGoals, incomesList, expensesList, snapshots] = await Promise.all([
     executor.query.financialGoals.findMany({
-      where: (table: any, { eq }: any) => eq(table.userId, userId),
+      where: eq(financialGoals.userId, userId),
     }),
     executor.query.incomes.findMany({
-      where: (table: any, { eq }: any) => eq(table.userId, userId),
+      where: eq(incomes.userId, userId),
     }),
     executor.query.expenses.findMany({
-      where: (table: any, { eq }: any) => eq(table.userId, userId),
+      where: eq(expenses.userId, userId),
     }),
     executor.query.allocationPlanSnapshots.findMany({
-      where: (table: any, { eq }: any) => eq(table.userId, userId),
+      where: eq(allocationPlanSnapshots.userId, userId),
     }),
   ]);
-  const goalIds = allGoals.map((goal: any) => goal.id);
+  const goalIds = allGoals.map((goal) => goal.id);
   const [savingsPositions, investmentPositions] = goalIds.length
     ? await Promise.all([
         executor.query.goalSavingsPositions.findMany({
-          where: (table: any, { inArray }: any) =>
-            inArray(table.goalId, goalIds),
+          where: inArray(goalSavingsPositions.goalId, goalIds),
         }),
         executor.query.goalInvestmentPositions.findMany({
-          where: (table: any, { inArray }: any) =>
-            inArray(table.goalId, goalIds),
+          where: inArray(goalInvestmentPositions.goalId, goalIds),
         }),
       ])
     : [[], []];
-  const currentSnapshots = winningSnapshot(snapshots, currentMonth);
+  const currentSnapshots = selectWinningSnapshot(snapshots, currentMonth);
   const pendingSnapshots = snapshots.filter(
-    (row: any) => row.effectiveMonth.slice(0, 7) === nextMonth(currentMonth),
+    (row) => row.effectiveMonth.slice(0, 7) === nextMonth(currentMonth),
   );
   const selected = [...currentSnapshots, ...pendingSnapshots];
   const allocations = selected.length
     ? await executor.query.allocationPlanEntries.findMany({
-        where: (table: any, { inArray }: any) =>
-          inArray(
-            table.snapshotId,
-            selected.map((row: any) => row.id),
-          ),
+        where: inArray(
+          allocationPlanEntries.snapshotId,
+          selected.map((row) => row.id),
+        ),
       })
     : [];
   const selectedGoals = includeAllOwnedGoals
     ? allGoals
-    : allGoals.filter((goal: any) => goal.status === 'active');
-  const currentIds = new Set(currentSnapshots.map((row: any) => row.id));
-  const pendingIds = new Set(pendingSnapshots.map((row: any) => row.id));
+    : allGoals.filter((goal) => goal.status === 'active');
+  const currentIds = new Set(currentSnapshots.map((row) => row.id));
+  const pendingIds = new Set(pendingSnapshots.map((row) => row.id));
   const source = mapRowsToGoalsWorkspaceSource({
     profile,
     goals: selectedGoals,
     savingsPositions,
     investmentPositions,
     snapshots: currentSnapshots,
-    allocations: allocations.filter((row: any) =>
-      currentIds.has(row.snapshotId),
-    ),
-    incomes,
-    expenses,
+    allocations: allocations.filter((row) => currentIds.has(row.snapshotId)),
+    incomes: incomesList,
+    expenses: expensesList,
     contributions: [],
     completionWithdrawals: [],
   });
   return {
     source,
     pendingSnapshots: pendingSnapshots.map(
-      ({ id, userId: owner, effectiveMonth }: any) => ({
+      ({ id, userId: owner, effectiveMonth }) => ({
         id,
         userId: owner,
         effectiveMonth,
       }),
     ),
     pendingAllocations: allocations
-      .filter((row: any) => pendingIds.has(row.snapshotId))
-      .map(({ id, snapshotId, goalId, percentage }: any) => ({
+      .filter((row) => pendingIds.has(row.snapshotId))
+      .map(({ id, snapshotId, goalId, percentage }) => ({
         id,
         snapshotId,
         goalId,
@@ -262,7 +266,7 @@ async function getGoalEditStateWithExecutor(
     true,
   );
   if (!state) return null;
-  const target = state.source.goals.find((goal: any) => goal.id === goalId);
+  const target = state.source.goals.find((goal) => goal.id === goalId);
   if (!target || !['active', 'paused'].includes(target.status)) {
     throw new Error(
       target?.status === 'completed'
@@ -316,7 +320,10 @@ export function createAllocationChangePreviewToken(
 async function withLockedFinancialProfile<T>(
   db: Database,
   userId: string,
-  callback: (tx: Executor, profile: any) => Promise<T>,
+  callback: (
+    tx: Transaction,
+    profile: Awaited<ReturnType<typeof lockFinancialProfile>>,
+  ) => Promise<T>,
 ): Promise<T> {
   return db.transaction(async (tx) => {
     const profile = await lockFinancialProfile(tx, userId);
@@ -325,7 +332,7 @@ async function withLockedFinancialProfile<T>(
 }
 
 async function replacePlan(
-  tx: Executor,
+  tx: Transaction,
   userId: string,
   proposal: {
     allocation: {
@@ -418,12 +425,12 @@ export async function confirmGoalLifecycleInRepository(
     db,
     input.userId,
     async (tx, lockedProfile) => {
-      const state = (await getGoalPlanStateWithExecutor(
+      const state = await getGoalPlanStateWithExecutor(
         tx,
         input.userId,
         input.currentMonth,
         true,
-      )) as GoalLifecycleState | null;
+      );
       if (!state) throw new Error('Financial profile not found.');
       const previewToken = createGoalLifecyclePreviewToken(
         input.lifecycle,
@@ -541,7 +548,9 @@ export async function confirmGoalCreationInRepository(
   );
 }
 
-function assertEditableGoalStatus(goal: any): void {
+function assertEditableGoalStatus(
+  goal: { status: string } | null | undefined,
+): void {
   if (!goal || !['active', 'paused'].includes(goal.status)) {
     throw new Error(
       goal?.status === 'completed'
@@ -552,10 +561,11 @@ function assertEditableGoalStatus(goal: any): void {
 }
 
 function assertImmutableFields(
-  goal: any,
+  goal: { type: string; currency: string; strategy: string } | null | undefined,
   draft: ReturnType<typeof parseGoalCreationSubmission>,
 ): void {
   if (
+    !goal ||
     draft.type !== goal.type ||
     draft.currency !== goal.currency ||
     draft.strategy !== goal.strategy
@@ -567,7 +577,7 @@ function assertImmutableFields(
 }
 
 async function applyGoalEdit(
-  tx: Executor,
+  tx: Transaction,
   input: EditInput,
   proposal: GoalCreationProposal,
 ): Promise<void> {
@@ -613,7 +623,7 @@ export async function confirmGoalEditInRepository(
       );
       if (!state) throw new Error('Financial profile not found.');
       const goal = state.source.goals.find(
-        (candidate: any) => candidate.id === input.goalId,
+        (candidate) => candidate.id === input.goalId,
       );
       assertEditableGoalStatus(goal);
       const draft = parseGoalCreationSubmission(
@@ -654,43 +664,39 @@ export async function confirmAllocationChangeInRepository(
   db: Database,
   input: AllocationChangeInput,
 ): Promise<void> {
-  return withLockedFinancialProfile(
-    db,
-    input.userId,
-    async (tx, lockedProfile) => {
-      const state = (await getGoalPlanStateWithExecutor(
-        tx,
-        input.userId,
-        input.currentMonth,
-        false,
-      )) as AllocationChangeState | null;
-      if (!state) throw new Error('Financial profile not found.');
-      const previewToken = createAllocationChangePreviewToken(
-        state,
-        input.currentMonth,
-        input.draft,
-      );
-      const proposal = buildAllocationChangeProposal({
-        draft: input.draft,
-        state,
-        currentMonth: input.currentMonth,
-      });
-      if (previewToken !== input.previewToken)
-        throw new StaleAllocationChangePreviewError({ proposal, previewToken });
-      const monthlyContribution =
-        proposal.allocation.monthlyContribution?.amount ?? '0.00';
-      await tx
-        .update(financialProfiles)
-        .set({
-          goalDedicationPercentage: new BigNumber(
-            input.draft.dedicationPercentage,
-          ).toFixed(2),
-          plannedMonthlyContribution: monthlyContribution,
-        })
-        .where(eq(financialProfiles.userId, input.userId));
-      await replacePlan(tx, input.userId, proposal, '', monthlyContribution);
-    },
-  );
+  return withLockedFinancialProfile(db, input.userId, async (tx) => {
+    const state = await getGoalPlanStateWithExecutor(
+      tx,
+      input.userId,
+      input.currentMonth,
+      false,
+    );
+    if (!state) throw new Error('Financial profile not found.');
+    const previewToken = createAllocationChangePreviewToken(
+      state,
+      input.currentMonth,
+      input.draft,
+    );
+    const proposal = buildAllocationChangeProposal({
+      draft: input.draft,
+      state,
+      currentMonth: input.currentMonth,
+    });
+    if (previewToken !== input.previewToken)
+      throw new StaleAllocationChangePreviewError({ proposal, previewToken });
+    const monthlyContribution =
+      proposal.allocation.monthlyContribution?.amount ?? '0.00';
+    await tx
+      .update(financialProfiles)
+      .set({
+        goalDedicationPercentage: new BigNumber(
+          input.draft.dedicationPercentage,
+        ).toFixed(2),
+        plannedMonthlyContribution: monthlyContribution,
+      })
+      .where(eq(financialProfiles.userId, input.userId));
+    await replacePlan(tx, input.userId, proposal, '', monthlyContribution);
+  });
 }
 
 export class StaleGoalCompletionPreviewError extends Error {
@@ -706,8 +712,8 @@ export class GoalCompletionStateInvalidError extends Error {
 }
 
 function normalizeCompletionWithdrawals(
-  rows: any[],
-  places: any[],
+  rows: Array<typeof goalCompletionWithdrawals.$inferSelect>,
+  places: Array<{ id: string; name: string }>,
   goals: GoalCompletionState['source']['goals'],
 ) {
   const placeNames = new Map(places.map((place) => [place.id, place.name]));
@@ -723,7 +729,7 @@ function normalizeCompletionWithdrawals(
       placeId: withdrawal.placeId,
       placeName: placeNames.get(withdrawal.placeId)!,
       amount: withdrawal.amount,
-      currency: withdrawal.currency,
+      currency: withdrawal.currency as CurrencyCode,
       createdAt:
         withdrawal.createdAt instanceof Date
           ? withdrawal.createdAt.toISOString()
@@ -749,25 +755,24 @@ async function getGoalCompletionStateWithExecutor(
 
   const [places, contributions, transfers] = await Promise.all([
     executor.query.savingsPlaces.findMany({
-      where: (table: any, { eq }: any) => eq(table.userId, userId),
+      where: eq(savingsPlaces.userId, userId),
     }),
     executor.query.savingContributions.findMany({
-      where: (table: any, { eq }: any) => eq(table.userId, userId),
+      where: eq(savingContributions.userId, userId),
     }),
     executor.query.savingsPlaceTransfers.findMany({
-      where: (table: any, { eq }: any) => eq(table.userId, userId),
+      where: eq(savingsPlaceTransfers.userId, userId),
     }),
   ]);
-  const placeIds = places.map((place: any) => place.id);
+  const placeIds = places.map((place) => place.id);
   const goalIds = state.source.goals.map((candidate) => candidate.id);
   const withdrawalRows =
     placeIds.length && goalIds.length
       ? await executor.query.goalCompletionWithdrawals.findMany({
-          where: (table: any, { and, inArray }: any) =>
-            and(
-              inArray(table.placeId, placeIds),
-              inArray(table.goalId, goalIds),
-            ),
+          where: and(
+            inArray(goalCompletionWithdrawals.placeId, placeIds),
+            inArray(goalCompletionWithdrawals.goalId, goalIds),
+          ),
         })
       : [];
   const completionWithdrawals = normalizeCompletionWithdrawals(
@@ -817,7 +822,7 @@ export function createGoalCompletionPreviewToken(
 }
 
 async function lockCompletionTargets(
-  tx: Executor,
+  tx: Transaction,
   userId: string,
   goalId: string,
 ) {
@@ -864,7 +869,7 @@ function getCurrentCompletionProposal(
 }
 
 async function confirmGoalCompletionTransaction(
-  tx: Executor,
+  tx: Transaction,
   input: {
     userId: string;
     currentMonth: string;

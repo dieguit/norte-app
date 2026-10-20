@@ -28,12 +28,13 @@ export async function startPostgres() {
   const image = process.env.TAKEOVER_POSTGRES_IMAGE ?? 'postgres:17-alpine';
   if (!/^postgres:\d+-alpine$/.test(image))
     throw new Error('Unsafe test image');
-  const stop = async () => {
+  const stop = () => {
     owned.delete(adminUrl);
     execFileSync('docker', ['stop', container], {
       stdio: 'pipe',
       timeout: 30_000,
     });
+    return Promise.resolve();
   };
   try {
     execFileSync(
@@ -109,7 +110,9 @@ export async function withDatabase<T>(
     await admin.query(`CREATE DATABASE ${quote(name)}`);
     created = true;
     pool = new Pool({ connectionString: url.href });
-    const { rows } = await pool.query('select current_database() as name');
+    const { rows } = await pool.query<{ name: string }>(
+      'select current_database() as name',
+    );
     if (rows[0]?.name !== name) throw new Error('Wrong isolated database');
     databases.set(url.href, owned.get(adminUrl)!);
     return await run(pool, url.href);
@@ -156,8 +159,10 @@ export function migrateCli(url: string): void {
       .split('\n')
       .filter((line) => line.includes(databaseName) && line.includes('ERROR:'))
       .join('\n');
+    const stdoutText = output.stdout ? output.stdout.toString('utf8') : '';
+    const stderrText = output.stderr ? output.stderr.toString('utf8') : '';
     throw new Error(
-      `${output.stdout ?? ''}\n${output.stderr ?? ''}\nOwned PostgreSQL diagnostic: ${diagnostic}`
+      `${stdoutText}\n${stderrText}\nOwned PostgreSQL diagnostic: ${diagnostic}`
         .replaceAll(url, '[owned database]')
         .replaceAll(new URL(url).password, '[redacted]'),
     );
@@ -260,7 +265,7 @@ export async function capture(pool: Pool) {
     order by n.nspname,c.relname`)
   ).rows;
   const hasJournal = (
-    await pool.query(
+    await pool.query<{ relation: string | null }>(
       "select to_regclass('drizzle.__drizzle_migrations') as relation",
     )
   ).rows[0]?.relation;

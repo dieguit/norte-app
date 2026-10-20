@@ -481,7 +481,7 @@ describe('saving-contribution domain', () => {
     it('rejects unsupported currency', () => {
       expect(() =>
         parseSavingDraft({
-          currency: 'EUR' as any,
+          currency: 'EUR' as never,
           amount: '100.00',
         }),
       ).toThrow('Invalid currency');

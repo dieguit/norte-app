@@ -36,29 +36,40 @@ async function apiRows(pool: Pool) {
   ]) {
     if (
       (
-        await pool.query('select to_regclass($1) as relation', [
-          `public.${table}`,
-        ])
+        await pool.query<{ relation: string | null }>(
+          'select to_regclass($1) as relation',
+          [`public.${table}`],
+        )
       ).rows[0]?.relation
     )
-      await pool.query(sql!);
+      await pool.query(sql);
   }
 }
-function preserved(before: Capture, after: Capture) {
+function preserved(
+  before: Capture,
+  after: Capture,
+  expectIncrement: boolean = true,
+) {
   for (const [name, rows] of Object.entries(before.rows))
     expect(after.rows[name], name).toEqual(rows);
   for (const relation of before.catalog)
     expect(after.catalog).toContainEqual(relation);
   expect(after.journal.slice(0, before.journal.length)).toEqual(before.journal);
-  expect(after.journal.length).toBe(before.journal.length + 1);
+  if (expectIncrement) {
+    expect(after.journal.length).toBe(before.journal.length + 1);
+  }
 }
 
 type ManifestRecord = { hash: string; created_at: string };
+type Manifest = {
+  web: { entries: Array<{ tag: string; when: number }> };
+  api: { entries: Array<{ tag: string; when: number }> };
+};
 
 function loadManifestRecords() {
   const manifest = JSON.parse(
     readFileSync(resolve('migration-history/manifest.json'), 'utf8'),
-  );
+  ) as Manifest;
   const pairs = (kind: 'web' | 'api') =>
     manifest[kind].entries.map((entry: { tag: string; when: number }) => ({
       created_at: String(entry.when),
@@ -125,7 +136,7 @@ const recordsFor: Record<
   (web: ManifestRecord[]) => ManifestRecord[]
 > = {
   hole: (web) => web.filter((_, index) => index !== 10),
-  duplicate: (web) => [...web, web[0]!],
+  duplicate: (web) => [...web, web[0]],
   'changed hash': (web) =>
     web.map((row, index) => (index ? row : { ...row, hash: 'changed' })),
   'newer cutoff': (web) => [
@@ -145,7 +156,9 @@ describe('owned database guards', () => {
       });
     try {
       await expect(
-        withDatabase('postgres://external/production', async () => undefined),
+        withDatabase('postgres://external/production', () =>
+          Promise.resolve(undefined),
+        ),
       ).rejects.toThrow('Not an owned');
       expect(() => migrateCli('postgres://external/production')).toThrow(
         'Not an owned',
@@ -179,6 +192,7 @@ describe('API database ownership — real Drizzle CLI', () => {
     url: string,
     journalCount: number,
     before?: Capture,
+    expectIncrement: boolean = true,
   ) {
     migrateCli(url);
     const after = await capture(pool);
@@ -186,27 +200,36 @@ describe('API database ownership — real Drizzle CLI', () => {
       Object.keys(after.rows).filter((name) => name.startsWith('public.')),
     ).toHaveLength(20);
     expect(after.journal).toHaveLength(journalCount);
-    if (before) preserved(before, after);
+    if (before) preserved(before, after, expectIncrement);
     migrateCli(url);
     expect(await capture(pool)).toEqual(after);
   }
+
+  type SnapshotTable = {
+    foreignKeys: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  type Snapshot = {
+    tables: Record<string, SnapshotTable>;
+  };
 
   it('fresh: replays immutable web history including escaped 0011 and creates 20 tables', async () => {
     await withDatabase(server.adminUrl, async (pool, url) => {
       await success(pool, url, 22);
       const snapshot = JSON.parse(
         readFileSync(resolve('drizzle/meta/0021_snapshot.json'), 'utf8'),
-      );
+      ) as Snapshot;
       const actual = (
-        await pool.query(`select c.relname as table,k.conname as name from pg_constraint k
+        await pool.query<{
+          table: string;
+          name: string;
+        }>(`select c.relname as table,k.conname as name from pg_constraint k
         join pg_class c on c.oid=k.conrelid join pg_namespace n on n.oid=c.relnamespace
         where k.contype='f' and n.nspname='public' order by c.relname,k.conname`)
       ).rows;
       const expected = Object.entries(snapshot.tables)
         .flatMap(([name, table]) =>
-          Object.keys(
-            (table as { foreignKeys: Record<string, unknown> }).foreignKeys,
-          ).map((fk) => ({
+          Object.keys(table.foreignKeys).map((fk) => ({
             table: name.replace('public.', ''),
             name: fk.slice(0, 63),
           })),
@@ -236,10 +259,10 @@ describe('API database ownership — real Drizzle CLI', () => {
         }
         await apiRows(pool);
         const before = await capture(pool);
-        expect(before.rows['public.financial_profiles']![0]).toContain(
+        expect(before.rows['public.financial_profiles'][0]).toContain(
           '2024-01-02T03:04:05.123456',
         );
-        expect(before.rows['public.financial_goals']!.join('\n')).toContain(
+        expect(before.rows['public.financial_goals'].join('\n')).toContain(
           '12345678.91',
         );
         expect(
@@ -304,9 +327,9 @@ describe('API database ownership — real Drizzle CLI', () => {
             const current = await db
               .select({ updatedAt: table.updatedAt })
               .from(table)
-              .where(eq(table.id, old[0]!.id));
-            expect(current[0]!.updatedAt.getTime()).toBeGreaterThan(
-              old[0]!.updatedAt.getTime(),
+              .where(eq(table.id, old[0].id));
+            expect(current[0].updatedAt.getTime()).toBeGreaterThan(
+              old[0].updatedAt.getTime(),
             );
           }
         }
@@ -331,21 +354,7 @@ describe('API database ownership — real Drizzle CLI', () => {
             'public.users',
             'public.whatsapp_auth_state',
           ]);
-        migrateCli(url);
-        const after = await capture(pool);
-        expect(
-          Object.keys(after.rows).filter((name) => name.startsWith('public.')),
-        ).toHaveLength(20);
-        for (const [name, rows] of Object.entries(before.rows))
-          expect(after.rows[name]).toEqual(rows);
-        for (const relation of before.catalog)
-          expect(after.catalog).toContainEqual(relation);
-        expect(after.journal.slice(0, before.journal.length)).toEqual(
-          before.journal,
-        );
-        expect(after.journal).toHaveLength(24);
-        migrateCli(url);
-        expect(await capture(pool)).toEqual(after);
+        await success(pool, url, 24, before, false);
       });
     },
     120_000,

@@ -1,18 +1,19 @@
 import {
-  type CurrencyCode,
   type Money,
   PLANNING_ARS_PER_USD,
   calculatePercentageSum,
 } from '@repo/finance-utils';
 import {
   type GoalProjection,
-  type GoalsFinancialSummary,
   type GoalsWorkspace,
   type GoalsWorkspaceSource,
   buildGoalsWorkspace,
   buildCurrentGoalsPlanWorkspace,
 } from '../finances/goals.engine';
-import { type GoalCreationAllocation } from './goal-creation';
+import {
+  findCurrentAllocationSnapshot,
+  type GoalCreationAllocation,
+} from './goal-creation';
 import {
   addGoalAllocationAmounts,
   buildGoalAllocationEntries,
@@ -38,32 +39,6 @@ export interface AllocationChangeState {
   pendingAllocations: GoalsWorkspaceSource['allocations'];
 }
 
-interface AllocationChangeContext {
-  currentMonth: string;
-  financialSummary: GoalsFinancialSummary;
-  plannedMonthlyContribution?: Money;
-  activeGoals: Array<{
-    id: string;
-    name: string;
-    currency: CurrencyCode;
-    projection: GoalProjection;
-  }>;
-  currentAllocation?: {
-    effectiveMonth: string;
-    entries: Array<{
-      goalId: string;
-      percentage: string;
-    }>;
-  };
-  pendingAllocation?: {
-    effectiveMonth: string;
-    entries: Array<{
-      goalId: string;
-      percentage: string;
-    }>;
-  };
-}
-
 export interface AllocationChangeProposal {
   dedicationPercentage: number;
   allocation: GoalCreationAllocation;
@@ -80,11 +55,6 @@ export interface AllocationChangeProposal {
   proposedSource: GoalsWorkspaceSource;
 }
 
-interface AllocationChangePreviewResult {
-  proposal: AllocationChangeProposal;
-  previewToken: string;
-}
-
 export interface BuildAllocationChangeProposalInput {
   draft?: AllocationChangeDraft;
   state: AllocationChangeState;
@@ -92,18 +62,6 @@ export interface BuildAllocationChangeProposalInput {
 }
 
 type AllocationGoal = GoalsWorkspaceSource['goals'][number];
-
-function findCurrentAllocationSnapshot(
-  snapshots: GoalsWorkspaceSource['snapshots'],
-  currentMonth: string,
-): GoalsWorkspaceSource['snapshots'][number] | undefined {
-  return snapshots
-    .filter(
-      (snapshot) =>
-        snapshot.effectiveMonth.slice(0, 7) <= currentMonth.slice(0, 7),
-    )
-    .sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth))[0];
-}
 
 function selectAllocationChangeBaseline(input: {
   state: AllocationChangeState;
@@ -290,8 +248,7 @@ export function buildAllocationChangeProposal(
 function normalizeAllocationChangeState(
   stateOrSource: AllocationChangeState | GoalsWorkspaceSource,
 ): AllocationChangeState {
-  if ('source' in stateOrSource && stateOrSource.source)
-    return stateOrSource as AllocationChangeState;
+  if ('source' in stateOrSource && stateOrSource.source) return stateOrSource;
   return {
     source: stateOrSource as GoalsWorkspaceSource,
     pendingSnapshots: [],

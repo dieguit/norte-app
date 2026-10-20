@@ -7,9 +7,7 @@ import {
   isExpenseIncludedInMonth,
   isIncomeIncludedInMonth,
   type RoadmapData,
-  type RoadmapExpense,
   type RoadmapFinances,
-  type RoadmapIncome,
   type RoadmapMonth,
 } from '@repo/shared-types';
 

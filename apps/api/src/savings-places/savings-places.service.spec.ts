@@ -151,10 +151,10 @@ describe('SavingsPlacesService', () => {
           findMany: findMany('goalCompletionWithdrawals'),
         },
       },
-      insert: vi.fn((table) => ({
-        values: (value) => {
+      insert: vi.fn((table: unknown) => ({
+        values: (value: unknown) => {
           inserted.push({ table, value });
-          return { returning: async () => [{ id: 'transfer-id' }] };
+          return { returning: () => Promise.resolve([{ id: 'transfer-id' }]) };
         },
       })),
     };

@@ -158,11 +158,13 @@ function contributionTx(
     select: () => ({
       from: (table: unknown) => ({
         where: () => ({
-          for: async () => {
+          for: () => {
             log.locks.push(table);
             if (table === financialProfiles)
-              return options.profileMissing ? [] : [{ userId: 'u' }];
-            return [{ id: 'bank' }];
+              return Promise.resolve(
+                options?.profileMissing ? [] : [{ userId: 'u' }],
+              );
+            return Promise.resolve([{ id: 'bank' }]);
           },
         }),
       }),
@@ -172,7 +174,7 @@ function contributionTx(
         where: () => {
           log.writes.push({ table, values });
           return Object.assign(Promise.resolve([]), {
-            returning: async () => [{ id: 'updated' }],
+            returning: () => Promise.resolve([{ id: 'updated' }]),
           });
         },
       }),
@@ -187,7 +189,8 @@ function contributionTx(
       values: (values: unknown) => {
         log.writes.push({ table, values });
         return Object.assign(Promise.resolve([]), {
-          returning: async () => [{ id: `new-${log.writes.length}` }],
+          returning: () =>
+            Promise.resolve([{ id: `new-${log.writes.length}` }]),
         });
       },
     }),
@@ -202,7 +205,7 @@ function makeDb(
   const tx = contributionTx(queries, log, options);
   return {
     query: queries,
-    transaction: async (callback: (executor: typeof tx) => unknown) =>
+    transaction: <T>(callback: (executor: typeof tx) => Promise<T>) =>
       callback(tx),
   } as unknown as Database;
 }
@@ -272,7 +275,7 @@ describe('saving contribution repository', () => {
         draft,
         previewToken,
       }),
-    ).resolves.toMatchObject({ contributionId: expect.any(String) });
+    ).resolves.toMatchObject({ contributionId: expect.any(String) as never });
     expect(log.locks).toContain(financialProfiles);
     expect(log.writes).toContainEqual({
       table: savingContributions,
@@ -280,17 +283,17 @@ describe('saving contribution repository', () => {
         amount: '300.00',
         currency: 'ARS',
         placeId: 'bank',
-      }),
+      }) as never,
     });
     expect(
       log.writes
         .filter(({ table }) => table === goalSavingsPositions)
-        .map(({ values }) => values.amount),
+        .map(({ values }) => (values as { amount?: string }).amount),
     ).toEqual(['180.00', '120.00']);
     expect(
       log.writes
         .filter(({ table }) => table === savingContributionAllocations)
-        .map(({ values }) => values.percentage),
+        .map(({ values }) => (values as { percentage?: string }).percentage),
     ).toEqual(['60.00', '40.00']);
     expect(log.writes.some(({ table }) => table === financialProfiles)).toBe(
       false,
@@ -316,7 +319,7 @@ describe('saving contribution repository', () => {
     });
     expect(log.writes).toContainEqual({
       table: savingContributions,
-      values: expect.objectContaining({ createdAt }),
+      values: expect.objectContaining({ createdAt }) as never,
     });
   });
 
@@ -398,7 +401,10 @@ describe('saving contribution repository', () => {
     });
     expect(log.writes).toContainEqual({
       table: investmentContributions,
-      values: expect.objectContaining({ amount: '200.00', currency: 'ARS' }),
+      values: expect.objectContaining({
+        amount: '200.00',
+        currency: 'ARS',
+      }) as never,
     });
     expect(log.writes).toContainEqual({
       table: goalInvestmentPositions,
@@ -487,11 +493,14 @@ describe('saving contribution repository', () => {
     expect(
       log.writes
         .filter(({ table }) => table === goalSavingsPositions)
-        .map(({ values }) => values.amount),
+        .map(({ values }) => (values as { amount?: string }).amount),
     ).toEqual(['300.00', '200.00']);
     expect(log.writes).toContainEqual({
       table: savingContributions,
-      values: expect.objectContaining({ amount: '500.00', placeId: 'bank' }),
+      values: expect.objectContaining({
+        amount: '500.00',
+        placeId: 'bank',
+      }) as never,
     });
   });
 
@@ -533,7 +542,7 @@ describe('saving contribution repository', () => {
     });
     expect(log.writes).toContainEqual({
       table: investmentContributions,
-      values: expect.objectContaining({ amount: '300.00' }),
+      values: expect.objectContaining({ amount: '300.00' }) as never,
     });
   });
 
