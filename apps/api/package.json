@@ -18,7 +18,7 @@
     "test:watch": "NODE_ENV=test vitest",
     "test:cov": "NODE_ENV=test vitest run --coverage",
     "test:debug": "vitest --inspect-brk --pool forks --poolOptions.forks.singleFork",
-    "test:e2e": "NODE_ENV=test vitest run test",
+    "test:e2e": "NODE_ENV=test vitest run test --no-file-parallelism",
     "check-types": "tsc --noEmit",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
