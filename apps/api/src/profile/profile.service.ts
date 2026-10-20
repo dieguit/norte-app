@@ -11,9 +11,9 @@ import {
   financialGoals,
   financialProfiles,
   incomes,
-  investmentContributions,
-  savingContributions,
 } from './profile.schema';
+import { getMonthlyFinancialSummary } from '../finances/goals.financial';
+import { findUserContributions } from '../contributions/contribution-queries';
 
 type Currency = 'ARS' | 'USD';
 type Money = { amount: string; currency: Currency };
@@ -40,36 +40,6 @@ function previousMonth(date: Date) {
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 1, 1),
   );
   return `${previous.getUTCFullYear()}-${String(previous.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
-function totalArs(
-  rows: Array<{
-    amount: string;
-    currency: string;
-    recurring: boolean;
-    effectiveMonth: string;
-    endMonth?: string | null;
-  }>,
-  month: string,
-  expense = false,
-): Money {
-  const total = rows.reduce((sum, row) => {
-    const effective = row.effectiveMonth.slice(0, 7);
-    const end = row.endMonth?.slice(0, 7);
-    const included = expense
-      ? row.recurring
-        ? effective <= month && (end === undefined || month < end)
-        : effective === month
-      : row.recurring && effective <= month;
-    return included
-      ? sum.plus(
-          row.currency === 'USD'
-            ? new BigNumber(row.amount).times(PLANNING_ARS_PER_USD)
-            : row.amount,
-        )
-      : sum;
-  }, new BigNumber(0));
-  return money(total, 'ARS');
 }
 
 function getContributionMonth(createdAt: Date | string): string | null {
@@ -207,14 +177,13 @@ function getEmergencyFundMonths(goal: HomeGoal) {
 function calculateHomeFinancialState(
   profile: ReadyProfile['profile'],
   goal: HomeGoal,
-  expenseRows: ReadyProfile['expenseRows'],
-  currentMonth: string,
+  calculatedExpenses: Money,
 ) {
   const expensesKnowledge: 'known' | 'unknown' =
     profile.expensesKnowledge === 'known' ? 'known' : 'unknown';
   const expenses =
     expensesKnowledge === 'known'
-      ? totalArs(expenseRows, currentMonth, true)
+      ? calculatedExpenses
       : undefined;
   const monthlyCommitment = money(
     profile.plannedMonthlyContribution ?? '0.00',
@@ -248,15 +217,16 @@ function buildHomeState(
   previousMonthShortfalls: Shortfall[],
 ): InitialHomeState {
   const { profile, incomeRows, snapshot, allocation, goal } = ready;
-  const income = totalArs(
-    incomeRows.filter((row) => row.recurring),
+  const summary = getMonthlyFinancialSummary(
+    { incomes: incomeRows as any, expenses: ready.expenseRows as any },
     currentMonth,
+    { includeOneOffIncome: false },
   );
+  const income = summary.income;
   const financialState = calculateHomeFinancialState(
     profile,
     goal,
-    ready.expenseRows,
-    currentMonth,
+    summary.expenses,
   );
   const {
     expensesKnowledge,
@@ -339,19 +309,14 @@ export class ProfileService {
     if (!applicable || applicable.plannedMonthlyContribution === null)
       return [];
 
-    const [entries, goals, saving, investing] = await Promise.all([
+    const [entries, goals, [saving, investing]] = await Promise.all([
       this.db.query.allocationPlanEntries.findMany({
         where: eq(allocationPlanEntries.snapshotId, applicable.id),
       }),
       this.db.query.financialGoals.findMany({
         where: eq(financialGoals.userId, userId),
       }),
-      this.db.query.savingContributions.findMany({
-        where: eq(savingContributions.userId, userId),
-      }),
-      this.db.query.investmentContributions.findMany({
-        where: eq(investmentContributions.userId, userId),
-      }),
+      findUserContributions(this.db, userId),
     ]);
     return deriveShortfalls({
       closedMonth,

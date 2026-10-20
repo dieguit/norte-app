@@ -7,9 +7,10 @@ import type { Database } from '../database/database.types';
 import {
   allocationPlanEntries, allocationPlanSnapshots, expenses, financialGoals, financialProfiles,
   goalCompletionWithdrawals, goalInvestmentPositions, goalSavingsPositions, incomes,
-  investmentContributionAllocations, investmentContributions, savingContributionAllocations,
-  savingContributions, savingsPlaces,
+  investmentContributionAllocations, savingContributionAllocations,
+  savingsPlaces,
 } from '../profile/profile.schema';
+import { findUserContributions } from '../contributions/contribution-queries';
 import { buildCurrentGoalsPlanWorkspace, buildGoalsWorkspace, type GoalsWorkspaceSource } from '../finances/goals.engine';
 import { mapRowsToGoalsWorkspaceSource } from './goals.source';
 import { createMoney } from '@repo/finance-utils';
@@ -242,7 +243,7 @@ export class GoalsService {
 
   async previewLifecycle(userId: string, goalId: string, input: unknown) {
     const currentMonth = this.currentMonth();
-    const parsed = this.parseLifecycle(goalLifecyclePreviewSchema, goalId, input);
+    const parsed = this.parseGoalBody(goalLifecyclePreviewSchema, goalId, input);
     const draft = parsed.allocations !== undefined ? { allocations: parsed.allocations } : undefined;
     try {
       const state = await getGoalLifecycleState(this.db, userId, currentMonth);
@@ -256,7 +257,7 @@ export class GoalsService {
 
   async confirmLifecycle(userId: string, goalId: string, input: unknown) {
     const currentMonth = this.currentMonth();
-    const parsed = this.parseLifecycle(confirmGoalLifecycleSchema, goalId, input);
+    const parsed = this.parseGoalBody(confirmGoalLifecycleSchema, goalId, input);
     try {
       await confirmGoalLifecycleInRepository(this.db, {
         userId, goalId, lifecycle: parsed.lifecycle, currentMonth, draft: { allocations: parsed.allocations }, previewToken: parsed.previewToken,
@@ -270,7 +271,7 @@ export class GoalsService {
     }
   }
 
-  private parseLifecycle<T>(schema: ZodType<T>, goalId: string, input: unknown): T {
+  private parseGoalBody<T>(schema: ZodType<T>, goalId: string, input: unknown): T {
     try { return schema.parse({ ...(input as object), goalId }); }
     catch (error) {
       throw new BadRequestException(error instanceof ZodError ? error.issues[0]?.message ?? 'Datos inválidos.' : 'Datos inválidos.');
@@ -296,7 +297,7 @@ export class GoalsService {
 
   async previewCompletion(userId: string, goalId: string, input: unknown) {
     const currentMonth = this.currentMonth();
-    const draft: GoalCompletionDraft = this.parseCompletion(goalCompletionPreviewSchema, goalId, input);
+    const draft: GoalCompletionDraft = this.parseGoalBody(goalCompletionPreviewSchema, goalId, input);
     try {
       const state = await getGoalCompletionState(this.db, userId, currentMonth, goalId);
       if (!state) throw new BadRequestException('Completá tu perfil financiero antes de completar un objetivo.');
@@ -307,7 +308,7 @@ export class GoalsService {
 
   async confirmCompletion(userId: string, goalId: string, input: unknown) {
     const currentMonth = this.currentMonth();
-    const { previewToken, ...draft }: GoalCompletionDraft & { previewToken: string } = this.parseCompletion(confirmGoalCompletionSchema, goalId, input);
+    const { previewToken, ...draft }: GoalCompletionDraft & { previewToken: string } = this.parseGoalBody(confirmGoalCompletionSchema, goalId, input);
     try {
       const completed = await confirmGoalCompletionInRepository(this.db, { userId, currentMonth, draft, previewToken });
       return GoalCompletionConfirmationSchema.parse({ status: 'completed', completedAt: completed.completedAt });
@@ -319,13 +320,6 @@ export class GoalsService {
         return GoalCompletionConfirmationSchema.parse({ status: 'invalid', message: error.message });
       }
       this.rethrowCompletionError(error);
-    }
-  }
-
-  private parseCompletion<T>(schema: ZodType<T>, goalId: string, input: unknown): T {
-    try { return schema.parse({ ...(input as object), goalId }); }
-    catch (error) {
-      throw new BadRequestException(error instanceof ZodError ? error.issues[0]?.message ?? 'Datos inválidos.' : 'Datos inválidos.');
     }
   }
 
@@ -414,13 +408,12 @@ export class GoalsService {
     const goalIds = goalRows.map(({ id }) => id);
     const selectedSnapshots = selectWorkspaceSnapshots(allSnapshots, currentMonth);
     const snapshotIds = selectedSnapshots.map(({ id }) => id);
-    const [savingsPositions, investmentPositions, allocations, places, savings, investments] = await Promise.all([
+    const [savingsPositions, investmentPositions, allocations, places, [savings, investments]] = await Promise.all([
       goalIds.length ? this.db.query.goalSavingsPositions.findMany({ where: inArray(goalSavingsPositions.goalId, goalIds) }) : [],
       goalIds.length ? this.db.query.goalInvestmentPositions.findMany({ where: inArray(goalInvestmentPositions.goalId, goalIds) }) : [],
       snapshotIds.length ? this.db.query.allocationPlanEntries.findMany({ where: inArray(allocationPlanEntries.snapshotId, snapshotIds) }) : [],
       this.db.query.savingsPlaces.findMany({ where: eq(savingsPlaces.userId, userId) }),
-      this.db.query.savingContributions.findMany({ where: eq(savingContributions.userId, userId) }),
-      this.db.query.investmentContributions.findMany({ where: eq(investmentContributions.userId, userId) }),
+      findUserContributions(this.db, userId),
     ]);
     const placeIds = places.map(({ id }) => id);
     const savingIds = savings.map(({ id }) => id);

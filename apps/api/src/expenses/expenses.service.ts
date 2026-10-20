@@ -28,9 +28,24 @@ function serializeExpense(expense: typeof expenses.$inferSelect) {
   });
 }
 
+function splitsHistory(
+  existing: typeof expenses.$inferSelect,
+  month: string,
+): boolean {
+  return existing.recurring && existing.effectiveMonth.slice(0, 7) < month;
+}
+
 @Injectable()
 export class ExpensesService {
   constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
+
+  private async findOwned(tx: any, userId: string, id: string) {
+    const existing = await tx.query.expenses.findFirst({
+      where: and(eq(expenses.id, id), eq(expenses.userId, userId)),
+    });
+    if (!existing) throw new NotFoundException('Gasto no encontrado.');
+    return existing;
+  }
 
   private async values(tx: any, userId: string, draft: ExpenseDraft) {
     let source: { sourceKind: string; sourceId: string | null };
@@ -107,15 +122,9 @@ export class ExpensesService {
     input: { draft: ExpenseDraft; effectiveMonth: string },
   ) {
     return this.db.transaction(async (tx) => {
-      const existing = await tx.query.expenses.findFirst({
-        where: and(eq(expenses.id, id), eq(expenses.userId, userId)),
-      });
-      if (!existing) throw new NotFoundException('Gasto no encontrado.');
+      const existing = await this.findOwned(tx, userId, id);
       const values = await this.values(tx, userId, input.draft);
-      if (
-        existing.recurring &&
-        existing.effectiveMonth.slice(0, 7) < input.effectiveMonth
-      ) {
+      if (splitsHistory(existing, input.effectiveMonth)) {
         await tx
           .update(expenses)
           .set({ endMonth: `${input.effectiveMonth}-01` })
@@ -145,14 +154,8 @@ export class ExpensesService {
 
   delete(userId: string, id: string, effectiveMonth: string) {
     return this.db.transaction(async (tx) => {
-      const existing = await tx.query.expenses.findFirst({
-        where: and(eq(expenses.id, id), eq(expenses.userId, userId)),
-      });
-      if (!existing) throw new NotFoundException('Gasto no encontrado.');
-      if (
-        existing.recurring &&
-        existing.effectiveMonth.slice(0, 7) < effectiveMonth
-      ) {
+      const existing = await this.findOwned(tx, userId, id);
+      if (splitsHistory(existing, effectiveMonth)) {
         await tx
           .update(expenses)
           .set({ endMonth: `${effectiveMonth}-01` })

@@ -12,18 +12,60 @@ export interface MonthlyFinancialPlan {
 }
 export interface MonthlyFinancialSummary { month: string; income: Money; expenses: Money; balance: Money }
 
-export function getMonthlyFinancialSummary(plan: MonthlyFinancialPlan, month: string): MonthlyFinancialSummary {
-  const total = (rows: Array<{ amount: string; currency: CurrencyCode; recurring: boolean; effectiveMonth: string; endMonth?: string | null }>, expense: boolean) => createMoney(rows.reduce((sum, row) => {
-    const effective = row.effectiveMonth.slice(0, 7);
-    const end = row.endMonth?.slice(0, 7);
-    const included = expense
-      ? row.recurring ? effective <= month && (!end || month < end) : effective === month
-      : row.recurring ? effective <= month : effective === month;
-    return included ? sum.plus(row.currency === 'USD' ? new BigNumber(row.amount).times(PLANNING_ARS_PER_USD) : row.amount) : sum;
-  }, new BigNumber(0)), 'ARS');
+export interface MonthlyFinancialSummaryOptions {
+  includeOneOffIncome?: boolean;
+}
+
+export function getMonthlyFinancialSummary(
+  plan: MonthlyFinancialPlan,
+  month: string,
+  options: MonthlyFinancialSummaryOptions = {},
+): MonthlyFinancialSummary {
+  const { includeOneOffIncome = true } = options;
+  const total = (
+    rows: Array<{
+      amount: string;
+      currency: CurrencyCode;
+      recurring: boolean;
+      effectiveMonth: string;
+      endMonth?: string | null;
+    }>,
+    expense: boolean,
+  ) =>
+    createMoney(
+      rows.reduce((sum, row) => {
+        const effective = row.effectiveMonth.slice(0, 7);
+        const end = row.endMonth?.slice(0, 7);
+        const included = expense
+          ? row.recurring
+            ? effective <= month && (!end || month < end)
+            : effective === month
+          : row.recurring
+            ? effective <= month
+            : includeOneOffIncome
+              ? effective === month
+              : false;
+        return included
+          ? sum.plus(
+              row.currency === 'USD'
+                ? new BigNumber(row.amount).times(PLANNING_ARS_PER_USD)
+                : row.amount,
+            )
+          : sum;
+      }, new BigNumber(0)),
+      'ARS',
+    );
   const income = total(plan.incomes, false);
   const expenses = total(plan.expenses, true);
-  return { month: month.slice(0, 7), income, expenses, balance: createMoney(new BigNumber(income.amount).minus(expenses.amount), 'ARS') };
+  return {
+    month: month.slice(0, 7),
+    income,
+    expenses,
+    balance: createMoney(
+      new BigNumber(income.amount).minus(expenses.amount),
+      'ARS',
+    ),
+  };
 }
 
 export function getGoalContributionArs(balance: Money, percentage: number | string): Money {

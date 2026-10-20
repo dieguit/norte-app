@@ -505,6 +505,69 @@ describe('ProfileService.getProfile', () => {
     });
   });
 
+  it('excludes non-recurring income in the current month from home summary', async () => {
+    const fixedNow = new Date('2026-08-15T12:00:00Z');
+    const service = new ProfileService({
+      query: {
+        financialProfiles: {
+          findFirst: vi.fn().mockResolvedValue({
+            userId: 'user_one_off',
+            baseCurrency: 'ARS',
+            expensesKnowledge: 'unknown',
+            plannedMonthlyContribution: '50000.00',
+          }),
+        },
+        financialGoals: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'goal_one_off',
+            userId: 'user_one_off',
+            name: 'Meta',
+            type: 'fixed_savings',
+            targetAmount: '1000000.00',
+            currency: 'ARS',
+            emergencyFundMonths: null,
+            strategy: 'save',
+          }),
+        },
+        allocationPlanSnapshots: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'snapshot_one_off',
+            userId: 'user_one_off',
+            effectiveMonth: '2026-08-01',
+            plannedMonthlyContribution: '50000.00',
+          }),
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+        allocationPlanEntries: {
+          findFirst: vi.fn().mockResolvedValue({
+            snapshotId: 'snapshot_one_off',
+            goalId: 'goal_one_off',
+            percentage: '100.00',
+          }),
+        },
+        incomes: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              amount: '500000.00',
+              currency: 'ARS',
+              recurring: false,
+              effectiveMonth: '2026-08-01',
+            },
+          ]),
+        },
+        expenses: { findMany: vi.fn().mockResolvedValue([]) },
+      },
+    } as never);
+
+    const home = await service.getProfile('user_one_off', fixedNow);
+    expect(home).toMatchObject({
+      profile: 'present',
+      home: {
+        income: { amount: '0.00', currency: 'ARS' },
+      },
+    });
+  });
+
   it('returns missing when the user has no goal, snapshot, or allocation', async () => {
     const profile = {
       userId: 'user_missing_data',

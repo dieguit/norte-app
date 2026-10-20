@@ -19,9 +19,16 @@ export class SavingsPlacesService {
     return { placeId: place.id };
   }
 
-  async rename(userId: string, id: string, name: string) {
-    const owned = await this.db.query.savingsPlaces.findFirst({ where: and(eq(savingsPlaces.id, id), eq(savingsPlaces.userId, userId)) });
+  private async requireOwned(userId: string, id: string) {
+    const owned = await this.db.query.savingsPlaces.findFirst({
+      where: and(eq(savingsPlaces.id, id), eq(savingsPlaces.userId, userId)),
+    });
     if (!owned) throw missing();
+    return owned;
+  }
+
+  async rename(userId: string, id: string, name: string) {
+    await this.requireOwned(userId, id);
     const normalizedName = name.trim().toLocaleLowerCase('es-AR');
     const collision = await this.db.query.savingsPlaces.findFirst({ where: and(eq(savingsPlaces.userId, userId), eq(savingsPlaces.normalizedName, normalizedName)) });
     if (collision && collision.id !== id) throw new ConflictException('Ya tenés un lugar con ese nombre.');
@@ -29,8 +36,7 @@ export class SavingsPlacesService {
   }
 
   async delete(userId: string, id: string) {
-    const owned = await this.db.query.savingsPlaces.findFirst({ where: and(eq(savingsPlaces.id, id), eq(savingsPlaces.userId, userId)) });
-    if (!owned) throw missing();
+    await this.requireOwned(userId, id);
     const [contribution, withdrawal, transfer] = await Promise.all([
       this.db.query.savingContributions.findFirst({ where: eq(savingContributions.placeId, id) }),
       this.db.query.goalCompletionWithdrawals.findFirst({ where: eq(goalCompletionWithdrawals.placeId, id) }),

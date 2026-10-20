@@ -6,23 +6,25 @@ import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
 import { expenses, expenseSources, financialGoals, financialProfiles, goalCompletionWithdrawals, incomes, incomeSources, savingContributions, savingsPlaceTransfers, savingsPlaces } from '../profile/profile.schema';
 import { calculateSavingsBalances, filterOwnedSavingsMovements } from './savings-projection';
+import { getMonthlyFinancialSummary } from './goals.financial';
 
 const RATE = '1500';
 type Row = { amount: string; currency: string; recurring: boolean; effectiveMonth: string; endMonth?: string | null };
 const ars = (amount: BigNumber) => ({ amount: amount.toFixed(2, BigNumber.ROUND_HALF_UP), currency: 'ARS' as const });
 
 export function calculateFinancesSummary(input: { month: string; dedication: string; incomes: Row[]; expenses: Row[] }) {
-  const total = (rows: Row[], expense: boolean) => ars(rows.reduce((sum, row) => {
-    const effective = row.effectiveMonth.slice(0, 7);
-    const end = row.endMonth?.slice(0, 7);
-    const included = expense ? row.recurring ? effective <= input.month && (!end || input.month < end) : effective === input.month : row.recurring ? effective <= input.month : effective === input.month;
-    return included ? sum.plus(row.currency === 'USD' ? new BigNumber(row.amount).times(RATE) : row.amount) : sum;
-  }, new BigNumber(0)));
-  const income = total(input.incomes, false);
-  const expensesTotal = total(input.expenses, true);
-  const balance = new BigNumber(income.amount).minus(expensesTotal.amount);
-  const contribution = balance.isGreaterThan(0) ? balance.times(input.dedication).dividedBy(100) : new BigNumber(0);
-  return { income, expenses: expensesTotal, balance: ars(balance), contribution: ars(contribution) };
+  const summary = getMonthlyFinancialSummary(
+    { incomes: input.incomes as any, expenses: input.expenses as any },
+    input.month,
+  );
+  const balanceBn = new BigNumber(summary.balance.amount);
+  const contribution = balanceBn.isGreaterThan(0) ? balanceBn.times(input.dedication).dividedBy(100) : new BigNumber(0);
+  return {
+    income: summary.income,
+    expenses: summary.expenses,
+    balance: summary.balance,
+    contribution: ars(contribution),
+  };
 }
 
 @Injectable()

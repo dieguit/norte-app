@@ -258,18 +258,24 @@ async function requireOwnedContribution(tx: Executor, userId: string, contributi
   throw new Error('Contribution not found or not owned by user.');
 }
 
-async function loadSavingAllocations(tx: Executor, contributionId: string): Promise<AllocationRow[]> {
-  const allocations = await tx.query.savingContributionAllocations.findMany({
-    where: (table: any, { eq }: any) => eq(table.contributionId, contributionId),
+function findAllocations(
+  tx: any,
+  table: 'investmentContributionAllocations' | 'savingContributionAllocations',
+  contributionId: string,
+) {
+  return tx.query[table].findMany({
+    where: (t: any, { eq }: any) => eq(t.contributionId, contributionId),
   });
+}
+
+async function loadSavingAllocations(tx: Executor, contributionId: string): Promise<AllocationRow[]> {
+  const allocations = await findAllocations(tx, 'savingContributionAllocations', contributionId);
   if (!allocations.length) throw new Error('No allocations found for contribution.');
   return allocations;
 }
 
 async function loadInvestmentAllocations(tx: Executor, contributionId: string): Promise<AllocationRow[]> {
-  const allocations = await tx.query.investmentContributionAllocations.findMany({
-    where: (table: any, { eq }: any) => eq(table.contributionId, contributionId),
-  });
+  const allocations = await findAllocations(tx, 'investmentContributionAllocations', contributionId);
   if (!allocations.length) throw new Error('No allocations found for contribution.');
   return allocations;
 }
@@ -378,18 +384,14 @@ export function deleteSavingContributionInRepository(db: Database, input: { user
     await lockFinancialProfile(tx, input.userId);
     const owned = await requireOwnedContribution(tx, input.userId, input.contributionId);
     if (owned.kind === 'investment') {
-      const allocations = await tx.query.investmentContributionAllocations.findMany({
-        where: (table: any, { eq }: any) => eq(table.contributionId, input.contributionId),
-      });
+      const allocations = await findAllocations(tx, 'investmentContributionAllocations', input.contributionId);
       await assertContributionGoalsAreMutable(tx, input.userId, allocations);
       await deleteInvestmentPositionValues(tx, allocations);
       await tx.delete(investmentContributions).where(eq(investmentContributions.id, input.contributionId));
       return;
     }
     await lockOwnedSavingsPlaces(tx, input.userId, [owned.row.placeId]);
-    const allocations = await tx.query.savingContributionAllocations.findMany({
-      where: (table: any, { eq }: any) => eq(table.contributionId, input.contributionId),
-    });
+    const allocations = await findAllocations(tx, 'savingContributionAllocations', input.contributionId);
     await assertContributionGoalsAreMutable(tx, input.userId, allocations);
     await deleteSavingPositions(tx, allocations);
     await tx.delete(savingContributions).where(eq(savingContributions.id, input.contributionId));
