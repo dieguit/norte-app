@@ -19,6 +19,7 @@
     "db:test:down": "docker compose stop postgres-test",
     "db:test:logs": "docker compose logs -f postgres-test",
     "lint": "turbo run lint",
+    "fallow:audit": "fallow audit --base main --gate all",
     "test": "turbo run test",
     "check-types": "turbo run check-types"
   },
