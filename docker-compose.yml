@@ -52,6 +52,7 @@ services:
 
   api-e2e:
     profiles: [e2e]
+    image: norte-e2e-api:local
     build:
       context: .
       dockerfile: Dockerfile.e2e
@@ -79,6 +80,7 @@ services:
 
   web-e2e:
     profiles: [e2e]
+    image: norte-e2e-web:local
     build:
       context: .
       dockerfile: Dockerfile.e2e

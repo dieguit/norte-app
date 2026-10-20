@@ -37,7 +37,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'docker compose --profile e2e --env-file apps/e2e/.env.test up --build postgres-e2e api-e2e web-e2e',
+    // CI prebuilds both images with Bake; a missing image must fail instead of rebuilding uncached.
+    command: `docker compose --profile e2e --env-file apps/e2e/.env.test up ${process.env.CI ? '--no-build' : '--build'} postgres-e2e api-e2e web-e2e`,
     cwd: path.join(import.meta.dirname, '../..'),
     url: 'http://localhost:3100',
     reuseExistingServer: !process.env.CI,
