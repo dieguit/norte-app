@@ -8,7 +8,7 @@ import type { GoalWorkspaceItem } from "../../../features/goals/goals";
 import type {
   RoadmapData,
   RoadmapMonth,
-} from "../../../features/roadmap/roadmap";
+} from "@repo/shared-types";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({

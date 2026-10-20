@@ -4,14 +4,14 @@ import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useRouter } from '@tanstack/react-router'
-import { getInvestmentContributionDataState, type SavingContributionPreviewResult } from '../../../features/contributions/saving-contribution'
-import { confirmSavingContribution, previewSavingContribution, updateSavingContribution } from '../../../features/contributions/saving-contribution.functions'
+import type { SavingContributionPreviewResult } from '../../../features/contributions/saving-contribution'
+import { confirmSavingContribution, previewSavingContribution, previewSavingContributionEdit, updateSavingContribution } from '../../../features/contributions/saving-contribution.functions'
 import { arsPreview, investmentContext, renderContribution, selectSavingsPlace, usdPreview } from './saving-contribution-test-support'
 
 vi.mock('@tanstack/react-router', () => ({ useRouter: vi.fn() }))
 vi.mock('@posthog/react', () => ({ usePostHog: () => ({ capture: vi.fn() }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-vi.mock('../../../features/contributions/saving-contribution.functions', () => ({ previewSavingContribution: vi.fn(), confirmSavingContribution: vi.fn(), updateSavingContribution: vi.fn() }))
+vi.mock('../../../features/contributions/saving-contribution.functions', () => ({ previewSavingContribution: vi.fn(), previewSavingContributionEdit: vi.fn(), confirmSavingContribution: vi.fn(), updateSavingContribution: vi.fn() }))
 
 beforeEach(() => vi.mocked(useRouter).mockReturnValue({ invalidate: vi.fn().mockResolvedValue(undefined) } as any))
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -63,7 +63,7 @@ it('keeps USD investment available when ARS investment data is incomplete', asyn
 })
 
 it('shows the ARS incomplete state when its position has the wrong currency', () => {
-  const context = { ...investmentContext, eligibleInvestmentGoals: [{ id: 'goal-inv-ars', name: 'S&P 500 ARS', percentage: '100.00' }], investmentState: getInvestmentContributionDataState({ goals: [{ id: 'goal-inv-ars', currency: 'ARS', status: 'active', strategy: 'invest' }], investmentPositions: [{ goalId: 'goal-inv-ars', currency: 'USD' }] } as any) }
+  const context = { ...investmentContext, eligibleInvestmentGoals: [{ id: 'goal-inv-ars', name: 'S&P 500 ARS', percentage: '100.00' }], investmentState: { ars: { status: 'incomplete', reason: 'missing_investment_position' }, usd: { status: 'ready' } } as const }
   renderContribution({ kind: 'investment', currency: 'ARS', context })
   expect(screen.getByText(/falta asociar una posición de inversión en ARS/i)).toBeVisible()
 })
@@ -93,6 +93,7 @@ it('does not include a savings place in investment confirmation', async () => {
 it('loads an existing contribution for correction and preserves its distribution', async () => {
   const user = userEvent.setup()
   vi.mocked(updateSavingContribution).mockResolvedValue({ status: 'updated' })
+  vi.mocked(previewSavingContributionEdit).mockResolvedValue({ ...arsPreview, previewToken: '' })
   renderContribution({ initialContribution: { id: 'contribution-1', kind: 'saving', amount: '100.00', currency: 'ARS', placeId: 'place-1', createdAt: '2026-08-01T00:00:00.000Z', allocations: [{ goalId: 'goal-ars-1', goalName: 'Viaje a Bariloche', amount: '60000.00', percentage: '60.00' }, { goalId: 'goal-ars-2', goalName: 'Auto nuevo', amount: '40000.00', percentage: '40.00' }] } as any })
   expect(await screen.findByText('Así se distribuye tu ahorro')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))

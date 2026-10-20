@@ -8,6 +8,21 @@ const envSchema = z.object({
     .enum(['development', 'production', 'test'])
     .default('development'),
   PORT: z.coerce.number().int().min(0).max(65535).default(3001),
+  CLERK_SECRET_KEY: z.string().min(1),
+  CLERK_ISSUER_URL: z.url(),
+  CLERK_AUTHORIZED_PARTIES: z
+    .string()
+    .transform((value) =>
+      value
+        .split(',')
+        .map((party) => party.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.url()).min(1)),
+  WHATSAPP_ENABLED: z.preprocess(
+    (value) => value ?? 'true',
+    z.stringbool(),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;

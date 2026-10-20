@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('goals server boundaries', () => {
-  it.each(['goals.server.ts', 'goals.repository.server.ts'])(
+  it.each(['goals.server.ts'])(
     'keeps %s server-only with server-only banner',
     async (filename) => {
       const source = await readFile(new URL(`./${filename}`, import.meta.url), 'utf8')

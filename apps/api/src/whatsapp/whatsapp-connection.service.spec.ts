@@ -6,6 +6,7 @@ import { WhatsappConnectionService } from './whatsapp-connection.service';
 import { WhatsappMessageService } from './whatsapp-message.service';
 import * as qrcode from 'qrcode-terminal';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 vi.mock('@whiskeysockets/baileys', () => ({
   default: vi.fn(),
@@ -46,6 +47,20 @@ describe('WhatsappConnectionService', () => {
       }),
     );
     expect(saveCreds).toHaveBeenCalled();
+  });
+
+  it('does not read auth state or open a socket when WhatsApp is disabled', async () => {
+    vi.mocked(makeWASocket).mockReturnValue(createSocket() as never);
+    const createAuthState = vi.fn().mockResolvedValue({
+      state: { creds: { id: 'creds' }, keys: {} },
+      saveCreds: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = await createService({ createAuthState }, false);
+
+    await service.onApplicationBootstrap();
+
+    expect(createAuthState).not.toHaveBeenCalled();
+    expect(makeWASocket).not.toHaveBeenCalled();
   });
 
   it('logs QR, connecting, and open connection updates', async () => {
@@ -232,7 +247,9 @@ async function createService(
   overrides: {
     saveCreds?: () => Promise<void>;
     handleMessages?: (messages: unknown[], socket: unknown) => Promise<void>;
+    createAuthState?: () => Promise<{ state: unknown; saveCreds: () => Promise<void> }>;
   } = {},
+  whatsappEnabled = true,
 ) {
   const moduleRef = await Test.createTestingModule({
     providers: [
@@ -240,7 +257,7 @@ async function createService(
       {
         provide: WhatsappAuthStoreService,
         useValue: {
-          createAuthState: vi.fn().mockResolvedValue({
+          createAuthState: overrides.createAuthState ?? vi.fn().mockResolvedValue({
             state: { creds: { id: 'creds' }, keys: {} },
             saveCreds:
               overrides.saveCreds ?? vi.fn().mockResolvedValue(undefined),
@@ -253,6 +270,10 @@ async function createService(
           handleMessages:
             overrides.handleMessages ?? vi.fn().mockResolvedValue(undefined),
         },
+      },
+      {
+        provide: ConfigService,
+        useValue: { get: () => whatsappEnabled },
       },
     ],
   }).compile();

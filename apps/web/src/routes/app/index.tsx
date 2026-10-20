@@ -1,20 +1,18 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { getFinancesWorkspace } from '../../features/financial/financial.functions'
-import { getGoalsWorkspace } from '../../features/goals/goals.functions'
-import { buildRoadmap } from '../../features/roadmap/roadmap'
+import { getHomeRoadmap } from '../../features/home/home.functions'
 import { FinancialOnboarding } from './-components/FinancialOnboarding'
 import { Home } from './-components/Home'
 import { HomeError, HomeLoading } from './-components/HomeRouteStates'
 
 export async function loadHomeRoadmap(profile: 'missing' | 'present', currentMonth: string) {
   if (profile === 'missing') return null
-  const [goalsState, finances] = await Promise.all([getGoalsWorkspace(), getFinancesWorkspace()])
-  if (goalsState.profile !== 'present' || !finances) throw new Error('Roadmap data is unavailable.')
+  const response = await getHomeRoadmap({ data: { currentMonth } })
+  if (response.profile === 'missing' || !response.roadmap || !response.completionGoals) {
+    throw new Error('Roadmap data is unavailable.')
+  }
   return {
-    roadmap: buildRoadmap({ goals: goalsState.workspace, finances, currentMonth }),
-    completionGoals: goalsState.workspace.groups
-      .flatMap((group) => group.goals)
-      .filter((goal) => goal.completionEligible),
+    roadmap: response.roadmap,
+    completionGoals: response.completionGoals,
   }
 }
 

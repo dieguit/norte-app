@@ -1,156 +1,87 @@
 import '@tanstack/react-start/server-only'
-import { requireFinancialUser } from '../financial/auth.server'
-import { getPreviousCalendarMonth } from '../financial/financial'
-import { getSavingsPlacesWorkspaceState } from '../savings-places/savings-places.repository.server'
 import {
-  buildSavingPreview,
-  requireEligibleContributionGoals,
+  SavingContributionConfirmationSchema,
+  SavingContributionContextStateSchema,
+  SavingContributionDeletedSchema,
+  SavingContributionEditPreviewSchema,
+  SavingContributionPreviewSchema,
+  SavingContributionUpdatedSchema,
+  type ConfirmSavingContributionWire,
   type SavingContributionContextState,
-  type SavingContributionPreviewResult,
-} from './saving-contribution'
-import {
-  createSavingContributionInRepository,
-  createSavingContributionPreviewToken,
-  deleteSavingContributionInRepository,
-  getSavingContributionState,
-  StaleSavingContributionPreviewError,
-  updateSavingContributionInRepository,
-} from './saving-contribution.repository.server'
-import type {
-  ConfirmSavingContributionInput,
-  DeleteSavingContributionInput,
-  SavingContributionDraft,
-  UpdateSavingContributionInput,
-} from './saving-contribution.schema'
+  type SavingContributionDraftWire,
+  type UpdateSavingContributionWire,
+} from '@repo/shared-types'
+import { callFinancialApi, throwFinancialApiError } from '../financial/financial.server'
+import type { SavingContributionPreviewResult } from './saving-contribution'
 
-function getCatchUpCreatedAt(catchUpMonth: string | undefined, now: Date): Date | undefined {
-  if (!catchUpMonth) return undefined
-  if (catchUpMonth !== getPreviousCalendarMonth(now)) {
-    throw new Error('Solo podés regularizar el mes anterior.')
-  }
-
-  const [year, month] = catchUpMonth.split('-').map(Number)
-  return new Date(Date.UTC(year, month, 0, 12))
-}
+const jsonHeaders = { 'Content-Type': 'application/json' }
 
 export async function getSavingContributionContextServer(): Promise<SavingContributionContextState> {
-  const userId = await requireFinancialUser()
-  const currentMonth = new Date().toISOString().slice(0, 7)
-  const [state, savingsWorkspace] = await Promise.all([
-    getSavingContributionState(userId, currentMonth),
-    getSavingsPlacesWorkspaceState(userId),
-  ])
-  if (!state) {
-    return { profile: 'missing' }
-  }
-  return {
-    profile: 'present',
-    context: {
-      currentMonth,
-      eligibleGoals: state.eligibleGoals,
-      eligibleGoalsUsd: state.eligibleGoalsUsd,
-      eligibleInvestmentGoals: state.eligibleInvestmentGoals,
-      eligibleInvestmentGoalsUsd: state.eligibleInvestmentGoalsUsd,
-      investmentState: state.investmentState,
-      monthlyTargetArs: state.monthlyTargetArs,
-      monthlyTargetUsd: state.monthlyTargetUsd,
-      monthlyInvestmentTargetArs: state.monthlyInvestmentTargetArs,
-      monthlyInvestmentTargetUsd: state.monthlyInvestmentTargetUsd,
-      places: savingsWorkspace.places.map((p) => ({ id: p.id, name: p.name })),
-    },
-  }
+  const response = await callFinancialApi('/contributions/saving/context')
+  if (!response.ok) throw new Error('No se pudo cargar el contexto para registrar un ahorro.')
+  return SavingContributionContextStateSchema.parse(await response.json())
 }
 
 export async function previewSavingContributionServer({
   data,
 }: {
-  data: SavingContributionDraft
+  data: SavingContributionDraftWire
 }): Promise<SavingContributionPreviewResult> {
-  const userId = await requireFinancialUser()
-  const currentMonth = new Date().toISOString().slice(0, 7)
-  const state = await getSavingContributionState(userId, currentMonth)
-  if (!state) {
-    throw new Error('Completá tu perfil financiero antes de registrar un ahorro.')
-  }
+  const response = await callFinancialApi('/contributions/saving/preview', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(data) })
+  if (!response.ok) return throwFinancialApiError(response, 'No pudimos calcular la vista previa.')
+  return SavingContributionPreviewSchema.parse(await response.json()) as SavingContributionPreviewResult
+}
 
-  const kind = data.kind ?? 'saving'
-  if (
-    kind === 'investment' &&
-    (data.currency === 'ARS' ? state.investmentState.ars : state.investmentState.usd).status === 'incomplete'
-  ) {
-    throw new Error(`Falta asociar una posición de inversión en ${data.currency} a uno o más objetivos. Configurala para continuar.`)
-  }
-  const eligibleGoals = requireEligibleContributionGoals(state, kind, data.currency)
-
-  const preview = buildSavingPreview({
-    kind,
-    draft: data,
-    eligibleGoals,
-    workspaceSource: state.source,
-    currentMonth,
+export async function previewSavingContributionEditServer({
+  data,
+}: {
+  data: { contributionId: string; draft: SavingContributionDraftWire }
+}): Promise<SavingContributionPreviewResult> {
+  const response = await callFinancialApi(`/contributions/saving/${encodeURIComponent(data.contributionId)}/preview`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify(data.draft),
   })
-
-  const previewToken = createSavingContributionPreviewToken(state, currentMonth, data)
-
-  return {
-    preview,
-    previewToken,
-  }
+  if (!response.ok) return throwFinancialApiError(response, 'No pudimos calcular la vista previa.')
+  const { preview } = SavingContributionEditPreviewSchema.parse(await response.json())
+  return { preview }
 }
 
 export async function confirmSavingContributionServer({
   data,
 }: {
-  data: ConfirmSavingContributionInput
+  data: ConfirmSavingContributionWire
 }): Promise<
   | { status: 'created'; contributionId: string }
   | { status: 'stale'; preview: SavingContributionPreviewResult }
 > {
-  const userId = await requireFinancialUser()
-  const now = new Date()
-  const currentMonth = now.toISOString().slice(0, 7)
-  const createdAt = getCatchUpCreatedAt(data.catchUpMonth, now)
-
-  try {
-    const result = await createSavingContributionInRepository({
-      userId,
-      currentMonth,
-      draft: data.draft,
-      previewToken: data.previewToken,
-      ...(createdAt ? { createdAt } : {}),
-    })
-    return { status: 'created' as const, contributionId: result.contributionId }
-  } catch (error) {
-    if (error instanceof StaleSavingContributionPreviewError) {
-      return { status: 'stale' as const, preview: error.refreshedPreview }
-    }
-    throw error
-  }
+  const response = await callFinancialApi('/contributions/saving', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(data) })
+  if (!response.ok) return throwFinancialApiError(response, 'No se pudo registrar el ahorro.')
+  return SavingContributionConfirmationSchema.parse(await response.json()) as
+    | { status: 'created'; contributionId: string }
+    | { status: 'stale'; preview: SavingContributionPreviewResult }
 }
 
 export async function updateSavingContributionServer({
   data,
 }: {
-  data: UpdateSavingContributionInput
+  data: { contributionId: string } & UpdateSavingContributionWire
 }): Promise<{ status: 'updated' }> {
-  const userId = await requireFinancialUser()
-  await updateSavingContributionInRepository({
-    userId,
-    contributionId: data.contributionId,
-    draft: data.draft,
+  const response = await callFinancialApi(`/contributions/saving/${encodeURIComponent(data.contributionId)}`, {
+    method: 'PATCH',
+    headers: jsonHeaders,
+    body: JSON.stringify({ draft: data.draft }),
   })
-  return { status: 'updated' as const }
+  if (!response.ok) return throwFinancialApiError(response, 'No se pudo actualizar el ahorro.')
+  return SavingContributionUpdatedSchema.parse(await response.json())
 }
 
 export async function deleteSavingContributionServer({
   data,
 }: {
-  data: DeleteSavingContributionInput
+  data: { contributionId: string }
 }): Promise<{ status: 'deleted' }> {
-  const userId = await requireFinancialUser()
-  await deleteSavingContributionInRepository({
-    userId,
-    contributionId: data.contributionId,
-  })
-  return { status: 'deleted' as const }
+  const response = await callFinancialApi(`/contributions/saving/${encodeURIComponent(data.contributionId)}`, { method: 'DELETE' })
+  if (!response.ok) return throwFinancialApiError(response, 'No se pudo eliminar el ahorro.')
+  return SavingContributionDeletedSchema.parse(await response.json())
 }

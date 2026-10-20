@@ -8,7 +8,7 @@ import type { InitialHomeState } from '../../../features/financial/financial'
 import type { PreviousMonthShortfall } from '../../../features/contributions/saving-contribution'
 import { getSavingContributionContext } from '../../../features/contributions/saving-contribution.functions'
 
-import type { RoadmapData } from '../../../features/roadmap/roadmap'
+import type { RoadmapData } from '@repo/shared-types'
 import type { GoalWorkspaceItem } from '../../../features/goals/goals'
 import { getGoalCompletionContext } from '../../../features/goals/goals.functions'
 

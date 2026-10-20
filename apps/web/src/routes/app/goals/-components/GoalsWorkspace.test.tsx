@@ -52,6 +52,7 @@ vi.mock(
     updateSavingContribution: vi.fn(),
     deleteSavingContribution: vi.fn(),
     previewSavingContribution: vi.fn(),
+    previewSavingContributionEdit: vi.fn(async ({ data }: { data: { draft: unknown } }) => ({ preview: { draft: data.draft, allocations: [] }, previewToken: '' })),
     getSavingContributionContext: vi.fn(),
   }),
 );

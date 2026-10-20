@@ -17,7 +17,7 @@ import {
   previewGoalLifecycle,
   getGoalCompletionContext,
 } from '../../../features/goals/goals.functions'
-import type { GoalsWorkspace, GoalWorkspaceItem } from '../../../features/goals/goals'
+import type { GoalsWorkspaceData as GoalsWorkspace, GoalWorkspaceItem } from '@repo/shared-types'
 import { Route as rootRoute } from '../../__root'
 import { Route as AppRoute } from '../route'
 import { Route as GoalsRoute } from './route'

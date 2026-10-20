@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FinancesWorkspace } from "@repo/shared-types";
 import { MonthPickerInput } from "../../../../components/MonthPicker";
 import {
   Tabs,
@@ -6,27 +7,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../../../components/ui/tabs";
-import {
-  getIncomeTotalArs,
-  type IncomesWorkspace,
-} from "../../../../features/financial/incomes";
-import {
-  getExpenseTotalArs,
-  getMonthlyBalanceArs,
-  type ExpensesWorkspace,
-} from "../../../../features/financial/expenses";
 import { FinancialSummaryCards } from "../../../../components/FinancialSummaryCards";
-import { getGoalContributionArs } from "../../../../features/financial/monthly-plan";
+import { getFinancesWorkspace } from "../../../../features/financial/financial.functions";
 import { SavingsPlacesTab } from "./SavingsPlacesTab";
-import type { SavingsPlacesWorkspace } from "../../../../features/savings-places/savings-places";
 import { ExpenseWorkspaceTab, IncomeWorkspaceTab } from "./FinancesWorkspaceTabs";
 
-export interface FinancesWorkspaceData {
-  goalDedicationPercentage: string;
-  incomes: IncomesWorkspace;
-  expenses: ExpensesWorkspace;
-  savings: SavingsPlacesWorkspace;
-}
+export type FinancesWorkspaceData = FinancesWorkspace;
 
 export function FinancesWorkspace({
   workspace,
@@ -36,6 +22,11 @@ export function FinancesWorkspace({
   initialMonth?: string;
 }) {
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
+  const [monthData, setMonthData] = useState(workspace);
+  const [freshForWorkspace, setFreshForWorkspace] = useState<typeof workspace | null>(workspace);
+  const [loadingMonth, setLoadingMonth] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
   const [activeTab, setActiveTab] = useState("incomes");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
@@ -43,28 +34,32 @@ export function FinancesWorkspace({
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
 
-  const expensesTotal = getExpenseTotalArs(
-    workspace.expenses.expenses.map((expense) => ({
-      amount: { amount: expense.amount, currency: expense.currency },
-      recurring: expense.recurring,
-      effectiveMonth: expense.effectiveMonth,
-      endMonth: expense.endMonth,
-    })),
-    selectedMonth,
-  );
-  const incomeTotal = getIncomeTotalArs(
-    workspace.incomes.incomes.map((income) => ({
-      amount: { amount: income.amount, currency: income.currency },
-      recurring: income.recurring,
-      effectiveMonth: income.effectiveMonth,
-    })),
-    selectedMonth,
-  );
-  const balance = getMonthlyBalanceArs(incomeTotal, expensesTotal);
-  const contribution = getGoalContributionArs(
-    balance,
-    workspace.goalDedicationPercentage,
-  );
+  useEffect(() => {
+    if (workspace.month === selectedMonth) {
+      setMonthData(workspace);
+      setFreshForWorkspace(workspace);
+      setLoadingMonth(false);
+      setLoadError(false);
+      return;
+    }
+    const id = ++requestId.current;
+    setFreshForWorkspace(null);
+    setLoadingMonth(true);
+    setLoadError(false);
+    getFinancesWorkspace({ data: { month: selectedMonth } }).then((next) => {
+      if (id === requestId.current && next?.month === selectedMonth) {
+        setMonthData(next);
+        setFreshForWorkspace(workspace);
+      }
+      else if (id === requestId.current) setLoadError(true);
+    }).catch(() => {
+      if (id === requestId.current) setLoadError(true);
+    }).finally(() => {
+      if (id === requestId.current) setLoadingMonth(false);
+    });
+    return () => { requestId.current += 1; };
+  }, [selectedMonth, workspace]);
+  const current = !loadingMonth && freshForWorkspace === workspace && monthData.month === selectedMonth ? monthData : null;
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -75,21 +70,27 @@ export function FinancesWorkspace({
           className="w-full sm:w-auto"
           aria-label="Mes de finanzas"
           value={selectedMonth}
-          onValueChange={setSelectedMonth}
+          onValueChange={(month) => {
+            setFreshForWorkspace(null);
+            setSelectedMonth(month);
+          }}
         />
       </header>
 
-      <FinancialSummaryCards
+      {current && <FinancialSummaryCards
         mode="finances"
         summary={{
           month: selectedMonth,
-          income: incomeTotal,
-          expenses: expensesTotal,
-          balance,
-          dedicationPercentage: workspace.goalDedicationPercentage,
-          contribution,
+          income: current.summary.income,
+          expenses: current.summary.expenses,
+          balance: current.summary.balance,
+          dedicationPercentage: current.goalDedicationPercentage,
+          contribution: current.summary.contribution,
         }}
-      />
+      />}
+
+      {loadingMonth && <p role="status">Cargando finanzas del mes…</p>}
+      {loadError && <p role="alert">No pudimos cargar las finanzas de este mes.</p>}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="h-10 p-1">
@@ -103,11 +104,9 @@ export function FinancesWorkspace({
             Ahorros
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="incomes"><IncomeWorkspaceTab month={selectedMonth} incomes={workspace.incomes} createOpen={isCreateOpen} editingId={editingIncomeId} onCreateOpenChange={setIsCreateOpen} onEditingIdChange={setEditingIncomeId} /></TabsContent>
-        <TabsContent value="expenses"><ExpenseWorkspaceTab month={selectedMonth} expenses={workspace.expenses} createOpen={isCreateExpenseOpen} editingId={editingExpenseId} onCreateOpenChange={setIsCreateExpenseOpen} onEditingIdChange={setEditingExpenseId} /></TabsContent>
-        <TabsContent value="savings">
-          <SavingsPlacesTab workspace={workspace.savings} />
-        </TabsContent>
+        {current && <TabsContent value="incomes"><IncomeWorkspaceTab month={selectedMonth} incomes={current.incomes} createOpen={isCreateOpen} editingId={editingIncomeId} onCreateOpenChange={setIsCreateOpen} onEditingIdChange={setEditingIncomeId} /></TabsContent>}
+        {current && <TabsContent value="expenses"><ExpenseWorkspaceTab month={selectedMonth} expenses={current.expenses} createOpen={isCreateExpenseOpen} editingId={editingExpenseId} onCreateOpenChange={setIsCreateExpenseOpen} onEditingIdChange={setEditingExpenseId} /></TabsContent>}
+        {current && <TabsContent value="savings"><SavingsPlacesTab workspace={current.savings} /></TabsContent>}
       </Tabs>
     </div>
   );

@@ -1,5 +1,5 @@
 import { formatCalendarMonth } from '../../../../lib/format'
-import type { GoalPriority, GoalWorkspaceItem } from '../../../../features/goals/goals'
+import type { GoalPriority, GoalWorkspaceItem } from '@repo/shared-types'
 
 export const GOAL_PRIORITY_LABELS: Record<GoalPriority, string> = {
   high: 'Prioridad alta',

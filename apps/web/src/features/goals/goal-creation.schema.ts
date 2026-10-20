@@ -17,7 +17,7 @@ const percentageSchema = z.string().refine((value) => {
   }
 }, 'Ingresá un porcentaje entre 0% y 100%, con hasta dos decimales.')
 
-export const allocationEntrySchema = z.object({
+const allocationEntrySchema = z.object({
   goalId: z.string().min(1),
   percentage: percentageSchema,
 })
@@ -139,12 +139,3 @@ export const confirmGoalEditSchema = z.object({
 
 export type ConfirmGoalEditInput = z.infer<typeof confirmGoalEditSchema>
 
-export function parseGoalCreationSubmission(input: unknown, currentMonth: string): GoalCreationDraft {
-  const draft = goalCreationDraftSchema.parse(input)
-  createObjectiveSchema(currentMonth).parse(draft)
-  goalPlanSchema.parse(draft)
-  if (draft.allocations && draft.allocations.length > 0) {
-    goalImpactSchema.parse({ allocations: draft.allocations })
-  }
-  return draft
-}

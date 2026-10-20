@@ -364,7 +364,7 @@ describe('IncomeSheet', () => {
     const onOpenChange = vi.fn()
     let resolveCreate!: () => void
     vi.mocked(createIncome).mockImplementation(
-      () => new Promise<void>((resolve) => { resolveCreate = resolve }),
+      () => new Promise((resolve) => { resolveCreate = () => resolve({ id: '00000000-0000-4000-8000-000000000001', userId: 'user', sourceKind: 'salary', sourceId: null, concept: null, amount: '1.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }) }),
     )
     render(
       <IncomeSheet

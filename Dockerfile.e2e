@@ -1,0 +1,24 @@
+FROM node:24-bookworm-slim AS workspace
+WORKDIR /workspace
+RUN npm install --global pnpm@9.15.4
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm fetch
+COPY . .
+RUN pnpm install --frozen-lockfile --offline \
+    && pnpm --filter @repo/shared-types build
+
+FROM workspace AS api
+RUN pnpm --filter @repo/api build
+WORKDIR /workspace/apps/api
+CMD ["node", "dist/src/main.js"]
+
+FROM workspace AS web
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=""
+ARG VITE_PUBLIC_POSTHOG_HOST=""
+RUN VITE_CLERK_PUBLISHABLE_KEY="$VITE_CLERK_PUBLISHABLE_KEY" \
+    VITE_PUBLIC_POSTHOG_PROJECT_TOKEN="$VITE_PUBLIC_POSTHOG_PROJECT_TOKEN" \
+    VITE_PUBLIC_POSTHOG_HOST="$VITE_PUBLIC_POSTHOG_HOST" \
+    pnpm --filter @repo/web build
+WORKDIR /workspace/apps/web
+CMD ["node", ".output/server/index.mjs"]

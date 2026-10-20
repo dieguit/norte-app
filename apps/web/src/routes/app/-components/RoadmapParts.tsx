@@ -10,7 +10,7 @@ import {
 import { FIXED_EXPENSE_SOURCES } from "../../../features/financial/expenses";
 import { FIXED_INCOME_SOURCES } from "../../../features/financial/incomes";
 import type { GoalWorkspaceItem } from "../../../features/goals/goals";
-import type { RoadmapMonth } from "../../../features/roadmap/roadmap";
+import type { RoadmapMonth } from "@repo/shared-types";
 import { formatCalendarMonth, formatMoney } from "../../../lib/format";
 
 function projectionReason(goal: GoalWorkspaceItem) {

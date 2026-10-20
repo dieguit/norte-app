@@ -31,6 +31,24 @@
 $ pnpm install
 ```
 
+## Database ownership and local workflow
+
+The API owns the schema and its Drizzle migrations (`drizzle/`, `drizzle.config.ts`). Nothing runs migrations automatically: `dev`, `start` and API startup never migrate. Run it manually against an intended **local** database:
+
+```bash
+# from the repository root
+$ pnpm db:up                             # local PostgreSQL
+$ cp apps/api/.env.example apps/api/.env # configure the local DATABASE_URL, Clerk values
+$ pnpm --filter @repo/api db:migrate     # explicit, manual
+$ pnpm --filter @repo/api dev
+```
+
+WhatsApp (`WHATSAPP_ENABLED=true`) needs the migrated `whatsapp_auth_state` table; migrate before enabling it. Never point `db:migrate` at a shared or production database outside the human checklist in [`docs/database-ownership-rollout.md`](../../docs/database-ownership-rollout.md).
+
+Docker E2E migrates in Playwright global setup, before fixtures run. The API container starts earlier only because its health check is schema-independent and WhatsApp is disabled there. Direct E2E mode requires an explicit disposable-database opt-in; see `apps/e2e/README.md`.
+
+`test:migrations` and fixture tests create their own disposable PostgreSQL containers. The rollback suites in `test:e2e` skip silently unless `DATABASE_URL` names `norte_test`; point them only at a disposable, already migrated database.
+
 ## Compile and run the project
 
 ```bash

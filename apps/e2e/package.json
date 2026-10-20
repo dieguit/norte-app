@@ -11,7 +11,7 @@
     "@clerk/backend": "^3.25.0",
     "@clerk/testing": "^2.2.47",
     "@playwright/test": "^1.62.1",
-    "@repo/web": "workspace:*",
+    "@repo/api": "workspace:*",
     "@types/node": "^26.6.5",
     "typescript": "^6.0.3"
   }

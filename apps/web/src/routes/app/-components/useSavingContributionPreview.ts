@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { parseMoneyInput } from '../../../lib/money'
+import { deriveUsdPurchase } from '@repo/shared-types'
 import {
-  buildSavingPreview,
-  deriveUsdPurchase,
   type ContributionKind,
   type EligibleGoal,
   type SavingContributionContext,
   type SavingContributionPreviewResult,
   type SavingDraftInput,
 } from '../../../features/contributions/saving-contribution'
-import { previewSavingContribution } from '../../../features/contributions/saving-contribution.functions'
+import {
+  previewSavingContribution,
+  previewSavingContributionEdit,
+} from '../../../features/contributions/saving-contribution.functions'
 import type { SavingContributionSummary } from '../../../features/goals/goals'
 import type { SavingContributionDraftState } from './useSavingContributionDraft'
 
@@ -129,20 +131,6 @@ function buildPreviewPlan(
   }
 }
 
-function toPreviewResult(
-  kind: ContributionKind,
-  plan: PreviewPlan,
-  eligibleGoals: EligibleGoal[],
-  isEdit: boolean,
-): SavingContributionPreviewResult | null {
-  if (!isEdit) return null
-  try {
-    return { preview: buildSavingPreview({ kind, draft: plan.draft, eligibleGoals }), previewToken: '' }
-  } catch {
-    return null
-  }
-}
-
 function getSafePreviewErrorMessage(error: any) {
   const message = error?.message
   if (message && !message.includes('{') && !message.includes('Zod')) {
@@ -151,14 +139,20 @@ function getSafePreviewErrorMessage(error: any) {
   return 'No pudimos calcular la vista previa.'
 }
 
+function requestPreview(plan: PreviewPlan, editContributionId?: string) {
+  if (editContributionId) return previewSavingContributionEdit({ data: { contributionId: editContributionId, draft: plan.draft } })
+  return previewSavingContribution({ data: plan.draft })
+}
+
 function scheduleRemotePreview(
   plan: PreviewPlan,
   setState: Dispatch<SetStateAction<PreviewState>>,
+  editContributionId?: string,
 ) {
   let active = true
   setState((current) => ({ ...current, isPreviewPending: true, validationError: null }))
   const timer = setTimeout(() => {
-    previewSavingContribution({ data: plan.draft })
+    requestPreview(plan, editContributionId)
       .then((preview) => active && setState({ preview, isPreviewPending: false, serverError: null, validationError: null }))
       .catch((error: any) => active && setState((current) => ({ ...current, preview: null, isPreviewPending: false, serverError: getSafePreviewErrorMessage(error) })))
   }, 250)
@@ -190,9 +184,7 @@ function usePreviewCalculation(
     const plan = buildPreviewPlan(kind, draft)
     if (!plan) return setState((current) => ({ ...current, preview: null, isPreviewPending: false }))
     if (plan.validationError) return setState((current) => ({ ...current, preview: null, validationError: plan.validationError ?? null }))
-    const localPreview = toPreviewResult(kind, plan, eligibleGoals, isEdit && !!initialContribution)
-    if (localPreview) return setState({ preview: localPreview, isPreviewPending: false, serverError: null, validationError: null })
-    return scheduleRemotePreview(plan, setState)
+    return scheduleRemotePreview(plan, setState, isEdit ? initialContribution?.id : undefined)
   }, [
     options.kind,
     options.context,

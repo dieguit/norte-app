@@ -11,7 +11,6 @@ import {
   goalStrategySchema,
   goalTypeSchema,
   investmentAvailabilitySchema,
-  parseGoalCreationSubmission,
   type GoalCreationDraft,
 } from './goal-creation.schema'
 
@@ -270,37 +269,6 @@ describe('Goal Creation Schemas', () => {
         ],
       })
       expect(excessDecimals.success).toBe(false)
-    })
-  })
-
-  describe('parseGoalCreationSubmission', () => {
-    it('parses valid submission through all stages', () => {
-      const validSubmission = {
-        ...baseDraft,
-        name: 'Nuevo auto',
-        targetAmount: '5.000.000',
-        currency: 'ARS',
-        desiredMonth: '2028-12',
-        priority: 'high',
-        strategy: 'invest',
-        annualReturnRate: '7.5',
-        availability: 'long_term',
-        availableFromMonth: '',
-        allocations: [{ goalId: 'pending-goal', percentage: '100.00' }],
-      }
-
-      const parsed = parseGoalCreationSubmission(validSubmission, '2026-08')
-      expect(parsed.name).toBe('Nuevo auto')
-      expect(parsed.strategy).toBe('invest')
-    })
-
-    it('throws error if any stage validation fails', () => {
-      const invalidSubmission = {
-        ...baseDraft,
-        desiredMonth: '2025-01', // in the past
-      }
-
-      expect(() => parseGoalCreationSubmission(invalidSubmission, '2026-08')).toThrow()
     })
   })
 

@@ -25,7 +25,7 @@ import type {
   GoalCreationContext,
   GoalCreationPreviewResult,
 } from '../../../../features/goals/goal-creation'
-import type { GoalStatus } from '../../../../features/goals/goals'
+import type { GoalStatus } from '@repo/shared-types'
 import { useStore } from '@tanstack/react-form'
 import { useGoalCreationForm } from './useGoalCreationForm'
 import { GoalObjectiveFields } from './GoalObjectiveFields'

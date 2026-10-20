@@ -4,6 +4,7 @@ import {
   OnApplicationBootstrap,
   OnApplicationShutdown,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import makeWASocket, {
   Browsers,
   DisconnectReason,
@@ -13,6 +14,7 @@ import makeWASocket, {
 import * as qrcode from 'qrcode-terminal';
 import { WhatsappAuthStoreService } from './whatsapp-auth-store.service';
 import { WhatsappMessageService } from './whatsapp-message.service';
+import type { Env } from '../config/env';
 
 @Injectable()
 export class WhatsappConnectionService
@@ -26,9 +28,11 @@ export class WhatsappConnectionService
   constructor(
     private readonly authStore: WhatsappAuthStoreService,
     private readonly messageService: WhatsappMessageService,
+    private readonly config: ConfigService<Env>,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    if (!this.config.get('WHATSAPP_ENABLED', true)) return;
     await this.connect();
   }
 

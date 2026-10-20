@@ -60,10 +60,12 @@ async function recordContribution(
   draftPayload: ReturnType<typeof buildDraftPayload>,
   onRecorded: () => Promise<void>,
 ) {
+  const previewToken = options.preview?.previewToken
+  if (!previewToken) throw new Error('Actualizá la vista previa antes de confirmar.')
   const result = await confirmSavingContribution({
     data: {
       draft: draftPayload,
-      previewToken: options.preview!.previewToken,
+      previewToken,
       catchUpMonth: options.catchUpMonth,
     },
   })

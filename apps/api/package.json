@@ -19,12 +19,14 @@
     "test:cov": "NODE_ENV=test vitest run --coverage",
     "test:debug": "vitest --inspect-brk --pool forks --poolOptions.forks.singleFork",
     "test:e2e": "NODE_ENV=test vitest run test",
+    "test:migrations": "NODE_ENV=test vitest run test/migration-history.e2e-spec.ts test/database-ownership.e2e-spec.ts",
     "check-types": "tsc --noEmit",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config drizzle.config.ts"
   },
   "dependencies": {
+    "@clerk/backend": "^3.25.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -32,6 +34,7 @@
     "@nestjs/swagger": "^11.4.5",
     "@repo/shared-types": "workspace:^",
     "@whiskeysockets/baileys": "7.0.0-rc13",
+    "bignumber.js": "^11.1.5",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "nestjs-zod": "^5.4.0",
