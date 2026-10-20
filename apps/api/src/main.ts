@@ -12,7 +12,9 @@ async function bootstrap() {
   const config = app.get(ConfigService<Env>);
 
   app.useGlobalPipes(new ZodValidationPipe());
-  app.enableCors({ origin: config.get('CLERK_AUTHORIZED_PARTIES') });
+  app.enableCors({
+    origin: config.get('CLERK_AUTHORIZED_PARTIES', { infer: true }),
+  });
 
   const docConfig = new DocumentBuilder()
     .setTitle('Norte Placeholder API')
