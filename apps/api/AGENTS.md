@@ -47,3 +47,7 @@ pnpm --filter @repo/api test
 pnpm --filter @repo/api test:e2e
 pnpm --filter @repo/api test:cov
 ```
+
+## Skills
+
+- When working in Mastra modules or logic, use the mastra skills.
