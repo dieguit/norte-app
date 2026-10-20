@@ -210,10 +210,13 @@ export async function confirmGoalCreationInRepository(db: Database, input: Creat
   })
 }
 
-function assertEditableGoal(goal: any, draft: ReturnType<typeof parseGoalCreationSubmission>): void {
+function assertEditableGoalStatus(goal: any): void {
   if (!goal || !['active', 'paused'].includes(goal.status)) {
     throw new Error(goal?.status === 'completed' ? 'Cannot edit a completed goal.' : 'Goal not found or is not active.')
   }
+}
+
+function assertImmutableFields(goal: any, draft: ReturnType<typeof parseGoalCreationSubmission>): void {
   if (draft.type !== goal.type || draft.currency !== goal.currency || draft.strategy !== goal.strategy) {
     throw new Error('Cannot modify immutable goal fields (type, currency, strategy).')
   }
@@ -240,8 +243,9 @@ export async function confirmGoalEditInRepository(db: Database, input: EditInput
     const state = await getGoalEditStateWithExecutor(tx, input.userId, input.currentMonth, input.goalId)
     if (!state) throw new Error('Financial profile not found.')
     const goal = state.source.goals.find((candidate: any) => candidate.id === input.goalId)
+    assertEditableGoalStatus(goal)
     const draft = parseGoalCreationSubmission(input.draft, input.currentMonth)
-    assertEditableGoal(goal, draft)
+    assertImmutableFields(goal, draft)
     const previewToken = createGoalEditPreviewToken(state, input.currentMonth, input.goalId, draft)
     const proposal = buildGoalCreationProposal({ draft, state, currentMonth: input.currentMonth, subjectGoalId: input.goalId })
     if (previewToken !== input.previewToken) throw new StaleGoalEditPreviewError({ proposal, previewToken })

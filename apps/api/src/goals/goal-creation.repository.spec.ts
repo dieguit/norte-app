@@ -133,6 +133,20 @@ describe('goal creation repository', () => {
     expect(writes).toEqual([])
   })
 
+  it('rejects editing a completed goal even with an invalid draft', async () => {
+    const goal = { id: 'g', userId: 'u', name: 'Goal', type: 'purchase', currency: 'ARS', priority: 'medium', strategy: 'save', status: 'completed', targetAmount: '500.00', createdAt: new Date() }
+    const queries = stateQueries({ financialGoals: { findMany: vi.fn().mockResolvedValue([goal]) } })
+    const tx = {
+      query: queries,
+      select: () => ({ from: () => ({ where: () => ({ for: async () => [{ userId: 'u' }] }) }) }),
+    }
+    const db = { query: queries, transaction: async (callback: (executor: typeof tx) => unknown) => callback(tx) }
+    const invalidDraft = { ...draft, targetAmount: '-50' } as any
+    await expect(confirmGoalEditInRepository(db as never, {
+      userId: 'u', goalId: 'g', currentMonth: '2026-08', draft: invalidDraft, previewToken: '0'.repeat(64),
+    })).rejects.toThrow('Cannot edit a completed goal.')
+  })
+
   it('rejects immutable edits before any database write', async () => {
     const goal = { id: 'g', userId: 'u', name: 'Goal', type: 'purchase', currency: 'ARS', priority: 'medium', strategy: 'save', status: 'active', targetAmount: '500.00', createdAt: new Date() }
     const queries = stateQueries({ financialGoals: { findMany: vi.fn().mockResolvedValue([goal]) } })
