@@ -1,7 +1,23 @@
-import { Controller, Get, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
-import { ApiExtraModels, ApiOkResponse, ApiQuery, getSchemaPath } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Query,
+  Req,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import {
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiQuery,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
-import { ZodResponse, ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
+import {
+  ZodResponse,
+  ZodSerializerInterceptor,
+  ZodValidationPipe,
+} from 'nestjs-zod';
 import { ClerkAuthGuard } from '../profile/clerk-auth.guard';
 import {
   HomeQueryDto,

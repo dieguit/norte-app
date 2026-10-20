@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest';
 import {
   buildAllocationChangeProposal,
   serializeAllocationChangeState,
   type AllocationChangeState,
-} from './allocation-change'
-import type { AllocationChangeDraft } from './allocation-change.schema'
-import type { GoalsWorkspaceSource } from '../finances/goals.engine'
+} from './allocation-change';
+import type { AllocationChangeDraft } from './allocation-change.schema';
+import type { GoalsWorkspaceSource } from '../finances/goals.engine';
 
 function createBaseWorkspaceSource(): GoalsWorkspaceSource {
   return {
@@ -83,35 +83,45 @@ function createBaseWorkspaceSource(): GoalsWorkspaceSource {
       },
     ],
     allocations: [
-      { id: 'alloc-1', snapshotId: 'snap-global-aug', goalId: 'goal-1', percentage: '60.00' },
-      { id: 'alloc-2', snapshotId: 'snap-global-aug', goalId: 'goal-2', percentage: '40.00' },
+      {
+        id: 'alloc-1',
+        snapshotId: 'snap-global-aug',
+        goalId: 'goal-1',
+        percentage: '60.00',
+      },
+      {
+        id: 'alloc-2',
+        snapshotId: 'snap-global-aug',
+        goalId: 'goal-2',
+        percentage: '40.00',
+      },
     ],
-  }
+  };
 }
 
 describe('buildAllocationChangeProposal', () => {
   it('builds pure allocation change proposal with calculated amounts and impacts', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const draft: AllocationChangeDraft = {
       dedicationPercentage: 90,
       allocations: [
         { goalId: 'goal-1', percentage: '25.00' },
         { goalId: 'goal-2', percentage: '75.00' },
       ],
-    }
+    };
 
     const proposal = buildAllocationChangeProposal({
       draft,
       state,
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.dedicationPercentage).toBe(90)
+    expect(proposal.dedicationPercentage).toBe(90);
     expect(proposal.allocation).toMatchObject({
       effectiveMonth: '2026-08-01',
       monthlyContribution: { amount: '450000.00', currency: 'ARS' },
@@ -132,30 +142,33 @@ describe('buildAllocationChangeProposal', () => {
           allocatedDestinationAmount: { amount: '337500.00', currency: 'ARS' },
         },
       ],
-    })
+    });
 
-    expect(proposal.impacts.map((impact) => impact.goalId)).toEqual(['goal-1', 'goal-2'])
+    expect(proposal.impacts.map((impact) => impact.goalId)).toEqual([
+      'goal-1',
+      'goal-2',
+    ]);
     expect(proposal.impacts[0]).toMatchObject({
       goalId: 'goal-1',
       goalName: 'Fondo de emergencia',
       before: {
         status: 'existing',
       },
-    })
-    expect(proposal.proposedSource.goals).toEqual(source.goals)
-  })
+    });
+    expect(proposal.proposedSource.goals).toEqual(source.goals);
+  });
 
   it('rejects drafts with missing active goal IDs', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const draft: AllocationChangeDraft = {
       dedicationPercentage: 90,
       allocations: [{ goalId: 'goal-1', percentage: '100.00' }],
-    }
+    };
 
     expect(() =>
       buildAllocationChangeProposal({
@@ -163,11 +176,11 @@ describe('buildAllocationChangeProposal', () => {
         state,
         currentMonth: '2026-08',
       }),
-    ).toThrowError(/Allocation draft must contain exactly the active goals/)
-  })
+    ).toThrowError(/Allocation draft must contain exactly the active goals/);
+  });
 
   it('rejects drafts with unknown or paused goal IDs', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     source.goals.push({
       id: 'goal-paused',
       userId: 'user-1',
@@ -179,12 +192,12 @@ describe('buildAllocationChangeProposal', () => {
       strategy: 'save',
       status: 'paused',
       createdAt: '2026-03-01T00:00:00Z',
-    })
+    });
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const draft: AllocationChangeDraft = {
       dedicationPercentage: 90,
       allocations: [
@@ -192,7 +205,7 @@ describe('buildAllocationChangeProposal', () => {
         { goalId: 'goal-2', percentage: '40.00' },
         { goalId: 'goal-paused', percentage: '40.00' },
       ],
-    }
+    };
 
     expect(() =>
       buildAllocationChangeProposal({
@@ -200,23 +213,23 @@ describe('buildAllocationChangeProposal', () => {
         state,
         currentMonth: '2026-08',
       }),
-    ).toThrowError(/Allocation draft must contain exactly the active goals/)
-  })
+    ).toThrowError(/Allocation draft must contain exactly the active goals/);
+  });
 
   it('rejects drafts whose percentages do not sum to 100%', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const draft: AllocationChangeDraft = {
       dedicationPercentage: 90,
       allocations: [
         { goalId: 'goal-1', percentage: '25.00' },
         { goalId: 'goal-2', percentage: '50.00' },
       ],
-    }
+    };
 
     expect(() =>
       buildAllocationChangeProposal({
@@ -224,16 +237,16 @@ describe('buildAllocationChangeProposal', () => {
         state,
         currentMonth: '2026-08',
       }),
-    ).toThrowError(/percentages must sum to 100%/)
-  })
+    ).toThrowError(/percentages must sum to 100%/);
+  });
 
   it('includes every active goal with equal before and after projections when the draft matches the baseline', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildAllocationChangeProposal({
       draft: {
@@ -245,47 +258,50 @@ describe('buildAllocationChangeProposal', () => {
       },
       state,
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.impacts.map((impact) => impact.goalId)).toEqual(['goal-1', 'goal-2'])
+    expect(proposal.impacts.map((impact) => impact.goalId)).toEqual([
+      'goal-1',
+      'goal-2',
+    ]);
     for (const impact of proposal.impacts) {
-      expect(impact.before.status).toBe('existing')
+      expect(impact.before.status).toBe('existing');
       if (impact.before.status === 'existing') {
-        expect(impact.after).toEqual(impact.before.projection)
+        expect(impact.after).toEqual(impact.before.projection);
       }
     }
-  })
+  });
 
   it('creates impacts when changing only the dedication percentage', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const draft: AllocationChangeDraft = {
       dedicationPercentage: 30,
       allocations: [
         { goalId: 'goal-1', percentage: '60.00' },
         { goalId: 'goal-2', percentage: '40.00' },
       ],
-    }
+    };
 
     const proposal = buildAllocationChangeProposal({
       draft,
       state,
       currentMonth: '2026-08',
-    })
+    });
 
     expect(proposal.allocation.monthlyContribution).toEqual({
       amount: '150000.00',
       currency: 'ARS',
-    })
-    expect(proposal.impacts.length).toBeGreaterThan(0)
-  })
+    });
+    expect(proposal.impacts.length).toBeGreaterThan(0);
+  });
 
   it('uses the pending plan for the before projection', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     source.allocations = [
       {
         id: 'allocation-current-1',
@@ -299,11 +315,15 @@ describe('buildAllocationChangeProposal', () => {
         goalId: 'goal-2',
         percentage: '0.00',
       },
-    ]
+    ];
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [
-        { id: 'snap-global-sep', userId: 'user-1', effectiveMonth: '2026-09-01' },
+        {
+          id: 'snap-global-sep',
+          userId: 'user-1',
+          effectiveMonth: '2026-09-01',
+        },
       ],
       pendingAllocations: [
         {
@@ -319,7 +339,7 @@ describe('buildAllocationChangeProposal', () => {
           percentage: '100.00',
         },
       ],
-    }
+    };
 
     const proposal = buildAllocationChangeProposal({
       draft: {
@@ -331,38 +351,42 @@ describe('buildAllocationChangeProposal', () => {
       },
       state,
       currentMonth: '2026-08',
-    })
+    });
 
-    const impact = proposal.impacts.find((candidate) => candidate.goalId === 'goal-2')
+    const impact = proposal.impacts.find(
+      (candidate) => candidate.goalId === 'goal-2',
+    );
     expect(impact?.before).toMatchObject({
       status: 'existing',
       projection: { status: 'available' },
       allocatedMonthlyAmounts: [{ amount: '450000.00', currency: 'ARS' }],
-    })
-    expect(proposal.allocation.effectiveMonth).toBe('2026-08-01')
+    });
+    expect(proposal.allocation.effectiveMonth).toBe('2026-08-01');
     expect(proposal.proposedSource.snapshots).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ effectiveMonth: '2026-09-01' })]),
-    )
-  })
+      expect.arrayContaining([
+        expect.objectContaining({ effectiveMonth: '2026-09-01' }),
+      ]),
+    );
+  });
 
   it('uses the saved dedication percentage when no draft is provided', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildAllocationChangeProposal({
       state,
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.dedicationPercentage).toBe(90)
-  })
+    expect(proposal.dedicationPercentage).toBe(90);
+  });
 
   it('keeps a December allocation change in December', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const proposal = buildAllocationChangeProposal({
       state: { source, pendingSnapshots: [], pendingAllocations: [] },
       currentMonth: '2026-12',
@@ -373,14 +397,16 @@ describe('buildAllocationChangeProposal', () => {
           { goalId: 'goal-2', percentage: '75.00' },
         ],
       },
-    })
+    });
 
-    expect(proposal.allocation.effectiveMonth).toBe('2026-12-01')
-    expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe('2026-12-01')
-  })
+    expect(proposal.allocation.effectiveMonth).toBe('2026-12-01');
+    expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe(
+      '2026-12-01',
+    );
+  });
 
   it('uses a new snapshot ID when the baseline is from an earlier month', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const proposal = buildAllocationChangeProposal({
       state: { source, pendingSnapshots: [], pendingAllocations: [] },
       currentMonth: '2026-09',
@@ -391,132 +417,140 @@ describe('buildAllocationChangeProposal', () => {
           { goalId: 'goal-2', percentage: '75.00' },
         ],
       },
-    })
+    });
 
     const snapshot = proposal.proposedSource.snapshots.find(
       (candidate) => candidate.effectiveMonth === '2026-09-01',
-    )
-    expect(snapshot?.id).toBe('snap-allocation-2026-09')
+    );
+    expect(snapshot?.id).toBe('snap-allocation-2026-09');
     const proposedAllocations = proposal.proposedSource.allocations.filter(
       (allocation) => allocation.snapshotId === snapshot?.id,
-    )
+    );
     expect(proposedAllocations).toEqual([
-      expect.objectContaining({ snapshotId: 'snap-allocation-2026-09', goalId: 'goal-1' }),
-      expect.objectContaining({ snapshotId: 'snap-allocation-2026-09', goalId: 'goal-2' }),
-    ])
-  })
+      expect.objectContaining({
+        snapshotId: 'snap-allocation-2026-09',
+        goalId: 'goal-1',
+      }),
+      expect.objectContaining({
+        snapshotId: 'snap-allocation-2026-09',
+        goalId: 'goal-2',
+      }),
+    ]);
+  });
 
   it('reuses the selected snapshot ID when the baseline matches the effective month', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const proposal = buildAllocationChangeProposal({
       state: { source, pendingSnapshots: [], pendingAllocations: [] },
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.proposedSource.snapshots.find((candidate) => candidate.effectiveMonth === '2026-08-01')?.id).toBe(
-      'snap-global-aug',
-    )
-  })
-})
+    expect(
+      proposal.proposedSource.snapshots.find(
+        (candidate) => candidate.effectiveMonth === '2026-08-01',
+      )?.id,
+    ).toBe('snap-global-aug');
+  });
+});
 
 describe('serializeAllocationChangeState', () => {
   it('is stable across collection and draft ordering', () => {
-    const sourceA = createBaseWorkspaceSource()
+    const sourceA = createBaseWorkspaceSource();
     const sourceB: GoalsWorkspaceSource = {
       ...sourceA,
       goals: [...sourceA.goals].reverse(),
       allocations: [...sourceA.allocations].reverse(),
-    }
+    };
     const stateA: AllocationChangeState = {
       source: sourceA,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const stateB: AllocationChangeState = {
       source: sourceB,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const draftA: AllocationChangeDraft = {
       dedicationPercentage: 80,
       allocations: [
         { goalId: 'goal-1', percentage: '30.00' },
         { goalId: 'goal-2', percentage: '70.00' },
       ],
-    }
+    };
     const draftB: AllocationChangeDraft = {
       dedicationPercentage: 80,
       allocations: [
         { goalId: 'goal-2', percentage: '70.00' },
         { goalId: 'goal-1', percentage: '30.00' },
       ],
-    }
+    };
 
-    const strA = serializeAllocationChangeState(stateA, '2026-08', draftA)
-    const strB = serializeAllocationChangeState(stateB, '2026-08', draftB)
+    const strA = serializeAllocationChangeState(stateA, '2026-08', draftA);
+    const strB = serializeAllocationChangeState(stateB, '2026-08', draftB);
 
-    expect(strA).toBe(strB)
-  })
+    expect(strA).toBe(strB);
+  });
 
   it('changes when draft allocations change', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const draft1: AllocationChangeDraft = {
       dedicationPercentage: 90,
       allocations: [
         { goalId: 'goal-1', percentage: '30.00' },
         { goalId: 'goal-2', percentage: '70.00' },
       ],
-    }
+    };
     const draft2: AllocationChangeDraft = {
       dedicationPercentage: 90,
       allocations: [
         { goalId: 'goal-1', percentage: '50.00' },
         { goalId: 'goal-2', percentage: '50.00' },
       ],
-    }
+    };
 
-    const str1 = serializeAllocationChangeState(state, '2026-08', draft1)
-    const str2 = serializeAllocationChangeState(state, '2026-08', draft2)
+    const str1 = serializeAllocationChangeState(state, '2026-08', draft1);
+    const str2 = serializeAllocationChangeState(state, '2026-08', draft2);
 
-    expect(str1).not.toBe(str2)
-  })
+    expect(str1).not.toBe(str2);
+  });
 
   it('changes when draft dedication percentage changes', () => {
-    const source = createBaseWorkspaceSource()
+    const source = createBaseWorkspaceSource();
     const state: AllocationChangeState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const draft1: AllocationChangeDraft = {
       dedicationPercentage: 90,
       allocations: [
         { goalId: 'goal-1', percentage: '30.00' },
         { goalId: 'goal-2', percentage: '70.00' },
       ],
-    }
+    };
     const draft2: AllocationChangeDraft = {
       dedicationPercentage: 50,
       allocations: [
         { goalId: 'goal-1', percentage: '30.00' },
         { goalId: 'goal-2', percentage: '70.00' },
       ],
-    }
+    };
 
-    const str1 = serializeAllocationChangeState(state, '2026-08', draft1)
-    const str2 = serializeAllocationChangeState(state, '2026-08', draft2)
+    const str1 = serializeAllocationChangeState(state, '2026-08', draft1);
+    const str2 = serializeAllocationChangeState(state, '2026-08', draft2);
 
-    expect(str1).not.toBe(str2)
-  })
+    expect(str1).not.toBe(str2);
+  });
 
   it('changes when source income changes', () => {
-    const source1 = createBaseWorkspaceSource()
-    const source2 = createBaseWorkspaceSource()
+    const source1 = createBaseWorkspaceSource();
+    const source2 = createBaseWorkspaceSource();
     source2.incomes = [
       {
         id: 'inc-1',
@@ -529,20 +563,28 @@ describe('serializeAllocationChangeState', () => {
         recurring: true,
         effectiveMonth: '2026-01-01',
       },
-    ]
+    ];
 
-    const state1: AllocationChangeState = { source: source1, pendingSnapshots: [], pendingAllocations: [] }
-    const state2: AllocationChangeState = { source: source2, pendingSnapshots: [], pendingAllocations: [] }
+    const state1: AllocationChangeState = {
+      source: source1,
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    };
+    const state2: AllocationChangeState = {
+      source: source2,
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    };
 
-    const str1 = serializeAllocationChangeState(state1, '2026-08')
-    const str2 = serializeAllocationChangeState(state2, '2026-08')
+    const str1 = serializeAllocationChangeState(state1, '2026-08');
+    const str2 = serializeAllocationChangeState(state2, '2026-08');
 
-    expect(str1).not.toBe(str2)
-  })
+    expect(str1).not.toBe(str2);
+  });
 
   it('changes when source expense changes', () => {
-    const source1 = createBaseWorkspaceSource()
-    const source2 = createBaseWorkspaceSource()
+    const source1 = createBaseWorkspaceSource();
+    const source2 = createBaseWorkspaceSource();
     source2.expenses = [
       {
         id: 'exp-1',
@@ -556,28 +598,44 @@ describe('serializeAllocationChangeState', () => {
         effectiveMonth: '2026-01-01',
         endMonth: null,
       },
-    ]
+    ];
 
-    const state1: AllocationChangeState = { source: source1, pendingSnapshots: [], pendingAllocations: [] }
-    const state2: AllocationChangeState = { source: source2, pendingSnapshots: [], pendingAllocations: [] }
+    const state1: AllocationChangeState = {
+      source: source1,
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    };
+    const state2: AllocationChangeState = {
+      source: source2,
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    };
 
-    const str1 = serializeAllocationChangeState(state1, '2026-08')
-    const str2 = serializeAllocationChangeState(state2, '2026-08')
+    const str1 = serializeAllocationChangeState(state1, '2026-08');
+    const str2 = serializeAllocationChangeState(state2, '2026-08');
 
-    expect(str1).not.toBe(str2)
-  })
+    expect(str1).not.toBe(str2);
+  });
 
   it('changes when profile goalDedicationPercentage changes', () => {
-    const source1 = createBaseWorkspaceSource()
-    const source2 = createBaseWorkspaceSource()
-    source2.profile!.goalDedicationPercentage = '75.00'
+    const source1 = createBaseWorkspaceSource();
+    const source2 = createBaseWorkspaceSource();
+    source2.profile!.goalDedicationPercentage = '75.00';
 
-    const state1: AllocationChangeState = { source: source1, pendingSnapshots: [], pendingAllocations: [] }
-    const state2: AllocationChangeState = { source: source2, pendingSnapshots: [], pendingAllocations: [] }
+    const state1: AllocationChangeState = {
+      source: source1,
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    };
+    const state2: AllocationChangeState = {
+      source: source2,
+      pendingSnapshots: [],
+      pendingAllocations: [],
+    };
 
-    const str1 = serializeAllocationChangeState(state1, '2026-08')
-    const str2 = serializeAllocationChangeState(state2, '2026-08')
+    const str1 = serializeAllocationChangeState(state1, '2026-08');
+    const str2 = serializeAllocationChangeState(state2, '2026-08');
 
-    expect(str1).not.toBe(str2)
-  })
-})
+    expect(str1).not.toBe(str2);
+  });
+});

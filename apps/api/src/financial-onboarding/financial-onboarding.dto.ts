@@ -4,7 +4,9 @@ import {
   FinancialOnboardingSchema,
 } from '@repo/shared-types';
 
-export class FinancialOnboardingDto extends createZodDto(FinancialOnboardingSchema) {}
+export class FinancialOnboardingDto extends createZodDto(
+  FinancialOnboardingSchema,
+) {}
 export class FinancialOnboardingResponseDto extends createZodDto(
   FinancialOnboardingResponseSchema,
 ) {}

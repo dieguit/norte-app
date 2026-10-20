@@ -222,9 +222,9 @@ describe('buildRoadmap', () => {
 
     expect(roadmap.undatedObjectives.map(({ id }) => id)).toContain('goal-2');
     expect(roadmap.historyMonths[0].month).toBe('2026-07');
-    expect(
-      roadmap.historyMonths[0].contributions.map(({ id }) => id),
-    ).toEqual(['contribution-1']);
+    expect(roadmap.historyMonths[0].contributions.map(({ id }) => id)).toEqual([
+      'contribution-1',
+    ]);
   });
 
   it('returns only applicable historical months in newest-first order', () => {
@@ -351,12 +351,10 @@ describe('buildRoadmap', () => {
       currentMonth: '2026-08',
     });
 
-    expect(roadmap.futureMonths.map(({ month }) => month)).toEqual([
-      '2027-03',
+    expect(roadmap.futureMonths.map(({ month }) => month)).toEqual(['2027-03']);
+    expect(roadmap.futureMonths[0].endingExpenses.map(({ id }) => id)).toEqual([
+      'rent',
     ]);
-    expect(
-      roadmap.futureMonths[0].endingExpenses.map(({ id }) => id),
-    ).toEqual(['rent']);
   });
 
   it('moves a recurring expense out of active events when it ends in the selected month', () => {
@@ -369,11 +367,11 @@ describe('buildRoadmap', () => {
       currentMonth: '2026-08',
     });
 
-    expect(
-      roadmap.currentMonth.recurringExpenses.map(({ id }) => id),
-    ).toEqual([]);
-    expect(
-      roadmap.currentMonth.endingExpenses.map(({ id }) => id),
-    ).toEqual(['rent']);
+    expect(roadmap.currentMonth.recurringExpenses.map(({ id }) => id)).toEqual(
+      [],
+    );
+    expect(roadmap.currentMonth.endingExpenses.map(({ id }) => id)).toEqual([
+      'rent',
+    ]);
   });
 });

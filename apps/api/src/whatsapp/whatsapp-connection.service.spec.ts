@@ -247,7 +247,10 @@ async function createService(
   overrides: {
     saveCreds?: () => Promise<void>;
     handleMessages?: (messages: unknown[], socket: unknown) => Promise<void>;
-    createAuthState?: () => Promise<{ state: unknown; saveCreds: () => Promise<void> }>;
+    createAuthState?: () => Promise<{
+      state: unknown;
+      saveCreds: () => Promise<void>;
+    }>;
   } = {},
   whatsappEnabled = true,
 ) {
@@ -257,11 +260,13 @@ async function createService(
       {
         provide: WhatsappAuthStoreService,
         useValue: {
-          createAuthState: overrides.createAuthState ?? vi.fn().mockResolvedValue({
-            state: { creds: { id: 'creds' }, keys: {} },
-            saveCreds:
-              overrides.saveCreds ?? vi.fn().mockResolvedValue(undefined),
-          }),
+          createAuthState:
+            overrides.createAuthState ??
+            vi.fn().mockResolvedValue({
+              state: { creds: { id: 'creds' }, keys: {} },
+              saveCreds:
+                overrides.saveCreds ?? vi.fn().mockResolvedValue(undefined),
+            }),
         },
       },
       {

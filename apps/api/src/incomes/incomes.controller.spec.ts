@@ -114,7 +114,10 @@ describe('/incomes', () => {
 
   it('generates the Swagger document with income request/response DTOs', () => {
     expect(() =>
-      SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('test').build()),
+      SwaggerModule.createDocument(
+        app,
+        new DocumentBuilder().setTitle('test').build(),
+      ),
     ).not.toThrow();
   });
 });

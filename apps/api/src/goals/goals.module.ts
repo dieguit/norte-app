@@ -4,5 +4,10 @@ import { ClerkAuthGuard } from '../profile/clerk-auth.guard';
 import { GoalsController } from './goals.controller';
 import { GoalsService } from './goals.service';
 
-@Module({ imports: [DatabaseModule], controllers: [GoalsController], providers: [GoalsService, ClerkAuthGuard], exports: [GoalsService] })
+@Module({
+  imports: [DatabaseModule],
+  controllers: [GoalsController],
+  providers: [GoalsService, ClerkAuthGuard],
+  exports: [GoalsService],
+})
 export class GoalsModule {}

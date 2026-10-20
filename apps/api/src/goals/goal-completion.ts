@@ -1,135 +1,150 @@
-import BigNumber from 'bignumber.js'
-import { type Money, createMoney, PLANNING_ARS_PER_USD } from '@repo/finance-utils'
-import { isPlainDecimalMoneyString } from './goal-completion.schema'
+import BigNumber from 'bignumber.js';
+import {
+  type Money,
+  createMoney,
+  PLANNING_ARS_PER_USD,
+} from '@repo/finance-utils';
+import { isPlainDecimalMoneyString } from './goal-completion.schema';
 import {
   buildGoalsWorkspace,
   type GoalsWorkspaceSource,
-} from '../finances/goals.engine'
+} from '../finances/goals.engine';
 import {
   buildGoalLifecycleProposal,
   selectGoalLifecycleAllocation,
   type GoalLifecycleContext,
   type GoalLifecycleProposal,
   type GoalLifecycleState,
-} from './goal-lifecycle'
-import { findGoalInWorkspace } from './goal-proposal-workspace'
+} from './goal-lifecycle';
+import { findGoalInWorkspace } from './goal-proposal-workspace';
 import type {
   GoalCreationAllocation,
   GoalCreationImpact,
-} from './goal-creation'
+} from './goal-creation';
 import {
   serializeGoalFinancialSources,
   serializeGoalCoreCollections,
   serializeGoalPlanCollections,
   serializeGoalProfile,
   serializeGoalRecord,
-} from './goal-proposal-serialization'
+} from './goal-proposal-serialization';
 
 export interface GoalCompletionSavingsPlace {
-  id: string
-  name: string
-  balance: Money
+  id: string;
+  name: string;
+  balance: Money;
 }
 
 export interface GoalCompletionState extends GoalLifecycleState {
-  savingsPlaces: GoalCompletionSavingsPlace[]
+  savingsPlaces: GoalCompletionSavingsPlace[];
 }
 
 export interface GoalCompletionContext {
-  goalId: string
-  goalName: string
-  targetAmount: Money
-  savingsValue: Money
-  currentMonth: string
-  plannedMonthlyContribution?: Money
-  savingsPlaces: GoalCompletionSavingsPlace[]
-  activeGoals: GoalLifecycleContext['activeGoals']
-  currentAllocation?: GoalLifecycleContext['currentAllocation']
-  pendingAllocation?: GoalLifecycleContext['pendingAllocation']
+  goalId: string;
+  goalName: string;
+  targetAmount: Money;
+  savingsValue: Money;
+  currentMonth: string;
+  plannedMonthlyContribution?: Money;
+  savingsPlaces: GoalCompletionSavingsPlace[];
+  activeGoals: GoalLifecycleContext['activeGoals'];
+  currentAllocation?: GoalLifecycleContext['currentAllocation'];
+  pendingAllocation?: GoalLifecycleContext['pendingAllocation'];
 }
 
 export interface GoalCompletionDraft {
-  goalId: string
-  withdrawals: Array<{ placeId: string; amount: string }>
-  allocations: Array<{ goalId: string; percentage: string }>
+  goalId: string;
+  withdrawals: Array<{ placeId: string; amount: string }>;
+  allocations: Array<{ goalId: string; percentage: string }>;
 }
 
 export interface GoalCompletionProposal {
-  goalId: string
-  goalName: string
-  targetAmount: Money
+  goalId: string;
+  goalName: string;
+  targetAmount: Money;
   withdrawals: Array<{
-    placeId: string
-    placeName: string
-    amount: Money
-  }>
-  allocation: GoalCreationAllocation
-  persistedAllocation: GoalLifecycleProposal['persistedAllocation']
-  pauseMonthlyCommitment: boolean
-  impacts: GoalCreationImpact[]
-  proposedSource: GoalsWorkspaceSource
+    placeId: string;
+    placeName: string;
+    amount: Money;
+  }>;
+  allocation: GoalCreationAllocation;
+  persistedAllocation: GoalLifecycleProposal['persistedAllocation'];
+  pauseMonthlyCommitment: boolean;
+  impacts: GoalCreationImpact[];
+  proposedSource: GoalsWorkspaceSource;
 }
 
 export interface GoalCompletionPreviewResult {
-  proposal: GoalCompletionProposal
-  previewToken: string
+  proposal: GoalCompletionProposal;
+  previewToken: string;
 }
 
 function isEligibleCompletionGoal(
   goal: ReturnType<typeof findGoalInWorkspace>,
-): goal is NonNullable<ReturnType<typeof findGoalInWorkspace>> & { targetAmount: Money } {
-  if (!goal) return false
-  if (!goal.completionEligible) return false
-  return goal.targetAmount != null
+): goal is NonNullable<ReturnType<typeof findGoalInWorkspace>> & {
+  targetAmount: Money;
+} {
+  if (!goal) return false;
+  if (!goal.completionEligible) return false;
+  return goal.targetAmount != null;
 }
 
 function getCompletionGoal(
   state: GoalCompletionState,
   currentMonth: string,
   goalId: string,
-): NonNullable<ReturnType<typeof findGoalInWorkspace>> & { targetAmount: Money } {
-  const workspace = buildGoalsWorkspace(state.source, currentMonth)
-  const goal = findGoalInWorkspace(workspace, goalId)
+): NonNullable<ReturnType<typeof findGoalInWorkspace>> & {
+  targetAmount: Money;
+} {
+  const workspace = buildGoalsWorkspace(state.source, currentMonth);
+  const goal = findGoalInWorkspace(workspace, goalId);
   if (!isEligibleCompletionGoal(goal)) {
-    throw new Error('El objetivo no está listo para completarse.')
+    throw new Error('El objetivo no está listo para completarse.');
   }
-  return goal
+  return goal;
 }
 
 function getProfileBaseCurrency(
   profile: NonNullable<GoalCompletionState['source']['profile']>,
 ): GoalCompletionSavingsPlace['balance']['currency'] {
-  return profile.baseCurrency ?? 'ARS'
+  return profile.baseCurrency ?? 'ARS';
 }
 
-function getPlannedMonthlyContribution(state: GoalCompletionState): Money | undefined {
-  const profile = state.source.profile
-  if (!profile) return undefined
-  const plannedMonthlyContribution = profile.plannedMonthlyContribution
-  if (plannedMonthlyContribution === null) return undefined
-  if (plannedMonthlyContribution === undefined) return undefined
-  return createMoney(plannedMonthlyContribution, getProfileBaseCurrency(profile))
+function getPlannedMonthlyContribution(
+  state: GoalCompletionState,
+): Money | undefined {
+  const profile = state.source.profile;
+  if (!profile) return undefined;
+  const plannedMonthlyContribution = profile.plannedMonthlyContribution;
+  if (plannedMonthlyContribution === null) return undefined;
+  if (plannedMonthlyContribution === undefined) return undefined;
+  return createMoney(
+    plannedMonthlyContribution,
+    getProfileBaseCurrency(profile),
+  );
 }
 
 function isPositiveMatchingPlace(
   place: GoalCompletionSavingsPlace,
   targetAmount: Money,
 ): boolean {
-  if (place.balance.currency !== targetAmount.currency) return false
-  return new BigNumber(place.balance.amount).isGreaterThan(0)
+  if (place.balance.currency !== targetAmount.currency) return false;
+  return new BigNumber(place.balance.amount).isGreaterThan(0);
 }
 
 function getCompletionSavingsPlaces(
   places: GoalCompletionSavingsPlace[],
   targetAmount: Money,
 ): GoalCompletionSavingsPlace[] {
-  return places.filter((place) => isPositiveMatchingPlace(place, targetAmount))
+  return places.filter((place) => isPositiveMatchingPlace(place, targetAmount));
 }
 
-function getActiveGoals(state: GoalCompletionState): GoalLifecycleContext['activeGoals'] {
+function getActiveGoals(
+  state: GoalCompletionState,
+): GoalLifecycleContext['activeGoals'] {
   return state.source.goals
     .filter((goal) => goal.status === 'active')
-    .map(({ id, name, currency }) => ({ id, name, currency }))
+    .map(({ id, name, currency }) => ({ id, name, currency }));
 }
 
 export function buildGoalCompletionContext(
@@ -137,7 +152,7 @@ export function buildGoalCompletionContext(
   currentMonth: string,
   goalId: string,
 ): GoalCompletionContext {
-  const goal = getCompletionGoal(state, currentMonth, goalId)
+  const goal = getCompletionGoal(state, currentMonth, goalId);
 
   return {
     goalId,
@@ -146,7 +161,10 @@ export function buildGoalCompletionContext(
     savingsValue: goal.savingsValue,
     currentMonth,
     plannedMonthlyContribution: getPlannedMonthlyContribution(state),
-    savingsPlaces: getCompletionSavingsPlaces(state.savingsPlaces, goal.targetAmount),
+    savingsPlaces: getCompletionSavingsPlaces(
+      state.savingsPlaces,
+      goal.targetAmount,
+    ),
     activeGoals: getActiveGoals(state),
     currentAllocation: selectGoalLifecycleAllocation(
       state.source.snapshots,
@@ -160,16 +178,19 @@ export function buildGoalCompletionContext(
       currentMonth,
       'pending',
     ),
-  }
+  };
 }
 
-type ValidatedGoalCompletionWithdrawal = { placeId: string; amount: Money }
+type ValidatedGoalCompletionWithdrawal = { placeId: string; amount: Money };
 
-function assertUniqueWithdrawalPlace(seenPlaceIds: Set<string>, placeId: string): void {
+function assertUniqueWithdrawalPlace(
+  seenPlaceIds: Set<string>,
+  placeId: string,
+): void {
   if (seenPlaceIds.has(placeId)) {
-    throw new Error('Cada lugar de ahorro puede aparecer una sola vez.')
+    throw new Error('Cada lugar de ahorro puede aparecer una sola vez.');
   }
-  seenPlaceIds.add(placeId)
+  seenPlaceIds.add(placeId);
 }
 
 function getWithdrawalPlace(
@@ -177,36 +198,37 @@ function getWithdrawalPlace(
   placeId: string,
   targetAmount: Money,
 ): GoalCompletionSavingsPlace {
-  const place = places.find((candidate) => candidate.id === placeId)
-  if (!place) throw new Error('Lugar de ahorro no encontrado.')
+  const place = places.find((candidate) => candidate.id === placeId);
+  if (!place) throw new Error('Lugar de ahorro no encontrado.');
   if (place.balance.currency !== targetAmount.currency) {
-    throw new Error('La moneda del lugar no coincide con la del objetivo.')
+    throw new Error('La moneda del lugar no coincide con la del objetivo.');
   }
-  return place
+  return place;
 }
 
 function isInvalidWithdrawalAmount(amount: BigNumber): boolean {
-  const decimals = amount.decimalPlaces()
+  const decimals = amount.decimalPlaces();
   return [
     !amount.isFinite(),
     amount.isNaN(),
     amount.isLessThanOrEqualTo(0),
     decimals === null,
     decimals !== null && decimals > 2,
-  ].some(Boolean)
+  ].some(Boolean);
 }
 
 function parseWithdrawalAmount(value: string): BigNumber {
-  const invalidMessage = 'Ingresá un monto mayor a cero, con hasta dos decimales.'
-  if (!isPlainDecimalMoneyString(value)) throw new Error(invalidMessage)
-  let amount: BigNumber
+  const invalidMessage =
+    'Ingresá un monto mayor a cero, con hasta dos decimales.';
+  if (!isPlainDecimalMoneyString(value)) throw new Error(invalidMessage);
+  let amount: BigNumber;
   try {
-    amount = new BigNumber(value.replace(',', '.'))
+    amount = new BigNumber(value.replace(',', '.'));
   } catch {
-    throw new Error(invalidMessage)
+    throw new Error(invalidMessage);
   }
-  if (isInvalidWithdrawalAmount(amount)) throw new Error(invalidMessage)
-  return amount
+  if (isInvalidWithdrawalAmount(amount)) throw new Error(invalidMessage);
+  return amount;
 }
 
 function assertWithdrawalWithinBalance(
@@ -214,56 +236,63 @@ function assertWithdrawalWithinBalance(
   place: GoalCompletionSavingsPlace,
 ): void {
   if (amount.isGreaterThan(place.balance.amount)) {
-    throw new Error(`El monto supera el saldo disponible en ${place.name}.`)
+    throw new Error(`El monto supera el saldo disponible en ${place.name}.`);
   }
 }
 
 export function validateGoalCompletionWithdrawals(input: {
-  targetAmount: Money
-  places: GoalCompletionSavingsPlace[]
-  withdrawals: Array<{ placeId: string; amount: string }>
+  targetAmount: Money;
+  places: GoalCompletionSavingsPlace[];
+  withdrawals: Array<{ placeId: string; amount: string }>;
 }): ValidatedGoalCompletionWithdrawal[] {
-  const seenPlaceIds = new Set<string>()
-  let total = new BigNumber(0)
-  const validated: ValidatedGoalCompletionWithdrawal[] = []
+  const seenPlaceIds = new Set<string>();
+  let total = new BigNumber(0);
+  const validated: ValidatedGoalCompletionWithdrawal[] = [];
 
   for (const withdrawal of input.withdrawals) {
-    assertUniqueWithdrawalPlace(seenPlaceIds, withdrawal.placeId)
-    const place = getWithdrawalPlace(input.places, withdrawal.placeId, input.targetAmount)
-    const amount = parseWithdrawalAmount(withdrawal.amount)
-    assertWithdrawalWithinBalance(amount, place)
+    assertUniqueWithdrawalPlace(seenPlaceIds, withdrawal.placeId);
+    const place = getWithdrawalPlace(
+      input.places,
+      withdrawal.placeId,
+      input.targetAmount,
+    );
+    const amount = parseWithdrawalAmount(withdrawal.amount);
+    assertWithdrawalWithinBalance(amount, place);
 
-    total = total.plus(amount)
-    validated.push({ placeId: place.id, amount: createMoney(amount, input.targetAmount.currency) })
+    total = total.plus(amount);
+    validated.push({
+      placeId: place.id,
+      amount: createMoney(amount, input.targetAmount.currency),
+    });
   }
 
   if (!total.isEqualTo(input.targetAmount.amount)) {
-    throw new Error('Los montos deben sumar exactamente el objetivo.')
+    throw new Error('Los montos deben sumar exactamente el objetivo.');
   }
 
-  return validated
+  return validated;
 }
 
 export function buildGoalCompletionProposal(input: {
-  state: GoalCompletionState
-  currentMonth: string
-  draft: GoalCompletionDraft
+  state: GoalCompletionState;
+  currentMonth: string;
+  draft: GoalCompletionDraft;
 }): GoalCompletionProposal {
-  const { state, currentMonth, draft } = input
-  const goal = getCompletionGoal(state, currentMonth, draft.goalId)
+  const { state, currentMonth, draft } = input;
+  const goal = getCompletionGoal(state, currentMonth, draft.goalId);
 
   const validated = validateGoalCompletionWithdrawals({
     targetAmount: goal.targetAmount,
     places: state.savingsPlaces,
     withdrawals: draft.withdrawals,
-  })
+  });
   const removal = buildGoalLifecycleProposal({
     lifecycle: 'pause',
     goalId: draft.goalId,
     state,
     currentMonth,
     draft: { allocations: draft.allocations },
-  })
+  });
 
   return {
     goalId: goal.id,
@@ -274,8 +303,12 @@ export function buildGoalCompletionProposal(input: {
     persistedAllocation: removal.persistedAllocation,
     pauseMonthlyCommitment: removal.pauseMonthlyCommitment,
     impacts: removal.impacts.filter((impact) => impact.goalId !== goal.id),
-    proposedSource: buildCompletedGoalSource(removal.proposedSource, state, goal.id),
-  }
+    proposedSource: buildCompletedGoalSource(
+      removal.proposedSource,
+      state,
+      goal.id,
+    ),
+  };
 }
 
 function buildCompletionWithdrawals(
@@ -286,7 +319,7 @@ function buildCompletionWithdrawals(
     placeId,
     placeName: places.find((place) => place.id === placeId)!.name,
     amount,
-  }))
+  }));
 }
 
 function buildCompletedGoalSource(
@@ -304,14 +337,14 @@ function buildCompletedGoalSource(
     goals: proposedSource.goals.map((goal) =>
       goal.id === goalId ? { ...goal, status: 'completed' as const } : goal,
     ),
-  }
+  };
 }
 
 function canonicalAmount(value: string): string {
   try {
-    return new BigNumber(value.replace(',', '.')).toFixed(2)
+    return new BigNumber(value.replace(',', '.')).toFixed(2);
   } catch {
-    return value
+    return value;
   }
 }
 
@@ -319,31 +352,36 @@ function getDraftTarget(
   workspace: ReturnType<typeof buildGoalsWorkspace>,
   draft: GoalCompletionDraft | undefined,
 ): ReturnType<typeof findGoalInWorkspace> {
-  if (!draft) return undefined
-  return findGoalInWorkspace(workspace, draft.goalId)
+  if (!draft) return undefined;
+  return findGoalInWorkspace(workspace, draft.goalId);
 }
 
 function getDraftSourceGoal(
   state: GoalCompletionState,
   draft: GoalCompletionDraft | undefined,
 ): GoalsWorkspaceSource['goals'][number] | undefined {
-  if (!draft) return undefined
-  return state.source.goals.find((goal) => goal.id === draft.goalId)
+  if (!draft) return undefined;
+  return state.source.goals.find((goal) => goal.id === draft.goalId);
 }
 
 function getDraftGoalId(draft: GoalCompletionDraft | undefined): string | null {
-  if (!draft) return null
-  return draft.goalId
+  if (!draft) return null;
+  return draft.goalId;
 }
 
-function serializeCompletionSavingsPlaces(places: GoalCompletionSavingsPlace[]) {
+function serializeCompletionSavingsPlaces(
+  places: GoalCompletionSavingsPlace[],
+) {
   return [...places]
     .map((place) => ({
       id: place.id,
       name: place.name,
-      balance: { amount: place.balance.amount, currency: place.balance.currency },
+      balance: {
+        amount: place.balance.amount,
+        currency: place.balance.currency,
+      },
     }))
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function serializeCompletionWithdrawals(
@@ -359,11 +397,11 @@ function serializeCompletionWithdrawals(
       currency: withdrawal.currency,
       createdAt: withdrawal.createdAt,
     }))
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function serializeCompletionDraft(draft: GoalCompletionDraft | undefined) {
-  if (!draft) return null
+  if (!draft) return null;
   return {
     goalId: draft.goalId,
     withdrawals: draft.withdrawals
@@ -378,7 +416,7 @@ function serializeCompletionDraft(draft: GoalCompletionDraft | undefined) {
         percentage: canonicalAmount(allocation.percentage),
       }))
       .sort((a, b) => a.goalId.localeCompare(b.goalId)),
-  }
+  };
 }
 
 export function serializeGoalCompletionState(
@@ -386,9 +424,9 @@ export function serializeGoalCompletionState(
   currentMonth: string,
   draft?: GoalCompletionDraft,
 ): string {
-  const workspace = buildGoalsWorkspace(state.source, currentMonth)
-  const target = getDraftTarget(workspace, draft)
-  const sourceGoal = getDraftSourceGoal(state, draft)
+  const workspace = buildGoalsWorkspace(state.source, currentMonth);
+  const target = getDraftTarget(workspace, draft);
+  const sourceGoal = getDraftSourceGoal(state, draft);
   const normalized = {
     currentMonth,
     planningArsPerUsd: PLANNING_ARS_PER_USD,
@@ -399,10 +437,16 @@ export function serializeGoalCompletionState(
     ...serializeGoalFinancialSources(state.source),
     savingsPlaces: serializeCompletionSavingsPlaces(state.savingsPlaces),
     ...serializeGoalCoreCollections(state.source),
-    completionWithdrawals: serializeCompletionWithdrawals(state.source.completionWithdrawals),
-    ...serializeGoalPlanCollections(state.source, state.pendingSnapshots, state.pendingAllocations),
+    completionWithdrawals: serializeCompletionWithdrawals(
+      state.source.completionWithdrawals,
+    ),
+    ...serializeGoalPlanCollections(
+      state.source,
+      state.pendingSnapshots,
+      state.pendingAllocations,
+    ),
     draft: serializeCompletionDraft(draft),
-  }
+  };
 
-  return JSON.stringify(normalized)
+  return JSON.stringify(normalized);
 }

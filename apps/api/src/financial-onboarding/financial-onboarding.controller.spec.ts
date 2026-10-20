@@ -4,7 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import { ExpensesService } from '../expenses/expenses.service';
 import { IncomesService } from '../incomes/incomes.service';
@@ -55,8 +63,11 @@ const body = {
   ],
 };
 
-function fakeDatabase(options: { profileExists?: boolean; failIncomeInsert?: boolean } = {}) {
-  const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+function fakeDatabase(
+  options: { profileExists?: boolean; failIncomeInsert?: boolean } = {},
+) {
+  const inserts: Array<{ table: unknown; values: Record<string, unknown> }> =
+    [];
   const tx = {
     query: {
       incomeSources: { findFirst: vi.fn() },
@@ -82,7 +93,10 @@ function fakeDatabase(options: { profileExists?: boolean; failIncomeInsert?: boo
   };
   return {
     inserts,
-    database: { transaction: async (callback: (executor: typeof tx) => unknown) => callback(tx) },
+    database: {
+      transaction: async (callback: (executor: typeof tx) => unknown) =>
+        callback(tx),
+    },
   };
 }
 
@@ -152,9 +166,13 @@ describe('/me/financial-onboarding', () => {
       .send(body)
       .expect(201, { created: true });
 
-    const profile = database.inserts.find(({ table }) => table === financialProfiles);
+    const profile = database.inserts.find(
+      ({ table }) => table === financialProfiles,
+    );
     expect(profile?.values).toMatchObject({ userId: 'verified-user' });
-    for (const { values } of database.inserts.filter(({ table }) => table !== financialProfiles)) {
+    for (const { values } of database.inserts.filter(
+      ({ table }) => table !== financialProfiles,
+    )) {
       if ('userId' in values) expect(values.userId).toBe('verified-user');
     }
   });
@@ -179,7 +197,10 @@ describe('/me/financial-onboarding', () => {
       [
         {
           ...body,
-          goal: { ...body.goal, allocations: [{ goalId: 'goal-1', percentage: '100.001' }] },
+          goal: {
+            ...body.goal,
+            allocations: [{ goalId: 'goal-1', percentage: '100.001' }],
+          },
           expenses: [],
         },
         'Ingresá un porcentaje entre 0% y 100%, con hasta dos decimales.',
@@ -206,7 +227,9 @@ describe('/me/financial-onboarding', () => {
       .send(body)
       .expect(201, { created: false });
 
-    expect(database.inserts.map(({ table }) => table)).toEqual([financialProfiles]);
+    expect(database.inserts.map(({ table }) => table)).toEqual([
+      financialProfiles,
+    ]);
   });
 
   it('returns a generic 500 when a child insert fails inside the transaction', async () => {
@@ -218,13 +241,21 @@ describe('/me/financial-onboarding', () => {
       .send(body)
       .expect(500)
       .expect(({ text }) => expect(text).not.toContain('Database disk error'));
-    expect(database.inserts.map(({ table }) => table)).toEqual([financialProfiles, incomes]);
-    expect(database.inserts.some(({ table }) => table === expenses)).toBe(false);
+    expect(database.inserts.map(({ table }) => table)).toEqual([
+      financialProfiles,
+      incomes,
+    ]);
+    expect(database.inserts.some(({ table }) => table === expenses)).toBe(
+      false,
+    );
   });
 
   it('generates the Swagger document with the onboarding request and response DTOs', () => {
     expect(() =>
-      SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('test').build()),
+      SwaggerModule.createDocument(
+        app,
+        new DocumentBuilder().setTitle('test').build(),
+      ),
     ).not.toThrow();
   });
 });

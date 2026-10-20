@@ -63,46 +63,79 @@ const presentFinancesWorkspace: FinancesWorkspace = {
 
 describe('HomeService', () => {
   it('returns missing profile if goals workspace profile is missing', async () => {
-    const goalsService = { getWorkspace: vi.fn().mockResolvedValue({ profile: 'missing' }) };
-    const financesService = { getWorkspace: vi.fn().mockResolvedValue(presentFinancesWorkspace) };
-    const service = new HomeService(goalsService as any, financesService as any);
+    const goalsService = {
+      getWorkspace: vi.fn().mockResolvedValue({ profile: 'missing' }),
+    };
+    const financesService = {
+      getWorkspace: vi.fn().mockResolvedValue(presentFinancesWorkspace),
+    };
+    const service = new HomeService(
+      goalsService as any,
+      financesService as any,
+    );
 
     const result = await service.getHome('user-1', '2026-08');
     expect(result).toEqual({ profile: 'missing' });
   });
 
   it('returns missing profile if finances workspace is null', async () => {
-    const goalsService = { getWorkspace: vi.fn().mockResolvedValue(presentGoalsWorkspace) };
+    const goalsService = {
+      getWorkspace: vi.fn().mockResolvedValue(presentGoalsWorkspace),
+    };
     const financesService = { getWorkspace: vi.fn().mockResolvedValue(null) };
-    const service = new HomeService(goalsService as any, financesService as any);
+    const service = new HomeService(
+      goalsService as any,
+      financesService as any,
+    );
 
     const result = await service.getHome('user-1', '2026-08');
     expect(result).toEqual({ profile: 'missing' });
   });
 
   it('builds roadmap and extracts completion eligible goals when profile is present', async () => {
-    const goalsService = { getWorkspace: vi.fn().mockResolvedValue(presentGoalsWorkspace) };
-    const financesService = { getWorkspace: vi.fn().mockResolvedValue(presentFinancesWorkspace) };
-    const service = new HomeService(goalsService as any, financesService as any);
+    const goalsService = {
+      getWorkspace: vi.fn().mockResolvedValue(presentGoalsWorkspace),
+    };
+    const financesService = {
+      getWorkspace: vi.fn().mockResolvedValue(presentFinancesWorkspace),
+    };
+    const service = new HomeService(
+      goalsService as any,
+      financesService as any,
+    );
 
     const result = await service.getHome('user-1', '2026-08');
     expect(result).toHaveProperty('roadmap');
     expect(result).toHaveProperty('completionGoals');
-    if (!('roadmap' in result) || !('completionGoals' in result)) throw new Error('Expected roadmap and completionGoals');
+    if (!('roadmap' in result) || !('completionGoals' in result))
+      throw new Error('Expected roadmap and completionGoals');
     expect(result.completionGoals).toEqual([sampleGoalEligible]);
     expect(result.roadmap.currentMonth.month).toBe('2026-08');
     expect(goalsService.getWorkspace).toHaveBeenCalledWith('user-1', '2026-08');
-    expect(financesService.getWorkspace).toHaveBeenCalledWith('user-1', '2026-08');
+    expect(financesService.getWorkspace).toHaveBeenCalledWith(
+      'user-1',
+      '2026-08',
+    );
   });
 
   it('forwards requested non-current month to both goals and finances workspaces', async () => {
-    const goalsService = { getWorkspace: vi.fn().mockResolvedValue(presentGoalsWorkspace) };
-    const financesService = { getWorkspace: vi.fn().mockResolvedValue(presentFinancesWorkspace) };
-    const service = new HomeService(goalsService as any, financesService as any);
+    const goalsService = {
+      getWorkspace: vi.fn().mockResolvedValue(presentGoalsWorkspace),
+    };
+    const financesService = {
+      getWorkspace: vi.fn().mockResolvedValue(presentFinancesWorkspace),
+    };
+    const service = new HomeService(
+      goalsService as any,
+      financesService as any,
+    );
 
     await service.getHome('user-1', '2026-11');
     expect(goalsService.getWorkspace).toHaveBeenCalledWith('user-1', '2026-11');
-    expect(financesService.getWorkspace).toHaveBeenCalledWith('user-1', '2026-11');
+    expect(financesService.getWorkspace).toHaveBeenCalledWith(
+      'user-1',
+      '2026-11',
+    );
   });
 
   it('throws when roadmap or workspace data violates schema contract', async () => {
@@ -110,12 +143,26 @@ describe('HomeService', () => {
       profile: 'present',
       workspace: {
         ...presentGoalsWorkspace.workspace,
-        groups: [{ status: 'active', goals: [{ ...sampleGoalEligible, priority: 'invalid-priority' as any }] }],
+        groups: [
+          {
+            status: 'active',
+            goals: [
+              { ...sampleGoalEligible, priority: 'invalid-priority' as any },
+            ],
+          },
+        ],
       },
     };
-    const goalsService = { getWorkspace: vi.fn().mockResolvedValue(invalidGoalsWorkspace) };
-    const financesService = { getWorkspace: vi.fn().mockResolvedValue(presentFinancesWorkspace) };
-    const service = new HomeService(goalsService as any, financesService as any);
+    const goalsService = {
+      getWorkspace: vi.fn().mockResolvedValue(invalidGoalsWorkspace),
+    };
+    const financesService = {
+      getWorkspace: vi.fn().mockResolvedValue(presentFinancesWorkspace),
+    };
+    const service = new HomeService(
+      goalsService as any,
+      financesService as any,
+    );
 
     await expect(service.getHome('user-1', '2026-08')).rejects.toThrow();
   });

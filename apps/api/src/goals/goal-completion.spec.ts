@@ -1,13 +1,16 @@
-import { describe, expect, it } from 'vitest'
-import { createMoney } from '@repo/finance-utils'
+import { describe, expect, it } from 'vitest';
+import { createMoney } from '@repo/finance-utils';
 import {
   buildGoalCompletionContext,
   buildGoalCompletionProposal,
   serializeGoalCompletionState,
   validateGoalCompletionWithdrawals,
   type GoalCompletionState,
-} from './goal-completion'
-import { buildGoalsWorkspace, type GoalsWorkspaceSource } from '../finances/goals.engine'
+} from './goal-completion';
+import {
+  buildGoalsWorkspace,
+  type GoalsWorkspaceSource,
+} from '../finances/goals.engine';
 
 function createCompletionSource(): GoalsWorkspaceSource {
   return {
@@ -45,28 +48,61 @@ function createCompletionSource(): GoalsWorkspaceSource {
       },
     ],
     savingsPositions: [
-      { id: 'saving-1', goalId: 'goal-complete', amount: '1000.00', currency: 'ARS' },
+      {
+        id: 'saving-1',
+        goalId: 'goal-complete',
+        amount: '1000.00',
+        currency: 'ARS',
+      },
     ],
     investmentPositions: [],
     snapshots: [
-      { id: 'snapshot-current', userId: 'user-1', effectiveMonth: '2026-08-01' },
+      {
+        id: 'snapshot-current',
+        userId: 'user-1',
+        effectiveMonth: '2026-08-01',
+      },
     ],
     allocations: [
-      { id: 'allocation-complete', snapshotId: 'snapshot-current', goalId: 'goal-complete', percentage: '60.00' },
-      { id: 'allocation-other', snapshotId: 'snapshot-current', goalId: 'goal-other', percentage: '40.00' },
+      {
+        id: 'allocation-complete',
+        snapshotId: 'snapshot-current',
+        goalId: 'goal-complete',
+        percentage: '60.00',
+      },
+      {
+        id: 'allocation-other',
+        snapshotId: 'snapshot-current',
+        goalId: 'goal-other',
+        percentage: '40.00',
+      },
     ],
-  }
+  };
 }
 
 function createCompletionState(): GoalCompletionState {
   return {
     source: createCompletionSource(),
     pendingSnapshots: [
-      { id: 'snapshot-pending', userId: 'user-1', effectiveMonth: '2026-09-01' },
+      {
+        id: 'snapshot-pending',
+        userId: 'user-1',
+        effectiveMonth: '2026-09-01',
+      },
     ],
     pendingAllocations: [
-      { id: 'pending-complete', snapshotId: 'snapshot-pending', goalId: 'goal-complete', percentage: '50.00' },
-      { id: 'pending-other', snapshotId: 'snapshot-pending', goalId: 'goal-other', percentage: '50.00' },
+      {
+        id: 'pending-complete',
+        snapshotId: 'snapshot-pending',
+        goalId: 'goal-complete',
+        percentage: '50.00',
+      },
+      {
+        id: 'pending-other',
+        snapshotId: 'snapshot-pending',
+        goalId: 'goal-other',
+        percentage: '50.00',
+      },
     ],
     savingsPlaces: [
       { id: 'bank', name: 'Banco', balance: createMoney('700.00', 'ARS') },
@@ -74,7 +110,7 @@ function createCompletionState(): GoalCompletionState {
       { id: 'empty', name: 'Vacío', balance: createMoney('0.00', 'ARS') },
       { id: 'usd', name: 'Dólares', balance: createMoney('100.00', 'USD') },
     ],
-  }
+  };
 }
 
 describe('validateGoalCompletionWithdrawals', () => {
@@ -82,7 +118,7 @@ describe('validateGoalCompletionWithdrawals', () => {
     { id: 'bank', name: 'Banco', balance: createMoney('700.00', 'ARS') },
     { id: 'cash', name: 'Efectivo', balance: createMoney('500.00', 'ARS') },
     { id: 'usd', name: 'Dólares', balance: createMoney('1000.00', 'USD') },
-  ]
+  ];
 
   it('accepts an exact decimal-safe split', () => {
     expect(
@@ -97,16 +133,46 @@ describe('validateGoalCompletionWithdrawals', () => {
     ).toEqual([
       { placeId: 'bank', amount: createMoney('600.00', 'ARS') },
       { placeId: 'cash', amount: createMoney('400.00', 'ARS') },
-    ])
-  })
+    ]);
+  });
 
   it.each([
-    ['total below target', [{ placeId: 'bank', amount: '599.99' }], 'Los montos deben sumar exactamente el objetivo.'],
-    ['total above target', [{ placeId: 'bank', amount: '700.00' }, { placeId: 'cash', amount: '301.00' }], 'Los montos deben sumar exactamente el objetivo.'],
-    ['unknown place', [{ placeId: 'unknown', amount: '1000.00' }], 'Lugar de ahorro no encontrado.'],
-    ['duplicate place', [{ placeId: 'bank', amount: '500.00' }, { placeId: 'bank', amount: '500.00' }], 'Cada lugar de ahorro puede aparecer una sola vez.'],
-    ['amount above place balance', [{ placeId: 'bank', amount: '1000.00' }], 'El monto supera el saldo disponible en Banco.'],
-    ['currency mismatch', [{ placeId: 'usd', amount: '1000.00' }], 'La moneda del lugar no coincide con la del objetivo.'],
+    [
+      'total below target',
+      [{ placeId: 'bank', amount: '599.99' }],
+      'Los montos deben sumar exactamente el objetivo.',
+    ],
+    [
+      'total above target',
+      [
+        { placeId: 'bank', amount: '700.00' },
+        { placeId: 'cash', amount: '301.00' },
+      ],
+      'Los montos deben sumar exactamente el objetivo.',
+    ],
+    [
+      'unknown place',
+      [{ placeId: 'unknown', amount: '1000.00' }],
+      'Lugar de ahorro no encontrado.',
+    ],
+    [
+      'duplicate place',
+      [
+        { placeId: 'bank', amount: '500.00' },
+        { placeId: 'bank', amount: '500.00' },
+      ],
+      'Cada lugar de ahorro puede aparecer una sola vez.',
+    ],
+    [
+      'amount above place balance',
+      [{ placeId: 'bank', amount: '1000.00' }],
+      'El monto supera el saldo disponible en Banco.',
+    ],
+    [
+      'currency mismatch',
+      [{ placeId: 'usd', amount: '1000.00' }],
+      'La moneda del lugar no coincide con la del objetivo.',
+    ],
   ])('rejects %s', (_name, withdrawals, message) => {
     expect(() =>
       validateGoalCompletionWithdrawals({
@@ -114,8 +180,8 @@ describe('validateGoalCompletionWithdrawals', () => {
         places,
         withdrawals,
       }),
-    ).toThrow(message)
-  })
+    ).toThrow(message);
+  });
 
   it.each(['0x10', '1e3', 'Infinity', 'NaN', '1.001'])(
     'rejects non-plain decimal amount %s before numeric validation',
@@ -126,14 +192,18 @@ describe('validateGoalCompletionWithdrawals', () => {
           places,
           withdrawals: [{ placeId: 'bank', amount }],
         }),
-      ).toThrow('Ingresá un monto mayor a cero, con hasta dos decimales.')
+      ).toThrow('Ingresá un monto mayor a cero, con hasta dos decimales.');
     },
-  )
-})
+  );
+});
 
 describe('goal completion context and proposal', () => {
   it('maps the eligible goal, planned contribution, positive matching places, and allocations', () => {
-    const context = buildGoalCompletionContext(createCompletionState(), '2026-08', 'goal-complete')
+    const context = buildGoalCompletionContext(
+      createCompletionState(),
+      '2026-08',
+      'goal-complete',
+    );
 
     expect(context).toMatchObject({
       goalId: 'goal-complete',
@@ -145,17 +215,20 @@ describe('goal completion context and proposal', () => {
         { id: 'bank', balance: { amount: '700.00', currency: 'ARS' } },
         { id: 'cash', balance: { amount: '500.00', currency: 'ARS' } },
       ],
-    })
-    expect(context.activeGoals.map(({ id }) => id)).toEqual(['goal-complete', 'goal-other'])
+    });
+    expect(context.activeGoals.map(({ id }) => id)).toEqual([
+      'goal-complete',
+      'goal-other',
+    ]);
     expect(context.currentAllocation?.entries).toEqual([
       { goalId: 'goal-complete', percentage: '60.00' },
       { goalId: 'goal-other', percentage: '40.00' },
-    ])
+    ]);
     expect(context.pendingAllocation?.entries).toEqual([
       { goalId: 'goal-complete', percentage: '50.00' },
       { goalId: 'goal-other', percentage: '50.00' },
-    ])
-  })
+    ]);
+  });
 
   it('redistributes the completed goal allocation and marks it completed in the proposed source', () => {
     const proposal = buildGoalCompletionProposal({
@@ -169,53 +242,75 @@ describe('goal completion context and proposal', () => {
         ],
         allocations: [{ goalId: 'goal-other', percentage: '100.00' }],
       },
-    })
+    });
 
-    expect(proposal.allocation.effectiveMonth).toBe('2026-08-01')
-    expect(proposal.persistedAllocation.effectiveMonth).toBe('2026-08-01')
+    expect(proposal.allocation.effectiveMonth).toBe('2026-08-01');
+    expect(proposal.persistedAllocation.effectiveMonth).toBe('2026-08-01');
     expect(proposal.withdrawals).toEqual([
-      { placeId: 'bank', placeName: 'Banco', amount: createMoney('600.00', 'ARS') },
-      { placeId: 'cash', placeName: 'Efectivo', amount: createMoney('400.00', 'ARS') },
-    ])
+      {
+        placeId: 'bank',
+        placeName: 'Banco',
+        amount: createMoney('600.00', 'ARS'),
+      },
+      {
+        placeId: 'cash',
+        placeName: 'Efectivo',
+        amount: createMoney('400.00', 'ARS'),
+      },
+    ]);
     expect(proposal.persistedAllocation.entries).toEqual([
       { goalId: 'goal-other', percentage: '100.00' },
-    ])
-    expect(proposal.impacts.map((impact) => impact.goalId)).toEqual(['goal-other'])
-    expect(proposal.proposedSource.goals.find((goal) => goal.id === 'goal-complete')?.status).toBe('completed')
-    expect(proposal.proposedSource.goals.find((goal) => goal.id === 'goal-other')?.status).toBe('active')
-  })
+    ]);
+    expect(proposal.impacts.map((impact) => impact.goalId)).toEqual([
+      'goal-other',
+    ]);
+    expect(
+      proposal.proposedSource.goals.find((goal) => goal.id === 'goal-complete')
+        ?.status,
+    ).toBe('completed');
+    expect(
+      proposal.proposedSource.goals.find((goal) => goal.id === 'goal-other')
+        ?.status,
+    ).toBe('active');
+  });
 
   it('uses income and expense plans when calculating completion impacts', () => {
-    const state = createCompletionState()
+    const state = createCompletionState();
     const source: GoalsWorkspaceSource = {
       ...state.source,
       goals: state.source.goals.map((goal) =>
-        goal.id === 'goal-other' ? { ...goal, targetAmount: '10000000.00' } : goal,
+        goal.id === 'goal-other'
+          ? { ...goal, targetAmount: '10000000.00' }
+          : goal,
       ),
-      incomes: [{
-        id: 'income-1',
-        sourceKind: 'salary',
-        sourceId: null,
-        sourceName: 'Sueldo',
-        concept: null,
-        amount: '200000.00',
-        currency: 'ARS',
-        recurring: true,
-        effectiveMonth: '2026-01-01',
-      }],
-      expenses: [{
-        id: 'expense-1',
-        sourceKind: 'housing',
-        sourceId: null,
-        sourceName: 'Alquiler',
-        concept: null,
-        amount: '100000.00',
-        currency: 'ARS',
-        recurring: true,
-        effectiveMonth: '2026-01-01',
-        endMonth: null,
-      }],
-    }
+      incomes: [
+        {
+          id: 'income-1',
+          sourceKind: 'salary',
+          sourceId: null,
+          sourceName: 'Sueldo',
+          concept: null,
+          amount: '200000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+        },
+      ],
+      expenses: [
+        {
+          id: 'expense-1',
+          sourceKind: 'housing',
+          sourceId: null,
+          sourceName: 'Alquiler',
+          concept: null,
+          amount: '100000.00',
+          currency: 'ARS',
+          recurring: true,
+          effectiveMonth: '2026-01-01',
+          endMonth: null,
+        },
+      ],
+    };
     const proposal = buildGoalCompletionProposal({
       state: { ...state, source },
       currentMonth: '2026-08',
@@ -227,16 +322,21 @@ describe('goal completion context and proposal', () => {
         ],
         allocations: [{ goalId: 'goal-other', percentage: '100.00' }],
       },
-    })
+    });
 
-    const expectedAfter = buildGoalsWorkspace(proposal.proposedSource, '2026-08')
+    const expectedAfter = buildGoalsWorkspace(
+      proposal.proposedSource,
+      '2026-08',
+    )
       .groups.flatMap((group) => group.goals)
-      .find((goal) => goal.id === 'goal-other')?.projection
-    expect(proposal.impacts.find((impact) => impact.goalId === 'goal-other')?.after).toEqual(expectedAfter)
-  })
+      .find((goal) => goal.id === 'goal-other')?.projection;
+    expect(
+      proposal.impacts.find((impact) => impact.goalId === 'goal-other')?.after,
+    ).toEqual(expectedAfter);
+  });
 
   it('clears the Plan when completing the final active goal', () => {
-    const state = createCompletionState()
+    const state = createCompletionState();
     const finalState: GoalCompletionState = {
       ...state,
       source: {
@@ -246,7 +346,7 @@ describe('goal completion context and proposal', () => {
       },
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildGoalCompletionProposal({
       state: finalState,
@@ -259,23 +359,26 @@ describe('goal completion context and proposal', () => {
         ],
         allocations: [],
       },
-    })
+    });
 
-    expect(proposal.pauseMonthlyCommitment).toBe(true)
-    expect(proposal.persistedAllocation.entries).toEqual([])
-  })
-})
+    expect(proposal.pauseMonthlyCommitment).toBe(true);
+    expect(proposal.persistedAllocation.entries).toEqual([]);
+  });
+});
 
 describe('serializeGoalCompletionState', () => {
   it('characterizes the complete serialized shape and stable ordering', () => {
-    const state = createCompletionState()
+    const state = createCompletionState();
     const stateWithDedication: GoalCompletionState = {
       ...state,
       source: {
         ...state.source,
-        profile: { ...state.source.profile!, goalDedicationPercentage: '85.00' },
+        profile: {
+          ...state.source.profile!,
+          goalDedicationPercentage: '85.00',
+        },
       },
-    }
+    };
     const draft = {
       goalId: 'goal-complete',
       withdrawals: [
@@ -283,9 +386,13 @@ describe('serializeGoalCompletionState', () => {
         { placeId: 'bank', amount: '600.00' },
       ],
       allocations: [{ goalId: 'goal-other', percentage: '100' }],
-    }
+    };
 
-    expect(JSON.parse(serializeGoalCompletionState(stateWithDedication, '2026-08', draft))).toEqual({
+    expect(
+      JSON.parse(
+        serializeGoalCompletionState(stateWithDedication, '2026-08', draft),
+      ),
+    ).toEqual({
       currentMonth: '2026-08',
       planningArsPerUsd: '1500',
       goalId: 'goal-complete',
@@ -316,10 +423,26 @@ describe('serializeGoalCompletionState', () => {
       incomes: [],
       expenses: [],
       savingsPlaces: [
-        { id: 'bank', name: 'Banco', balance: { amount: '700.00', currency: 'ARS' } },
-        { id: 'cash', name: 'Efectivo', balance: { amount: '500.00', currency: 'ARS' } },
-        { id: 'empty', name: 'Vacío', balance: { amount: '0.00', currency: 'ARS' } },
-        { id: 'usd', name: 'Dólares', balance: { amount: '100.00', currency: 'USD' } },
+        {
+          id: 'bank',
+          name: 'Banco',
+          balance: { amount: '700.00', currency: 'ARS' },
+        },
+        {
+          id: 'cash',
+          name: 'Efectivo',
+          balance: { amount: '500.00', currency: 'ARS' },
+        },
+        {
+          id: 'empty',
+          name: 'Vacío',
+          balance: { amount: '0.00', currency: 'ARS' },
+        },
+        {
+          id: 'usd',
+          name: 'Dólares',
+          balance: { amount: '100.00', currency: 'USD' },
+        },
       ],
       goals: [
         {
@@ -354,23 +477,57 @@ describe('serializeGoalCompletionState', () => {
         },
       ],
       savingsPositions: [
-        { id: 'saving-1', goalId: 'goal-complete', amount: '1000.00', currency: 'ARS', location: null },
+        {
+          id: 'saving-1',
+          goalId: 'goal-complete',
+          amount: '1000.00',
+          currency: 'ARS',
+          location: null,
+        },
       ],
       investmentPositions: [],
       completionWithdrawals: [],
       snapshots: [
-        { id: 'snapshot-current', userId: 'user-1', effectiveMonth: '2026-08-01' },
+        {
+          id: 'snapshot-current',
+          userId: 'user-1',
+          effectiveMonth: '2026-08-01',
+        },
       ],
       allocations: [
-        { id: 'allocation-complete', snapshotId: 'snapshot-current', goalId: 'goal-complete', percentage: '60.00' },
-        { id: 'allocation-other', snapshotId: 'snapshot-current', goalId: 'goal-other', percentage: '40.00' },
+        {
+          id: 'allocation-complete',
+          snapshotId: 'snapshot-current',
+          goalId: 'goal-complete',
+          percentage: '60.00',
+        },
+        {
+          id: 'allocation-other',
+          snapshotId: 'snapshot-current',
+          goalId: 'goal-other',
+          percentage: '40.00',
+        },
       ],
       pendingSnapshots: [
-        { id: 'snapshot-pending', userId: 'user-1', effectiveMonth: '2026-09-01' },
+        {
+          id: 'snapshot-pending',
+          userId: 'user-1',
+          effectiveMonth: '2026-09-01',
+        },
       ],
       pendingAllocations: [
-        { id: 'pending-complete', snapshotId: 'snapshot-pending', goalId: 'goal-complete', percentage: '50.00' },
-        { id: 'pending-other', snapshotId: 'snapshot-pending', goalId: 'goal-other', percentage: '50.00' },
+        {
+          id: 'pending-complete',
+          snapshotId: 'snapshot-pending',
+          goalId: 'goal-complete',
+          percentage: '50.00',
+        },
+        {
+          id: 'pending-other',
+          snapshotId: 'snapshot-pending',
+          goalId: 'goal-other',
+          percentage: '50.00',
+        },
       ],
       draft: {
         goalId: 'goal-complete',
@@ -380,11 +537,11 @@ describe('serializeGoalCompletionState', () => {
         ],
         allocations: [{ goalId: 'goal-other', percentage: '100.00' }],
       },
-    })
-  })
+    });
+  });
 
   it('serializes canonical values deterministically', () => {
-    const state = createCompletionState()
+    const state = createCompletionState();
     const reordered: GoalCompletionState = {
       ...state,
       savingsPlaces: [...state.savingsPlaces].reverse(),
@@ -397,7 +554,7 @@ describe('serializeGoalCompletionState', () => {
       },
       pendingSnapshots: [...state.pendingSnapshots].reverse(),
       pendingAllocations: [...state.pendingAllocations].reverse(),
-    }
+    };
     const draft = {
       goalId: 'goal-complete',
       withdrawals: [
@@ -405,17 +562,21 @@ describe('serializeGoalCompletionState', () => {
         { placeId: 'bank', amount: '600.00' },
       ],
       allocations: [{ goalId: 'goal-other', percentage: '100.00' }],
-    }
+    };
 
-    const serialized = serializeGoalCompletionState(state, '2026-08', draft)
-    expect(serialized).toBe(serializeGoalCompletionState(reordered, '2026-08', draft))
-    expect(serialized).toContain('"goalId":"goal-complete"')
-    expect(serialized).toContain('"targetAmount":{"amount":"1000.00","currency":"ARS"}')
-    expect(serialized).toContain('"amount":"700.00"')
-  })
+    const serialized = serializeGoalCompletionState(state, '2026-08', draft);
+    expect(serialized).toBe(
+      serializeGoalCompletionState(reordered, '2026-08', draft),
+    );
+    expect(serialized).toContain('"goalId":"goal-complete"');
+    expect(serialized).toContain(
+      '"targetAmount":{"amount":"1000.00","currency":"ARS"}',
+    );
+    expect(serialized).toContain('"amount":"700.00"');
+  });
 
   it('includes canonical incomes and expenses so financial changes invalidate the serialization', () => {
-    const state = createCompletionState()
+    const state = createCompletionState();
     const source = {
       ...state.source,
       incomes: [
@@ -468,8 +629,8 @@ describe('serializeGoalCompletionState', () => {
           endMonth: null,
         },
       ],
-    }
-    const financialState = { ...state, source }
+    };
+    const financialState = { ...state, source };
     const reversedFinancialState: GoalCompletionState = {
       ...financialState,
       source: {
@@ -477,7 +638,7 @@ describe('serializeGoalCompletionState', () => {
         incomes: [...source.incomes].reverse(),
         expenses: [...source.expenses].reverse(),
       },
-    }
+    };
 
     const draft = {
       goalId: 'goal-complete',
@@ -486,40 +647,66 @@ describe('serializeGoalCompletionState', () => {
         { placeId: 'bank', amount: '600.00' },
       ],
       allocations: [{ goalId: 'goal-other', percentage: '100.00' }],
-    }
-    const serialized = serializeGoalCompletionState(financialState, '2026-08', draft)
+    };
+    const serialized = serializeGoalCompletionState(
+      financialState,
+      '2026-08',
+      draft,
+    );
 
-    expect(serialized).toBe(serializeGoalCompletionState(reversedFinancialState, '2026-08', draft))
+    expect(serialized).toBe(
+      serializeGoalCompletionState(reversedFinancialState, '2026-08', draft),
+    );
     expect(serialized).not.toBe(
       serializeGoalCompletionState(
-        { ...financialState, source: { ...source, incomes: [{ ...source.incomes[0], amount: '2000.00' }, source.incomes[1]] } },
+        {
+          ...financialState,
+          source: {
+            ...source,
+            incomes: [
+              { ...source.incomes[0], amount: '2000.00' },
+              source.incomes[1],
+            ],
+          },
+        },
         '2026-08',
         draft,
       ),
-    )
+    );
     expect(serialized).not.toBe(
       serializeGoalCompletionState(
-        { ...financialState, source: { ...source, expenses: [{ ...source.expenses[0], amount: '350.00' }, source.expenses[1]] } },
+        {
+          ...financialState,
+          source: {
+            ...source,
+            expenses: [
+              { ...source.expenses[0], amount: '350.00' },
+              source.expenses[1],
+            ],
+          },
+        },
         '2026-08',
         draft,
       ),
-    )
-  })
+    );
+  });
 
   it('invalidates serialization when a savings place changes but not when places are reordered', () => {
-    const state = createCompletionState()
+    const state = createCompletionState();
     const reordered: GoalCompletionState = {
       ...state,
       savingsPlaces: [...state.savingsPlaces].reverse(),
-    }
+    };
     const draft = {
       goalId: 'goal-complete',
       withdrawals: [{ placeId: 'bank', amount: '1000.00' }],
       allocations: [{ goalId: 'goal-other', percentage: '100.00' }],
-    }
-    const serialized = serializeGoalCompletionState(state, '2026-08', draft)
+    };
+    const serialized = serializeGoalCompletionState(state, '2026-08', draft);
 
-    expect(serialized).toBe(serializeGoalCompletionState(reordered, '2026-08', draft))
+    expect(serialized).toBe(
+      serializeGoalCompletionState(reordered, '2026-08', draft),
+    );
     expect(serialized).not.toBe(
       serializeGoalCompletionState(
         {
@@ -533,7 +720,7 @@ describe('serializeGoalCompletionState', () => {
         '2026-08',
         draft,
       ),
-    )
+    );
     expect(serialized).not.toBe(
       serializeGoalCompletionState(
         {
@@ -545,6 +732,6 @@ describe('serializeGoalCompletionState', () => {
         '2026-08',
         draft,
       ),
-    )
-  })
-})
+    );
+  });
+});

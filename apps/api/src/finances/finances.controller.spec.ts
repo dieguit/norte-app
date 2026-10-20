@@ -20,7 +20,17 @@ describe('GET /finances', () => {
       providers: [
         ClerkAuthGuard,
         { provide: FinancesService, useValue: { getWorkspace } },
-        { provide: ConfigService, useValue: { getOrThrow: (key: string) => ({ CLERK_SECRET_KEY: 'key', CLERK_ISSUER_URL: 'https://clerk.example.test', CLERK_AUTHORIZED_PARTIES: ['http://localhost:3100'] })[key] } },
+        {
+          provide: ConfigService,
+          useValue: {
+            getOrThrow: (key: string) =>
+              ({
+                CLERK_SECRET_KEY: 'key',
+                CLERK_ISSUER_URL: 'https://clerk.example.test',
+                CLERK_AUTHORIZED_PARTIES: ['http://localhost:3100'],
+              })[key],
+          },
+        },
       ],
     }).compile();
     app = module.createNestApplication();
@@ -30,11 +40,20 @@ describe('GET /finances', () => {
   afterAll(async () => app.close());
 
   it('validates selected month, scopes by verified user, and preserves missing-profile null', async () => {
-    vi.mocked(verifyToken).mockResolvedValue({ sub: 'actual-user', iss: 'https://clerk.example.test' } as never);
+    vi.mocked(verifyToken).mockResolvedValue({
+      sub: 'actual-user',
+      iss: 'https://clerk.example.test',
+    } as never);
     getWorkspace.mockResolvedValueOnce(null);
-    await request(app.getHttpServer()).get('/finances?month=2026-08').set('Authorization', 'Bearer token').expect(200, null);
+    await request(app.getHttpServer())
+      .get('/finances?month=2026-08')
+      .set('Authorization', 'Bearer token')
+      .expect(200, null);
     expect(getWorkspace).toHaveBeenCalledWith('actual-user', '2026-08');
-    await request(app.getHttpServer()).get('/finances?month=2026-13').set('Authorization', 'Bearer token').expect(400);
+    await request(app.getHttpServer())
+      .get('/finances?month=2026-13')
+      .set('Authorization', 'Bearer token')
+      .expect(400);
     expect(getWorkspace).toHaveBeenCalledOnce();
   });
 });

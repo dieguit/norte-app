@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest';
 import {
   confirmGoalCompletionSchema,
   goalCompletionPreviewSchema,
   goalCompletionRequestSchema,
-} from './goal-completion.schema'
+} from './goal-completion.schema';
 
 const validPreview = {
   goalId: '11111111-1111-4111-8111-111111111111',
@@ -19,15 +19,18 @@ const validPreview = {
       percentage: '100.00',
     },
   ],
-}
+};
 
 describe('goal completion schemas', () => {
   it('accepts a valid request and preview', () => {
     expect(
-      goalCompletionRequestSchema.safeParse({ goalId: validPreview.goalId }).success,
-    ).toBe(true)
-    expect(goalCompletionPreviewSchema.parse(validPreview)).toEqual(validPreview)
-  })
+      goalCompletionRequestSchema.safeParse({ goalId: validPreview.goalId })
+        .success,
+    ).toBe(true);
+    expect(goalCompletionPreviewSchema.parse(validPreview)).toEqual(
+      validPreview,
+    );
+  });
 
   it.each([
     '0',
@@ -44,8 +47,8 @@ describe('goal completion schemas', () => {
         ...validPreview,
         withdrawals: [{ ...validPreview.withdrawals[0], amount }],
       }).success,
-    ).toBe(false)
-  })
+    ).toBe(false);
+  });
 
   it('rejects malformed ids and duplicate places', () => {
     expect(
@@ -53,27 +56,30 @@ describe('goal completion schemas', () => {
         ...validPreview,
         goalId: 'not-a-uuid',
       }).success,
-    ).toBe(false)
+    ).toBe(false);
     expect(
       goalCompletionPreviewSchema.safeParse({
         ...validPreview,
         withdrawals: [validPreview.withdrawals[0], validPreview.withdrawals[0]],
       }).success,
-    ).toBe(false)
-  })
+    ).toBe(false);
+  });
 
   it('requires a nonempty withdrawal list and preserves the duplicate refinement on confirm', () => {
     expect(
-      goalCompletionPreviewSchema.safeParse({ ...validPreview, withdrawals: [] }).success,
-    ).toBe(false)
+      goalCompletionPreviewSchema.safeParse({
+        ...validPreview,
+        withdrawals: [],
+      }).success,
+    ).toBe(false);
     expect(
       confirmGoalCompletionSchema.safeParse({
         ...validPreview,
         withdrawals: [validPreview.withdrawals[0], validPreview.withdrawals[0]],
         previewToken: 'a'.repeat(64),
       }).success,
-    ).toBe(false)
-  })
+    ).toBe(false);
+  });
 
   it('accepts only a 64-character lowercase hexadecimal preview token', () => {
     expect(
@@ -81,18 +87,18 @@ describe('goal completion schemas', () => {
         ...validPreview,
         previewToken: 'a'.repeat(64),
       }).success,
-    ).toBe(true)
+    ).toBe(true);
     expect(
       confirmGoalCompletionSchema.safeParse({
         ...validPreview,
         previewToken: 'A'.repeat(64),
       }).success,
-    ).toBe(false)
+    ).toBe(false);
     expect(
       confirmGoalCompletionSchema.safeParse({
         ...validPreview,
         previewToken: 'a'.repeat(63),
       }).success,
-    ).toBe(false)
-  })
-})
+    ).toBe(false);
+  });
+});

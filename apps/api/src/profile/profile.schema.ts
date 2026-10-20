@@ -62,9 +62,7 @@ function sourceTable<TName extends string>(name: TName, indexName: string) {
       normalizedName: varchar('normalized_name', { length: 120 }).notNull(),
       createdAt: createdAt(),
     },
-    (table) => [
-      uniqueIndex(indexName).on(table.userId, table.normalizedName),
-    ],
+    (table) => [uniqueIndex(indexName).on(table.userId, table.normalizedName)],
   );
 }
 
@@ -304,9 +302,9 @@ export const savingContributionAllocations = pgTable(
       table.contributionId,
     ),
     index('saving_contribution_allocations_goal_id_idx').on(table.goalId),
-    uniqueIndex(
-      'saving_contribution_allocations_saving_position_id_uidx',
-    ).on(table.savingPositionId),
+    uniqueIndex('saving_contribution_allocations_saving_position_id_uidx').on(
+      table.savingPositionId,
+    ),
     check(
       'saving_contribution_allocations_amount_check',
       sql`${table.amount} >= 0`,

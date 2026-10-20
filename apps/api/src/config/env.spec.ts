@@ -47,7 +47,9 @@ describe('validateEnv', () => {
   });
 
   it('parses WHATSAPP_ENABLED=false', () => {
-    expect(validateEnv({ ...validEnv, WHATSAPP_ENABLED: 'false' }).WHATSAPP_ENABLED).toBe(false);
+    expect(
+      validateEnv({ ...validEnv, WHATSAPP_ENABLED: 'false' }).WHATSAPP_ENABLED,
+    ).toBe(false);
   });
 
   it('throws when PORT is not a valid number', () => {

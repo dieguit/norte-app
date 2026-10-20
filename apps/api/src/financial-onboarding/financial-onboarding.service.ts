@@ -1,6 +1,9 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ZodError } from 'zod';
-import { FinancialOnboardingSchema, parseGoalCreationSubmission } from '@repo/shared-types';
+import {
+  FinancialOnboardingSchema,
+  parseGoalCreationSubmission,
+} from '@repo/shared-types';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
 import { ExpensesService } from '../expenses/expenses.service';
@@ -30,7 +33,7 @@ function firstIssue<T>(parse: () => T): T {
   } catch (error) {
     throw new BadRequestException(
       error instanceof ZodError
-        ? error.issues[0]?.message ?? 'Datos inválidos.'
+        ? (error.issues[0]?.message ?? 'Datos inválidos.')
         : 'Datos inválidos.',
     );
   }
@@ -42,7 +45,10 @@ function getDesiredDate(desiredMonth: string) {
     : null;
 }
 
-function getAvailableFromDate(availability: string, availableFromMonth: string) {
+function getAvailableFromDate(
+  availability: string,
+  availableFromMonth: string,
+) {
   return availability === 'available_from' && availableFromMonth
     ? `${availableFromMonth.slice(0, 7)}-01`
     : null;
@@ -100,12 +106,15 @@ export class FinancialOnboardingService {
       },
       currentMonth,
     );
-    const plannedMonthlyContribution = getGoalContributionArs(summary.balance, '90.00');
+    const plannedMonthlyContribution = getGoalContributionArs(
+      summary.balance,
+      '90.00',
+    );
     const targetAmount =
       goal.type === 'emergency_fund'
         ? deriveEmergencyFundTarget(summary.expenses, 3)
         : goal.targetAmount
-          ? parseMoneyInput(goal.targetAmount, goal.currency) ?? undefined
+          ? (parseMoneyInput(goal.targetAmount, goal.currency) ?? undefined)
           : undefined;
 
     return this.db.transaction(async (tx) => {
@@ -142,7 +151,10 @@ export class FinancialOnboardingService {
           currency: goal.currency,
           annualReturnRate: goal.annualReturnRate || '8.000',
           availability: goal.availability || 'available_now',
-          availableFrom: getAvailableFromDate(goal.availability, goal.availableFromMonth),
+          availableFrom: getAvailableFromDate(
+            goal.availability,
+            goal.availableFromMonth,
+          ),
         });
       }
 

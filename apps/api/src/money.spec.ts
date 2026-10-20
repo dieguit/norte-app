@@ -11,7 +11,9 @@ describe('normalizeMoneyAmount', () => {
   });
 
   it('rejects amounts that round to zero', () => {
-    expect(() => normalizeMoneyAmount('0,001')).toThrow('Ingresá un monto mayor a cero.');
+    expect(() => normalizeMoneyAmount('0,001')).toThrow(
+      'Ingresá un monto mayor a cero.',
+    );
   });
 
   it('accepts a positive amount at the rounding boundary', () => {

@@ -169,9 +169,7 @@ describe('HomeController (GET /home)', () => {
     const schemas = document.components?.schemas as any;
     expect(schemas.HomeRoadmapMissingDto).toBeDefined();
     expect(schemas.HomeRoadmapPresentDto).toBeDefined();
-    expect(
-      schemas.HomeRoadmapPresentDto.properties.roadmap,
-    ).toBeDefined();
+    expect(schemas.HomeRoadmapPresentDto.properties.roadmap).toBeDefined();
     expect(
       schemas.HomeRoadmapPresentDto.properties.completionGoals,
     ).toBeDefined();

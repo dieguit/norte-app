@@ -77,7 +77,9 @@ function createHarness() {
           values: (val: any) => {
             persisted.incomes.push(val);
             return {
-              returning: () => [{ id: `inc_${persisted.incomes.length}`, ...val }],
+              returning: () => [
+                { id: `inc_${persisted.incomes.length}`, ...val },
+              ],
             };
           },
         };
@@ -87,7 +89,9 @@ function createHarness() {
           values: (val: any) => {
             persisted.expenses.push(val);
             return {
-              returning: () => [{ id: `exp_${persisted.expenses.length}`, ...val }],
+              returning: () => [
+                { id: `exp_${persisted.expenses.length}`, ...val },
+              ],
             };
           },
         };

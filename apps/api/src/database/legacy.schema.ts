@@ -8,7 +8,11 @@ export const onboardingDrafts = pgTable('onboarding_drafts', {
   report: jsonb('report'),
   reportSentOn: timestamp('report_sent_on', { withTimezone: true }),
   ctaClickedOn: timestamp('cta_clicked_on', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow()
-    .$onUpdate(() => sql`now()`).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .$onUpdate(() => sql`now()`)
+    .notNull(),
 });

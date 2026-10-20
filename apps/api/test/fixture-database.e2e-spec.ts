@@ -51,11 +51,13 @@ describe('test-only fixture database', () => {
 
   it('rejects a direct URL that could inherit a configured host', () => {
     const implicitHost = 'postgres:///norte_test';
-    expect(() => assertFixtureTarget({
-      DATABASE_URL: implicitHost,
-      E2E_ALLOW_DISPOSABLE_DATABASE: '1',
-      E2E_DISPOSABLE_DATABASE_URL: implicitHost,
-    })).toThrow('Refusing');
+    expect(() =>
+      assertFixtureTarget({
+        DATABASE_URL: implicitHost,
+        E2E_ALLOW_DISPOSABLE_DATABASE: '1',
+        E2E_DISPOSABLE_DATABASE_URL: implicitHost,
+      }),
+    ).toThrow('Refusing');
   });
 
   it.each([

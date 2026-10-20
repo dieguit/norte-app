@@ -1,6 +1,10 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import type { ConfirmSavingContributionWire, SavingContributionDraftWire, UpdateSavingContributionWire } from '@repo/shared-types';
+import type {
+  ConfirmSavingContributionWire,
+  SavingContributionDraftWire,
+  UpdateSavingContributionWire,
+} from '@repo/shared-types';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
 import { savingsPlaces } from '../profile/profile.schema';
@@ -33,10 +37,20 @@ const DOMAIN_ERRORS = new Set([
   'Invalid saving draft input',
   'No eligible goals',
 ]);
-const DOMAIN_PREFIXES = ['Falta asociar una posición', 'Investment position', 'Invalid currency:', 'No hay objetivos activos para distribuir', 'Allocation percentages must sum to 100%'];
+const DOMAIN_PREFIXES = [
+  'Falta asociar una posición',
+  'Investment position',
+  'Invalid currency:',
+  'No hay objetivos activos para distribuir',
+  'Allocation percentages must sum to 100%',
+];
 
 function toDomainError(error: unknown): unknown {
-  if (error instanceof Error && (DOMAIN_ERRORS.has(error.message) || DOMAIN_PREFIXES.some((prefix) => error.message.startsWith(prefix)))) {
+  if (
+    error instanceof Error &&
+    (DOMAIN_ERRORS.has(error.message) ||
+      DOMAIN_PREFIXES.some((prefix) => error.message.startsWith(prefix)))
+  ) {
     return new BadRequestException(error.message);
   }
   return error;
@@ -54,7 +68,9 @@ export class ContributionsService {
     const currentMonth = currentMonthOf(now);
     const [state, places] = await Promise.all([
       getSavingContributionState(this.db, userId, currentMonth),
-      this.db.query.savingsPlaces.findMany({ where: eq(savingsPlaces.userId, userId) }),
+      this.db.query.savingsPlaces.findMany({
+        where: eq(savingsPlaces.userId, userId),
+      }),
     ]);
     if (!state) return { profile: 'missing' as const };
     return {
@@ -77,23 +93,46 @@ export class ContributionsService {
     };
   }
 
-  async previewSaving(userId: string, draft: SavingContributionDraftWire, now = new Date()) {
+  async previewSaving(
+    userId: string,
+    draft: SavingContributionDraftWire,
+    now = new Date(),
+  ) {
     try {
-      return await previewSavingContribution(this.db, userId, currentMonthOf(now), draft);
+      return await previewSavingContribution(
+        this.db,
+        userId,
+        currentMonthOf(now),
+        draft,
+      );
     } catch (error) {
       throw toDomainError(error);
     }
   }
 
-  async previewSavingEdit(userId: string, contributionId: string, draft: SavingContributionDraftWire, now = new Date()) {
+  async previewSavingEdit(
+    userId: string,
+    contributionId: string,
+    draft: SavingContributionDraftWire,
+    now = new Date(),
+  ) {
     try {
-      return await previewSavingContributionEdit(this.db, { userId, currentMonth: currentMonthOf(now), contributionId, draft });
+      return await previewSavingContributionEdit(this.db, {
+        userId,
+        currentMonth: currentMonthOf(now),
+        contributionId,
+        draft,
+      });
     } catch (error) {
       throw toDomainError(error);
     }
   }
 
-  async confirmSaving(userId: string, body: ConfirmSavingContributionWire, now = new Date()) {
+  async confirmSaving(
+    userId: string,
+    body: ConfirmSavingContributionWire,
+    now = new Date(),
+  ) {
     try {
       const createdAt = getCatchUpCreatedAt(body.catchUpMonth, now);
       const result = await createSavingContributionInRepository(this.db, {
@@ -103,7 +142,10 @@ export class ContributionsService {
         previewToken: body.previewToken,
         ...(createdAt ? { createdAt } : {}),
       });
-      return { status: 'created' as const, contributionId: result.contributionId };
+      return {
+        status: 'created' as const,
+        contributionId: result.contributionId,
+      };
     } catch (error) {
       if (error instanceof StaleSavingContributionPreviewError) {
         return { status: 'stale' as const, preview: error.refreshedPreview };
@@ -112,9 +154,17 @@ export class ContributionsService {
     }
   }
 
-  async updateSaving(userId: string, contributionId: string, body: UpdateSavingContributionWire) {
+  async updateSaving(
+    userId: string,
+    contributionId: string,
+    body: UpdateSavingContributionWire,
+  ) {
     try {
-      await updateSavingContributionInRepository(this.db, { userId, contributionId, draft: body.draft });
+      await updateSavingContributionInRepository(this.db, {
+        userId,
+        contributionId,
+        draft: body.draft,
+      });
       return { status: 'updated' as const };
     } catch (error) {
       throw toDomainError(error);
@@ -123,7 +173,10 @@ export class ContributionsService {
 
   async deleteSaving(userId: string, contributionId: string) {
     try {
-      await deleteSavingContributionInRepository(this.db, { userId, contributionId });
+      await deleteSavingContributionInRepository(this.db, {
+        userId,
+        contributionId,
+      });
       return { status: 'deleted' as const };
     } catch (error) {
       throw toDomainError(error);

@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { HomeRoadmapResponseSchema, type HomeRoadmapResponse } from '@repo/shared-types';
+import {
+  HomeRoadmapResponseSchema,
+  type HomeRoadmapResponse,
+} from '@repo/shared-types';
 import { FinancesService } from '../finances/finances.service';
 import { GoalsService } from '../goals/goals.service';
 import { buildRoadmap } from './roadmap';

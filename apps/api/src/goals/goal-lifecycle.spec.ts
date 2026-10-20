@@ -1,13 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest';
 import {
   buildGoalLifecycleProposal,
   selectGoalLifecycleAllocation,
   serializeGoalLifecycleState,
   type GoalLifecycleState,
-} from './goal-lifecycle'
-import type { GoalsWorkspaceSource } from '../finances/goals.engine'
+} from './goal-lifecycle';
+import type { GoalsWorkspaceSource } from '../finances/goals.engine';
 
-function createThreeGoalsWorkspaceSource(travelStatus: 'active' | 'paused' = 'active'): GoalsWorkspaceSource {
+function createThreeGoalsWorkspaceSource(
+  travelStatus: 'active' | 'paused' = 'active',
+): GoalsWorkspaceSource {
   return {
     profile: {
       userId: 'user-1',
@@ -75,17 +77,43 @@ function createThreeGoalsWorkspaceSource(travelStatus: 'active' | 'paused' = 'ac
         effectiveMonth: '2026-08-01',
       },
     ],
-    allocations: travelStatus === 'active'
-      ? [
-          { id: 'alloc-1', snapshotId: 'snap-aug', goalId: 'emergency', percentage: '60.00' },
-          { id: 'alloc-2', snapshotId: 'snap-aug', goalId: 'retirement', percentage: '20.00' },
-          { id: 'alloc-3', snapshotId: 'snap-aug', goalId: 'travel', percentage: '20.00' },
-        ]
-      : [
-          { id: 'alloc-1', snapshotId: 'snap-aug', goalId: 'emergency', percentage: '60.00' },
-          { id: 'alloc-2', snapshotId: 'snap-aug', goalId: 'retirement', percentage: '40.00' },
-        ],
-  }
+    allocations:
+      travelStatus === 'active'
+        ? [
+            {
+              id: 'alloc-1',
+              snapshotId: 'snap-aug',
+              goalId: 'emergency',
+              percentage: '60.00',
+            },
+            {
+              id: 'alloc-2',
+              snapshotId: 'snap-aug',
+              goalId: 'retirement',
+              percentage: '20.00',
+            },
+            {
+              id: 'alloc-3',
+              snapshotId: 'snap-aug',
+              goalId: 'travel',
+              percentage: '20.00',
+            },
+          ]
+        : [
+            {
+              id: 'alloc-1',
+              snapshotId: 'snap-aug',
+              goalId: 'emergency',
+              percentage: '60.00',
+            },
+            {
+              id: 'alloc-2',
+              snapshotId: 'snap-aug',
+              goalId: 'retirement',
+              percentage: '40.00',
+            },
+          ],
+  };
 }
 
 function createOneGoalWorkspaceSource(): GoalsWorkspaceSource {
@@ -123,9 +151,14 @@ function createOneGoalWorkspaceSource(): GoalsWorkspaceSource {
       },
     ],
     allocations: [
-      { id: 'alloc-1', snapshotId: 'snap-aug', goalId: 'emergency', percentage: '100.00' },
+      {
+        id: 'alloc-1',
+        snapshotId: 'snap-aug',
+        goalId: 'emergency',
+        percentage: '100.00',
+      },
     ],
-  }
+  };
 }
 
 describe('buildGoalLifecycleProposal', () => {
@@ -134,72 +167,84 @@ describe('buildGoalLifecycleProposal', () => {
       source: createThreeGoalsWorkspaceSource('active'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildGoalLifecycleProposal({
       lifecycle: 'pause',
       goalId: 'travel',
       state,
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.transition).toEqual({ goalId: 'travel', status: 'paused' })
-    expect(proposal.allocation.entries.map(({ goalId, percentage }) => ({ goalId, percentage }))).toEqual([
+    expect(proposal.transition).toEqual({ goalId: 'travel', status: 'paused' });
+    expect(
+      proposal.allocation.entries.map(({ goalId, percentage }) => ({
+        goalId,
+        percentage,
+      })),
+    ).toEqual([
       { goalId: 'travel', percentage: '0.00' },
       { goalId: 'emergency', percentage: '75.00' },
       { goalId: 'retirement', percentage: '25.00' },
-    ])
+    ]);
     expect(proposal.persistedAllocation.entries).toEqual([
       { goalId: 'emergency', percentage: '75.00' },
       { goalId: 'retirement', percentage: '25.00' },
-    ])
-    expect(proposal.pauseMonthlyCommitment).toBe(false)
-  })
+    ]);
+    expect(proposal.pauseMonthlyCommitment).toBe(false);
+  });
 
   it('resumes the selected paused goal first at zero percent', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('paused'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildGoalLifecycleProposal({
       lifecycle: 'resume',
       goalId: 'travel',
       state,
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.transition).toEqual({ goalId: 'travel', status: 'active' })
-    expect(proposal.allocation.entries.map(({ goalId, percentage }) => ({ goalId, percentage }))).toEqual([
+    expect(proposal.transition).toEqual({ goalId: 'travel', status: 'active' });
+    expect(
+      proposal.allocation.entries.map(({ goalId, percentage }) => ({
+        goalId,
+        percentage,
+      })),
+    ).toEqual([
       { goalId: 'travel', percentage: '0.00' },
       { goalId: 'emergency', percentage: '60.00' },
       { goalId: 'retirement', percentage: '40.00' },
-    ])
+    ]);
     expect(proposal.persistedAllocation.entries).toEqual([
       { goalId: 'travel', percentage: '0.00' },
       { goalId: 'emergency', percentage: '60.00' },
       { goalId: 'retirement', percentage: '40.00' },
-    ])
-  })
+    ]);
+  });
 
   it('clears the monthly commitment when pausing the only active goal', () => {
     const oneGoalState: GoalLifecycleState = {
       source: createOneGoalWorkspaceSource(),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildGoalLifecycleProposal({
       lifecycle: 'pause',
       goalId: 'emergency',
       state: oneGoalState,
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.pauseMonthlyCommitment).toBe(true)
-    expect(proposal.proposedSource.profile?.plannedMonthlyContribution).toBeNull()
-    expect(proposal.persistedAllocation.entries).toEqual([])
+    expect(proposal.pauseMonthlyCommitment).toBe(true);
+    expect(
+      proposal.proposedSource.profile?.plannedMonthlyContribution,
+    ).toBeNull();
+    expect(proposal.persistedAllocation.entries).toEqual([]);
     expect(proposal.allocation.entries).toEqual([
       {
         goalId: 'emergency',
@@ -207,15 +252,15 @@ describe('buildGoalLifecycleProposal', () => {
         percentage: '0.00',
         pending: false,
       },
-    ])
-  })
+    ]);
+  });
 
   it('rejects a resume draft that omits the resumed active goal or does not total 100%', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('paused'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     expect(() =>
       buildGoalLifecycleProposal({
@@ -225,7 +270,7 @@ describe('buildGoalLifecycleProposal', () => {
         currentMonth: '2026-08',
         draft: { allocations: [{ goalId: 'emergency', percentage: '100.00' }] },
       }),
-    ).toThrow('exactly the active goals')
+    ).toThrow('exactly the active goals');
 
     expect(() =>
       buildGoalLifecycleProposal({
@@ -241,15 +286,15 @@ describe('buildGoalLifecycleProposal', () => {
           ],
         },
       }),
-    ).toThrow('sum to 100%')
-  })
+    ).toThrow('sum to 100%');
+  });
 
   it('accepts a pause draft with a numeric zero target percentage', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('active'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     expect(() =>
       buildGoalLifecycleProposal({
@@ -265,15 +310,15 @@ describe('buildGoalLifecycleProposal', () => {
           ],
         },
       }),
-    ).not.toThrow()
-  })
+    ).not.toThrow();
+  });
 
   it('accepts a pause draft with a comma-formatted zero target percentage', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('active'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildGoalLifecycleProposal({
       lifecycle: 'pause',
@@ -287,13 +332,13 @@ describe('buildGoalLifecycleProposal', () => {
           { goalId: 'retirement', percentage: '25.00' },
         ],
       },
-    })
+    });
 
     expect(proposal.persistedAllocation.entries).toEqual([
       { goalId: 'emergency', percentage: '75.00' },
       { goalId: 'retirement', percentage: '25.00' },
-    ])
-  })
+    ]);
+  });
 
   it('keeps a December pause effective in December and preserves converted cent rounding', () => {
     const proposal = buildGoalLifecycleProposal({
@@ -312,33 +357,34 @@ describe('buildGoalLifecycleProposal', () => {
           { goalId: 'retirement', percentage: '66.67' },
         ],
       },
-    })
+    });
 
-    expect(proposal.allocation.effectiveMonth).toBe('2026-12-01')
-    expect(proposal.persistedAllocation.effectiveMonth).toBe('2026-12-01')
-    expect(proposal.persistedAllocation.entries.map((entry) => entry.goalId)).toEqual([
-      'emergency',
-      'retirement',
-    ])
+    expect(proposal.allocation.effectiveMonth).toBe('2026-12-01');
+    expect(proposal.persistedAllocation.effectiveMonth).toBe('2026-12-01');
+    expect(
+      proposal.persistedAllocation.entries.map((entry) => entry.goalId),
+    ).toEqual(['emergency', 'retirement']);
     expect(proposal.allocation.entries[1]).toMatchObject({
       goalId: 'emergency',
       allocatedBaseAmount: { amount: '19998.00', currency: 'ARS' },
       allocatedDestinationAmount: { amount: '13.33', currency: 'USD' },
-    })
+    });
     expect(proposal.allocation.entries[2]).toMatchObject({
       goalId: 'retirement',
       allocatedBaseAmount: { amount: '40002.00', currency: 'ARS' },
       allocatedDestinationAmount: { amount: '26.67', currency: 'USD' },
-    })
-    expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe('2026-12-01')
-  })
+    });
+    expect(proposal.proposedSource.snapshots.at(-1)?.effectiveMonth).toBe(
+      '2026-12-01',
+    );
+  });
 
   it('rejects a pause draft whose remaining active goals do not total 100%', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('active'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     expect(() =>
       buildGoalLifecycleProposal({
@@ -354,15 +400,15 @@ describe('buildGoalLifecycleProposal', () => {
           ],
         },
       }),
-    ).toThrow('sum to 100%')
-  })
+    ).toThrow('sum to 100%');
+  });
 
   it('accepts a valid resume draft and applies it correctly', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('paused'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildGoalLifecycleProposal({
       lifecycle: 'resume',
@@ -376,85 +422,100 @@ describe('buildGoalLifecycleProposal', () => {
           { goalId: 'retirement', percentage: '20.00' },
         ],
       },
-    })
+    });
 
-    expect(proposal.allocation.entries.map(({ goalId, percentage }) => ({ goalId, percentage }))).toEqual([
+    expect(
+      proposal.allocation.entries.map(({ goalId, percentage }) => ({
+        goalId,
+        percentage,
+      })),
+    ).toEqual([
       { goalId: 'travel', percentage: '30.00' },
       { goalId: 'emergency', percentage: '50.00' },
       { goalId: 'retirement', percentage: '20.00' },
-    ])
+    ]);
     expect(proposal.persistedAllocation.entries).toEqual([
       { goalId: 'travel', percentage: '30.00' },
       { goalId: 'emergency', percentage: '50.00' },
       { goalId: 'retirement', percentage: '20.00' },
-    ])
-  })
+    ]);
+  });
 
   it('includes the transitioning goal first in impacts and preserves its actual values', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('active'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildGoalLifecycleProposal({
       lifecycle: 'pause',
       goalId: 'travel',
       state,
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.impacts[0]?.goalId).toBe('travel')
-    expect(proposal.proposedSource.savingsPositions).toEqual(state.source.savingsPositions)
-    expect(proposal.proposedSource.investmentPositions).toEqual(state.source.investmentPositions)
-  })
+    expect(proposal.impacts[0]?.goalId).toBe('travel');
+    expect(proposal.proposedSource.savingsPositions).toEqual(
+      state.source.savingsPositions,
+    );
+    expect(proposal.proposedSource.investmentPositions).toEqual(
+      state.source.investmentPositions,
+    );
+  });
 
   it('preserves optional source records while changing lifecycle state', () => {
     const state: GoalLifecycleState = {
       source: {
         ...createThreeGoalsWorkspaceSource('active'),
-        incomes: [{
-          id: 'income-1',
-          sourceKind: 'salary',
-          sourceId: null,
-          sourceName: 'Salary',
-          concept: null,
-          amount: '100000.00',
-          currency: 'ARS',
-          recurring: true,
-          effectiveMonth: '2026-08-01',
-        }],
-        completionWithdrawals: [{
-          id: 'withdrawal-1',
-          goalId: 'travel',
-          placeId: 'place-1',
-          placeName: 'Bank',
-          amount: '100.00',
-          currency: 'USD',
-          createdAt: '2026-08-01T00:00:00Z',
-        }],
+        incomes: [
+          {
+            id: 'income-1',
+            sourceKind: 'salary',
+            sourceId: null,
+            sourceName: 'Salary',
+            concept: null,
+            amount: '100000.00',
+            currency: 'ARS',
+            recurring: true,
+            effectiveMonth: '2026-08-01',
+          },
+        ],
+        completionWithdrawals: [
+          {
+            id: 'withdrawal-1',
+            goalId: 'travel',
+            placeId: 'place-1',
+            placeName: 'Bank',
+            amount: '100.00',
+            currency: 'USD',
+            createdAt: '2026-08-01T00:00:00Z',
+          },
+        ],
       },
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     const proposal = buildGoalLifecycleProposal({
       lifecycle: 'pause',
       goalId: 'travel',
       state,
       currentMonth: '2026-08',
-    })
+    });
 
-    expect(proposal.proposedSource.incomes).toBe(state.source.incomes)
-    expect(proposal.proposedSource.completionWithdrawals).toBe(state.source.completionWithdrawals)
-  })
+    expect(proposal.proposedSource.incomes).toBe(state.source.incomes);
+    expect(proposal.proposedSource.completionWithdrawals).toBe(
+      state.source.completionWithdrawals,
+    );
+  });
 
   it('rejects invalid status transitions', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('active'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
     expect(() =>
       buildGoalLifecycleProposal({
@@ -463,7 +524,7 @@ describe('buildGoalLifecycleProposal', () => {
         state,
         currentMonth: '2026-08',
       }),
-    ).toThrow('Only paused goals can be resumed.')
+    ).toThrow('Only paused goals can be resumed.');
 
     expect(() =>
       buildGoalLifecycleProposal({
@@ -472,43 +533,55 @@ describe('buildGoalLifecycleProposal', () => {
         state,
         currentMonth: '2026-08',
       }),
-    ).toThrow('Goal not found.')
-  })
+    ).toThrow('Goal not found.');
+  });
 
   it('changes the preview token when goal dedication percentage changes', () => {
-    const source = createThreeGoalsWorkspaceSource()
+    const source = createThreeGoalsWorkspaceSource();
     const state: GoalLifecycleState = {
       source,
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
     const changedState: GoalLifecycleState = {
       ...state,
       source: {
         ...source,
         profile: { ...source.profile!, goalDedicationPercentage: '80.00' },
       },
-    }
+    };
 
-    expect(serializeGoalLifecycleState('pause', 'travel', state, '2026-08')).not.toBe(
+    expect(
+      serializeGoalLifecycleState('pause', 'travel', state, '2026-08'),
+    ).not.toBe(
       serializeGoalLifecycleState('pause', 'travel', changedState, '2026-08'),
-    )
-  })
+    );
+  });
 
   it('serializes state deterministically', () => {
     const state: GoalLifecycleState = {
       source: createThreeGoalsWorkspaceSource('active'),
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
-    const serialized1 = serializeGoalLifecycleState('pause', 'travel', state, '2026-08')
-    const serialized2 = serializeGoalLifecycleState('pause', 'travel', state.source, '2026-08')
+    const serialized1 = serializeGoalLifecycleState(
+      'pause',
+      'travel',
+      state,
+      '2026-08',
+    );
+    const serialized2 = serializeGoalLifecycleState(
+      'pause',
+      'travel',
+      state.source,
+      '2026-08',
+    );
 
-    expect(serialized1).toBe(serialized2)
-    expect(serialized1).toContain('"lifecycle":"pause"')
-    expect(serialized1).toContain('"goalId":"travel"')
-  })
+    expect(serialized1).toBe(serialized2);
+    expect(serialized1).toContain('"lifecycle":"pause"');
+    expect(serialized1).toContain('"goalId":"travel"');
+  });
 
   it('invalidates serialization when incomes or expenses change but not when they are reordered', () => {
     const state: GoalLifecycleState = {
@@ -567,9 +640,14 @@ describe('buildGoalLifecycleProposal', () => {
       },
       pendingSnapshots: [],
       pendingAllocations: [],
-    }
+    };
 
-    const serialized = serializeGoalLifecycleState('pause', 'travel', state, '2026-08')
+    const serialized = serializeGoalLifecycleState(
+      'pause',
+      'travel',
+      state,
+      '2026-08',
+    );
     const reordered: GoalLifecycleState = {
       ...state,
       source: {
@@ -577,27 +655,47 @@ describe('buildGoalLifecycleProposal', () => {
         incomes: [...state.source.incomes!].reverse(),
         expenses: [...state.source.expenses!].reverse(),
       },
-    }
+    };
 
-    expect(serialized).toBe(serializeGoalLifecycleState('pause', 'travel', reordered, '2026-08'))
+    expect(serialized).toBe(
+      serializeGoalLifecycleState('pause', 'travel', reordered, '2026-08'),
+    );
     expect(serialized).not.toBe(
       serializeGoalLifecycleState(
         'pause',
         'travel',
-        { ...state, source: { ...state.source, incomes: [{ ...state.source.incomes![0], amount: '250000.00' }, state.source.incomes![1]] } },
+        {
+          ...state,
+          source: {
+            ...state.source,
+            incomes: [
+              { ...state.source.incomes![0], amount: '250000.00' },
+              state.source.incomes![1],
+            ],
+          },
+        },
         '2026-08',
       ),
-    )
+    );
     expect(serialized).not.toBe(
       serializeGoalLifecycleState(
         'pause',
         'travel',
-        { ...state, source: { ...state.source, expenses: [{ ...state.source.expenses![0], amount: '60000.00' }, state.source.expenses![1]] } },
+        {
+          ...state,
+          source: {
+            ...state.source,
+            expenses: [
+              { ...state.source.expenses![0], amount: '60000.00' },
+              state.source.expenses![1],
+            ],
+          },
+        },
         '2026-08',
       ),
-    )
-  })
-})
+    );
+  });
+});
 
 describe('selectGoalLifecycleAllocation', () => {
   it('selects the latest current snapshot and earliest pending snapshot consistently', () => {
@@ -605,20 +703,49 @@ describe('selectGoalLifecycleAllocation', () => {
       { id: 'future', userId: 'user-1', effectiveMonth: '2026-10-01' },
       { id: 'current', userId: 'user-1', effectiveMonth: '2026-08-01' },
       { id: 'next', userId: 'user-1', effectiveMonth: '2026-09-01' },
-    ]
+    ];
     const allocations = [
-      { id: 'future-entry', snapshotId: 'future', goalId: 'goal-1', percentage: '20.00' },
-      { id: 'current-entry', snapshotId: 'current', goalId: 'goal-1', percentage: '60.00' },
-      { id: 'next-entry', snapshotId: 'next', goalId: 'goal-1', percentage: '80.00' },
-    ]
+      {
+        id: 'future-entry',
+        snapshotId: 'future',
+        goalId: 'goal-1',
+        percentage: '20.00',
+      },
+      {
+        id: 'current-entry',
+        snapshotId: 'current',
+        goalId: 'goal-1',
+        percentage: '60.00',
+      },
+      {
+        id: 'next-entry',
+        snapshotId: 'next',
+        goalId: 'goal-1',
+        percentage: '80.00',
+      },
+    ];
 
-    expect(selectGoalLifecycleAllocation(snapshots, allocations, '2026-08', 'current')).toEqual({
+    expect(
+      selectGoalLifecycleAllocation(
+        snapshots,
+        allocations,
+        '2026-08',
+        'current',
+      ),
+    ).toEqual({
       effectiveMonth: '2026-08-01',
       entries: [{ goalId: 'goal-1', percentage: '60.00' }],
-    })
-    expect(selectGoalLifecycleAllocation(snapshots, allocations, '2026-08', 'pending')).toEqual({
+    });
+    expect(
+      selectGoalLifecycleAllocation(
+        snapshots,
+        allocations,
+        '2026-08',
+        'pending',
+      ),
+    ).toEqual({
       effectiveMonth: '2026-09-01',
       entries: [{ goalId: 'goal-1', percentage: '80.00' }],
-    })
-  })
-})
+    });
+  });
+});
