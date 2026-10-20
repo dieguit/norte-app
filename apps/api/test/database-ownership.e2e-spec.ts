@@ -207,15 +207,20 @@ describe('API database ownership — real Drizzle CLI', () => {
     }, 120_000);
   }
 
+  async function assertIncompatibleWhatsappState(pool: Pool, url: string) {
+    await createApi(pool, 'whatsapp_auth_state');
+    await apiRows(pool);
+    await pool.query('alter table whatsapp_auth_state alter column value drop not null');
+    const before = await capture(pool);
+    expect(() => migrateCli(url)).toThrow('API ownership: incompatible public.whatsapp_auth_state');
+    expect(await capture(pool)).toEqual(before);
+    return before;
+  }
+
   it('late failure rolls back users creation; explicit disposable repair permits retry and exact rerun', async () => {
     await withDatabase(server.adminUrl, async (pool, url) => {
       await baseline(pool, 'web'); await pool.query(fixture());
-      await createApi(pool, 'whatsapp_auth_state');
-      await apiRows(pool);
-      await pool.query('alter table whatsapp_auth_state alter column value drop not null');
-      const before = await capture(pool);
-      expect(() => migrateCli(url)).toThrow('API ownership: incompatible public.whatsapp_auth_state');
-      expect(await capture(pool)).toEqual(before);
+      await assertIncompatibleWhatsappState(pool, url);
       await pool.query('alter table whatsapp_auth_state alter column value set not null');
       await success(pool, url, 22, await capture(pool));
     });
@@ -223,12 +228,7 @@ describe('API database ownership — real Drizzle CLI', () => {
 
   it('no initial tracking: entire pending web batch rolls back, only empty tracking infrastructure may remain', async () => {
     await withDatabase(server.adminUrl, async (pool, url) => {
-      await createApi(pool, 'whatsapp_auth_state');
-      await apiRows(pool);
-      await pool.query('alter table whatsapp_auth_state alter column value drop not null');
-      const before = await capture(pool);
-      expect(() => migrateCli(url)).toThrow('API ownership: incompatible public.whatsapp_auth_state');
-      expect(await capture(pool)).toEqual(before);
+      await assertIncompatibleWhatsappState(pool, url);
     });
   }, 120_000);
 

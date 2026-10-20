@@ -10,7 +10,8 @@ import {
 } from '../src/contributions/saving-contribution.repository'
 import { schema } from '../src/database/schema'
 import type { Database } from '../src/database/database.types'
-import { allocationPlanEntries, allocationPlanSnapshots, financialGoals, financialProfiles, goalInvestmentPositions, goalSavingsPositions, investmentContributionAllocations, investmentContributions, savingContributionAllocations, savingContributions, savingsPlaces } from '../src/profile/profile.schema'
+import { goalInvestmentPositions, goalSavingsPositions, investmentContributionAllocations, investmentContributions, savingContributionAllocations, savingContributions, savingsPlaces } from '../src/profile/profile.schema'
+import { createFailingInsertDb, seedProfileWithSingleGoal } from './support/rollback'
 
 const databaseUrl = process.env.DATABASE_URL
 const safeDatabaseUrl = databaseUrl && new URL(databaseUrl).pathname.replace(/^\//, '') === 'norte_test'
@@ -30,50 +31,22 @@ describeWhenSafe('saving contribution real database rollback', () => {
 
     const rollback = new Error('always rollback saving contribution integration fixtures')
     await expect(db.transaction(async (outerTx) => {
-      await outerTx.insert(financialProfiles).values({
-        userId,
-        baseCurrency: 'ARS',
-        expensesKnowledge: 'known',
-        plannedMonthlyContribution: '600.00',
-        onboardingCompleted: true,
-      })
-      const [goal] = await outerTx.insert(financialGoals).values({
+      const { goal } = await seedProfileWithSingleGoal(outerTx, userId, currentMonth, {
         userId, name: 'Notebook', type: 'purchase', targetAmount: '5000.00', currency: 'ARS', priority: 'medium', strategy: 'save', status: 'active',
-      }).returning({ id: financialGoals.id })
+      })
       const [place] = await outerTx.insert(savingsPlaces).values({ userId, name: 'Banco', normalizedName: 'banco' }).returning({ id: savingsPlaces.id })
-      const [snapshot] = await outerTx.insert(allocationPlanSnapshots).values({
-        userId,
-        effectiveMonth: `${currentMonth}-01`,
-        plannedMonthlyContribution: '600.00',
-      }).returning({ id: allocationPlanSnapshots.id })
-      await outerTx.insert(allocationPlanEntries).values({ snapshotId: snapshot.id, goalId: goal.id, percentage: '100.00' })
 
       const draft = { currency: 'ARS' as const, amount: '300.00', place: { kind: 'existing' as const, placeId: place.id } }
       const state = await getSavingContributionState(outerTx as unknown as Database, userId, currentMonth)
       const previewToken = createSavingContributionPreviewToken(state!, currentMonth, draft)
       let allocationAttempted = false
 
-      const repositoryDb = {
-        query: outerTx.query,
-        transaction: (callback: (tx: any) => Promise<unknown>) => outerTx.transaction((tx) => {
-          const executor = new Proxy(tx, {
-            get(targetTx, property) {
-              if (property === 'insert') return (table: any) => {
-                if (table === savingContributionAllocations) return {
-                  values: async () => {
-                    allocationAttempted = true
-                    throw new Error('injected saving contribution allocation-write failure')
-                  },
-                }
-                return targetTx.insert(table)
-              }
-              const value = Reflect.get(targetTx, property, targetTx)
-              return typeof value === 'function' ? value.bind(targetTx) : value
-            },
-          })
-          return callback(executor)
-        }),
-      } as unknown as Database
+      const repositoryDb = createFailingInsertDb(
+        outerTx,
+        savingContributionAllocations,
+        'injected saving contribution allocation-write failure',
+        () => { allocationAttempted = true },
+      )
 
       await expect(createSavingContributionInRepository(repositoryDb, { userId, currentMonth, draft, previewToken }))
         .rejects.toThrow('injected saving contribution allocation-write failure')
@@ -98,51 +71,23 @@ describeWhenSafe('saving contribution real database rollback', () => {
 
     const rollback = new Error('always rollback investment contribution integration fixtures')
     await expect(db.transaction(async (outerTx) => {
-      await outerTx.insert(financialProfiles).values({
-        userId,
-        baseCurrency: 'ARS',
-        expensesKnowledge: 'known',
-        plannedMonthlyContribution: '600.00',
-        onboardingCompleted: true,
-      })
-      const [goal] = await outerTx.insert(financialGoals).values({
+      const { goal } = await seedProfileWithSingleGoal(outerTx, userId, currentMonth, {
         userId, name: 'Fondo', type: 'retirement', targetAmount: '9000.00', currency: 'ARS', priority: 'medium', strategy: 'invest', status: 'active',
-      }).returning({ id: financialGoals.id })
+      })
       const [position] = await outerTx.insert(goalInvestmentPositions).values({ goalId: goal.id, currentValue: '1000.00', currency: 'ARS' })
         .returning({ id: goalInvestmentPositions.id })
-      const [snapshot] = await outerTx.insert(allocationPlanSnapshots).values({
-        userId,
-        effectiveMonth: `${currentMonth}-01`,
-        plannedMonthlyContribution: '600.00',
-      }).returning({ id: allocationPlanSnapshots.id })
-      await outerTx.insert(allocationPlanEntries).values({ snapshotId: snapshot.id, goalId: goal.id, percentage: '100.00' })
 
       const draft = { kind: 'investment' as const, currency: 'ARS' as const, amount: '200.00' }
       const state = await getSavingContributionState(outerTx as unknown as Database, userId, currentMonth)
       const previewToken = createSavingContributionPreviewToken(state!, currentMonth, draft)
       let allocationAttempted = false
 
-      const repositoryDb = {
-        query: outerTx.query,
-        transaction: (callback: (tx: any) => Promise<unknown>) => outerTx.transaction((tx) => {
-          const executor = new Proxy(tx, {
-            get(targetTx, property) {
-              if (property === 'insert') return (table: any) => {
-                if (table === investmentContributionAllocations) return {
-                  values: async () => {
-                    allocationAttempted = true
-                    throw new Error('injected investment allocation-write failure')
-                  },
-                }
-                return targetTx.insert(table)
-              }
-              const value = Reflect.get(targetTx, property, targetTx)
-              return typeof value === 'function' ? value.bind(targetTx) : value
-            },
-          })
-          return callback(executor)
-        }),
-      } as unknown as Database
+      const repositoryDb = createFailingInsertDb(
+        outerTx,
+        investmentContributionAllocations,
+        'injected investment allocation-write failure',
+        () => { allocationAttempted = true },
+      )
 
       await expect(createSavingContributionInRepository(repositoryDb, { userId, currentMonth, draft, previewToken }))
         .rejects.toThrow('injected investment allocation-write failure')
