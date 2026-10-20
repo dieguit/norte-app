@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile --offline \
 FROM workspace AS api
 RUN pnpm --filter @repo/api build
 WORKDIR /workspace/apps/api
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]
 
 FROM workspace AS web
 ARG VITE_CLERK_PUBLISHABLE_KEY

@@ -9,6 +9,10 @@ describe('validateEnv', () => {
     CLERK_SECRET_KEY: 'placeholder',
     CLERK_ISSUER_URL: 'https://clerk.example.test',
     CLERK_AUTHORIZED_PARTIES: 'http://localhost:3100',
+    LLM_BASE_URL: 'http://localhost:20128/v1',
+    LLM_API_KEY: 'llm-key',
+    LLM_MODEL: 'cx/gpt-5.5',
+    MASTRA_API_KEY: 'mastra-key',
   };
 
   it('returns parsed env when all required vars are present', () => {
@@ -51,5 +55,18 @@ describe('validateEnv', () => {
 
   it('throws when PORT is out of range', () => {
     expect(() => validateEnv({ ...validEnv, PORT: '99999' })).toThrow();
+  });
+
+  it.each(['LLM_BASE_URL', 'LLM_API_KEY', 'LLM_MODEL', 'MASTRA_API_KEY'])(
+    'throws when %s is missing',
+    (key) => {
+      expect(() => validateEnv({ ...validEnv, [key]: undefined })).toThrow(key);
+    },
+  );
+
+  it('throws when LLM_BASE_URL is not a valid URL', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, LLM_BASE_URL: 'not-a-url' }),
+    ).toThrow('LLM_BASE_URL');
   });
 });
