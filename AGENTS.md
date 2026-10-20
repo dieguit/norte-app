@@ -4,7 +4,7 @@ When reviewing work, always run /ponytail-review and /code-review skills.
 When reviewing work, always use fallow skills.
 Minimize the use of useless comments, only add comments explaining domain decisions.
 If user asks a question, answer it, do not start work or fix or plan. There are no rhetorical questions, just answer
-When working with superpowers, use Anthropic Opus for brainstorming, planning and specs, Google Agy Gemini 3.8 flash for implementation, and OpenAI Sol for review.
+When working with superpowers, use current session model for brainstorming, Anthropic Opus for planning and specs, Google Agy Gemini 3.8 flash for implementation, and OpenAI Sol for review. Always use medium effort unless user requests otherwise.
 
 ## Instruction routing
 
