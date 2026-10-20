@@ -5,7 +5,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm fetch
 COPY . .
 RUN pnpm install --frozen-lockfile --offline \
-    && pnpm --filter @repo/shared-types build
+    && pnpm --filter "./packages/*" build
 
 FROM workspace AS api
 RUN pnpm --filter @repo/api build
