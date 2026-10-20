@@ -126,9 +126,23 @@ __export(index_exports, {
   SavingsTransferSchema: () => SavingsTransferSchema,
   UpdatePlaceholderItemSchema: () => UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema: () => UpdateSavingContributionWireSchema,
+  allocationEntrySchema: () => allocationEntrySchema,
+  confirmGoalCreationSchema: () => confirmGoalCreationSchema,
+  confirmGoalEditSchema: () => confirmGoalEditSchema,
+  createObjectiveSchema: () => createObjectiveSchema,
   deriveUsdPurchase: () => deriveUsdPurchase,
+  goalCreationDraftSchema: () => goalCreationDraftSchema,
+  goalEditRequestSchema: () => goalEditRequestSchema,
+  goalImpactSchema: () => goalImpactSchema,
+  goalPlanSchema: () => goalPlanSchema,
+  goalPrioritySchema: () => goalPrioritySchema,
+  goalStrategySchema: () => goalStrategySchema,
+  goalTypeSchema: () => goalTypeSchema,
+  investmentAvailabilitySchema: () => investmentAvailabilitySchema,
   isExpenseIncludedInMonth: () => isExpenseIncludedInMonth,
-  isIncomeIncludedInMonth: () => isIncomeIncludedInMonth
+  isIncomeIncludedInMonth: () => isIncomeIncludedInMonth,
+  parseGoalCreationSubmission: () => parseGoalCreationSubmission,
+  previewGoalEditSchema: () => previewGoalEditSchema
 });
 module.exports = __toCommonJS(index_exports);
 
@@ -921,6 +935,129 @@ var HomeRoadmapResponseSchema = import_zod10.z.discriminatedUnion("profile", [
   HomeRoadmapMissingSchema,
   HomeRoadmapPresentSchema
 ]);
+
+// src/goal-creation.schema.ts
+var import_finance_utils = require("@repo/finance-utils");
+var import_bignumber2 = __toESM(require("bignumber.js"), 1);
+var import_zod11 = require("zod");
+var goalTypeSchema = import_zod11.z.enum(["emergency_fund", "purchase", "retirement", "other"]);
+var goalPrioritySchema = import_zod11.z.enum(["high", "medium", "low"]);
+var goalStrategySchema = import_zod11.z.enum(["save", "invest"]);
+var investmentAvailabilitySchema = import_zod11.z.enum(["available_now", "available_from", "long_term"]);
+var percentageSchema2 = import_zod11.z.string().refine((value) => {
+  try {
+    const amount = new import_bignumber2.default(value.replace(",", "."));
+    const decimals = amount.decimalPlaces();
+    return amount.isFinite() && amount.gte(0) && amount.lte(100) && decimals !== null && decimals <= 2;
+  } catch {
+    return false;
+  }
+}, "Ingres\xE1 un porcentaje entre 0% y 100%, con hasta dos decimales.");
+var allocationEntrySchema = import_zod11.z.object({
+  goalId: import_zod11.z.string().min(1),
+  percentage: percentageSchema2
+});
+var goalCreationDraftSchema = import_zod11.z.object({
+  type: goalTypeSchema,
+  name: import_zod11.z.string().trim().min(1, "Ingres\xE1 un nombre.").max(120, "Us\xE1 hasta 120 caracteres."),
+  targetAmount: import_zod11.z.string(),
+  currency: import_zod11.z.enum(["ARS", "USD"]),
+  desiredMonth: import_zod11.z.string(),
+  priority: goalPrioritySchema,
+  strategy: goalStrategySchema,
+  annualReturnRate: import_zod11.z.string(),
+  availability: investmentAvailabilitySchema,
+  availableFromMonth: import_zod11.z.string(),
+  allocations: import_zod11.z.array(allocationEntrySchema)
+});
+function isValidAnnualReturnRate(value) {
+  try {
+    const rate = new import_bignumber2.default(value.replace(",", "."));
+    const decimals = rate.decimalPlaces();
+    return rate.isFinite() && rate.gte(0) && rate.lte(100) && decimals !== null && decimals !== void 0 && decimals <= 3;
+  } catch {
+    return false;
+  }
+}
+function needsAvailableFromMonth(availability, month) {
+  return availability === "available_from" && !/^\d{4}-\d{2}$/.test(month);
+}
+function createObjectiveSchema(currentMonth) {
+  return goalCreationDraftSchema.superRefine((draft, context) => {
+    if (draft.type === "emergency_fund") {
+      if (draft.currency !== "USD") context.addIssue({ code: "custom", path: ["currency"], message: "El colch\xF3n financiero se planifica en USD." });
+    } else {
+      const target = (0, import_finance_utils.parseMoneyInput)(draft.targetAmount, draft.currency);
+      if (!target || new import_bignumber2.default(target.amount).lte(0)) context.addIssue({ code: "custom", path: ["targetAmount"], message: "Ingres\xE1 un monto objetivo mayor a cero." });
+    }
+    if (draft.desiredMonth && draft.desiredMonth <= currentMonth) context.addIssue({ code: "custom", path: ["desiredMonth"], message: "Eleg\xED un mes posterior al actual." });
+  });
+}
+var goalPlanSchema = goalCreationDraftSchema.superRefine((draft, context) => {
+  if (draft.strategy !== "invest") return;
+  if (!isValidAnnualReturnRate(draft.annualReturnRate)) {
+    context.addIssue({ code: "custom", path: ["annualReturnRate"], message: "Ingres\xE1 un rendimiento entre 0% y 100%, con hasta tres decimales." });
+  }
+  if (needsAvailableFromMonth(draft.availability, draft.availableFromMonth)) {
+    context.addIssue({ code: "custom", path: ["availableFromMonth"], message: "Eleg\xED desde qu\xE9 mes estar\xE1 disponible." });
+  }
+});
+var goalImpactSchema = import_zod11.z.object({
+  allocations: import_zod11.z.array(allocationEntrySchema).min(1)
+}).superRefine((data, context) => {
+  let total = new import_bignumber2.default(0);
+  for (const entry of data.allocations) {
+    try {
+      const entryBn = new import_bignumber2.default(entry.percentage.replace(",", "."));
+      if (entryBn.isFinite()) {
+        total = total.plus(entryBn);
+      }
+    } catch {
+    }
+  }
+  if (!total.eq(100)) {
+    context.addIssue({ code: "custom", path: ["allocations"], message: `La distribuci\xF3n debe sumar 100%. Ahora suma ${total.toFixed(2)}%.` });
+  }
+});
+var confirmGoalCreationSchema = import_zod11.z.object({
+  draft: goalCreationDraftSchema,
+  previewToken: import_zod11.z.string().regex(/^[a-f0-9]{64}$/)
+}).superRefine((input, context) => {
+  const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations });
+  if (!impactResult.success) {
+    for (const issue of impactResult.error.issues) {
+      context.addIssue({ code: "custom", message: issue.message, path: ["draft", ...issue.path] });
+    }
+  }
+});
+var goalEditRequestSchema = import_zod11.z.object({
+  goalId: import_zod11.z.string().uuid()
+});
+var previewGoalEditSchema = import_zod11.z.object({
+  goalId: import_zod11.z.string().uuid(),
+  draft: goalCreationDraftSchema
+});
+var confirmGoalEditSchema = import_zod11.z.object({
+  goalId: import_zod11.z.string().uuid(),
+  draft: goalCreationDraftSchema,
+  previewToken: import_zod11.z.string().regex(/^[a-f0-9]{64}$/)
+}).superRefine((input, context) => {
+  const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations });
+  if (!impactResult.success) {
+    for (const issue of impactResult.error.issues) {
+      context.addIssue({ code: "custom", message: issue.message, path: ["draft", ...issue.path] });
+    }
+  }
+});
+function parseGoalCreationSubmission(input, currentMonth) {
+  const draft = goalCreationDraftSchema.parse(input);
+  createObjectiveSchema(currentMonth).parse(draft);
+  goalPlanSchema.parse(draft);
+  if (draft.allocations && draft.allocations.length > 0) {
+    goalImpactSchema.parse({ allocations: draft.allocations });
+  }
+  return draft;
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AllocationChangeConfirmationSchema,
@@ -1019,7 +1156,21 @@ var HomeRoadmapResponseSchema = import_zod10.z.discriminatedUnion("profile", [
   SavingsTransferSchema,
   UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema,
+  allocationEntrySchema,
+  confirmGoalCreationSchema,
+  confirmGoalEditSchema,
+  createObjectiveSchema,
   deriveUsdPurchase,
+  goalCreationDraftSchema,
+  goalEditRequestSchema,
+  goalImpactSchema,
+  goalPlanSchema,
+  goalPrioritySchema,
+  goalStrategySchema,
+  goalTypeSchema,
+  investmentAvailabilitySchema,
   isExpenseIncludedInMonth,
-  isIncomeIncludedInMonth
+  isIncomeIncludedInMonth,
+  parseGoalCreationSubmission,
+  previewGoalEditSchema
 });

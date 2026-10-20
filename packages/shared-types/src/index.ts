@@ -183,4 +183,37 @@ export {
   type HomeRoadmapPresent,
   type HomeRoadmapMissing,
 } from './home.schema';
+export {
+  allocationEntrySchema,
+  confirmGoalCreationSchema,
+  confirmGoalEditSchema,
+  createObjectiveSchema,
+  goalCreationDraftSchema,
+  goalEditRequestSchema,
+  goalImpactSchema,
+  goalPlanSchema,
+  goalPrioritySchema,
+  goalStrategySchema,
+  goalTypeSchema,
+  investmentAvailabilitySchema,
+  parseGoalCreationSubmission,
+  previewGoalEditSchema,
+  type ConfirmGoalCreationInput,
+  type ConfirmGoalEditInput,
+  type GoalCreationDraft,
+  type GoalEditRequestInput,
+  type PreviewGoalEditInput,
+} from './goal-creation.schema';
+export {
+  type EligibleGoal,
+  type InvestmentContributionCurrencyState,
+  type InvestmentContributionDataState,
+  type PreviousMonthShortfall,
+  type SavingAllocationPreview,
+  type SavingContributionPreviewResult,
+  type SavingDraft,
+  type SavingDraftInput,
+  type SavingPreviewResult,
+} from './saving-contribution.types';
+
 

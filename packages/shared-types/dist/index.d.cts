@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CurrencyCode, Money } from '@repo/finance-utils';
 
 declare const PlaceholderStatusSchema: z.ZodEnum<{
     todo: "todo";
@@ -10240,4 +10241,331 @@ type HomeRoadmapResponse = z.infer<typeof HomeRoadmapResponseSchema>;
 type HomeRoadmapPresent = z.infer<typeof HomeRoadmapPresentSchema>;
 type HomeRoadmapMissing = z.infer<typeof HomeRoadmapMissingSchema>;
 
-export { type AllocationChangeConfirmation, AllocationChangeConfirmationSchema, type AllocationChangeContext, AllocationChangeContextSchema, type AllocationChangeContextState, AllocationChangeContextStateSchema, type AllocationChangeDraftWire, AllocationChangeDraftWireSchema, type AllocationChangePreview, type AllocationChangePreviewResult, AllocationChangePreviewSchema, AllocationChangeStaleSchema, AllocationChangeUpdatedSchema, ConfirmAllocationChangeWireSchema, ConfirmGoalCompletionWireSchema, ConfirmGoalCreationWireSchema, ConfirmGoalLifecycleWireSchema, type ConfirmSavingContributionWire, ConfirmSavingContributionWireSchema, type ContributionAllocationSummary, ContributionIdPathWireSchema, type ContributionKind, type ContributionSummary, ContributionSummarySchema, type CreatePlaceholderItem, CreatePlaceholderItemSchema, CreateSavingsPlaceSchema, type DeletePlaceholderItemResponse, DeletePlaceholderItemResponseSchema, type ExpenseDraft, ExpenseDraftSchema, ExpenseMutationResponseSchema, FIXED_INCOME_SOURCES, type FinancesWorkspace, FinancesWorkspaceSchema, type FinancialOnboardingInput, FinancialOnboardingResponseSchema, FinancialOnboardingSchema, GoalCompletionCompletedSchema, type GoalCompletionConfirmation, GoalCompletionConfirmationSchema, type GoalCompletionContext, GoalCompletionContextPresentSchema, GoalCompletionContextSchema, type GoalCompletionContextState, GoalCompletionContextStateSchema, GoalCompletionInvalidSchema, type GoalCompletionPreview, type GoalCompletionPreviewResult, GoalCompletionPreviewSchema, GoalCompletionPreviewWireSchema, GoalCompletionStaleSchema, type GoalCompletionWithdrawalSummary, type GoalCreationConfirmation, GoalCreationConfirmationSchema, type GoalCreationContext, GoalCreationContextMissingSchema, GoalCreationContextPresentSchema, type GoalCreationContextState, GoalCreationContextStateSchema, GoalCreationContextWireSchema, GoalCreationCreatedSchema, type GoalCreationDraftWire, GoalCreationDraftWireSchema, type GoalCreationPreview, type GoalCreationPreviewResult, GoalCreationPreviewSchema, GoalCreationStaleSchema, GoalEditConfirmWireSchema, GoalEditConfirmationSchema, GoalEditStaleSchema, GoalEditUpdatedSchema, type GoalFundingRow, GoalIdPathWireSchema, GoalLifecycleActionSchema, type GoalLifecycleConfirmation, GoalLifecycleConfirmationSchema, type GoalLifecycleContext, GoalLifecycleContextSchema, type GoalLifecyclePreview, type GoalLifecyclePreviewResult, GoalLifecyclePreviewSchema, GoalLifecyclePreviewWireSchema, GoalLifecycleStaleSchema, GoalLifecycleUpdatedSchema, GoalPlanContextPresentSchema, GoalPlanContextStateSchema, GoalPlanEditContextWireSchema, GoalPlanQueryWireSchema, type GoalPriority, type GoalProjection, type GoalStatus, type GoalStrategy, type GoalWorkspaceItem, GoalWorkspaceItemSchema, type GoalsAppState, type GoalsFinancialSummary, type GoalsWorkspace, type GoalsWorkspaceData, GoalsWorkspaceMissingSchema, GoalsWorkspacePresentSchema, GoalsWorkspaceSchema, type HomeQuery, HomeQuerySchema, type HomeRoadmapMissing, HomeRoadmapMissingSchema, type HomeRoadmapPresent, HomeRoadmapPresentSchema, type HomeRoadmapResponse, HomeRoadmapResponseSchema, type IncomeDraft, IncomeDraftSchema, IncomeMutationResponseSchema, type InitialHomeState, InitialHomeStateSchema, type InvestmentAvailability, type PlaceholderItem, type PlaceholderItemList, PlaceholderItemListSchema, PlaceholderItemSchema, type PlaceholderStatus, PlaceholderStatusSchema, type ProfileResponse, ProfileResponseSchema, RenameSavingsPlaceSchema, type RoadmapData, RoadmapDataSchema, type RoadmapExpense, RoadmapExpenseSchema, type RoadmapFinances, RoadmapFinancesSchema, type RoadmapIncome, RoadmapIncomeSchema, type RoadmapMonth, RoadmapMonthSchema, type SavingContributionConfirmation, SavingContributionConfirmationSchema, type SavingContributionContext, SavingContributionContextMissingSchema, SavingContributionContextPresentSchema, SavingContributionContextSchema, type SavingContributionContextState, SavingContributionContextStateSchema, SavingContributionCreatedSchema, SavingContributionDeletedSchema, type SavingContributionDraftWire, SavingContributionDraftWireSchema, type SavingContributionEditPreview, SavingContributionEditPreviewSchema, type SavingContributionPreview, SavingContributionPreviewSchema, SavingContributionStaleSchema, type SavingContributionSummary, SavingContributionUpdatedSchema, SavingsPlaceIdParamsSchema, SavingsPlaceMutationResponseSchema, SavingsTransferResponseSchema, SavingsTransferSchema, type UpdatePlaceholderItem, UpdatePlaceholderItemSchema, type UpdateSavingContributionWire, UpdateSavingContributionWireSchema, type UsdPurchaseDerivation, type UsdPurchaseInput, deriveUsdPurchase, isExpenseIncludedInMonth, isIncomeIncludedInMonth };
+declare const goalTypeSchema: z.ZodEnum<{
+    emergency_fund: "emergency_fund";
+    purchase: "purchase";
+    retirement: "retirement";
+    other: "other";
+}>;
+declare const goalPrioritySchema: z.ZodEnum<{
+    high: "high";
+    medium: "medium";
+    low: "low";
+}>;
+declare const goalStrategySchema: z.ZodEnum<{
+    save: "save";
+    invest: "invest";
+}>;
+declare const investmentAvailabilitySchema: z.ZodEnum<{
+    available_now: "available_now";
+    available_from: "available_from";
+    long_term: "long_term";
+}>;
+declare const allocationEntrySchema: z.ZodObject<{
+    goalId: z.ZodString;
+    percentage: z.ZodString;
+}, z.core.$strip>;
+declare const goalCreationDraftSchema: z.ZodObject<{
+    type: z.ZodEnum<{
+        emergency_fund: "emergency_fund";
+        purchase: "purchase";
+        retirement: "retirement";
+        other: "other";
+    }>;
+    name: z.ZodString;
+    targetAmount: z.ZodString;
+    currency: z.ZodEnum<{
+        ARS: "ARS";
+        USD: "USD";
+    }>;
+    desiredMonth: z.ZodString;
+    priority: z.ZodEnum<{
+        high: "high";
+        medium: "medium";
+        low: "low";
+    }>;
+    strategy: z.ZodEnum<{
+        save: "save";
+        invest: "invest";
+    }>;
+    annualReturnRate: z.ZodString;
+    availability: z.ZodEnum<{
+        available_now: "available_now";
+        available_from: "available_from";
+        long_term: "long_term";
+    }>;
+    availableFromMonth: z.ZodString;
+    allocations: z.ZodArray<z.ZodObject<{
+        goalId: z.ZodString;
+        percentage: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+type GoalCreationDraft = z.infer<typeof goalCreationDraftSchema>;
+declare function createObjectiveSchema(currentMonth: string): z.ZodObject<{
+    type: z.ZodEnum<{
+        emergency_fund: "emergency_fund";
+        purchase: "purchase";
+        retirement: "retirement";
+        other: "other";
+    }>;
+    name: z.ZodString;
+    targetAmount: z.ZodString;
+    currency: z.ZodEnum<{
+        ARS: "ARS";
+        USD: "USD";
+    }>;
+    desiredMonth: z.ZodString;
+    priority: z.ZodEnum<{
+        high: "high";
+        medium: "medium";
+        low: "low";
+    }>;
+    strategy: z.ZodEnum<{
+        save: "save";
+        invest: "invest";
+    }>;
+    annualReturnRate: z.ZodString;
+    availability: z.ZodEnum<{
+        available_now: "available_now";
+        available_from: "available_from";
+        long_term: "long_term";
+    }>;
+    availableFromMonth: z.ZodString;
+    allocations: z.ZodArray<z.ZodObject<{
+        goalId: z.ZodString;
+        percentage: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const goalPlanSchema: z.ZodObject<{
+    type: z.ZodEnum<{
+        emergency_fund: "emergency_fund";
+        purchase: "purchase";
+        retirement: "retirement";
+        other: "other";
+    }>;
+    name: z.ZodString;
+    targetAmount: z.ZodString;
+    currency: z.ZodEnum<{
+        ARS: "ARS";
+        USD: "USD";
+    }>;
+    desiredMonth: z.ZodString;
+    priority: z.ZodEnum<{
+        high: "high";
+        medium: "medium";
+        low: "low";
+    }>;
+    strategy: z.ZodEnum<{
+        save: "save";
+        invest: "invest";
+    }>;
+    annualReturnRate: z.ZodString;
+    availability: z.ZodEnum<{
+        available_now: "available_now";
+        available_from: "available_from";
+        long_term: "long_term";
+    }>;
+    availableFromMonth: z.ZodString;
+    allocations: z.ZodArray<z.ZodObject<{
+        goalId: z.ZodString;
+        percentage: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const goalImpactSchema: z.ZodObject<{
+    allocations: z.ZodArray<z.ZodObject<{
+        goalId: z.ZodString;
+        percentage: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const confirmGoalCreationSchema: z.ZodObject<{
+    draft: z.ZodObject<{
+        type: z.ZodEnum<{
+            emergency_fund: "emergency_fund";
+            purchase: "purchase";
+            retirement: "retirement";
+            other: "other";
+        }>;
+        name: z.ZodString;
+        targetAmount: z.ZodString;
+        currency: z.ZodEnum<{
+            ARS: "ARS";
+            USD: "USD";
+        }>;
+        desiredMonth: z.ZodString;
+        priority: z.ZodEnum<{
+            high: "high";
+            medium: "medium";
+            low: "low";
+        }>;
+        strategy: z.ZodEnum<{
+            save: "save";
+            invest: "invest";
+        }>;
+        annualReturnRate: z.ZodString;
+        availability: z.ZodEnum<{
+            available_now: "available_now";
+            available_from: "available_from";
+            long_term: "long_term";
+        }>;
+        availableFromMonth: z.ZodString;
+        allocations: z.ZodArray<z.ZodObject<{
+            goalId: z.ZodString;
+            percentage: z.ZodString;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+    previewToken: z.ZodString;
+}, z.core.$strip>;
+type ConfirmGoalCreationInput = z.infer<typeof confirmGoalCreationSchema>;
+declare const goalEditRequestSchema: z.ZodObject<{
+    goalId: z.ZodString;
+}, z.core.$strip>;
+type GoalEditRequestInput = z.infer<typeof goalEditRequestSchema>;
+declare const previewGoalEditSchema: z.ZodObject<{
+    goalId: z.ZodString;
+    draft: z.ZodObject<{
+        type: z.ZodEnum<{
+            emergency_fund: "emergency_fund";
+            purchase: "purchase";
+            retirement: "retirement";
+            other: "other";
+        }>;
+        name: z.ZodString;
+        targetAmount: z.ZodString;
+        currency: z.ZodEnum<{
+            ARS: "ARS";
+            USD: "USD";
+        }>;
+        desiredMonth: z.ZodString;
+        priority: z.ZodEnum<{
+            high: "high";
+            medium: "medium";
+            low: "low";
+        }>;
+        strategy: z.ZodEnum<{
+            save: "save";
+            invest: "invest";
+        }>;
+        annualReturnRate: z.ZodString;
+        availability: z.ZodEnum<{
+            available_now: "available_now";
+            available_from: "available_from";
+            long_term: "long_term";
+        }>;
+        availableFromMonth: z.ZodString;
+        allocations: z.ZodArray<z.ZodObject<{
+            goalId: z.ZodString;
+            percentage: z.ZodString;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+type PreviewGoalEditInput = z.infer<typeof previewGoalEditSchema>;
+declare const confirmGoalEditSchema: z.ZodObject<{
+    goalId: z.ZodString;
+    draft: z.ZodObject<{
+        type: z.ZodEnum<{
+            emergency_fund: "emergency_fund";
+            purchase: "purchase";
+            retirement: "retirement";
+            other: "other";
+        }>;
+        name: z.ZodString;
+        targetAmount: z.ZodString;
+        currency: z.ZodEnum<{
+            ARS: "ARS";
+            USD: "USD";
+        }>;
+        desiredMonth: z.ZodString;
+        priority: z.ZodEnum<{
+            high: "high";
+            medium: "medium";
+            low: "low";
+        }>;
+        strategy: z.ZodEnum<{
+            save: "save";
+            invest: "invest";
+        }>;
+        annualReturnRate: z.ZodString;
+        availability: z.ZodEnum<{
+            available_now: "available_now";
+            available_from: "available_from";
+            long_term: "long_term";
+        }>;
+        availableFromMonth: z.ZodString;
+        allocations: z.ZodArray<z.ZodObject<{
+            goalId: z.ZodString;
+            percentage: z.ZodString;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+    previewToken: z.ZodString;
+}, z.core.$strip>;
+type ConfirmGoalEditInput = z.infer<typeof confirmGoalEditSchema>;
+declare function parseGoalCreationSubmission(input: unknown, currentMonth: string): GoalCreationDraft;
+
+interface EligibleGoal {
+    id: string;
+    name: string;
+    percentage: string | number;
+}
+interface SavingDraftInput {
+    kind?: ContributionKind;
+    currency: CurrencyCode;
+    amount: string;
+    place?: {
+        kind: 'existing';
+        placeId: string;
+    } | {
+        kind: 'new';
+        name: string;
+    };
+    arsSpent?: string | null;
+    effectiveRate?: string | null;
+}
+interface SavingDraft {
+    kind?: ContributionKind;
+    currency: CurrencyCode;
+    amount: Money;
+    place?: {
+        kind: 'existing';
+        placeId: string;
+    } | {
+        kind: 'new';
+        name: string;
+    };
+    arsSpent?: Money;
+    effectiveRate?: string;
+}
+interface SavingAllocationPreview {
+    goalId: string;
+    goalName: string;
+    percentage: string;
+    amount: Money;
+    progressBefore?: string;
+    progressAfter?: string;
+    projectionBefore?: GoalProjection;
+    projectionAfter?: GoalProjection;
+}
+interface SavingPreviewResult {
+    draft: SavingDraft;
+    allocations: SavingAllocationPreview[];
+}
+interface SavingContributionPreviewResult {
+    preview: SavingPreviewResult;
+    previewToken?: string;
+}
+type InvestmentContributionCurrencyState = {
+    status: 'ready';
+} | {
+    status: 'incomplete';
+    reason: 'missing_investment_position';
+};
+interface InvestmentContributionDataState {
+    ars: InvestmentContributionCurrencyState;
+    usd: InvestmentContributionCurrencyState;
+}
+interface PreviousMonthShortfall {
+    kind: ContributionKind;
+    currency: CurrencyCode;
+    amount: Money;
+}
+
+export { type AllocationChangeConfirmation, AllocationChangeConfirmationSchema, type AllocationChangeContext, AllocationChangeContextSchema, type AllocationChangeContextState, AllocationChangeContextStateSchema, type AllocationChangeDraftWire, AllocationChangeDraftWireSchema, type AllocationChangePreview, type AllocationChangePreviewResult, AllocationChangePreviewSchema, AllocationChangeStaleSchema, AllocationChangeUpdatedSchema, ConfirmAllocationChangeWireSchema, ConfirmGoalCompletionWireSchema, type ConfirmGoalCreationInput, ConfirmGoalCreationWireSchema, type ConfirmGoalEditInput, ConfirmGoalLifecycleWireSchema, type ConfirmSavingContributionWire, ConfirmSavingContributionWireSchema, type ContributionAllocationSummary, ContributionIdPathWireSchema, type ContributionKind, type ContributionSummary, ContributionSummarySchema, type CreatePlaceholderItem, CreatePlaceholderItemSchema, CreateSavingsPlaceSchema, type DeletePlaceholderItemResponse, DeletePlaceholderItemResponseSchema, type EligibleGoal, type ExpenseDraft, ExpenseDraftSchema, ExpenseMutationResponseSchema, FIXED_INCOME_SOURCES, type FinancesWorkspace, FinancesWorkspaceSchema, type FinancialOnboardingInput, FinancialOnboardingResponseSchema, FinancialOnboardingSchema, GoalCompletionCompletedSchema, type GoalCompletionConfirmation, GoalCompletionConfirmationSchema, type GoalCompletionContext, GoalCompletionContextPresentSchema, GoalCompletionContextSchema, type GoalCompletionContextState, GoalCompletionContextStateSchema, GoalCompletionInvalidSchema, type GoalCompletionPreview, type GoalCompletionPreviewResult, GoalCompletionPreviewSchema, GoalCompletionPreviewWireSchema, GoalCompletionStaleSchema, type GoalCompletionWithdrawalSummary, type GoalCreationConfirmation, GoalCreationConfirmationSchema, type GoalCreationContext, GoalCreationContextMissingSchema, GoalCreationContextPresentSchema, type GoalCreationContextState, GoalCreationContextStateSchema, GoalCreationContextWireSchema, GoalCreationCreatedSchema, type GoalCreationDraft, type GoalCreationDraftWire, GoalCreationDraftWireSchema, type GoalCreationPreview, type GoalCreationPreviewResult, GoalCreationPreviewSchema, GoalCreationStaleSchema, GoalEditConfirmWireSchema, GoalEditConfirmationSchema, type GoalEditRequestInput, GoalEditStaleSchema, GoalEditUpdatedSchema, type GoalFundingRow, GoalIdPathWireSchema, GoalLifecycleActionSchema, type GoalLifecycleConfirmation, GoalLifecycleConfirmationSchema, type GoalLifecycleContext, GoalLifecycleContextSchema, type GoalLifecyclePreview, type GoalLifecyclePreviewResult, GoalLifecyclePreviewSchema, GoalLifecyclePreviewWireSchema, GoalLifecycleStaleSchema, GoalLifecycleUpdatedSchema, GoalPlanContextPresentSchema, GoalPlanContextStateSchema, GoalPlanEditContextWireSchema, GoalPlanQueryWireSchema, type GoalPriority, type GoalProjection, type GoalStatus, type GoalStrategy, type GoalWorkspaceItem, GoalWorkspaceItemSchema, type GoalsAppState, type GoalsFinancialSummary, type GoalsWorkspace, type GoalsWorkspaceData, GoalsWorkspaceMissingSchema, GoalsWorkspacePresentSchema, GoalsWorkspaceSchema, type HomeQuery, HomeQuerySchema, type HomeRoadmapMissing, HomeRoadmapMissingSchema, type HomeRoadmapPresent, HomeRoadmapPresentSchema, type HomeRoadmapResponse, HomeRoadmapResponseSchema, type IncomeDraft, IncomeDraftSchema, IncomeMutationResponseSchema, type InitialHomeState, InitialHomeStateSchema, type InvestmentAvailability, type InvestmentContributionCurrencyState, type InvestmentContributionDataState, type PlaceholderItem, type PlaceholderItemList, PlaceholderItemListSchema, PlaceholderItemSchema, type PlaceholderStatus, PlaceholderStatusSchema, type PreviewGoalEditInput, type PreviousMonthShortfall, type ProfileResponse, ProfileResponseSchema, RenameSavingsPlaceSchema, type RoadmapData, RoadmapDataSchema, type RoadmapExpense, RoadmapExpenseSchema, type RoadmapFinances, RoadmapFinancesSchema, type RoadmapIncome, RoadmapIncomeSchema, type RoadmapMonth, RoadmapMonthSchema, type SavingAllocationPreview, type SavingContributionConfirmation, SavingContributionConfirmationSchema, type SavingContributionContext, SavingContributionContextMissingSchema, SavingContributionContextPresentSchema, SavingContributionContextSchema, type SavingContributionContextState, SavingContributionContextStateSchema, SavingContributionCreatedSchema, SavingContributionDeletedSchema, type SavingContributionDraftWire, SavingContributionDraftWireSchema, type SavingContributionEditPreview, SavingContributionEditPreviewSchema, type SavingContributionPreview, type SavingContributionPreviewResult, SavingContributionPreviewSchema, SavingContributionStaleSchema, type SavingContributionSummary, SavingContributionUpdatedSchema, type SavingDraft, type SavingDraftInput, type SavingPreviewResult, SavingsPlaceIdParamsSchema, SavingsPlaceMutationResponseSchema, SavingsTransferResponseSchema, SavingsTransferSchema, type UpdatePlaceholderItem, UpdatePlaceholderItemSchema, type UpdateSavingContributionWire, UpdateSavingContributionWireSchema, type UsdPurchaseDerivation, type UsdPurchaseInput, allocationEntrySchema, confirmGoalCreationSchema, confirmGoalEditSchema, createObjectiveSchema, deriveUsdPurchase, goalCreationDraftSchema, goalEditRequestSchema, goalImpactSchema, goalPlanSchema, goalPrioritySchema, goalStrategySchema, goalTypeSchema, investmentAvailabilitySchema, isExpenseIncludedInMonth, isIncomeIncludedInMonth, parseGoalCreationSubmission, previewGoalEditSchema };

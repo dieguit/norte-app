@@ -21,6 +21,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@repo/finance-utils": "workspace:^",
     "bignumber.js": "^11.1.5",
     "zod": "^4.4.3"
   },

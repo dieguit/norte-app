@@ -787,6 +787,129 @@ var HomeRoadmapResponseSchema = z10.discriminatedUnion("profile", [
   HomeRoadmapMissingSchema,
   HomeRoadmapPresentSchema
 ]);
+
+// src/goal-creation.schema.ts
+import { parseMoneyInput } from "@repo/finance-utils";
+import BigNumber2 from "bignumber.js";
+import { z as z11 } from "zod";
+var goalTypeSchema = z11.enum(["emergency_fund", "purchase", "retirement", "other"]);
+var goalPrioritySchema = z11.enum(["high", "medium", "low"]);
+var goalStrategySchema = z11.enum(["save", "invest"]);
+var investmentAvailabilitySchema = z11.enum(["available_now", "available_from", "long_term"]);
+var percentageSchema2 = z11.string().refine((value) => {
+  try {
+    const amount = new BigNumber2(value.replace(",", "."));
+    const decimals = amount.decimalPlaces();
+    return amount.isFinite() && amount.gte(0) && amount.lte(100) && decimals !== null && decimals <= 2;
+  } catch {
+    return false;
+  }
+}, "Ingres\xE1 un porcentaje entre 0% y 100%, con hasta dos decimales.");
+var allocationEntrySchema = z11.object({
+  goalId: z11.string().min(1),
+  percentage: percentageSchema2
+});
+var goalCreationDraftSchema = z11.object({
+  type: goalTypeSchema,
+  name: z11.string().trim().min(1, "Ingres\xE1 un nombre.").max(120, "Us\xE1 hasta 120 caracteres."),
+  targetAmount: z11.string(),
+  currency: z11.enum(["ARS", "USD"]),
+  desiredMonth: z11.string(),
+  priority: goalPrioritySchema,
+  strategy: goalStrategySchema,
+  annualReturnRate: z11.string(),
+  availability: investmentAvailabilitySchema,
+  availableFromMonth: z11.string(),
+  allocations: z11.array(allocationEntrySchema)
+});
+function isValidAnnualReturnRate(value) {
+  try {
+    const rate = new BigNumber2(value.replace(",", "."));
+    const decimals = rate.decimalPlaces();
+    return rate.isFinite() && rate.gte(0) && rate.lte(100) && decimals !== null && decimals !== void 0 && decimals <= 3;
+  } catch {
+    return false;
+  }
+}
+function needsAvailableFromMonth(availability, month) {
+  return availability === "available_from" && !/^\d{4}-\d{2}$/.test(month);
+}
+function createObjectiveSchema(currentMonth) {
+  return goalCreationDraftSchema.superRefine((draft, context) => {
+    if (draft.type === "emergency_fund") {
+      if (draft.currency !== "USD") context.addIssue({ code: "custom", path: ["currency"], message: "El colch\xF3n financiero se planifica en USD." });
+    } else {
+      const target = parseMoneyInput(draft.targetAmount, draft.currency);
+      if (!target || new BigNumber2(target.amount).lte(0)) context.addIssue({ code: "custom", path: ["targetAmount"], message: "Ingres\xE1 un monto objetivo mayor a cero." });
+    }
+    if (draft.desiredMonth && draft.desiredMonth <= currentMonth) context.addIssue({ code: "custom", path: ["desiredMonth"], message: "Eleg\xED un mes posterior al actual." });
+  });
+}
+var goalPlanSchema = goalCreationDraftSchema.superRefine((draft, context) => {
+  if (draft.strategy !== "invest") return;
+  if (!isValidAnnualReturnRate(draft.annualReturnRate)) {
+    context.addIssue({ code: "custom", path: ["annualReturnRate"], message: "Ingres\xE1 un rendimiento entre 0% y 100%, con hasta tres decimales." });
+  }
+  if (needsAvailableFromMonth(draft.availability, draft.availableFromMonth)) {
+    context.addIssue({ code: "custom", path: ["availableFromMonth"], message: "Eleg\xED desde qu\xE9 mes estar\xE1 disponible." });
+  }
+});
+var goalImpactSchema = z11.object({
+  allocations: z11.array(allocationEntrySchema).min(1)
+}).superRefine((data, context) => {
+  let total = new BigNumber2(0);
+  for (const entry of data.allocations) {
+    try {
+      const entryBn = new BigNumber2(entry.percentage.replace(",", "."));
+      if (entryBn.isFinite()) {
+        total = total.plus(entryBn);
+      }
+    } catch {
+    }
+  }
+  if (!total.eq(100)) {
+    context.addIssue({ code: "custom", path: ["allocations"], message: `La distribuci\xF3n debe sumar 100%. Ahora suma ${total.toFixed(2)}%.` });
+  }
+});
+var confirmGoalCreationSchema = z11.object({
+  draft: goalCreationDraftSchema,
+  previewToken: z11.string().regex(/^[a-f0-9]{64}$/)
+}).superRefine((input, context) => {
+  const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations });
+  if (!impactResult.success) {
+    for (const issue of impactResult.error.issues) {
+      context.addIssue({ code: "custom", message: issue.message, path: ["draft", ...issue.path] });
+    }
+  }
+});
+var goalEditRequestSchema = z11.object({
+  goalId: z11.string().uuid()
+});
+var previewGoalEditSchema = z11.object({
+  goalId: z11.string().uuid(),
+  draft: goalCreationDraftSchema
+});
+var confirmGoalEditSchema = z11.object({
+  goalId: z11.string().uuid(),
+  draft: goalCreationDraftSchema,
+  previewToken: z11.string().regex(/^[a-f0-9]{64}$/)
+}).superRefine((input, context) => {
+  const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations });
+  if (!impactResult.success) {
+    for (const issue of impactResult.error.issues) {
+      context.addIssue({ code: "custom", message: issue.message, path: ["draft", ...issue.path] });
+    }
+  }
+});
+function parseGoalCreationSubmission(input, currentMonth) {
+  const draft = goalCreationDraftSchema.parse(input);
+  createObjectiveSchema(currentMonth).parse(draft);
+  goalPlanSchema.parse(draft);
+  if (draft.allocations && draft.allocations.length > 0) {
+    goalImpactSchema.parse({ allocations: draft.allocations });
+  }
+  return draft;
+}
 export {
   AllocationChangeConfirmationSchema,
   AllocationChangeContextSchema,
@@ -884,7 +1007,21 @@ export {
   SavingsTransferSchema,
   UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema,
+  allocationEntrySchema,
+  confirmGoalCreationSchema,
+  confirmGoalEditSchema,
+  createObjectiveSchema,
   deriveUsdPurchase,
+  goalCreationDraftSchema,
+  goalEditRequestSchema,
+  goalImpactSchema,
+  goalPlanSchema,
+  goalPrioritySchema,
+  goalStrategySchema,
+  goalTypeSchema,
+  investmentAvailabilitySchema,
   isExpenseIncludedInMonth,
-  isIncomeIncludedInMonth
+  isIncomeIncludedInMonth,
+  parseGoalCreationSubmission,
+  previewGoalEditSchema
 };

@@ -37,6 +37,19 @@ describe('saving contribution wire schemas', () => {
 
   it('parses the context missing and confirmation unions', () => {
     expect(SavingContributionContextStateSchema.parse({ profile: 'missing' })).toEqual({ profile: 'missing' });
+    expect(SavingContributionContextStateSchema.parse({
+      profile: 'present',
+      context: {
+        currentMonth: '2026-10',
+        eligibleGoals: [{ id: 'goal-1', name: 'Viaje', percentage: '100' }],
+        eligibleGoalsUsd: [],
+        places: [{ id: placeId, name: 'Banco' }],
+        investmentState: {
+          ars: { status: 'ready' },
+          usd: { status: 'ready' },
+        },
+      },
+    })).toMatchObject({ profile: 'present' });
     expect(SavingContributionConfirmationSchema.parse({ status: 'created', contributionId: '5c1d1c1e-1111-4111-8111-111111111111' }))
       .toEqual({ status: 'created', contributionId: '5c1d1c1e-1111-4111-8111-111111111111' });
     expect(SavingContributionConfirmationSchema.safeParse({ status: 'invalid', message: 'x' }).success).toBe(false);
