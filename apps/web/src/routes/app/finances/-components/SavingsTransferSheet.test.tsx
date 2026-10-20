@@ -147,7 +147,7 @@ describe('SavingsTransferSheet', () => {
     expect(await screen.findByRole('option', { name: 'Efectivo' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Banco Nación' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Efectivo' }))
+    await user.click(await screen.findByRole('option', { name: 'Efectivo' }))
     expect(screen.getByRole('combobox', { name: 'Hacia' })).toHaveTextContent('Efectivo')
     expect(screen.getByRole('combobox', { name: 'Hacia' })).not.toHaveTextContent('cash')
   })

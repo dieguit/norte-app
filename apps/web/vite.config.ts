@@ -39,6 +39,8 @@ const config = defineConfig({
     },
   },
   test: {
+    // userEvent-driven wizard tests run ~2.5x slower on shared CI runners.
+    testTimeout: 15_000,
     include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)', '**/*.test.{ts,tsx}', '**/*.server.test.ts'],
   },
 })
