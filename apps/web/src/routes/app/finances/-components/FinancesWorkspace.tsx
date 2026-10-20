@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { FinancesWorkspace } from "@repo/shared-types";
 import { MonthPickerInput } from "../../../../components/MonthPicker";
 import {
@@ -8,9 +8,9 @@ import {
   TabsTrigger,
 } from "../../../../components/ui/tabs";
 import { FinancialSummaryCards } from "../../../../components/FinancialSummaryCards";
-import { getFinancesWorkspace } from "../../../../features/financial/financial.functions";
 import { SavingsPlacesTab } from "./SavingsPlacesTab";
 import { ExpenseWorkspaceTab, IncomeWorkspaceTab } from "./FinancesWorkspaceTabs";
+import { useFinancesMonth } from "./useFinancesMonth";
 
 export type FinancesWorkspaceData = FinancesWorkspace;
 
@@ -21,45 +21,12 @@ export function FinancesWorkspace({
   workspace: FinancesWorkspaceData;
   initialMonth?: string;
 }) {
-  const [selectedMonth, setSelectedMonth] = useState(initialMonth);
-  const [monthData, setMonthData] = useState(workspace);
-  const [freshForWorkspace, setFreshForWorkspace] = useState<typeof workspace | null>(workspace);
-  const [loadingMonth, setLoadingMonth] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const requestId = useRef(0);
+  const { selectedMonth, selectMonth, current, loadingMonth, loadError } = useFinancesMonth(workspace, initialMonth);
   const [activeTab, setActiveTab] = useState("incomes");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-
-
-  useEffect(() => {
-    if (workspace.month === selectedMonth) {
-      setMonthData(workspace);
-      setFreshForWorkspace(workspace);
-      setLoadingMonth(false);
-      setLoadError(false);
-      return;
-    }
-    const id = ++requestId.current;
-    setFreshForWorkspace(null);
-    setLoadingMonth(true);
-    setLoadError(false);
-    getFinancesWorkspace({ data: { month: selectedMonth } }).then((next) => {
-      if (id === requestId.current && next?.month === selectedMonth) {
-        setMonthData(next);
-        setFreshForWorkspace(workspace);
-      }
-      else if (id === requestId.current) setLoadError(true);
-    }).catch(() => {
-      if (id === requestId.current) setLoadError(true);
-    }).finally(() => {
-      if (id === requestId.current) setLoadingMonth(false);
-    });
-    return () => { requestId.current += 1; };
-  }, [selectedMonth, workspace]);
-  const current = !loadingMonth && freshForWorkspace === workspace && monthData.month === selectedMonth ? monthData : null;
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -70,10 +37,7 @@ export function FinancesWorkspace({
           className="w-full sm:w-auto"
           aria-label="Mes de finanzas"
           value={selectedMonth}
-          onValueChange={(month) => {
-            setFreshForWorkspace(null);
-            setSelectedMonth(month);
-          }}
+          onValueChange={selectMonth}
         />
       </header>
 

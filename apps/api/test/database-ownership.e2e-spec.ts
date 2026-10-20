@@ -25,6 +25,49 @@ function preserved(before: Capture, after: Capture) {
   expect(after.journal.length).toBe(before.journal.length + 1);
 }
 
+type ManifestRecord = { hash: string; created_at: string };
+
+function loadManifestRecords() {
+  const manifest = JSON.parse(readFileSync(resolve('migration-history/manifest.json'), 'utf8'));
+  const pairs = (kind: 'web' | 'api') => manifest[kind].entries.map((entry: { tag: string; when: number }) => ({
+    created_at: String(entry.when), hash: createHash('sha256').update(readFileSync(resolve(
+      kind === 'web' ? 'drizzle' : 'migration-history/pre-takeover', `${entry.tag}.sql`,
+    ))).digest('hex'),
+  })) as ManifestRecord[];
+  const web = pairs('web');
+  const recognized = [...web, ...pairs('api')];
+  return { web, recognized };
+}
+
+function acceptance(journal: ManifestRecord[], rows: Capture['rows'], web: ManifestRecord[], recognized: ManifestRecord[]) {
+  const errors: string[] = [];
+  const keys = journal.map((row) => `${row.created_at}:${row.hash}`);
+  if (new Set(keys).size !== keys.length) errors.push('3: duplicate');
+  if (journal.some((row) => !recognized.some((known) => known.created_at === row.created_at && known.hash === row.hash))) errors.push('3: unknown/hash');
+  if (journal.some((row) => Number(row.created_at) >= 1792368000000)) errors.push('3: unknown cutoff');
+  if (Object.entries(rows).some(([name, values]) => name.startsWith('public.')
+    && !['public.users', 'public.whatsapp_auth_state'].includes(name) && values.length > 0)
+    && web.some((row) => !keys.includes(`${row.created_at}:${row.hash}`))) errors.push('4: incomplete populated web');
+  return errors;
+}
+
+type OperatorAcceptanceKind =
+  | 'hole'
+  | 'duplicate'
+  | 'changed hash'
+  | 'newer cutoff'
+  | 'partial prefix with populated rows'
+  | 'populated tables without tracking';
+
+const recordsFor: Record<OperatorAcceptanceKind, (web: ManifestRecord[]) => ManifestRecord[]> = {
+  'hole': (web) => web.filter((_, index) => index !== 10),
+  'duplicate': (web) => [...web, web[0]!],
+  'changed hash': (web) => web.map((row, index) => (index ? row : { ...row, hash: 'changed' })),
+  'newer cutoff': (web) => [...web, { hash: 'unknown', created_at: '1792368000001' }],
+  'partial prefix with populated rows': (web) => web.slice(0, 10),
+  'populated tables without tracking': () => [],
+};
+
 describe('owned database guards', () => {
   it('rejects external URLs and names before opening a connection', async () => {
     const connect = vi.spyOn(Pool.prototype, 'connect').mockImplementation(() => {
@@ -198,42 +241,19 @@ describe('API database ownership — real Drizzle CLI', () => {
     ['populated tables without tracking', '4: incomplete populated web'],
   ])('operator acceptance rejects %s; does not invoke raw CLI', async (kind, expectedError) => {
     await withDatabase(server.adminUrl, async (pool) => {
-      type Record = { hash: string; created_at: string };
-      const manifest = JSON.parse(readFileSync(resolve('migration-history/manifest.json'), 'utf8'));
-      const pairs = (kind: 'web' | 'api') => manifest[kind].entries.map((entry: { tag: string; when: number }) => ({
-        created_at: String(entry.when), hash: createHash('sha256').update(readFileSync(resolve(
-          kind === 'web' ? 'drizzle' : 'migration-history/pre-takeover', `${entry.tag}.sql`,
-        ))).digest('hex'),
-      })) as Record[];
-      const web = pairs('web');
-      const recognized = [...web, ...pairs('api')];
-      function acceptance(journal: Record[], rows: Capture['rows']) {
-        const errors: string[] = [];
-        const keys = journal.map((row) => `${row.created_at}:${row.hash}`);
-        if (new Set(keys).size !== keys.length) errors.push('3: duplicate');
-        if (journal.some((row) => !recognized.some((known) => known.created_at === row.created_at && known.hash === row.hash))) errors.push('3: unknown/hash');
-        if (journal.some((row) => Number(row.created_at) >= 1792368000000)) errors.push('3: unknown cutoff');
-        if (Object.entries(rows).some(([name, values]) => name.startsWith('public.')
-          && !['public.users', 'public.whatsapp_auth_state'].includes(name) && values.length > 0)
-          && web.some((row) => !keys.includes(`${row.created_at}:${row.hash}`))) errors.push('4: incomplete populated web');
-        return errors;
-      }
-      expect(acceptance(web, { 'public.onboarding_drafts': ['populated'] })).toEqual([]);
+      const { web, recognized } = loadManifestRecords();
+      expect(acceptance(web, { 'public.onboarding_drafts': ['populated'] }, web, recognized)).toEqual([]);
       const partial = kind === 'partial prefix with populated rows';
       await baseline(pool, 'web', partial ? 10 : 21);
       if (partial) await pool.query("insert into onboarding_drafts(device_id) values ('partial-preserve')");
       else await pool.query(fixture());
-      const records = kind === 'hole' ? web.filter((_, index) => index !== 10)
-        : kind === 'duplicate' ? [...web, web[0]!]
-        : kind === 'changed hash' ? web.map((row, index) => index ? row : { ...row, hash: 'changed' })
-        : kind === 'newer cutoff' ? [...web, { hash: 'unknown', created_at: '1792368000001' }]
-        : partial ? web.slice(0, 10) : [];
+      const records = recordsFor[kind as OperatorAcceptanceKind](web);
       if (records.length) {
         await pool.query('create schema drizzle; create table drizzle.__drizzle_migrations(id serial primary key,hash text not null,created_at bigint)');
         for (const record of records) await pool.query('insert into drizzle.__drizzle_migrations(hash,created_at) values ($1,$2)', [record.hash, record.created_at]);
       }
       const observed = await capture(pool);
-      expect(acceptance(observed.journal as Record[], observed.rows)).toContain(expectedError);
+      expect(acceptance(observed.journal as ManifestRecord[], observed.rows, web, recognized)).toContain(expectedError);
       expect(await capture(pool)).toEqual(observed);
     });
   }, 120_000);

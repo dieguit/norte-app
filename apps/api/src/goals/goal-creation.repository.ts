@@ -210,35 +210,43 @@ export async function confirmGoalCreationInRepository(db: Database, input: Creat
   })
 }
 
+function assertEditableGoal(goal: any, draft: ReturnType<typeof parseGoalCreationSubmission>): void {
+  if (!goal || !['active', 'paused'].includes(goal.status)) {
+    throw new Error(goal?.status === 'completed' ? 'Cannot edit a completed goal.' : 'Goal not found or is not active.')
+  }
+  if (draft.type !== goal.type || draft.currency !== goal.currency || draft.strategy !== goal.strategy) {
+    throw new Error('Cannot modify immutable goal fields (type, currency, strategy).')
+  }
+}
+
+async function applyGoalEdit(tx: Executor, input: EditInput, proposal: GoalCreationProposal): Promise<void> {
+  await tx.update(financialGoals).set({
+    name: proposal.normalizedGoal.name,
+    targetAmount: proposal.normalizedGoal.targetAmount?.amount,
+    desiredDate: proposal.normalizedGoal.desiredDate,
+    emergencyFundMonths: proposal.normalizedGoal.emergencyFundMonths,
+  }).where(and(eq(financialGoals.id, input.goalId), eq(financialGoals.userId, input.userId)))
+  if (proposal.investment) {
+    await tx.update(goalInvestmentPositions).set({
+      annualReturnRate: proposal.investment.annualReturnRate,
+      availability: proposal.investment.availability,
+      availableFrom: proposal.investment.availableFrom,
+    }).where(eq(goalInvestmentPositions.goalId, input.goalId))
+  }
+}
+
 export async function confirmGoalEditInRepository(db: Database, input: EditInput): Promise<void> {
   return withLockedFinancialProfile(db, input.userId, async (tx, lockedProfile) => {
     const state = await getGoalEditStateWithExecutor(tx, input.userId, input.currentMonth, input.goalId)
     if (!state) throw new Error('Financial profile not found.')
     const goal = state.source.goals.find((candidate: any) => candidate.id === input.goalId)
-    if (!goal || !['active', 'paused'].includes(goal.status)) {
-      throw new Error(goal?.status === 'completed' ? 'Cannot edit a completed goal.' : 'Goal not found or is not active.')
-    }
     const draft = parseGoalCreationSubmission(input.draft, input.currentMonth)
-    if (draft.type !== goal.type || draft.currency !== goal.currency || draft.strategy !== goal.strategy) {
-      throw new Error('Cannot modify immutable goal fields (type, currency, strategy).')
-    }
+    assertEditableGoal(goal, draft)
     const previewToken = createGoalEditPreviewToken(state, input.currentMonth, input.goalId, draft)
     const proposal = buildGoalCreationProposal({ draft, state, currentMonth: input.currentMonth, subjectGoalId: input.goalId })
     if (previewToken !== input.previewToken) throw new StaleGoalEditPreviewError({ proposal, previewToken })
 
-    await tx.update(financialGoals).set({
-      name: proposal.normalizedGoal.name,
-      targetAmount: proposal.normalizedGoal.targetAmount?.amount,
-      desiredDate: proposal.normalizedGoal.desiredDate,
-      emergencyFundMonths: proposal.normalizedGoal.emergencyFundMonths,
-    }).where(and(eq(financialGoals.id, input.goalId), eq(financialGoals.userId, input.userId)))
-    if (proposal.investment) {
-      await tx.update(goalInvestmentPositions).set({
-        annualReturnRate: proposal.investment.annualReturnRate,
-        availability: proposal.investment.availability,
-        availableFrom: proposal.investment.availableFrom,
-      }).where(eq(goalInvestmentPositions.goalId, input.goalId))
-    }
+    await applyGoalEdit(tx, input, proposal)
     await replacePlan(tx, input.userId, proposal, input.goalId,
       lockedProfile.plannedMonthlyContribution ?? state.source.profile?.plannedMonthlyContribution ?? null)
   })

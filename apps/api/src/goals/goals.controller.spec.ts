@@ -1,7 +1,7 @@
 import { verifyToken } from '@clerk/backend';
 import { ConfigService } from '@nestjs/config';
 import type { INestApplication } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { DocumentBuilder, SwaggerModule, type OpenAPIObject } from '@nestjs/swagger';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,10 @@ import { GoalsController } from './goals.controller';
 import { GoalsService } from './goals.service';
 
 vi.mock('@clerk/backend', () => ({ verifyToken: vi.fn() }));
+
+function responseSchema(document: OpenAPIObject, path: string, method: 'get' | 'post' | 'put' | 'patch'): any {
+  return (document.paths[path]![method]!.responses['200'] as any).content['application/json'].schema;
+}
 
 const workspace = { profile: 'present', workspace: { financialSummary: {
   month: '2026-08', income: { amount: '0.00', currency: 'ARS' }, expenses: { amount: '0.00', currency: 'ARS' },
@@ -83,17 +87,17 @@ describe('GET /goals', () => {
     await request(app.getHttpServer()).post('/goals/preview').set('Authorization', 'Bearer token').send({ unexpected: true }).expect(400);
 
     const document = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('test').setVersion('1').build());
-    const contextResponse = (document.paths['/goals/plan']?.get?.responses?.['200'] as any)?.content?.['application/json']?.schema;
-    const previewResponse = (document.paths['/goals/preview']?.post?.responses?.['200'] as any)?.content?.['application/json']?.schema;
-    const confirmResponse = (document.paths['/goals']?.post?.responses?.['200'] as any)?.content?.['application/json']?.schema;
+    const contextResponse = responseSchema(document, '/goals/plan', 'get');
+    const previewResponse = responseSchema(document, '/goals/preview', 'post');
+    const confirmResponse = responseSchema(document, '/goals', 'post');
     expect(contextResponse.oneOf).toHaveLength(2);
     expect(previewResponse.$ref).toContain('GoalCreationPreviewDto');
     expect(confirmResponse.oneOf).toHaveLength(2);
 
-    const editPreview = (document.paths['/goals/{id}/preview']?.post?.responses?.['200'] as any)?.content?.['application/json']?.schema;
-    const editConfirm = (document.paths['/goals/{id}']?.patch?.responses?.['200'] as any)?.content?.['application/json']?.schema;
-    const allocationPreview = (document.paths['/goals/allocation/preview']?.post?.responses?.['200'] as any)?.content?.['application/json']?.schema;
-    const allocationConfirm = (document.paths['/goals/allocation']?.put?.responses?.['200'] as any)?.content?.['application/json']?.schema;
+    const editPreview = responseSchema(document, '/goals/{id}/preview', 'post');
+    const editConfirm = responseSchema(document, '/goals/{id}', 'patch');
+    const allocationPreview = responseSchema(document, '/goals/allocation/preview', 'post');
+    const allocationConfirm = responseSchema(document, '/goals/allocation', 'put');
     expect(editPreview.$ref).toContain('GoalCreationPreviewDto');
     expect(editConfirm.oneOf).toHaveLength(2);
     expect(allocationPreview.$ref).toContain('AllocationChangePreviewDto');
@@ -132,11 +136,11 @@ describe('GET /goals', () => {
     const document = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('test').setVersion('1').build());
     const planQuery = document.paths['/goals/plan']?.get?.parameters ?? [];
     expect(planQuery.some((parameter: any) => parameter.name === 'action' && parameter.in === 'query')).toBe(true);
-    const planResponse = (document.paths['/goals/plan']?.get?.responses?.['200'] as any)?.content?.['application/json']?.schema;
+    const planResponse = responseSchema(document, '/goals/plan', 'get');
     expect(planResponse.oneOf).toHaveLength(2);
     expect((document.components?.schemas?.GoalPlanContextPresentDto as any).properties.lifecycleContext).toBeDefined();
-    const lifecyclePreview = (document.paths['/goals/{id}/lifecycle/preview']?.post?.responses?.['200'] as any)?.content?.['application/json']?.schema;
-    const lifecycleConfirm = (document.paths['/goals/{id}/lifecycle']?.post?.responses?.['200'] as any)?.content?.['application/json']?.schema;
+    const lifecyclePreview = responseSchema(document, '/goals/{id}/lifecycle/preview', 'post');
+    const lifecycleConfirm = responseSchema(document, '/goals/{id}/lifecycle', 'post');
     expect(lifecyclePreview.$ref).toContain('GoalLifecyclePreviewDto');
     expect(lifecycleConfirm.oneOf).toHaveLength(2);
   });
@@ -165,9 +169,9 @@ describe('GET /goals', () => {
     expect(confirmCompletion).toHaveBeenCalledWith('verified-user', goalId, { withdrawals: [], allocations: [], previewToken: 'a'.repeat(64) });
 
     const document = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('test').setVersion('1').build());
-    const completionContext = (document.paths['/goals/{id}/completion']?.get?.responses?.['200'] as any)?.content?.['application/json']?.schema;
-    const completionPreview = (document.paths['/goals/{id}/completion/preview']?.post?.responses?.['200'] as any)?.content?.['application/json']?.schema;
-    const completionConfirm = (document.paths['/goals/{id}/completion']?.post?.responses?.['200'] as any)?.content?.['application/json']?.schema;
+    const completionContext = responseSchema(document, '/goals/{id}/completion', 'get');
+    const completionPreview = responseSchema(document, '/goals/{id}/completion/preview', 'post');
+    const completionConfirm = responseSchema(document, '/goals/{id}/completion', 'post');
     expect(completionContext.oneOf).toHaveLength(2);
     expect(completionPreview.$ref).toContain('GoalCompletionPreviewDto');
     expect(completionConfirm.oneOf).toHaveLength(3);

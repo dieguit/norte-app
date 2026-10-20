@@ -10,6 +10,27 @@ function sourceFiles(directory: string): string[] {
   })
 }
 
+function notTest(file: string): boolean {
+  return !/\.(test|spec)\./.test(file)
+}
+
+function importViolations(file: string): string[] {
+  const path = relative(resolve(root, 'src'), file)
+  const legacy = path.startsWith('db/') || [
+    'features/onboarding/repository.server.ts', 'features/admin/results.ts',
+  ].includes(path)
+  const source = readFileSync(file, 'utf8')
+  const violations: string[] = []
+  for (const match of source.matchAll(/(?:from\s*|import\s*\(|require\s*\(|import\s*)['"]([^'"]+)['"]/g)) {
+    const specifier = match[1]!
+    const target = specifier.startsWith('.') ? resolve(dirname(file), specifier)
+      : /^[@#]\//.test(specifier) ? resolve(root, 'src', specifier.slice(2)) : specifier
+    if (/(?:^|\/)api\/(?:src|test)(?:\/|$)/.test(target) || /^@repo\/api(?:\/|$)/.test(specifier) ||
+      (!legacy && target.startsWith(resolve(root, 'src/db')))) violations.push(`${path}: ${specifier}`)
+  }
+  return violations
+}
+
 describe('API owns financial persistence', () => {
   it('retains only the typed legacy onboarding schema', () => {
     const source = readFileSync(resolve(root, 'src/db/schema.ts'), 'utf8')
@@ -20,23 +41,7 @@ describe('API owns financial persistence', () => {
   })
 
   it('has no financial DB imports (including type imports) or API-source product imports', () => {
-    const violations: string[] = []
-    for (const file of sourceFiles(resolve(root, 'src'))) {
-      if (/\.(test|spec)\./.test(file)) continue
-      const path = relative(resolve(root, 'src'), file)
-      const legacy = path.startsWith('db/') || [
-        'features/onboarding/repository.server.ts', 'features/admin/results.ts',
-      ].includes(path)
-      const source = readFileSync(file, 'utf8')
-      for (const match of source.matchAll(/(?:from\s*|import\s*\(|require\s*\(|import\s*)['"]([^'"]+)['"]/g)) {
-        const specifier = match[1]!
-        const target = specifier.startsWith('.') ? resolve(dirname(file), specifier)
-          : /^[@#]\//.test(specifier) ? resolve(root, 'src', specifier.slice(2)) : specifier
-        if (/(?:^|\/)api\/(?:src|test)(?:\/|$)/.test(target) || /^@repo\/api(?:\/|$)/.test(specifier) ||
-          (!legacy && target.startsWith(resolve(root, 'src/db')))) violations.push(`${path}: ${specifier}`)
-      }
-    }
-    expect(violations).toEqual([])
+    expect(sourceFiles(resolve(root, 'src')).filter(notTest).flatMap(importViolations)).toEqual([])
   })
 
   it('has no writable web migration registry', () => {
