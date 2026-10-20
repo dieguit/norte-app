@@ -355,6 +355,51 @@ describe('Goal Creation Schemas', () => {
     })
   })
 
+  describe('confirmGoalEditSchema', () => {
+    const validHexToken = 'a'.repeat(64)
+    const validUuid = '123e4567-e89b-12d3-a456-426614174000'
+
+    it('accepts valid edit confirmation with valid UUID, draft, and previewToken', () => {
+      const result = confirmGoalEditSchema.safeParse({
+        goalId: validUuid,
+        draft: baseDraft,
+        previewToken: validHexToken,
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('rejects non-UUID goalId', () => {
+      const result = confirmGoalEditSchema.safeParse({
+        goalId: 'not-a-uuid',
+        draft: baseDraft,
+        previewToken: validHexToken,
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects invalid previewToken', () => {
+      const result = confirmGoalEditSchema.safeParse({
+        goalId: validUuid,
+        draft: baseDraft,
+        previewToken: 'short-token',
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects draft allocations not summing to 100%', () => {
+      const invalidDraft = {
+        ...baseDraft,
+        allocations: [{ goalId: validUuid, percentage: '80.00' }],
+      }
+      const result = confirmGoalEditSchema.safeParse({
+        goalId: validUuid,
+        draft: invalidDraft,
+        previewToken: validHexToken,
+      })
+      expect(result.success).toBe(false)
+    })
+  })
+
   describe('parseGoalCreationSubmission', () => {
     const currentMonth = '2026-08'
 

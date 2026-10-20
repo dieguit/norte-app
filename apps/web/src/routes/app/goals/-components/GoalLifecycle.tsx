@@ -12,7 +12,7 @@ import {
   type GoalCreationAllocation,
   type GoalCreationAllocationEntry,
 } from '../../../../features/goals/goal-creation'
-import { buildGoalAllocationDisplayEntries } from '../../../../features/goals/goal-proposal-allocation'
+import { buildGoalAllocationDisplayEntries } from '@repo/finance-utils'
 import {
   confirmGoalLifecycle,
   previewGoalLifecycle,

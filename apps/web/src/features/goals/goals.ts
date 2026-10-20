@@ -1,5 +1,4 @@
 export type {
-  ContributionKind,
   ContributionSummary,
   GoalProjection,
   GoalWorkspaceItem,
