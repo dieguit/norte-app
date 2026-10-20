@@ -6,6 +6,3 @@ export const whatsappAuthState = pgTable('whatsapp_auth_state', {
   value: jsonb('value').notNull(),
   ...timestamps(),
 });
-
-export type WhatsappAuthState = typeof whatsappAuthState.$inferSelect;
-export type NewWhatsappAuthState = typeof whatsappAuthState.$inferInsert;

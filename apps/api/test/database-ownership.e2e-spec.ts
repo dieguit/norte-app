@@ -214,7 +214,6 @@ describe('API database ownership — real Drizzle CLI', () => {
     const before = await capture(pool);
     expect(() => migrateCli(url)).toThrow('API ownership: incompatible public.whatsapp_auth_state');
     expect(await capture(pool)).toEqual(before);
-    return before;
   }
 
   it('late failure rolls back users creation; explicit disposable repair permits retry and exact rerun', async () => {
