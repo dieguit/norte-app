@@ -1,33 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { callFinancialApi } from "./financial.server";
+import { mutateFinancialApi } from "./financial.server";
 import {
   createExpenseServer,
   deleteExpenseServer,
   updateExpenseServer,
 } from "./expenses.server";
 
-vi.mock("./financial.server", () => {
-  const callFinancialApi = vi.fn();
-  return {
-    callFinancialApi,
-    mutateFinancialApi: vi.fn(async (path, method, body, failureMessage) => {
-      const response = await callFinancialApi(path, {
-        method,
-        ...(body === undefined
-          ? {}
-          : {
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
-            }),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        throw new Error(error?.message ?? failureMessage);
-      }
-      return response;
-    }),
-  };
-});
+vi.mock("./financial.server", () => ({
+  mutateFinancialApi: vi.fn(),
+}));
 
 const expense = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -45,7 +26,7 @@ describe("expense API adapter", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("posts existing create data and validates API response", async () => {
-    vi.mocked(callFinancialApi).mockResolvedValue(
+    vi.mocked(mutateFinancialApi).mockResolvedValue(
       new Response(JSON.stringify(expense), { status: 201 }),
     );
     await expect(
@@ -53,17 +34,16 @@ describe("expense API adapter", () => {
         data: { draft: {} as never, effectiveMonth: "2026-10" },
       }),
     ).resolves.toBeUndefined();
-    expect(callFinancialApi).toHaveBeenCalledWith(
+    expect(mutateFinancialApi).toHaveBeenCalledWith(
       "/expenses",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ draft: {}, effectiveMonth: "2026-10" }),
-      }),
+      "POST",
+      { draft: {}, effectiveMonth: "2026-10" },
+      "No se pudo guardar el gasto.",
     );
   });
 
   it("maps update/delete IDs and preserves selected month for deletion", async () => {
-    vi.mocked(callFinancialApi)
+    vi.mocked(mutateFinancialApi)
       .mockResolvedValueOnce(
         new Response(JSON.stringify(expense), { status: 200 }),
       )
@@ -78,21 +58,19 @@ describe("expense API adapter", () => {
     await deleteExpenseServer({
       data: { expenseId: expense.id, effectiveMonth: "2026-10" },
     });
-    expect(callFinancialApi).toHaveBeenNthCalledWith(
+    expect(mutateFinancialApi).toHaveBeenNthCalledWith(
       1,
       `/expenses/${expense.id}`,
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({ draft: {}, effectiveMonth: "2026-10" }),
-      }),
+      "PATCH",
+      { draft: {}, effectiveMonth: "2026-10" },
+      "No se pudo guardar el gasto.",
     );
-    expect(callFinancialApi).toHaveBeenNthCalledWith(
+    expect(mutateFinancialApi).toHaveBeenNthCalledWith(
       2,
       `/expenses/${expense.id}`,
-      expect.objectContaining({
-        method: "DELETE",
-        body: JSON.stringify({ effectiveMonth: "2026-10" }),
-      }),
+      "DELETE",
+      { effectiveMonth: "2026-10" },
+      "No se pudo guardar el gasto.",
     );
   });
 });

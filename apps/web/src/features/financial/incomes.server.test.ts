@@ -1,33 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { callFinancialApi } from './financial.server'
+import { mutateFinancialApi } from './financial.server'
 import {
   createIncomeServer,
   deleteIncomeServer,
   updateIncomeServer,
 } from './incomes.server'
 
-vi.mock('./financial.server', () => {
-  const callFinancialApi = vi.fn()
-  return {
-    callFinancialApi,
-    mutateFinancialApi: vi.fn(async (path, method, body, failureMessage) => {
-      const response = await callFinancialApi(path, {
-        method,
-        ...(body === undefined
-          ? {}
-          : {
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(body),
-            }),
-      })
-      if (!response.ok) {
-        const error = await response.json().catch(() => null)
-        throw new Error(error?.message ?? failureMessage)
-      }
-      return response
-    }),
-  }
-})
+vi.mock('./financial.server', () => ({
+  mutateFinancialApi: vi.fn(),
+}))
 
 const income = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -47,23 +28,22 @@ describe('income API adapter', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('posts the existing draft wrapper and returns the API contract', async () => {
-    vi.mocked(callFinancialApi).mockResolvedValue(
+    vi.mocked(mutateFinancialApi).mockResolvedValue(
       new Response(JSON.stringify(income), { status: 201 }),
     )
     await expect(
       createIncomeServer({ data: { draft: {} as never } }),
     ).resolves.toEqual(income)
-    expect(callFinancialApi).toHaveBeenCalledWith(
+    expect(mutateFinancialApi).toHaveBeenCalledWith(
       '/incomes',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ draft: {} }),
-      }),
+      'POST',
+      { draft: {} },
+      'No se pudo guardar el ingreso.',
     )
   })
 
   it('maps update and delete IDs to REST paths without duplicating path IDs in bodies', async () => {
-    vi.mocked(callFinancialApi)
+    vi.mocked(mutateFinancialApi)
       .mockResolvedValueOnce(
         new Response(JSON.stringify(income), { status: 200 }),
       )
@@ -71,18 +51,19 @@ describe('income API adapter', () => {
     const incomeId = income.id
     await updateIncomeServer({ data: { incomeId, draft: {} as never } })
     await deleteIncomeServer({ data: { incomeId } })
-    expect(callFinancialApi).toHaveBeenNthCalledWith(
+    expect(mutateFinancialApi).toHaveBeenNthCalledWith(
       1,
       `/incomes/${incomeId}`,
-      expect.objectContaining({
-        method: 'PATCH',
-        body: JSON.stringify({ draft: {} }),
-      }),
+      'PATCH',
+      { draft: {} },
+      'No se pudo guardar el ingreso.',
     )
-    expect(callFinancialApi).toHaveBeenNthCalledWith(
+    expect(mutateFinancialApi).toHaveBeenNthCalledWith(
       2,
       `/incomes/${incomeId}`,
-      { method: 'DELETE' },
+      'DELETE',
+      undefined,
+      'No se pudo guardar el ingreso.',
     )
   })
 })

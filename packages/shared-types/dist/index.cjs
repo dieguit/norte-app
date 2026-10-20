@@ -214,11 +214,12 @@ var ProfileResponseSchema = import_zod2.z.object({
 var import_zod4 = require("zod");
 
 // src/finance-entry.schema.ts
-var import_finance_utils = require("@repo/finance-utils");
 var import_zod3 = require("zod");
 var amountSchema = import_zod3.z.string().refine((amount) => {
-  const parsed = (0, import_finance_utils.parseMoneyInput)(amount, "ARS");
-  return parsed !== null && (0, import_finance_utils.isPositiveMoney)(parsed);
+  const clean = amount.replace(/[$]|US[$]|USD|ARS|\s/gi, "").trim();
+  if (!clean) return false;
+  const normalized = clean.includes(",") && clean.includes(".") ? clean.replace(/\./g, "").replace(",", ".") : clean.includes(",") ? clean.replace(",", ".") : clean.includes(".") && (clean.split(".").length > 2 || clean.split(".")[1].length === 3) ? clean.replace(/\./g, "") : clean;
+  return Number.isFinite(Number(normalized)) && Number(normalized) > 0;
 }, "Ingres\xE1 un monto mayor a cero.");
 var conceptSchema = import_zod3.z.string().trim().max(120, "M\xE1ximo 120 caracteres.").nullish().transform((value) => value || null);
 var customSourceSchemas = [
@@ -932,7 +933,7 @@ var HomeRoadmapResponseSchema = import_zod11.z.discriminatedUnion("profile", [
 ]);
 
 // src/goal-creation.schema.ts
-var import_finance_utils2 = require("@repo/finance-utils");
+var import_finance_utils = require("@repo/finance-utils");
 var import_bignumber2 = __toESM(require("bignumber.js"), 1);
 var import_zod12 = require("zod");
 var goalTypeSchema = import_zod12.z.enum(["emergency_fund", "purchase", "retirement", "other"]);
@@ -982,7 +983,7 @@ function createObjectiveSchema(currentMonth) {
     if (draft.type === "emergency_fund") {
       if (draft.currency !== "USD") context.addIssue({ code: "custom", path: ["currency"], message: "El colch\xF3n financiero se planifica en USD." });
     } else {
-      const target = (0, import_finance_utils2.parseMoneyInput)(draft.targetAmount, draft.currency);
+      const target = (0, import_finance_utils.parseMoneyInput)(draft.targetAmount, draft.currency);
       if (!target || new import_bignumber2.default(target.amount).lte(0)) context.addIssue({ code: "custom", path: ["targetAmount"], message: "Ingres\xE1 un monto objetivo mayor a cero." });
     }
     if (draft.desiredMonth && draft.desiredMonth <= currentMonth) context.addIssue({ code: "custom", path: ["desiredMonth"], message: "Eleg\xED un mes posterior al actual." });

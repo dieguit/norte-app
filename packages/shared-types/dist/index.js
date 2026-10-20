@@ -66,11 +66,12 @@ var ProfileResponseSchema = z2.object({
 import { z as z4 } from "zod";
 
 // src/finance-entry.schema.ts
-import { isPositiveMoney, parseMoneyInput } from "@repo/finance-utils";
 import { z as z3 } from "zod";
 var amountSchema = z3.string().refine((amount) => {
-  const parsed = parseMoneyInput(amount, "ARS");
-  return parsed !== null && isPositiveMoney(parsed);
+  const clean = amount.replace(/[$]|US[$]|USD|ARS|\s/gi, "").trim();
+  if (!clean) return false;
+  const normalized = clean.includes(",") && clean.includes(".") ? clean.replace(/\./g, "").replace(",", ".") : clean.includes(",") ? clean.replace(",", ".") : clean.includes(".") && (clean.split(".").length > 2 || clean.split(".")[1].length === 3) ? clean.replace(/\./g, "") : clean;
+  return Number.isFinite(Number(normalized)) && Number(normalized) > 0;
 }, "Ingres\xE1 un monto mayor a cero.");
 var conceptSchema = z3.string().trim().max(120, "M\xE1ximo 120 caracteres.").nullish().transform((value) => value || null);
 var customSourceSchemas = [
@@ -784,7 +785,7 @@ var HomeRoadmapResponseSchema = z11.discriminatedUnion("profile", [
 ]);
 
 // src/goal-creation.schema.ts
-import { parseMoneyInput as parseMoneyInput2 } from "@repo/finance-utils";
+import { parseMoneyInput } from "@repo/finance-utils";
 import BigNumber2 from "bignumber.js";
 import { z as z12 } from "zod";
 var goalTypeSchema = z12.enum(["emergency_fund", "purchase", "retirement", "other"]);
@@ -834,7 +835,7 @@ function createObjectiveSchema(currentMonth) {
     if (draft.type === "emergency_fund") {
       if (draft.currency !== "USD") context.addIssue({ code: "custom", path: ["currency"], message: "El colch\xF3n financiero se planifica en USD." });
     } else {
-      const target = parseMoneyInput2(draft.targetAmount, draft.currency);
+      const target = parseMoneyInput(draft.targetAmount, draft.currency);
       if (!target || new BigNumber2(target.amount).lte(0)) context.addIssue({ code: "custom", path: ["targetAmount"], message: "Ingres\xE1 un monto objetivo mayor a cero." });
     }
     if (draft.desiredMonth && draft.desiredMonth <= currentMonth) context.addIssue({ code: "custom", path: ["desiredMonth"], message: "Eleg\xED un mes posterior al actual." });

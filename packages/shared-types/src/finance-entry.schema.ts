@@ -1,9 +1,18 @@
-import { isPositiveMoney, parseMoneyInput } from "@repo/finance-utils";
 import { z } from "zod";
 
 export const amountSchema = z.string().refine((amount) => {
-  const parsed = parseMoneyInput(amount, "ARS");
-  return parsed !== null && isPositiveMoney(parsed);
+  const clean = amount.replace(/[$]|US[$]|USD|ARS|\s/gi, "").trim();
+  if (!clean) return false;
+  const normalized =
+    clean.includes(",") && clean.includes(".")
+      ? clean.replace(/\./g, "").replace(",", ".")
+      : clean.includes(",")
+        ? clean.replace(",", ".")
+        : clean.includes(".") &&
+            (clean.split(".").length > 2 || clean.split(".")[1].length === 3)
+          ? clean.replace(/\./g, "")
+          : clean;
+  return Number.isFinite(Number(normalized)) && Number(normalized) > 0;
 }, "Ingresá un monto mayor a cero.");
 
 export const conceptSchema = z

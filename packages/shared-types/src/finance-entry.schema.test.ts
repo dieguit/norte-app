@@ -20,12 +20,12 @@ describe("ExpenseDraftSchema & IncomeDraftSchema amount validation", () => {
     effectiveMonth: "2026-10",
   };
 
-  it("accepts valid formatted amount '1.250,50'", () => {
-    expect(ExpenseDraftSchema.safeParse(baseExpense).success).toBe(true);
-    expect(IncomeDraftSchema.safeParse(baseIncome).success).toBe(true);
+  it.each(["1.250,50", "0,001", "0,0001"])("accepts valid amount '%s'", (amount) => {
+    expect(ExpenseDraftSchema.safeParse({ ...baseExpense, amount }).success).toBe(true);
+    expect(IncomeDraftSchema.safeParse({ ...baseIncome, amount }).success).toBe(true);
   });
 
-  it.each(["0", "", "abc", "-5"])("rejects '%s' with 'Ingresá un monto mayor a cero.'", (amount) => {
+  it.each(["0", "", "abc", "-5", "1e309"])("rejects '%s' with 'Ingresá un monto mayor a cero.'", (amount) => {
     const expenseRes = ExpenseDraftSchema.safeParse({ ...baseExpense, amount });
     expect(expenseRes.success).toBe(false);
     if (!expenseRes.success) {
