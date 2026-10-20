@@ -2,15 +2,27 @@ import BigNumber from 'bignumber.js';
 import {
   createMoney,
   PLANNING_ARS_PER_USD,
-  type CurrencyCode,
   type Money,
 } from '@repo/finance-utils';
 
-export interface MonthlyFinancialPlan {
-  incomes: Array<{ amount: string; currency: CurrencyCode; recurring: boolean; effectiveMonth: string }>;
-  expenses: Array<{ amount: string; currency: CurrencyCode; recurring: boolean; effectiveMonth: string; endMonth?: string | null }>;
+export interface MonthlyFinancialRow {
+  amount: string;
+  currency: string;
+  recurring: boolean;
+  effectiveMonth: string;
+  endMonth?: string | null;
 }
-export interface MonthlyFinancialSummary { month: string; income: Money; expenses: Money; balance: Money }
+
+export interface MonthlyFinancialPlan {
+  incomes: MonthlyFinancialRow[];
+  expenses: MonthlyFinancialRow[];
+}
+export interface MonthlyFinancialSummary {
+  month: string;
+  income: Money;
+  expenses: Money;
+  balance: Money;
+}
 
 export interface MonthlyFinancialSummaryOptions {
   includeOneOffIncome?: boolean;
@@ -22,16 +34,7 @@ export function getMonthlyFinancialSummary(
   options: MonthlyFinancialSummaryOptions = {},
 ): MonthlyFinancialSummary {
   const { includeOneOffIncome = true } = options;
-  const total = (
-    rows: Array<{
-      amount: string;
-      currency: CurrencyCode;
-      recurring: boolean;
-      effectiveMonth: string;
-      endMonth?: string | null;
-    }>,
-    expense: boolean,
-  ) =>
+  const total = (rows: MonthlyFinancialRow[], expense: boolean) =>
     createMoney(
       rows.reduce((sum, row) => {
         const effective = row.effectiveMonth.slice(0, 7);
@@ -68,6 +71,12 @@ export function getMonthlyFinancialSummary(
   };
 }
 
-export function getGoalContributionArs(balance: Money, percentage: number | string): Money {
-  return createMoney(BigNumber.maximum(balance.amount, 0).times(percentage).dividedBy(100), 'ARS');
+export function getGoalContributionArs(
+  balance: Money,
+  percentage: number | string,
+): Money {
+  return createMoney(
+    BigNumber.maximum(balance.amount, 0).times(percentage).dividedBy(100),
+    'ARS',
+  );
 }

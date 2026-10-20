@@ -10,7 +10,7 @@ import {
   type ExpenseDraft,
 } from '@repo/shared-types';
 import { DATABASE_CONNECTION } from '../database/database.constants';
-import type { Database } from '../database/database.types';
+import type { Database, Transaction } from '../database/database.types';
 import { expenseSources, expenses } from '../profile/profile.schema';
 import { normalizeMoneyAmount } from '../money';
 
@@ -39,7 +39,11 @@ function splitsHistory(
 export class ExpensesService {
   constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
-  private async findOwned(tx: any, userId: string, id: string) {
+  private async findOwned(
+    tx: Transaction,
+    userId: string,
+    id: string,
+  ): Promise<typeof expenses.$inferSelect> {
     const existing = await tx.query.expenses.findFirst({
       where: and(eq(expenses.id, id), eq(expenses.userId, userId)),
     });
@@ -47,7 +51,7 @@ export class ExpensesService {
     return existing;
   }
 
-  private async values(tx: any, userId: string, draft: ExpenseDraft) {
+  private async values(tx: Transaction, userId: string, draft: ExpenseDraft) {
     let source: { sourceKind: string; sourceId: string | null };
     if (draft.source.kind !== 'custom') {
       source = { sourceKind: draft.source.kind, sourceId: null };
@@ -89,11 +93,11 @@ export class ExpensesService {
   }
 
   async insert(
-    tx: any,
+    tx: Transaction,
     userId: string,
     draft: ExpenseDraft,
     effectiveMonth: string,
-  ) {
+  ): Promise<typeof expenses.$inferSelect> {
     const [expense] = await tx
       .insert(expenses)
       .values({

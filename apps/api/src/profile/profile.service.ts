@@ -182,9 +182,7 @@ function calculateHomeFinancialState(
   const expensesKnowledge: 'known' | 'unknown' =
     profile.expensesKnowledge === 'known' ? 'known' : 'unknown';
   const expenses =
-    expensesKnowledge === 'known'
-      ? calculatedExpenses
-      : undefined;
+    expensesKnowledge === 'known' ? calculatedExpenses : undefined;
   const monthlyCommitment = money(
     profile.plannedMonthlyContribution ?? '0.00',
     profile.baseCurrency as Currency,
@@ -218,7 +216,7 @@ function buildHomeState(
 ): InitialHomeState {
   const { profile, incomeRows, snapshot, allocation, goal } = ready;
   const summary = getMonthlyFinancialSummary(
-    { incomes: incomeRows as any, expenses: ready.expenseRows as any },
+    { incomes: incomeRows, expenses: ready.expenseRows },
     currentMonth,
     { includeOneOffIncome: false },
   );
