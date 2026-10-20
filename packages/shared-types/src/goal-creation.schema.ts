@@ -97,17 +97,22 @@ export const goalImpactSchema = z.object({
   }
 })
 
-export const confirmGoalCreationSchema = z.object({
-  draft: goalCreationDraftSchema,
-  previewToken: z.string().regex(/^[a-f0-9]{64}$/),
-}).superRefine((input, context) => {
+function refineDraftAllocations(
+  input: { draft: { allocations?: unknown } },
+  context: z.RefinementCtx,
+) {
   const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations })
   if (!impactResult.success) {
     for (const issue of impactResult.error.issues) {
       context.addIssue({ code: 'custom', message: issue.message, path: ['draft', ...issue.path] })
     }
   }
-})
+}
+
+export const confirmGoalCreationSchema = z.object({
+  draft: goalCreationDraftSchema,
+  previewToken: z.string().regex(/^[a-f0-9]{64}$/),
+}).superRefine(refineDraftAllocations)
 
 export type ConfirmGoalCreationInput = z.infer<typeof confirmGoalCreationSchema>
 
@@ -128,14 +133,7 @@ export const confirmGoalEditSchema = z.object({
   goalId: z.string().uuid(),
   draft: goalCreationDraftSchema,
   previewToken: z.string().regex(/^[a-f0-9]{64}$/),
-}).superRefine((input, context) => {
-  const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations })
-  if (!impactResult.success) {
-    for (const issue of impactResult.error.issues) {
-      context.addIssue({ code: 'custom', message: issue.message, path: ['draft', ...issue.path] })
-    }
-  }
-})
+}).superRefine(refineDraftAllocations)
 
 export type ConfirmGoalEditInput = z.infer<typeof confirmGoalEditSchema>
 

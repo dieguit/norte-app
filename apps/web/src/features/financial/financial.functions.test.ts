@@ -45,7 +45,7 @@ describe('financial.server boundary', () => {
 
       const result = await getFinancesWorkspaceServer()
       expect(result).toBeNull()
-      expect(fetch).toHaveBeenCalledWith('http://localhost:3001/finances', expect.objectContaining({ cache: 'no-store' }))
+      expect(fetch).toHaveBeenCalledWith(`${process.env.API_BASE_URL ?? 'http://localhost:3001'}/finances`, expect.objectContaining({ cache: 'no-store' }))
     })
 
     it('proxies the selected month and parses server-owned summaries', async () => {
@@ -60,7 +60,7 @@ describe('financial.server boundary', () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(payload))))
       const result = await getFinancesWorkspaceServer('2026-08')
       expect(result).toMatchObject({ month: '2026-08', summary: payload.summary, incomes: payload.incomes })
-      expect(fetch).toHaveBeenCalledWith('http://localhost:3001/finances?month=2026-08', expect.objectContaining({ cache: 'no-store' }))
+      expect(fetch).toHaveBeenCalledWith(`${process.env.API_BASE_URL ?? 'http://localhost:3001'}/finances?month=2026-08`, expect.objectContaining({ cache: 'no-store' }))
     })
   })
 

@@ -28,6 +28,28 @@ export async function callFinancialApi(path: string, init: RequestInit = {}) {
   return response
 }
 
+export async function mutateFinancialApi(
+  path: string,
+  method: string,
+  body: unknown,
+  failureMessage: string,
+): Promise<Response> {
+  const response = await callFinancialApi(path, {
+    method,
+    ...(body === undefined
+      ? {}
+      : {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => null)
+    throw new Error(error?.message ?? failureMessage)
+  }
+  return response
+}
+
 export async function throwFinancialApiError(response: Response, fallback: string): Promise<never> {
   const message = (await response.json().catch(() => null))?.message
   throw new Error(Array.isArray(message) ? message[0] : typeof message === 'string' ? message : fallback)

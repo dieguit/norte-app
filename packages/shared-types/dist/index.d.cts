@@ -280,8 +280,11 @@ declare const IncomeDraftSchema: z.ZodObject<{
     effectiveMonth: z.ZodString;
 }, z.core.$strip>;
 declare const IncomeMutationResponseSchema: z.ZodObject<{
-    id: z.ZodString;
     userId: z.ZodString;
+    effectiveMonth: z.ZodString;
+    createdAt: z.ZodISODateTime;
+    updatedAt: z.ZodISODateTime;
+    id: z.ZodString;
     sourceKind: z.ZodString;
     sourceId: z.ZodNullable<z.ZodString>;
     concept: z.ZodNullable<z.ZodString>;
@@ -291,9 +294,6 @@ declare const IncomeMutationResponseSchema: z.ZodObject<{
         USD: "USD";
     }>;
     recurring: z.ZodBoolean;
-    effectiveMonth: z.ZodString;
-    createdAt: z.ZodISODateTime;
-    updatedAt: z.ZodISODateTime;
 }, z.core.$strip>;
 type IncomeDraft = z.output<typeof IncomeDraftSchema>;
 
@@ -334,6 +334,8 @@ declare const ExpenseDraftSchema: z.ZodObject<{
     recurring: z.ZodBoolean;
 }, z.core.$strip>;
 declare const ExpenseMutationResponseSchema: z.ZodObject<{
+    effectiveMonth: z.ZodISODate;
+    endMonth: z.ZodNullable<z.ZodISODate>;
     id: z.ZodString;
     sourceKind: z.ZodString;
     sourceId: z.ZodNullable<z.ZodString>;
@@ -344,8 +346,6 @@ declare const ExpenseMutationResponseSchema: z.ZodObject<{
         USD: "USD";
     }>;
     recurring: z.ZodBoolean;
-    effectiveMonth: z.ZodISODate;
-    endMonth: z.ZodNullable<z.ZodISODate>;
 }, z.core.$strip>;
 type ExpenseDraft = z.output<typeof ExpenseDraftSchema>;
 
@@ -3425,17 +3425,6 @@ declare const GoalLifecycleActionSchema: z.ZodEnum<{
     resume: "resume";
 }>;
 declare const GoalLifecycleContextSchema: z.ZodObject<{
-    goalId: z.ZodString;
-    lifecycle: z.ZodEnum<{
-        pause: "pause";
-        resume: "resume";
-    }>;
-    goalName: z.ZodString;
-    goalCurrency: z.ZodEnum<{
-        ARS: "ARS";
-        USD: "USD";
-    }>;
-    currentMonth: z.ZodString;
     plannedMonthlyContribution: z.ZodOptional<z.ZodObject<{
         amount: z.ZodString;
         currency: z.ZodEnum<{
@@ -3465,6 +3454,17 @@ declare const GoalLifecycleContextSchema: z.ZodObject<{
             percentage: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
+    goalId: z.ZodString;
+    lifecycle: z.ZodEnum<{
+        pause: "pause";
+        resume: "resume";
+    }>;
+    goalName: z.ZodString;
+    goalCurrency: z.ZodEnum<{
+        ARS: "ARS";
+        USD: "USD";
+    }>;
+    currentMonth: z.ZodString;
 }, z.core.$strict>;
 declare const GoalLifecyclePreviewWireSchema: z.ZodObject<{
     lifecycle: z.ZodEnum<{
@@ -4273,40 +4273,12 @@ declare const GoalLifecycleConfirmationSchema: z.ZodDiscriminatedUnion<[z.ZodObj
     }, z.core.$strict>;
 }, z.core.$strict>], "status">;
 declare const GoalCompletionContextSchema: z.ZodObject<{
-    goalId: z.ZodString;
-    goalName: z.ZodString;
-    targetAmount: z.ZodObject<{
-        amount: z.ZodString;
-        currency: z.ZodEnum<{
-            ARS: "ARS";
-            USD: "USD";
-        }>;
-    }, z.core.$strict>;
-    savingsValue: z.ZodObject<{
-        amount: z.ZodString;
-        currency: z.ZodEnum<{
-            ARS: "ARS";
-            USD: "USD";
-        }>;
-    }, z.core.$strict>;
-    currentMonth: z.ZodString;
     plannedMonthlyContribution: z.ZodOptional<z.ZodObject<{
         amount: z.ZodString;
         currency: z.ZodEnum<{
             ARS: "ARS";
             USD: "USD";
         }>;
-    }, z.core.$strict>>;
-    savingsPlaces: z.ZodArray<z.ZodObject<{
-        id: z.ZodString;
-        name: z.ZodString;
-        balance: z.ZodObject<{
-            amount: z.ZodString;
-            currency: z.ZodEnum<{
-                ARS: "ARS";
-                USD: "USD";
-            }>;
-        }, z.core.$strict>;
     }, z.core.$strict>>;
     activeGoals: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
@@ -4330,44 +4302,44 @@ declare const GoalCompletionContextSchema: z.ZodObject<{
             percentage: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
+    goalId: z.ZodString;
+    goalName: z.ZodString;
+    targetAmount: z.ZodObject<{
+        amount: z.ZodString;
+        currency: z.ZodEnum<{
+            ARS: "ARS";
+            USD: "USD";
+        }>;
+    }, z.core.$strict>;
+    savingsValue: z.ZodObject<{
+        amount: z.ZodString;
+        currency: z.ZodEnum<{
+            ARS: "ARS";
+            USD: "USD";
+        }>;
+    }, z.core.$strict>;
+    currentMonth: z.ZodString;
+    savingsPlaces: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        name: z.ZodString;
+        balance: z.ZodObject<{
+            amount: z.ZodString;
+            currency: z.ZodEnum<{
+                ARS: "ARS";
+                USD: "USD";
+            }>;
+        }, z.core.$strict>;
+    }, z.core.$strict>>;
 }, z.core.$strict>;
 declare const GoalCompletionContextPresentSchema: z.ZodObject<{
     profile: z.ZodLiteral<"present">;
     context: z.ZodObject<{
-        goalId: z.ZodString;
-        goalName: z.ZodString;
-        targetAmount: z.ZodObject<{
-            amount: z.ZodString;
-            currency: z.ZodEnum<{
-                ARS: "ARS";
-                USD: "USD";
-            }>;
-        }, z.core.$strict>;
-        savingsValue: z.ZodObject<{
-            amount: z.ZodString;
-            currency: z.ZodEnum<{
-                ARS: "ARS";
-                USD: "USD";
-            }>;
-        }, z.core.$strict>;
-        currentMonth: z.ZodString;
         plannedMonthlyContribution: z.ZodOptional<z.ZodObject<{
             amount: z.ZodString;
             currency: z.ZodEnum<{
                 ARS: "ARS";
                 USD: "USD";
             }>;
-        }, z.core.$strict>>;
-        savingsPlaces: z.ZodArray<z.ZodObject<{
-            id: z.ZodString;
-            name: z.ZodString;
-            balance: z.ZodObject<{
-                amount: z.ZodString;
-                currency: z.ZodEnum<{
-                    ARS: "ARS";
-                    USD: "USD";
-                }>;
-            }, z.core.$strict>;
         }, z.core.$strict>>;
         activeGoals: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
@@ -4390,6 +4362,34 @@ declare const GoalCompletionContextPresentSchema: z.ZodObject<{
                 goalId: z.ZodString;
                 percentage: z.ZodString;
             }, z.core.$strict>>;
+        }, z.core.$strict>>;
+        goalId: z.ZodString;
+        goalName: z.ZodString;
+        targetAmount: z.ZodObject<{
+            amount: z.ZodString;
+            currency: z.ZodEnum<{
+                ARS: "ARS";
+                USD: "USD";
+            }>;
+        }, z.core.$strict>;
+        savingsValue: z.ZodObject<{
+            amount: z.ZodString;
+            currency: z.ZodEnum<{
+                ARS: "ARS";
+                USD: "USD";
+            }>;
+        }, z.core.$strict>;
+        currentMonth: z.ZodString;
+        savingsPlaces: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            name: z.ZodString;
+            balance: z.ZodObject<{
+                amount: z.ZodString;
+                currency: z.ZodEnum<{
+                    ARS: "ARS";
+                    USD: "USD";
+                }>;
+            }, z.core.$strict>;
         }, z.core.$strict>>;
     }, z.core.$strict>;
 }, z.core.$strict>;
@@ -4398,40 +4398,12 @@ declare const GoalCompletionContextStateSchema: z.ZodDiscriminatedUnion<[z.ZodOb
 }, z.core.$strict>, z.ZodObject<{
     profile: z.ZodLiteral<"present">;
     context: z.ZodObject<{
-        goalId: z.ZodString;
-        goalName: z.ZodString;
-        targetAmount: z.ZodObject<{
-            amount: z.ZodString;
-            currency: z.ZodEnum<{
-                ARS: "ARS";
-                USD: "USD";
-            }>;
-        }, z.core.$strict>;
-        savingsValue: z.ZodObject<{
-            amount: z.ZodString;
-            currency: z.ZodEnum<{
-                ARS: "ARS";
-                USD: "USD";
-            }>;
-        }, z.core.$strict>;
-        currentMonth: z.ZodString;
         plannedMonthlyContribution: z.ZodOptional<z.ZodObject<{
             amount: z.ZodString;
             currency: z.ZodEnum<{
                 ARS: "ARS";
                 USD: "USD";
             }>;
-        }, z.core.$strict>>;
-        savingsPlaces: z.ZodArray<z.ZodObject<{
-            id: z.ZodString;
-            name: z.ZodString;
-            balance: z.ZodObject<{
-                amount: z.ZodString;
-                currency: z.ZodEnum<{
-                    ARS: "ARS";
-                    USD: "USD";
-                }>;
-            }, z.core.$strict>;
         }, z.core.$strict>>;
         activeGoals: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
@@ -4454,6 +4426,34 @@ declare const GoalCompletionContextStateSchema: z.ZodDiscriminatedUnion<[z.ZodOb
                 goalId: z.ZodString;
                 percentage: z.ZodString;
             }, z.core.$strict>>;
+        }, z.core.$strict>>;
+        goalId: z.ZodString;
+        goalName: z.ZodString;
+        targetAmount: z.ZodObject<{
+            amount: z.ZodString;
+            currency: z.ZodEnum<{
+                ARS: "ARS";
+                USD: "USD";
+            }>;
+        }, z.core.$strict>;
+        savingsValue: z.ZodObject<{
+            amount: z.ZodString;
+            currency: z.ZodEnum<{
+                ARS: "ARS";
+                USD: "USD";
+            }>;
+        }, z.core.$strict>;
+        currentMonth: z.ZodString;
+        savingsPlaces: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            name: z.ZodString;
+            balance: z.ZodObject<{
+                amount: z.ZodString;
+                currency: z.ZodEnum<{
+                    ARS: "ARS";
+                    USD: "USD";
+                }>;
+            }, z.core.$strict>;
         }, z.core.$strict>>;
     }, z.core.$strict>;
 }, z.core.$strict>], "profile">;
@@ -5467,17 +5467,6 @@ declare const GoalPlanContextPresentSchema: z.ZodObject<{
         }, z.core.$strict>>;
     }, z.core.$strict>>;
     lifecycleContext: z.ZodOptional<z.ZodObject<{
-        goalId: z.ZodString;
-        lifecycle: z.ZodEnum<{
-            pause: "pause";
-            resume: "resume";
-        }>;
-        goalName: z.ZodString;
-        goalCurrency: z.ZodEnum<{
-            ARS: "ARS";
-            USD: "USD";
-        }>;
-        currentMonth: z.ZodString;
         plannedMonthlyContribution: z.ZodOptional<z.ZodObject<{
             amount: z.ZodString;
             currency: z.ZodEnum<{
@@ -5507,6 +5496,17 @@ declare const GoalPlanContextPresentSchema: z.ZodObject<{
                 percentage: z.ZodString;
             }, z.core.$strict>>;
         }, z.core.$strict>>;
+        goalId: z.ZodString;
+        lifecycle: z.ZodEnum<{
+            pause: "pause";
+            resume: "resume";
+        }>;
+        goalName: z.ZodString;
+        goalCurrency: z.ZodEnum<{
+            ARS: "ARS";
+            USD: "USD";
+        }>;
+        currentMonth: z.ZodString;
     }, z.core.$strict>>;
 }, z.core.$strict>;
 declare const GoalPlanContextStateSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
@@ -5648,17 +5648,6 @@ declare const GoalPlanContextStateSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
         }, z.core.$strict>>;
     }, z.core.$strict>>;
     lifecycleContext: z.ZodOptional<z.ZodObject<{
-        goalId: z.ZodString;
-        lifecycle: z.ZodEnum<{
-            pause: "pause";
-            resume: "resume";
-        }>;
-        goalName: z.ZodString;
-        goalCurrency: z.ZodEnum<{
-            ARS: "ARS";
-            USD: "USD";
-        }>;
-        currentMonth: z.ZodString;
         plannedMonthlyContribution: z.ZodOptional<z.ZodObject<{
             amount: z.ZodString;
             currency: z.ZodEnum<{
@@ -5688,6 +5677,17 @@ declare const GoalPlanContextStateSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
                 percentage: z.ZodString;
             }, z.core.$strict>>;
         }, z.core.$strict>>;
+        goalId: z.ZodString;
+        lifecycle: z.ZodEnum<{
+            pause: "pause";
+            resume: "resume";
+        }>;
+        goalName: z.ZodString;
+        goalCurrency: z.ZodEnum<{
+            ARS: "ARS";
+            USD: "USD";
+        }>;
+        currentMonth: z.ZodString;
     }, z.core.$strict>>;
 }, z.core.$strict>], "profile">;
 declare const GoalEditConfirmWireSchema: z.ZodObject<{

@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  amountSchema,
+  conceptSchema,
+  customSourceSchemas,
+  entryResponseFields,
+} from "./finance-entry.schema";
 
 const fixedExpenseSources = [
   "housing",
@@ -23,53 +29,20 @@ const fixedExpenseSources = [
 const sourceSchema = z.union(
   [
     z.object({ kind: z.enum(fixedExpenseSources) }),
-    z.object({ kind: z.literal("custom"), sourceId: z.string().uuid() }),
-    z.object({
-      kind: z.literal("custom"),
-      name: z
-        .string()
-        .trim()
-        .min(1, "Ingresá una categoría.")
-        .max(120, "Máximo 120 caracteres."),
-    }),
+    ...customSourceSchemas,
   ],
   { error: "Seleccioná una categoría." },
 );
 
-const amountSchema = z.string().refine((input) => {
-  const clean = input.replace(/[$]|US[$]|USD|ARS|\s/gi, "").trim();
-  const normalized =
-    clean.includes(",") && clean.includes(".")
-      ? clean.replace(/\./g, "").replace(",", ".")
-      : clean.includes(",")
-        ? clean.replace(",", ".")
-        : clean.includes(".") &&
-            (clean.split(".").length > 2 || clean.split(".")[1].length === 3)
-          ? clean.replace(/\./g, "")
-          : clean;
-  return Number.isFinite(Number(normalized)) && Number(normalized) > 0;
-}, "Ingresá un monto mayor a cero.");
-
 export const ExpenseDraftSchema = z.object({
-  concept: z
-    .string()
-    .trim()
-    .max(120, "Máximo 120 caracteres.")
-    .nullish()
-    .transform((value) => value || null),
+  concept: conceptSchema,
   source: sourceSchema,
   amount: amountSchema,
   currency: z.enum(["ARS", "USD"]),
   recurring: z.boolean(),
 });
 export const ExpenseMutationResponseSchema = z.object({
-  id: z.string().uuid(),
-  sourceKind: z.string(),
-  sourceId: z.string().uuid().nullable(),
-  concept: z.string().nullable(),
-  amount: z.string(),
-  currency: z.enum(["ARS", "USD"]),
-  recurring: z.boolean(),
+  ...entryResponseFields,
   effectiveMonth: z.iso.date(),
   endMonth: z.iso.date().nullable(),
 });

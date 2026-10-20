@@ -1,33 +1,41 @@
 import '@tanstack/react-start/server-only'
 import { SavingsPlaceMutationResponseSchema, SavingsTransferResponseSchema } from '@repo/shared-types'
-import { callFinancialApi } from '../financial/financial.server'
-
-async function mutate(path: string, method: string, body?: unknown) {
-  const response = await callFinancialApi(path, {
-    method,
-    ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
-  })
-  if (!response.ok) {
-    const error = await response.json().catch(() => null)
-    throw new Error(error?.message ?? 'No se pudo guardar el lugar de ahorro.')
-  }
-  return response
-}
+import { mutateFinancialApi } from '../financial/financial.server'
 
 export async function createSavingsPlaceServer({ data }: { data: { name: string } }) {
-  const response = await mutate('/savings-places', 'POST', data)
+  const response = await mutateFinancialApi(
+    '/savings-places',
+    'POST',
+    data,
+    'No se pudo guardar el lugar de ahorro.',
+  )
   return SavingsPlaceMutationResponseSchema.parse(await response.json())
 }
 
 export async function renameSavingsPlaceServer({ data }: { data: { placeId: string; name: string } }) {
-  await mutate(`/savings-places/${data.placeId}`, 'PATCH', { name: data.name })
+  await mutateFinancialApi(
+    `/savings-places/${data.placeId}`,
+    'PATCH',
+    { name: data.name },
+    'No se pudo guardar el lugar de ahorro.',
+  )
 }
 
 export async function deleteSavingsPlaceServer({ data }: { data: { placeId: string } }) {
-  await mutate(`/savings-places/${data.placeId}`, 'DELETE')
+  await mutateFinancialApi(
+    `/savings-places/${data.placeId}`,
+    'DELETE',
+    undefined,
+    'No se pudo guardar el lugar de ahorro.',
+  )
 }
 
 export async function transferSavingsServer({ data }: { data: { fromPlaceId: string; toPlaceId: string; currency: 'ARS' | 'USD'; amount: string } }) {
-  const response = await mutate('/savings-places/transfers', 'POST', data)
+  const response = await mutateFinancialApi(
+    '/savings-places/transfers',
+    'POST',
+    data,
+    'No se pudo guardar el lugar de ahorro.',
+  )
   return SavingsTransferResponseSchema.parse(await response.json())
 }

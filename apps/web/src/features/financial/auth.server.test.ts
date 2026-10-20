@@ -84,7 +84,7 @@ describe('financial access boundary', () => {
         profile: 'missing',
       })
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3001/me/profile',
+        `${process.env.API_BASE_URL ?? 'http://localhost:3001'}/me/profile`,
         expect.objectContaining({
           headers: expect.any(Headers),
           cache: 'no-store',

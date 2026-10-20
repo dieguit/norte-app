@@ -63,7 +63,34 @@ var ProfileResponseSchema = z2.object({
 );
 
 // src/income.schema.ts
+import { z as z4 } from "zod";
+
+// src/finance-entry.schema.ts
+import { isPositiveMoney, parseMoneyInput } from "@repo/finance-utils";
 import { z as z3 } from "zod";
+var amountSchema = z3.string().refine((amount) => {
+  const parsed = parseMoneyInput(amount, "ARS");
+  return parsed !== null && isPositiveMoney(parsed);
+}, "Ingres\xE1 un monto mayor a cero.");
+var conceptSchema = z3.string().trim().max(120, "M\xE1ximo 120 caracteres.").nullish().transform((value) => value || null);
+var customSourceSchemas = [
+  z3.object({ kind: z3.literal("custom"), sourceId: z3.string().uuid() }),
+  z3.object({
+    kind: z3.literal("custom"),
+    name: z3.string().trim().min(1, "Ingres\xE1 una categor\xEDa.").max(120, "M\xE1ximo 120 caracteres.")
+  })
+];
+var entryResponseFields = {
+  id: z3.string().uuid(),
+  sourceKind: z3.string(),
+  sourceId: z3.string().uuid().nullable(),
+  concept: z3.string().nullable(),
+  amount: z3.string(),
+  currency: z3.enum(["ARS", "USD"]),
+  recurring: z3.boolean()
+};
+
+// src/income.schema.ts
 var FIXED_INCOME_SOURCES = {
   salary: "Sueldo",
   independent: "Trabajo independiente",
@@ -79,52 +106,35 @@ var FIXED_INCOME_SOURCES = {
   refund: "Reintegro / devoluci\xF3n",
   extraordinary_income: "Rescate o cobro extraordinario"
 };
-var amountSchema = z3.string().refine((amount) => {
-  const clean = amount.replace(/[$]|US[$]|USD|ARS|\s/gi, "").trim();
-  if (!clean) return false;
-  const normalized = clean.includes(",") && clean.includes(".") ? clean.replace(/\./g, "").replace(",", ".") : clean.includes(",") ? clean.replace(",", ".") : clean.includes(".") && (clean.split(".").length > 2 || clean.split(".")[1].length === 3) ? clean.replace(/\./g, "") : clean;
-  return Number.isFinite(Number(normalized)) && Number(normalized) > 0;
-}, "Ingres\xE1 un monto mayor a cero.");
-var conceptSchema = z3.string().trim().max(120, "M\xE1ximo 120 caracteres.").nullish().transform((value) => value || null);
-var sourceSchema = z3.union(
+var sourceSchema = z4.union(
   [
-    z3.object({
-      kind: z3.enum(
+    z4.object({
+      kind: z4.enum(
         Object.keys(FIXED_INCOME_SOURCES)
       )
     }),
-    z3.object({ kind: z3.literal("custom"), sourceId: z3.string().uuid() }),
-    z3.object({
-      kind: z3.literal("custom"),
-      name: z3.string().trim().min(1, "Ingres\xE1 una categor\xEDa.").max(120, "M\xE1ximo 120 caracteres.")
-    })
+    ...customSourceSchemas
   ],
   { error: "Seleccion\xE1 una categor\xEDa." }
 );
-var IncomeDraftSchema = z3.object({
+var IncomeDraftSchema = z4.object({
   concept: conceptSchema,
   source: sourceSchema,
   amount: amountSchema,
-  currency: z3.enum(["ARS", "USD"]),
-  recurring: z3.boolean(),
-  effectiveMonth: z3.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Ingres\xE1 un mes v\xE1lido.")
+  currency: z4.enum(["ARS", "USD"]),
+  recurring: z4.boolean(),
+  effectiveMonth: z4.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Ingres\xE1 un mes v\xE1lido.")
 });
-var IncomeMutationResponseSchema = z3.object({
-  id: z3.string().uuid(),
-  userId: z3.string(),
-  sourceKind: z3.string(),
-  sourceId: z3.string().uuid().nullable(),
-  concept: z3.string().nullable(),
-  amount: z3.string(),
-  currency: z3.enum(["ARS", "USD"]),
-  recurring: z3.boolean(),
-  effectiveMonth: z3.string(),
-  createdAt: z3.iso.datetime(),
-  updatedAt: z3.iso.datetime()
+var IncomeMutationResponseSchema = z4.object({
+  ...entryResponseFields,
+  userId: z4.string(),
+  effectiveMonth: z4.string(),
+  createdAt: z4.iso.datetime(),
+  updatedAt: z4.iso.datetime()
 });
 
 // src/expense.schema.ts
-import { z as z4 } from "zod";
+import { z as z5 } from "zod";
 var fixedExpenseSources = [
   "housing",
   "school",
@@ -144,55 +154,40 @@ var fixedExpenseSources = [
   "technology",
   "taxes_fees"
 ];
-var sourceSchema2 = z4.union(
+var sourceSchema2 = z5.union(
   [
-    z4.object({ kind: z4.enum(fixedExpenseSources) }),
-    z4.object({ kind: z4.literal("custom"), sourceId: z4.string().uuid() }),
-    z4.object({
-      kind: z4.literal("custom"),
-      name: z4.string().trim().min(1, "Ingres\xE1 una categor\xEDa.").max(120, "M\xE1ximo 120 caracteres.")
-    })
+    z5.object({ kind: z5.enum(fixedExpenseSources) }),
+    ...customSourceSchemas
   ],
   { error: "Seleccion\xE1 una categor\xEDa." }
 );
-var amountSchema2 = z4.string().refine((input) => {
-  const clean = input.replace(/[$]|US[$]|USD|ARS|\s/gi, "").trim();
-  const normalized = clean.includes(",") && clean.includes(".") ? clean.replace(/\./g, "").replace(",", ".") : clean.includes(",") ? clean.replace(",", ".") : clean.includes(".") && (clean.split(".").length > 2 || clean.split(".")[1].length === 3) ? clean.replace(/\./g, "") : clean;
-  return Number.isFinite(Number(normalized)) && Number(normalized) > 0;
-}, "Ingres\xE1 un monto mayor a cero.");
-var ExpenseDraftSchema = z4.object({
-  concept: z4.string().trim().max(120, "M\xE1ximo 120 caracteres.").nullish().transform((value) => value || null),
+var ExpenseDraftSchema = z5.object({
+  concept: conceptSchema,
   source: sourceSchema2,
-  amount: amountSchema2,
-  currency: z4.enum(["ARS", "USD"]),
-  recurring: z4.boolean()
+  amount: amountSchema,
+  currency: z5.enum(["ARS", "USD"]),
+  recurring: z5.boolean()
 });
-var ExpenseMutationResponseSchema = z4.object({
-  id: z4.string().uuid(),
-  sourceKind: z4.string(),
-  sourceId: z4.string().uuid().nullable(),
-  concept: z4.string().nullable(),
-  amount: z4.string(),
-  currency: z4.enum(["ARS", "USD"]),
-  recurring: z4.boolean(),
-  effectiveMonth: z4.iso.date(),
-  endMonth: z4.iso.date().nullable()
+var ExpenseMutationResponseSchema = z5.object({
+  ...entryResponseFields,
+  effectiveMonth: z5.iso.date(),
+  endMonth: z5.iso.date().nullable()
 });
 
 // src/savings-place.schema.ts
-import { z as z5 } from "zod";
-var SavingsPlaceNameSchema = z5.string().trim().min(1).max(120);
-var CreateSavingsPlaceSchema = z5.object({ name: SavingsPlaceNameSchema });
-var RenameSavingsPlaceSchema = z5.object({ name: SavingsPlaceNameSchema });
-var SavingsPlaceIdParamsSchema = z5.object({ id: z5.string().uuid() });
-var SavingsTransferSchema = z5.object({
-  fromPlaceId: z5.string().uuid(),
-  toPlaceId: z5.string().uuid(),
-  currency: z5.enum(["ARS", "USD"]),
-  amount: z5.string().min(1)
+import { z as z6 } from "zod";
+var SavingsPlaceNameSchema = z6.string().trim().min(1).max(120);
+var CreateSavingsPlaceSchema = z6.object({ name: SavingsPlaceNameSchema });
+var RenameSavingsPlaceSchema = z6.object({ name: SavingsPlaceNameSchema });
+var SavingsPlaceIdParamsSchema = z6.object({ id: z6.string().uuid() });
+var SavingsTransferSchema = z6.object({
+  fromPlaceId: z6.string().uuid(),
+  toPlaceId: z6.string().uuid(),
+  currency: z6.enum(["ARS", "USD"]),
+  amount: z6.string().min(1)
 }).refine((value) => value.fromPlaceId !== value.toPlaceId, { message: "El origen y el destino deben ser distintos." });
-var SavingsPlaceMutationResponseSchema = z5.object({ placeId: z5.string().uuid() });
-var SavingsTransferResponseSchema = z5.object({ transferId: z5.string().uuid() });
+var SavingsPlaceMutationResponseSchema = z6.object({ placeId: z6.string().uuid() });
+var SavingsTransferResponseSchema = z6.object({ transferId: z6.string().uuid() });
 
 // src/usd-purchase.ts
 import BigNumber from "bignumber.js";
@@ -308,370 +303,370 @@ function deriveUsdPurchase(input) {
 }
 
 // src/contribution.schema.ts
-import { z as z7 } from "zod";
+import { z as z8 } from "zod";
 
 // src/goals.schema.ts
-import { z as z6 } from "zod";
-var CurrencySchema = z6.enum(["ARS", "USD"]);
-var MoneySchema2 = z6.object({ amount: z6.string(), currency: CurrencySchema }).strict();
-var DateSchema = z6.iso.date();
-var MonthSchema = z6.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-var ContributionSummarySchema = z6.object({
-  id: z6.string(),
-  kind: z6.enum(["saving", "investment"]),
-  userId: z6.string().optional(),
-  amount: z6.string(),
+import { z as z7 } from "zod";
+var CurrencySchema = z7.enum(["ARS", "USD"]);
+var MoneySchema2 = z7.object({ amount: z7.string(), currency: CurrencySchema }).strict();
+var DateSchema = z7.iso.date();
+var MonthSchema = z7.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+var ContributionSummarySchema = z7.object({
+  id: z7.string(),
+  kind: z7.enum(["saving", "investment"]),
+  userId: z7.string().optional(),
+  amount: z7.string(),
   currency: CurrencySchema,
-  placeId: z6.string().optional(),
-  placeName: z6.string().optional(),
-  arsSpent: z6.string().nullable().optional(),
-  effectiveRate: z6.string().nullable().optional(),
-  createdAt: z6.iso.datetime(),
-  allocations: z6.array(z6.object({ goalId: z6.string(), goalName: z6.string(), amount: z6.string(), percentage: z6.string() }).strict())
+  placeId: z7.string().optional(),
+  placeName: z7.string().optional(),
+  arsSpent: z7.string().nullable().optional(),
+  effectiveRate: z7.string().nullable().optional(),
+  createdAt: z7.iso.datetime(),
+  allocations: z7.array(z7.object({ goalId: z7.string(), goalName: z7.string(), amount: z7.string(), percentage: z7.string() }).strict())
 }).strict();
 var ContributionSchema = ContributionSummarySchema;
-var ProjectionSchema = z6.discriminatedUnion("status", [
-  z6.object({ status: z6.literal("available"), completionMonth: MonthSchema }).strict(),
-  ...["target_unavailable", "no_future_allocation", "commitment_absent", "plan_paused", "investment_assumption_unavailable", "outside_horizon"].map((status) => z6.object({ status: z6.literal(status) }).strict())
+var ProjectionSchema = z7.discriminatedUnion("status", [
+  z7.object({ status: z7.literal("available"), completionMonth: MonthSchema }).strict(),
+  ...["target_unavailable", "no_future_allocation", "commitment_absent", "plan_paused", "investment_assumption_unavailable", "outside_horizon"].map((status) => z7.object({ status: z7.literal(status) }).strict())
 ]);
-var GoalWorkspaceItemSchema = z6.object({
-  id: z6.string(),
-  name: z6.string(),
-  type: z6.string(),
+var GoalWorkspaceItemSchema = z7.object({
+  id: z7.string(),
+  name: z7.string(),
+  type: z7.string(),
   currency: CurrencySchema,
-  priority: z6.enum(["high", "medium", "low"]),
-  strategy: z6.enum(["save", "invest"]),
-  status: z6.enum(["active", "paused", "completed"]),
-  createdAt: z6.iso.datetime(),
+  priority: z7.enum(["high", "medium", "low"]),
+  strategy: z7.enum(["save", "invest"]),
+  status: z7.enum(["active", "paused", "completed"]),
+  createdAt: z7.iso.datetime(),
   desiredDate: DateSchema.optional(),
-  completedAt: z6.iso.datetime().optional(),
+  completedAt: z7.iso.datetime().optional(),
   targetAmount: MoneySchema2.optional(),
   savingsValue: MoneySchema2,
   investmentValue: MoneySchema2,
   actualValue: MoneySchema2,
-  progressPercentage: z6.string().optional(),
-  funding: z6.array(z6.object({ percentage: z6.string(), monthlyContribution: MoneySchema2.optional(), allocatedBaseAmount: MoneySchema2.optional(), allocatedDestinationAmount: MoneySchema2.optional(), effectiveMonth: DateSchema }).strict()),
+  progressPercentage: z7.string().optional(),
+  funding: z7.array(z7.object({ percentage: z7.string(), monthlyContribution: MoneySchema2.optional(), allocatedBaseAmount: MoneySchema2.optional(), allocatedDestinationAmount: MoneySchema2.optional(), effectiveMonth: DateSchema }).strict()),
   projection: ProjectionSchema,
-  desiredDateDeltaMonths: z6.number().optional(),
-  annualReturnRate: z6.string().optional(),
-  availability: z6.enum(["available_now", "available_from", "long_term"]).optional(),
+  desiredDateDeltaMonths: z7.number().optional(),
+  annualReturnRate: z7.string().optional(),
+  availability: z7.enum(["available_now", "available_from", "long_term"]).optional(),
   availableFrom: DateSchema.optional(),
-  usesPlanningRate: z6.boolean(),
-  completionEligible: z6.boolean(),
-  completionWithdrawals: z6.array(z6.object({ id: z6.string(), placeId: z6.string(), placeName: z6.string(), amount: MoneySchema2, createdAt: z6.iso.datetime() }).strict()).optional(),
-  contributions: z6.array(ContributionSchema).optional(),
-  savingContributions: z6.array(ContributionSchema).optional()
+  usesPlanningRate: z7.boolean(),
+  completionEligible: z7.boolean(),
+  completionWithdrawals: z7.array(z7.object({ id: z7.string(), placeId: z7.string(), placeName: z7.string(), amount: MoneySchema2, createdAt: z7.iso.datetime() }).strict()).optional(),
+  contributions: z7.array(ContributionSchema).optional(),
+  savingContributions: z7.array(ContributionSchema).optional()
 }).strict();
 var GoalSchema = GoalWorkspaceItemSchema;
-var FinancialSummarySchema = z6.object({ month: MonthSchema, income: MoneySchema2, expenses: MoneySchema2, balance: MoneySchema2, dedicationPercentage: z6.string(), contribution: MoneySchema2 }).strict();
-var WorkspaceSchema = z6.object({ financialSummary: FinancialSummarySchema, groups: z6.array(z6.object({ status: z6.enum(["active", "paused", "completed"]), goals: z6.array(GoalSchema) }).strict()) }).strict();
-var GoalCreationDraftSchema = z6.object({
-  type: z6.enum(["emergency_fund", "purchase", "retirement", "other"]),
-  name: z6.string(),
-  targetAmount: z6.string(),
+var FinancialSummarySchema = z7.object({ month: MonthSchema, income: MoneySchema2, expenses: MoneySchema2, balance: MoneySchema2, dedicationPercentage: z7.string(), contribution: MoneySchema2 }).strict();
+var WorkspaceSchema = z7.object({ financialSummary: FinancialSummarySchema, groups: z7.array(z7.object({ status: z7.enum(["active", "paused", "completed"]), goals: z7.array(GoalSchema) }).strict()) }).strict();
+var GoalCreationDraftSchema = z7.object({
+  type: z7.enum(["emergency_fund", "purchase", "retirement", "other"]),
+  name: z7.string(),
+  targetAmount: z7.string(),
   currency: CurrencySchema,
-  desiredMonth: z6.string(),
-  priority: z6.enum(["high", "medium", "low"]),
-  strategy: z6.enum(["save", "invest"]),
-  annualReturnRate: z6.string(),
-  availability: z6.enum(["available_now", "available_from", "long_term"]),
-  availableFromMonth: z6.string(),
-  allocations: z6.array(z6.object({ goalId: z6.string(), percentage: z6.string() }).strict())
+  desiredMonth: z7.string(),
+  priority: z7.enum(["high", "medium", "low"]),
+  strategy: z7.enum(["save", "invest"]),
+  annualReturnRate: z7.string(),
+  availability: z7.enum(["available_now", "available_from", "long_term"]),
+  availableFromMonth: z7.string(),
+  allocations: z7.array(z7.object({ goalId: z7.string(), percentage: z7.string() }).strict())
 }).strict();
 var GoalProjectionSchema = ProjectionSchema;
-var AllocationEntrySchema = z6.object({ goalId: z6.string(), goalName: z6.string(), percentage: z6.string(), allocatedBaseAmount: MoneySchema2.optional(), allocatedDestinationAmount: MoneySchema2.optional(), pending: z6.boolean() }).strict();
-var ProposalSourceSchema = z6.object({
-  profile: z6.object({ userId: z6.string(), baseCurrency: CurrencySchema, expensesKnowledge: z6.string(), plannedMonthlyContribution: z6.string().nullable().optional(), goalDedicationPercentage: z6.string().optional(), onboardingCompleted: z6.boolean() }).strict().nullable().optional(),
-  goals: z6.array(z6.object({ id: z6.string(), userId: z6.string().nullable().optional(), name: z6.string(), type: z6.string(), targetAmount: z6.string().nullable().optional(), currency: CurrencySchema, priority: z6.enum(["high", "medium", "low"]), strategy: z6.enum(["save", "invest"]), status: z6.enum(["active", "paused", "completed"]), desiredDate: z6.string().nullable().optional(), completedAt: z6.string().nullable().optional(), emergencyFundMonths: z6.number().nullable().optional(), createdAt: z6.string() }).strict()),
-  savingsPositions: z6.array(z6.object({ id: z6.string(), goalId: z6.string(), amount: z6.string(), currency: CurrencySchema, location: z6.string().nullable().optional() }).strict()),
-  investmentPositions: z6.array(z6.object({ id: z6.string(), goalId: z6.string(), currentValue: z6.string(), currency: CurrencySchema, annualReturnRate: z6.string().nullable().optional(), availability: z6.enum(["available_now", "available_from", "long_term"]).nullable().optional(), availableFrom: z6.string().nullable().optional() }).strict()),
-  snapshots: z6.array(z6.object({ id: z6.string(), userId: z6.string().nullable().optional(), effectiveMonth: z6.string() }).strict()),
-  allocations: z6.array(z6.object({ id: z6.string(), snapshotId: z6.string(), goalId: z6.string(), percentage: z6.string() }).strict()),
-  contributions: z6.array(ContributionSchema).optional(),
-  savingContributions: z6.array(ContributionSchema).optional(),
-  incomes: z6.array(z6.object({ id: z6.string(), sourceKind: z6.string(), sourceId: z6.string().nullable(), sourceName: z6.string().nullable(), concept: z6.string().nullable(), amount: z6.string(), currency: CurrencySchema, recurring: z6.boolean(), effectiveMonth: z6.string() }).strict()).optional(),
-  expenses: z6.array(z6.object({ id: z6.string(), sourceKind: z6.string(), sourceId: z6.string().nullable(), sourceName: z6.string().nullable(), concept: z6.string().nullable(), amount: z6.string(), currency: CurrencySchema, recurring: z6.boolean(), effectiveMonth: z6.string(), endMonth: z6.string().nullable() }).strict()).optional(),
-  completionWithdrawals: z6.array(z6.object({ id: z6.string(), goalId: z6.string(), placeId: z6.string(), placeName: z6.string(), amount: z6.string(), currency: CurrencySchema, createdAt: z6.string() }).strict()).optional()
+var AllocationEntrySchema = z7.object({ goalId: z7.string(), goalName: z7.string(), percentage: z7.string(), allocatedBaseAmount: MoneySchema2.optional(), allocatedDestinationAmount: MoneySchema2.optional(), pending: z7.boolean() }).strict();
+var ProposalSourceSchema = z7.object({
+  profile: z7.object({ userId: z7.string(), baseCurrency: CurrencySchema, expensesKnowledge: z7.string(), plannedMonthlyContribution: z7.string().nullable().optional(), goalDedicationPercentage: z7.string().optional(), onboardingCompleted: z7.boolean() }).strict().nullable().optional(),
+  goals: z7.array(z7.object({ id: z7.string(), userId: z7.string().nullable().optional(), name: z7.string(), type: z7.string(), targetAmount: z7.string().nullable().optional(), currency: CurrencySchema, priority: z7.enum(["high", "medium", "low"]), strategy: z7.enum(["save", "invest"]), status: z7.enum(["active", "paused", "completed"]), desiredDate: z7.string().nullable().optional(), completedAt: z7.string().nullable().optional(), emergencyFundMonths: z7.number().nullable().optional(), createdAt: z7.string() }).strict()),
+  savingsPositions: z7.array(z7.object({ id: z7.string(), goalId: z7.string(), amount: z7.string(), currency: CurrencySchema, location: z7.string().nullable().optional() }).strict()),
+  investmentPositions: z7.array(z7.object({ id: z7.string(), goalId: z7.string(), currentValue: z7.string(), currency: CurrencySchema, annualReturnRate: z7.string().nullable().optional(), availability: z7.enum(["available_now", "available_from", "long_term"]).nullable().optional(), availableFrom: z7.string().nullable().optional() }).strict()),
+  snapshots: z7.array(z7.object({ id: z7.string(), userId: z7.string().nullable().optional(), effectiveMonth: z7.string() }).strict()),
+  allocations: z7.array(z7.object({ id: z7.string(), snapshotId: z7.string(), goalId: z7.string(), percentage: z7.string() }).strict()),
+  contributions: z7.array(ContributionSchema).optional(),
+  savingContributions: z7.array(ContributionSchema).optional(),
+  incomes: z7.array(z7.object({ id: z7.string(), sourceKind: z7.string(), sourceId: z7.string().nullable(), sourceName: z7.string().nullable(), concept: z7.string().nullable(), amount: z7.string(), currency: CurrencySchema, recurring: z7.boolean(), effectiveMonth: z7.string() }).strict()).optional(),
+  expenses: z7.array(z7.object({ id: z7.string(), sourceKind: z7.string(), sourceId: z7.string().nullable(), sourceName: z7.string().nullable(), concept: z7.string().nullable(), amount: z7.string(), currency: CurrencySchema, recurring: z7.boolean(), effectiveMonth: z7.string(), endMonth: z7.string().nullable() }).strict()).optional(),
+  completionWithdrawals: z7.array(z7.object({ id: z7.string(), goalId: z7.string(), placeId: z7.string(), placeName: z7.string(), amount: z7.string(), currency: CurrencySchema, createdAt: z7.string() }).strict()).optional()
 }).strict();
-var GoalCreationProposalSchema = z6.object({
-  normalizedGoal: z6.object({ name: z6.string(), type: z6.enum(["emergency_fund", "purchase", "retirement", "other"]), targetAmount: MoneySchema2.optional(), currency: CurrencySchema, priority: z6.enum(["high", "medium", "low"]), strategy: z6.enum(["save", "invest"]), desiredDate: DateSchema.optional(), emergencyFundMonths: z6.number().optional() }).strict(),
-  investment: z6.object({ annualReturnRate: z6.string(), availability: z6.enum(["available_now", "available_from", "long_term"]), availableFrom: DateSchema.optional() }).strict().optional(),
-  allocation: z6.object({ monthlyContribution: MoneySchema2.optional(), effectiveMonth: z6.string(), entries: z6.array(AllocationEntrySchema), totalPercentage: z6.string() }).strict(),
-  impacts: z6.array(z6.object({ goalId: z6.string(), goalName: z6.string(), before: z6.discriminatedUnion("status", [z6.object({ status: z6.literal("not_created") }).strict(), z6.object({ status: z6.literal("existing"), projection: GoalProjectionSchema, allocatedMonthlyAmounts: z6.array(MoneySchema2) }).strict()]), after: GoalProjectionSchema }).strict()),
+var GoalCreationProposalSchema = z7.object({
+  normalizedGoal: z7.object({ name: z7.string(), type: z7.enum(["emergency_fund", "purchase", "retirement", "other"]), targetAmount: MoneySchema2.optional(), currency: CurrencySchema, priority: z7.enum(["high", "medium", "low"]), strategy: z7.enum(["save", "invest"]), desiredDate: DateSchema.optional(), emergencyFundMonths: z7.number().optional() }).strict(),
+  investment: z7.object({ annualReturnRate: z7.string(), availability: z7.enum(["available_now", "available_from", "long_term"]), availableFrom: DateSchema.optional() }).strict().optional(),
+  allocation: z7.object({ monthlyContribution: MoneySchema2.optional(), effectiveMonth: z7.string(), entries: z7.array(AllocationEntrySchema), totalPercentage: z7.string() }).strict(),
+  impacts: z7.array(z7.object({ goalId: z7.string(), goalName: z7.string(), before: z7.discriminatedUnion("status", [z7.object({ status: z7.literal("not_created") }).strict(), z7.object({ status: z7.literal("existing"), projection: GoalProjectionSchema, allocatedMonthlyAmounts: z7.array(MoneySchema2) }).strict()]), after: GoalProjectionSchema }).strict()),
   proposedSource: ProposalSourceSchema
 }).strict();
 var GoalCreationDraftWireSchema = GoalCreationDraftSchema;
-var ConfirmGoalCreationWireSchema = z6.object({ draft: GoalCreationDraftSchema, previewToken: z6.string().regex(/^[a-f0-9]{64}$/) }).strict();
-var GoalCreationContextWireSchema = z6.object({ currentMonth: MonthSchema, expensesKnowledge: z6.enum(["known", "unknown"]), hasEmergencyFund: z6.boolean(), plannedMonthlyContribution: MoneySchema2.optional(), currentAllocation: z6.object({ effectiveMonth: z6.string(), entries: z6.array(z6.object({ goalId: z6.string(), percentage: z6.string() }).strict()) }).strict().optional() }).strict();
-var GoalCreationContextMissingSchema = z6.object({ profile: z6.literal("missing") }).strict();
-var GoalCreationContextPresentSchema = z6.object({ profile: z6.literal("present"), context: GoalCreationContextWireSchema }).strict();
-var GoalCreationContextStateSchema = z6.discriminatedUnion("profile", [GoalCreationContextMissingSchema, GoalCreationContextPresentSchema]);
-var GoalCreationPreviewSchema = z6.object({ proposal: GoalCreationProposalSchema, previewToken: z6.string().regex(/^[a-f0-9]{64}$/) }).strict();
-var GoalCreationCreatedSchema = z6.object({ status: z6.literal("created"), goalId: z6.string() }).strict();
-var GoalCreationStaleSchema = z6.object({ status: z6.literal("stale"), preview: GoalCreationPreviewSchema }).strict();
-var GoalCreationConfirmationSchema = z6.discriminatedUnion("status", [GoalCreationCreatedSchema, GoalCreationStaleSchema]);
-var AllocationChangeDraftWireSchema = z6.object({
-  dedicationPercentage: z6.number().int().min(0).max(100),
-  allocations: z6.array(z6.object({ goalId: z6.string(), percentage: z6.string() }).strict()).min(1)
+var ConfirmGoalCreationWireSchema = z7.object({ draft: GoalCreationDraftSchema, previewToken: z7.string().regex(/^[a-f0-9]{64}$/) }).strict();
+var GoalCreationContextWireSchema = z7.object({ currentMonth: MonthSchema, expensesKnowledge: z7.enum(["known", "unknown"]), hasEmergencyFund: z7.boolean(), plannedMonthlyContribution: MoneySchema2.optional(), currentAllocation: z7.object({ effectiveMonth: z7.string(), entries: z7.array(z7.object({ goalId: z7.string(), percentage: z7.string() }).strict()) }).strict().optional() }).strict();
+var GoalCreationContextMissingSchema = z7.object({ profile: z7.literal("missing") }).strict();
+var GoalCreationContextPresentSchema = z7.object({ profile: z7.literal("present"), context: GoalCreationContextWireSchema }).strict();
+var GoalCreationContextStateSchema = z7.discriminatedUnion("profile", [GoalCreationContextMissingSchema, GoalCreationContextPresentSchema]);
+var GoalCreationPreviewSchema = z7.object({ proposal: GoalCreationProposalSchema, previewToken: z7.string().regex(/^[a-f0-9]{64}$/) }).strict();
+var GoalCreationCreatedSchema = z7.object({ status: z7.literal("created"), goalId: z7.string() }).strict();
+var GoalCreationStaleSchema = z7.object({ status: z7.literal("stale"), preview: GoalCreationPreviewSchema }).strict();
+var GoalCreationConfirmationSchema = z7.discriminatedUnion("status", [GoalCreationCreatedSchema, GoalCreationStaleSchema]);
+var AllocationChangeDraftWireSchema = z7.object({
+  dedicationPercentage: z7.number().int().min(0).max(100),
+  allocations: z7.array(z7.object({ goalId: z7.string(), percentage: z7.string() }).strict()).min(1)
 }).strict();
-var ConfirmAllocationChangeWireSchema = z6.object({ draft: AllocationChangeDraftWireSchema, previewToken: z6.string().regex(/^[a-f0-9]{64}$/) }).strict();
+var ConfirmAllocationChangeWireSchema = z7.object({ draft: AllocationChangeDraftWireSchema, previewToken: z7.string().regex(/^[a-f0-9]{64}$/) }).strict();
 var AllocationSchema = GoalCreationProposalSchema.shape.allocation;
 var ImpactsSchema = GoalCreationProposalSchema.shape.impacts;
-var AllocationChangePreviewSchema = z6.object({
-  proposal: z6.object({
-    dedicationPercentage: z6.number().int().min(0).max(100),
+var AllocationChangePreviewSchema = z7.object({
+  proposal: z7.object({
+    dedicationPercentage: z7.number().int().min(0).max(100),
     allocation: AllocationSchema,
     impacts: ImpactsSchema,
     proposedSource: ProposalSourceSchema
   }).strict(),
-  previewToken: z6.string().regex(/^[a-f0-9]{64}$/)
+  previewToken: z7.string().regex(/^[a-f0-9]{64}$/)
 }).strict();
-var AllocationChangeUpdatedSchema = z6.object({ status: z6.literal("updated") }).strict();
-var AllocationChangeStaleSchema = z6.object({ status: z6.literal("stale"), preview: AllocationChangePreviewSchema }).strict();
-var AllocationChangeConfirmationSchema = z6.discriminatedUnion("status", [AllocationChangeUpdatedSchema, AllocationChangeStaleSchema]);
-var AllocationSnapshotSchema = z6.object({ effectiveMonth: z6.string(), entries: z6.array(z6.object({ goalId: z6.string(), percentage: z6.string() }).strict()) }).strict();
-var AllocationChangeContextSchema = z6.object({
+var AllocationChangeUpdatedSchema = z7.object({ status: z7.literal("updated") }).strict();
+var AllocationChangeStaleSchema = z7.object({ status: z7.literal("stale"), preview: AllocationChangePreviewSchema }).strict();
+var AllocationChangeConfirmationSchema = z7.discriminatedUnion("status", [AllocationChangeUpdatedSchema, AllocationChangeStaleSchema]);
+var AllocationSnapshotSchema = z7.object({ effectiveMonth: z7.string(), entries: z7.array(z7.object({ goalId: z7.string(), percentage: z7.string() }).strict()) }).strict();
+var AllocationChangeContextSchema = z7.object({
   currentMonth: MonthSchema,
   financialSummary: FinancialSummarySchema,
   plannedMonthlyContribution: MoneySchema2.optional(),
-  activeGoals: z6.array(z6.object({ id: z6.string(), name: z6.string(), currency: CurrencySchema, projection: ProjectionSchema }).strict()),
+  activeGoals: z7.array(z7.object({ id: z7.string(), name: z7.string(), currency: CurrencySchema, projection: ProjectionSchema }).strict()),
   currentAllocation: AllocationSnapshotSchema.optional(),
   pendingAllocation: AllocationSnapshotSchema.optional()
 }).strict();
-var AllocationChangeContextStateSchema = z6.discriminatedUnion("profile", [
+var AllocationChangeContextStateSchema = z7.discriminatedUnion("profile", [
   GoalCreationContextMissingSchema,
-  z6.object({ profile: z6.literal("present"), context: AllocationChangeContextSchema }).strict()
+  z7.object({ profile: z7.literal("present"), context: AllocationChangeContextSchema }).strict()
 ]);
-var GoalLifecycleActionSchema = z6.enum(["pause", "resume"]);
-var GoalLifecycleAllocationEntrySchema = z6.object({ goalId: z6.string(), percentage: z6.string() }).strict();
-var GoalLifecycleContextSchema = z6.object({
-  goalId: z6.string(),
+var GoalLifecycleActionSchema = z7.enum(["pause", "resume"]);
+var GoalLifecycleAllocationEntrySchema = z7.object({ goalId: z7.string(), percentage: z7.string() }).strict();
+var allocationContextFields = {
+  plannedMonthlyContribution: MoneySchema2.optional(),
+  activeGoals: z7.array(z7.object({ id: z7.string(), name: z7.string(), currency: CurrencySchema }).strict()),
+  currentAllocation: AllocationSnapshotSchema.optional(),
+  pendingAllocation: AllocationSnapshotSchema.optional()
+};
+var GoalLifecycleContextSchema = z7.object({
+  goalId: z7.string(),
   lifecycle: GoalLifecycleActionSchema,
-  goalName: z6.string(),
+  goalName: z7.string(),
   goalCurrency: CurrencySchema,
   currentMonth: MonthSchema,
-  plannedMonthlyContribution: MoneySchema2.optional(),
-  activeGoals: z6.array(z6.object({ id: z6.string(), name: z6.string(), currency: CurrencySchema }).strict()),
-  currentAllocation: AllocationSnapshotSchema.optional(),
-  pendingAllocation: AllocationSnapshotSchema.optional()
+  ...allocationContextFields
 }).strict();
-var GoalLifecyclePreviewWireSchema = z6.object({ lifecycle: GoalLifecycleActionSchema, allocations: z6.array(GoalLifecycleAllocationEntrySchema).optional() }).strict();
-var ConfirmGoalLifecycleWireSchema = z6.object({
+var GoalLifecyclePreviewWireSchema = z7.object({ lifecycle: GoalLifecycleActionSchema, allocations: z7.array(GoalLifecycleAllocationEntrySchema).optional() }).strict();
+var ConfirmGoalLifecycleWireSchema = z7.object({
   lifecycle: GoalLifecycleActionSchema,
-  allocations: z6.array(GoalLifecycleAllocationEntrySchema),
-  previewToken: z6.string().regex(/^[a-f0-9]{64}$/)
+  allocations: z7.array(GoalLifecycleAllocationEntrySchema),
+  previewToken: z7.string().regex(/^[a-f0-9]{64}$/)
 }).strict();
-var GoalStatusSchema = z6.enum(["active", "paused", "completed"]);
-var GoalLifecyclePreviewSchema = z6.object({
-  proposal: z6.object({
+var GoalStatusSchema = z7.enum(["active", "paused", "completed"]);
+var GoalLifecyclePreviewSchema = z7.object({
+  proposal: z7.object({
     lifecycle: GoalLifecycleActionSchema,
-    goalId: z6.string(),
+    goalId: z7.string(),
     nextStatus: GoalStatusSchema,
-    transition: z6.object({ goalId: z6.string(), status: GoalStatusSchema }).strict(),
-    pauseMonthlyCommitment: z6.boolean(),
+    transition: z7.object({ goalId: z7.string(), status: GoalStatusSchema }).strict(),
+    pauseMonthlyCommitment: z7.boolean(),
     allocation: AllocationSchema,
     persistedAllocation: AllocationSnapshotSchema,
     impacts: ImpactsSchema,
     proposedSource: ProposalSourceSchema
   }).strict(),
-  previewToken: z6.string().regex(/^[a-f0-9]{64}$/)
+  previewToken: z7.string().regex(/^[a-f0-9]{64}$/)
 }).strict();
-var GoalLifecycleUpdatedSchema = z6.object({ status: z6.literal("updated") }).strict();
-var GoalLifecycleStaleSchema = z6.object({ status: z6.literal("stale"), preview: GoalLifecyclePreviewSchema }).strict();
-var GoalLifecycleConfirmationSchema = z6.discriminatedUnion("status", [GoalLifecycleUpdatedSchema, GoalLifecycleStaleSchema]);
-var GoalCompletionContextSchema = z6.object({
-  goalId: z6.string(),
-  goalName: z6.string(),
+var GoalLifecycleUpdatedSchema = z7.object({ status: z7.literal("updated") }).strict();
+var GoalLifecycleStaleSchema = z7.object({ status: z7.literal("stale"), preview: GoalLifecyclePreviewSchema }).strict();
+var GoalLifecycleConfirmationSchema = z7.discriminatedUnion("status", [GoalLifecycleUpdatedSchema, GoalLifecycleStaleSchema]);
+var GoalCompletionContextSchema = z7.object({
+  goalId: z7.string(),
+  goalName: z7.string(),
   targetAmount: MoneySchema2,
   savingsValue: MoneySchema2,
   currentMonth: MonthSchema,
-  plannedMonthlyContribution: MoneySchema2.optional(),
-  savingsPlaces: z6.array(z6.object({ id: z6.string(), name: z6.string(), balance: MoneySchema2 }).strict()),
-  activeGoals: z6.array(z6.object({ id: z6.string(), name: z6.string(), currency: CurrencySchema }).strict()),
-  currentAllocation: AllocationSnapshotSchema.optional(),
-  pendingAllocation: AllocationSnapshotSchema.optional()
+  savingsPlaces: z7.array(z7.object({ id: z7.string(), name: z7.string(), balance: MoneySchema2 }).strict()),
+  ...allocationContextFields
 }).strict();
-var GoalCompletionContextPresentSchema = z6.object({ profile: z6.literal("present"), context: GoalCompletionContextSchema }).strict();
-var GoalCompletionContextStateSchema = z6.discriminatedUnion("profile", [GoalCreationContextMissingSchema, GoalCompletionContextPresentSchema]);
-var GoalCompletionPreviewWireSchema = z6.object({
-  withdrawals: z6.array(z6.object({ placeId: z6.string(), amount: z6.string() }).strict()),
-  allocations: z6.array(GoalLifecycleAllocationEntrySchema)
+var GoalCompletionContextPresentSchema = z7.object({ profile: z7.literal("present"), context: GoalCompletionContextSchema }).strict();
+var GoalCompletionContextStateSchema = z7.discriminatedUnion("profile", [GoalCreationContextMissingSchema, GoalCompletionContextPresentSchema]);
+var GoalCompletionPreviewWireSchema = z7.object({
+  withdrawals: z7.array(z7.object({ placeId: z7.string(), amount: z7.string() }).strict()),
+  allocations: z7.array(GoalLifecycleAllocationEntrySchema)
 }).strict();
-var ConfirmGoalCompletionWireSchema = z6.object({
-  withdrawals: z6.array(z6.object({ placeId: z6.string(), amount: z6.string() }).strict()),
-  allocations: z6.array(GoalLifecycleAllocationEntrySchema),
-  previewToken: z6.string().regex(/^[a-f0-9]{64}$/)
+var ConfirmGoalCompletionWireSchema = z7.object({
+  withdrawals: z7.array(z7.object({ placeId: z7.string(), amount: z7.string() }).strict()),
+  allocations: z7.array(GoalLifecycleAllocationEntrySchema),
+  previewToken: z7.string().regex(/^[a-f0-9]{64}$/)
 }).strict();
-var GoalCompletionPreviewSchema = z6.object({
-  proposal: z6.object({
-    goalId: z6.string(),
-    goalName: z6.string(),
+var GoalCompletionPreviewSchema = z7.object({
+  proposal: z7.object({
+    goalId: z7.string(),
+    goalName: z7.string(),
     targetAmount: MoneySchema2,
-    withdrawals: z6.array(z6.object({ placeId: z6.string(), placeName: z6.string(), amount: MoneySchema2 }).strict()),
+    withdrawals: z7.array(z7.object({ placeId: z7.string(), placeName: z7.string(), amount: MoneySchema2 }).strict()),
     allocation: AllocationSchema,
     persistedAllocation: AllocationSnapshotSchema,
-    pauseMonthlyCommitment: z6.boolean(),
+    pauseMonthlyCommitment: z7.boolean(),
     impacts: ImpactsSchema,
     proposedSource: ProposalSourceSchema
   }).strict(),
-  previewToken: z6.string().regex(/^[a-f0-9]{64}$/)
+  previewToken: z7.string().regex(/^[a-f0-9]{64}$/)
 }).strict();
-var GoalCompletionCompletedSchema = z6.object({ status: z6.literal("completed"), completedAt: z6.iso.datetime() }).strict();
-var GoalCompletionStaleSchema = z6.object({ status: z6.literal("stale"), preview: GoalCompletionPreviewSchema }).strict();
-var GoalCompletionInvalidSchema = z6.object({ status: z6.literal("invalid"), message: z6.string() }).strict();
-var GoalCompletionConfirmationSchema = z6.discriminatedUnion("status", [GoalCompletionCompletedSchema, GoalCompletionStaleSchema, GoalCompletionInvalidSchema]);
-var GoalPlanQueryWireSchema = z6.object({ goalId: z6.string().uuid().optional(), action: GoalLifecycleActionSchema.optional() }).refine((query) => query.action === void 0 || query.goalId !== void 0, { message: "Falta el objetivo de la acci\xF3n." });
-var GoalIdPathWireSchema = z6.object({ id: z6.string().uuid() }).strict();
-var GoalPlanEditContextWireSchema = z6.object({
-  goalId: z6.string().uuid(),
-  status: z6.enum(["active", "paused"]),
+var GoalCompletionCompletedSchema = z7.object({ status: z7.literal("completed"), completedAt: z7.iso.datetime() }).strict();
+var GoalCompletionStaleSchema = z7.object({ status: z7.literal("stale"), preview: GoalCompletionPreviewSchema }).strict();
+var GoalCompletionInvalidSchema = z7.object({ status: z7.literal("invalid"), message: z7.string() }).strict();
+var GoalCompletionConfirmationSchema = z7.discriminatedUnion("status", [GoalCompletionCompletedSchema, GoalCompletionStaleSchema, GoalCompletionInvalidSchema]);
+var GoalPlanQueryWireSchema = z7.object({ goalId: z7.string().uuid().optional(), action: GoalLifecycleActionSchema.optional() }).refine((query) => query.action === void 0 || query.goalId !== void 0, { message: "Falta el objetivo de la acci\xF3n." });
+var GoalIdPathWireSchema = z7.object({ id: z7.string().uuid() }).strict();
+var GoalPlanEditContextWireSchema = z7.object({
+  goalId: z7.string().uuid(),
+  status: z7.enum(["active", "paused"]),
   draft: GoalCreationDraftSchema
 }).strict();
-var GoalPlanContextPresentSchema = z6.object({
-  profile: z6.literal("present"),
+var GoalPlanContextPresentSchema = z7.object({
+  profile: z7.literal("present"),
   context: GoalCreationContextWireSchema,
   editContext: GoalPlanEditContextWireSchema.optional(),
   allocationContext: AllocationChangeContextSchema.optional(),
   lifecycleContext: GoalLifecycleContextSchema.optional()
 }).strict();
-var GoalPlanContextStateSchema = z6.discriminatedUnion("profile", [GoalCreationContextMissingSchema, GoalPlanContextPresentSchema]);
-var GoalEditConfirmWireSchema = z6.object({ draft: GoalCreationDraftSchema, previewToken: z6.string().regex(/^[a-f0-9]{64}$/) }).strict();
-var GoalEditUpdatedSchema = z6.object({ status: z6.literal("updated") }).strict();
-var GoalEditStaleSchema = z6.object({ status: z6.literal("stale"), preview: GoalCreationPreviewSchema }).strict();
-var GoalEditConfirmationSchema = z6.discriminatedUnion("status", [GoalEditUpdatedSchema, GoalEditStaleSchema]);
-var GoalsWorkspaceMissingSchema = z6.object({ profile: z6.literal("missing") }).strict();
-var GoalsWorkspacePresentSchema = z6.object({ profile: z6.literal("present"), workspace: WorkspaceSchema }).strict();
-var GoalsWorkspaceSchema = z6.discriminatedUnion("profile", [GoalsWorkspaceMissingSchema, GoalsWorkspacePresentSchema]);
+var GoalPlanContextStateSchema = z7.discriminatedUnion("profile", [GoalCreationContextMissingSchema, GoalPlanContextPresentSchema]);
+var GoalEditConfirmWireSchema = z7.object({ draft: GoalCreationDraftSchema, previewToken: z7.string().regex(/^[a-f0-9]{64}$/) }).strict();
+var GoalEditUpdatedSchema = z7.object({ status: z7.literal("updated") }).strict();
+var GoalEditStaleSchema = z7.object({ status: z7.literal("stale"), preview: GoalCreationPreviewSchema }).strict();
+var GoalEditConfirmationSchema = z7.discriminatedUnion("status", [GoalEditUpdatedSchema, GoalEditStaleSchema]);
+var GoalsWorkspaceMissingSchema = z7.object({ profile: z7.literal("missing") }).strict();
+var GoalsWorkspacePresentSchema = z7.object({ profile: z7.literal("present"), workspace: WorkspaceSchema }).strict();
+var GoalsWorkspaceSchema = z7.discriminatedUnion("profile", [GoalsWorkspaceMissingSchema, GoalsWorkspacePresentSchema]);
 
 // src/contribution.schema.ts
-var MonthSchema2 = z7.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-var PreviewTokenSchema = z7.string().regex(/^[a-f0-9]{64}$/, "Token de vista previa inv\xE1lido.");
-var ContributionIdSchema = z7.string().uuid("ID de aporte inv\xE1lido.");
-var CatchUpMonthSchema = z7.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mes de regularizaci\xF3n inv\xE1lido.");
-var SavingsPlaceSelectionWireSchema = z7.discriminatedUnion("kind", [
-  z7.object({ kind: z7.literal("existing"), placeId: z7.string().uuid("Eleg\xED un lugar v\xE1lido.") }).strict(),
-  z7.object({ kind: z7.literal("new"), name: z7.string().trim().min(1, "Escrib\xED un nombre para el lugar.").max(120) }).strict()
+var MonthSchema2 = z8.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+var PreviewTokenSchema = z8.string().regex(/^[a-f0-9]{64}$/, "Token de vista previa inv\xE1lido.");
+var ContributionIdSchema = z8.string().uuid("ID de aporte inv\xE1lido.");
+var CatchUpMonthSchema = z8.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mes de regularizaci\xF3n inv\xE1lido.");
+var SavingsPlaceSelectionWireSchema = z8.discriminatedUnion("kind", [
+  z8.object({ kind: z8.literal("existing"), placeId: z8.string().uuid("Eleg\xED un lugar v\xE1lido.") }).strict(),
+  z8.object({ kind: z8.literal("new"), name: z8.string().trim().min(1, "Escrib\xED un nombre para el lugar.").max(120) }).strict()
 ]);
-var ContributionDraftWireBaseSchema = z7.object({
-  kind: z7.enum(["saving", "investment"]).optional().default("saving"),
-  currency: z7.enum(["ARS", "USD"]),
-  amount: z7.string(),
+var ContributionDraftWireBaseSchema = z8.object({
+  kind: z8.enum(["saving", "investment"]).optional().default("saving"),
+  currency: z8.enum(["ARS", "USD"]),
+  amount: z8.string(),
   place: SavingsPlaceSelectionWireSchema.optional(),
-  arsSpent: z7.string().nullish(),
-  effectiveRate: z7.string().nullish()
+  arsSpent: z8.string().nullish(),
+  effectiveRate: z8.string().nullish()
 }).strict();
 var SavingContributionDraftWireSchema = ContributionDraftWireBaseSchema.superRefine((data, ctx) => {
   if (data.kind === "saving" && !data.place) {
     ctx.addIssue({ code: "custom", message: "Eleg\xED un lugar para tu ahorro.", path: ["place"] });
   }
 });
-var ConfirmSavingContributionWireSchema = z7.object({
+var ConfirmSavingContributionWireSchema = z8.object({
   draft: SavingContributionDraftWireSchema,
   previewToken: PreviewTokenSchema,
   catchUpMonth: CatchUpMonthSchema.optional()
 }).strict();
-var UpdateSavingContributionWireSchema = z7.object({
+var UpdateSavingContributionWireSchema = z8.object({
   draft: SavingContributionDraftWireSchema
 }).strict();
-var ContributionIdPathWireSchema = z7.object({ id: ContributionIdSchema }).strict();
-var EligibleGoalSchema = z7.object({
-  id: z7.string(),
-  name: z7.string(),
-  percentage: z7.union([z7.string(), z7.number()])
+var ContributionIdPathWireSchema = z8.object({ id: ContributionIdSchema }).strict();
+var EligibleGoalSchema = z8.object({
+  id: z8.string(),
+  name: z8.string(),
+  percentage: z8.union([z8.string(), z8.number()])
 }).strict();
-var InvestmentCurrencyStateSchema = z7.discriminatedUnion("status", [
-  z7.object({ status: z7.literal("ready") }).strict(),
-  z7.object({ status: z7.literal("incomplete"), reason: z7.literal("missing_investment_position") }).strict()
+var InvestmentCurrencyStateSchema = z8.discriminatedUnion("status", [
+  z8.object({ status: z8.literal("ready") }).strict(),
+  z8.object({ status: z8.literal("incomplete"), reason: z8.literal("missing_investment_position") }).strict()
 ]);
-var SavingContributionContextSchema = z7.object({
+var SavingContributionContextSchema = z8.object({
   currentMonth: MonthSchema2,
-  eligibleGoals: z7.array(EligibleGoalSchema),
-  eligibleGoalsUsd: z7.array(EligibleGoalSchema),
-  eligibleInvestmentGoals: z7.array(EligibleGoalSchema).optional(),
-  eligibleInvestmentGoalsUsd: z7.array(EligibleGoalSchema).optional(),
+  eligibleGoals: z8.array(EligibleGoalSchema),
+  eligibleGoalsUsd: z8.array(EligibleGoalSchema),
+  eligibleInvestmentGoals: z8.array(EligibleGoalSchema).optional(),
+  eligibleInvestmentGoalsUsd: z8.array(EligibleGoalSchema).optional(),
   monthlyTargetArs: MoneySchema2.nullish(),
   monthlyTargetUsd: MoneySchema2.nullish(),
   monthlyInvestmentTargetArs: MoneySchema2.nullish(),
   monthlyInvestmentTargetUsd: MoneySchema2.nullish(),
-  places: z7.array(z7.object({ id: z7.string(), name: z7.string() }).strict()),
-  investmentState: z7.object({ ars: InvestmentCurrencyStateSchema, usd: InvestmentCurrencyStateSchema }).strict()
+  places: z8.array(z8.object({ id: z8.string(), name: z8.string() }).strict()),
+  investmentState: z8.object({ ars: InvestmentCurrencyStateSchema, usd: InvestmentCurrencyStateSchema }).strict()
 }).strict();
-var SavingContributionContextMissingSchema = z7.object({ profile: z7.literal("missing") }).strict();
-var SavingContributionContextPresentSchema = z7.object({ profile: z7.literal("present"), context: SavingContributionContextSchema }).strict();
-var SavingContributionContextStateSchema = z7.discriminatedUnion("profile", [
+var SavingContributionContextMissingSchema = z8.object({ profile: z8.literal("missing") }).strict();
+var SavingContributionContextPresentSchema = z8.object({ profile: z8.literal("present"), context: SavingContributionContextSchema }).strict();
+var SavingContributionContextStateSchema = z8.discriminatedUnion("profile", [
   SavingContributionContextMissingSchema,
   SavingContributionContextPresentSchema
 ]);
-var SavingDraftResultSchema = z7.object({
-  kind: z7.enum(["saving", "investment"]).optional(),
-  currency: z7.enum(["ARS", "USD"]),
+var SavingDraftResultSchema = z8.object({
+  kind: z8.enum(["saving", "investment"]).optional(),
+  currency: z8.enum(["ARS", "USD"]),
   amount: MoneySchema2,
   place: SavingsPlaceSelectionWireSchema.optional(),
   arsSpent: MoneySchema2.optional(),
-  effectiveRate: z7.string().optional()
+  effectiveRate: z8.string().optional()
 }).strict();
-var SavingAllocationPreviewSchema = z7.object({
-  goalId: z7.string(),
-  goalName: z7.string(),
-  percentage: z7.string(),
+var SavingAllocationPreviewSchema = z8.object({
+  goalId: z8.string(),
+  goalName: z8.string(),
+  percentage: z8.string(),
   amount: MoneySchema2,
-  progressBefore: z7.string().optional(),
-  progressAfter: z7.string().optional(),
+  progressBefore: z8.string().optional(),
+  progressAfter: z8.string().optional(),
   projectionBefore: ProjectionSchema.optional(),
   projectionAfter: ProjectionSchema.optional()
 }).strict();
-var SavingContributionPreviewBodySchema = z7.object({
+var SavingContributionPreviewBodySchema = z8.object({
   draft: SavingDraftResultSchema,
-  allocations: z7.array(SavingAllocationPreviewSchema)
+  allocations: z8.array(SavingAllocationPreviewSchema)
 }).strict();
-var SavingContributionEditPreviewSchema = z7.object({
+var SavingContributionEditPreviewSchema = z8.object({
   preview: SavingContributionPreviewBodySchema
 }).strict();
-var SavingContributionPreviewSchema = z7.object({
+var SavingContributionPreviewSchema = z8.object({
   preview: SavingContributionPreviewBodySchema,
   previewToken: PreviewTokenSchema
 }).strict();
-var SavingContributionCreatedSchema = z7.object({ status: z7.literal("created"), contributionId: z7.string().uuid() }).strict();
-var SavingContributionStaleSchema = z7.object({ status: z7.literal("stale"), preview: SavingContributionPreviewSchema }).strict();
-var SavingContributionConfirmationSchema = z7.discriminatedUnion("status", [
+var SavingContributionCreatedSchema = z8.object({ status: z8.literal("created"), contributionId: z8.string().uuid() }).strict();
+var SavingContributionStaleSchema = z8.object({ status: z8.literal("stale"), preview: SavingContributionPreviewSchema }).strict();
+var SavingContributionConfirmationSchema = z8.discriminatedUnion("status", [
   SavingContributionCreatedSchema,
   SavingContributionStaleSchema
 ]);
-var SavingContributionUpdatedSchema = z7.object({ status: z7.literal("updated") }).strict();
-var SavingContributionDeletedSchema = z7.object({ status: z7.literal("deleted") }).strict();
+var SavingContributionUpdatedSchema = z8.object({ status: z8.literal("updated") }).strict();
+var SavingContributionDeletedSchema = z8.object({ status: z8.literal("deleted") }).strict();
 
 // src/finances.schema.ts
-import { z as z8 } from "zod";
-var IdSchema = z8.uuid();
-var MonthSchema3 = z8.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-var DateSchema2 = z8.iso.date();
-var SourceSchema = z8.object({ id: IdSchema, name: z8.string(), normalizedName: z8.string() });
-var IncomeSchema = z8.object({
+import { z as z9 } from "zod";
+var IdSchema = z9.uuid();
+var MonthSchema3 = z9.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+var DateSchema2 = z9.iso.date();
+var SourceSchema = z9.object({ id: IdSchema, name: z9.string(), normalizedName: z9.string() });
+var IncomeSchema = z9.object({
   id: IdSchema,
-  sourceKind: z8.string(),
+  sourceKind: z9.string(),
   sourceId: IdSchema.nullable(),
-  sourceName: z8.string(),
-  concept: z8.string().nullable(),
-  amount: z8.string(),
-  currency: z8.enum(["ARS", "USD"]),
-  recurring: z8.boolean(),
+  sourceName: z9.string(),
+  concept: z9.string().nullable(),
+  amount: z9.string(),
+  currency: z9.enum(["ARS", "USD"]),
+  recurring: z9.boolean(),
   effectiveMonth: DateSchema2,
-  arsEquivalent: z8.string().nullable()
+  arsEquivalent: z9.string().nullable()
 });
 var ExpenseSchema = IncomeSchema.extend({ endMonth: DateSchema2.nullable() });
-var MoneySchema3 = z8.object({ amount: z8.string(), currency: z8.literal("ARS") });
-var MovementSchema = z8.discriminatedUnion("kind", [
-  z8.object({ kind: z8.literal("contribution"), id: IdSchema, placeId: IdSchema, placeName: z8.string(), amount: z8.string(), currency: z8.enum(["ARS", "USD"]), createdAt: z8.iso.datetime() }),
-  z8.object({ kind: z8.literal("completion"), id: IdSchema, goalId: IdSchema, goalName: z8.string(), placeId: IdSchema, placeName: z8.string(), amount: z8.string(), currency: z8.enum(["ARS", "USD"]), createdAt: z8.iso.datetime() }),
-  z8.object({ kind: z8.literal("transfer"), id: IdSchema, fromPlaceId: IdSchema, fromPlaceName: z8.string(), toPlaceId: IdSchema, toPlaceName: z8.string(), amount: z8.string(), currency: z8.enum(["ARS", "USD"]), createdAt: z8.iso.datetime() })
+var MoneySchema3 = z9.object({ amount: z9.string(), currency: z9.literal("ARS") });
+var MovementSchema = z9.discriminatedUnion("kind", [
+  z9.object({ kind: z9.literal("contribution"), id: IdSchema, placeId: IdSchema, placeName: z9.string(), amount: z9.string(), currency: z9.enum(["ARS", "USD"]), createdAt: z9.iso.datetime() }),
+  z9.object({ kind: z9.literal("completion"), id: IdSchema, goalId: IdSchema, goalName: z9.string(), placeId: IdSchema, placeName: z9.string(), amount: z9.string(), currency: z9.enum(["ARS", "USD"]), createdAt: z9.iso.datetime() }),
+  z9.object({ kind: z9.literal("transfer"), id: IdSchema, fromPlaceId: IdSchema, fromPlaceName: z9.string(), toPlaceId: IdSchema, toPlaceName: z9.string(), amount: z9.string(), currency: z9.enum(["ARS", "USD"]), createdAt: z9.iso.datetime() })
 ]);
-var FinancesWorkspaceSchema = z8.object({
-  goalDedicationPercentage: z8.string(),
+var FinancesWorkspaceSchema = z9.object({
+  goalDedicationPercentage: z9.string(),
   month: MonthSchema3,
-  summary: z8.object({ income: MoneySchema3, expenses: MoneySchema3, balance: MoneySchema3, contribution: MoneySchema3 }),
-  incomes: z8.object({ sources: z8.array(SourceSchema), incomes: z8.array(IncomeSchema) }),
-  expenses: z8.object({ sources: z8.array(SourceSchema), expenses: z8.array(ExpenseSchema) }),
-  savings: z8.object({ places: z8.array(z8.object({ id: IdSchema, name: z8.string(), balances: z8.object({ ARS: z8.string(), USD: z8.string() }), hasMovements: z8.boolean() })), movements: z8.array(MovementSchema) })
+  summary: z9.object({ income: MoneySchema3, expenses: MoneySchema3, balance: MoneySchema3, contribution: MoneySchema3 }),
+  incomes: z9.object({ sources: z9.array(SourceSchema), incomes: z9.array(IncomeSchema) }),
+  expenses: z9.object({ sources: z9.array(SourceSchema), expenses: z9.array(ExpenseSchema) }),
+  savings: z9.object({ places: z9.array(z9.object({ id: IdSchema, name: z9.string(), balances: z9.object({ ARS: z9.string(), USD: z9.string() }), hasMovements: z9.boolean() })), movements: z9.array(MovementSchema) })
 });
 function isExpenseIncludedInMonth(expense, month) {
   const targetMonth = month.slice(0, 7);
@@ -685,21 +680,21 @@ function isIncomeIncludedInMonth(income, month) {
 }
 
 // src/financial-onboarding.schema.ts
-import { z as z9 } from "zod";
-var percentageSchema = z9.string().refine((value) => {
+import { z as z10 } from "zod";
+var percentageSchema = z10.string().refine((value) => {
   const normalized = value.replace(",", ".");
   return /^(\d+(\.\d{0,2})?|\.\d{1,2})$/.test(normalized) && Number(normalized) <= 100;
 }, "Ingres\xE1 un porcentaje entre 0% y 100%, con hasta dos decimales.");
 var onboardingGoalSchema = GoalCreationDraftWireSchema.extend({
-  name: z9.string().trim().min(1, "Ingres\xE1 un nombre.").max(120, "Us\xE1 hasta 120 caracteres."),
-  allocations: z9.array(
-    z9.object({ goalId: z9.string().min(1), percentage: percentageSchema }).strict()
+  name: z10.string().trim().min(1, "Ingres\xE1 un nombre.").max(120, "Us\xE1 hasta 120 caracteres."),
+  allocations: z10.array(
+    z10.object({ goalId: z10.string().min(1), percentage: percentageSchema }).strict()
   )
 });
-var FinancialOnboardingSchema = z9.object({
+var FinancialOnboardingSchema = z10.object({
   goal: onboardingGoalSchema,
-  incomes: z9.array(IncomeDraftSchema).min(1, "Agreg\xE1 al menos un ingreso recurrente."),
-  expenses: z9.array(ExpenseDraftSchema).min(1, "Agreg\xE1 al menos un gasto recurrente.")
+  incomes: z10.array(IncomeDraftSchema).min(1, "Agreg\xE1 al menos un ingreso recurrente."),
+  expenses: z10.array(ExpenseDraftSchema).min(1, "Agreg\xE1 al menos un gasto recurrente.")
 }).strict().superRefine((input, context) => {
   if (input.incomes.some((income) => !income.recurring)) {
     context.addIssue({
@@ -716,87 +711,87 @@ var FinancialOnboardingSchema = z9.object({
     });
   }
 });
-var FinancialOnboardingResponseSchema = z9.object({ created: z9.boolean() }).strict();
+var FinancialOnboardingResponseSchema = z10.object({ created: z10.boolean() }).strict();
 
 // src/home.schema.ts
-import { z as z10 } from "zod";
-var CurrencySchema2 = z10.enum(["ARS", "USD"]);
-var MonthSchema4 = z10.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-var MonthOrDateSchema = z10.string().regex(/^\d{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?$/);
-var HomeQuerySchema = z10.object({
+import { z as z11 } from "zod";
+var CurrencySchema2 = z11.enum(["ARS", "USD"]);
+var MonthSchema4 = z11.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+var MonthOrDateSchema = z11.string().regex(/^\d{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?$/);
+var HomeQuerySchema = z11.object({
   currentMonth: MonthSchema4.optional()
 }).strict();
-var RoadmapIncomeSchema = z10.object({
-  id: z10.string(),
-  sourceKind: z10.string(),
-  sourceId: z10.string().nullable(),
-  sourceName: z10.string(),
-  concept: z10.string().nullable(),
-  amount: z10.string(),
+var RoadmapIncomeSchema = z11.object({
+  id: z11.string(),
+  sourceKind: z11.string(),
+  sourceId: z11.string().nullable(),
+  sourceName: z11.string(),
+  concept: z11.string().nullable(),
+  amount: z11.string(),
   currency: CurrencySchema2,
-  recurring: z10.boolean(),
+  recurring: z11.boolean(),
   effectiveMonth: MonthOrDateSchema,
-  arsEquivalent: z10.string().nullable().optional()
+  arsEquivalent: z11.string().nullable().optional()
 }).strict();
 var RoadmapExpenseSchema = RoadmapIncomeSchema.extend({
   endMonth: MonthOrDateSchema.nullable()
 }).strict();
-var RoadmapFinancesSchema = z10.object({
-  incomes: z10.object({
-    sources: z10.array(z10.object({
-      id: z10.string(),
-      name: z10.string(),
-      normalizedName: z10.string()
+var RoadmapFinancesSchema = z11.object({
+  incomes: z11.object({
+    sources: z11.array(z11.object({
+      id: z11.string(),
+      name: z11.string(),
+      normalizedName: z11.string()
     }).strict()).optional(),
-    incomes: z10.array(RoadmapIncomeSchema)
+    incomes: z11.array(RoadmapIncomeSchema)
   }).strict(),
-  expenses: z10.object({
-    sources: z10.array(z10.object({
-      id: z10.string(),
-      name: z10.string(),
-      normalizedName: z10.string()
+  expenses: z11.object({
+    sources: z11.array(z11.object({
+      id: z11.string(),
+      name: z11.string(),
+      normalizedName: z11.string()
     }).strict()).optional(),
-    expenses: z10.array(RoadmapExpenseSchema)
+    expenses: z11.array(RoadmapExpenseSchema)
   }).strict()
 }).strict();
-var RoadmapMonthSchema = z10.object({
+var RoadmapMonthSchema = z11.object({
   month: MonthSchema4,
-  objectives: z10.array(GoalWorkspaceItemSchema),
-  oneTimeExpenses: z10.array(RoadmapExpenseSchema),
-  recurringExpenses: z10.array(RoadmapExpenseSchema),
-  endingExpenses: z10.array(RoadmapExpenseSchema),
-  oneTimeIncomes: z10.array(RoadmapIncomeSchema),
-  recurringIncomes: z10.array(RoadmapIncomeSchema),
-  contributions: z10.array(ContributionSummarySchema)
+  objectives: z11.array(GoalWorkspaceItemSchema),
+  oneTimeExpenses: z11.array(RoadmapExpenseSchema),
+  recurringExpenses: z11.array(RoadmapExpenseSchema),
+  endingExpenses: z11.array(RoadmapExpenseSchema),
+  oneTimeIncomes: z11.array(RoadmapIncomeSchema),
+  recurringIncomes: z11.array(RoadmapIncomeSchema),
+  contributions: z11.array(ContributionSummarySchema)
 }).strict();
-var RoadmapDataSchema = z10.object({
-  undatedObjectives: z10.array(GoalWorkspaceItemSchema),
-  futureMonths: z10.array(RoadmapMonthSchema),
+var RoadmapDataSchema = z11.object({
+  undatedObjectives: z11.array(GoalWorkspaceItemSchema),
+  futureMonths: z11.array(RoadmapMonthSchema),
   currentMonth: RoadmapMonthSchema,
-  historyMonths: z10.array(RoadmapMonthSchema)
+  historyMonths: z11.array(RoadmapMonthSchema)
 }).strict();
-var HomeRoadmapMissingSchema = z10.object({
-  profile: z10.literal("missing")
+var HomeRoadmapMissingSchema = z11.object({
+  profile: z11.literal("missing")
 }).strict();
-var HomeRoadmapPresentSchema = z10.object({
-  profile: z10.literal("present").optional(),
+var HomeRoadmapPresentSchema = z11.object({
+  profile: z11.literal("present").optional(),
   roadmap: RoadmapDataSchema,
-  completionGoals: z10.array(GoalWorkspaceItemSchema)
+  completionGoals: z11.array(GoalWorkspaceItemSchema)
 }).strict();
-var HomeRoadmapResponseSchema = z10.discriminatedUnion("profile", [
+var HomeRoadmapResponseSchema = z11.discriminatedUnion("profile", [
   HomeRoadmapMissingSchema,
   HomeRoadmapPresentSchema
 ]);
 
 // src/goal-creation.schema.ts
-import { parseMoneyInput } from "@repo/finance-utils";
+import { parseMoneyInput as parseMoneyInput2 } from "@repo/finance-utils";
 import BigNumber2 from "bignumber.js";
-import { z as z11 } from "zod";
-var goalTypeSchema = z11.enum(["emergency_fund", "purchase", "retirement", "other"]);
-var goalPrioritySchema = z11.enum(["high", "medium", "low"]);
-var goalStrategySchema = z11.enum(["save", "invest"]);
-var investmentAvailabilitySchema = z11.enum(["available_now", "available_from", "long_term"]);
-var percentageSchema2 = z11.string().refine((value) => {
+import { z as z12 } from "zod";
+var goalTypeSchema = z12.enum(["emergency_fund", "purchase", "retirement", "other"]);
+var goalPrioritySchema = z12.enum(["high", "medium", "low"]);
+var goalStrategySchema = z12.enum(["save", "invest"]);
+var investmentAvailabilitySchema = z12.enum(["available_now", "available_from", "long_term"]);
+var percentageSchema2 = z12.string().refine((value) => {
   try {
     const amount = new BigNumber2(value.replace(",", "."));
     const decimals = amount.decimalPlaces();
@@ -805,22 +800,22 @@ var percentageSchema2 = z11.string().refine((value) => {
     return false;
   }
 }, "Ingres\xE1 un porcentaje entre 0% y 100%, con hasta dos decimales.");
-var allocationEntrySchema = z11.object({
-  goalId: z11.string().min(1),
+var allocationEntrySchema = z12.object({
+  goalId: z12.string().min(1),
   percentage: percentageSchema2
 });
-var goalCreationDraftSchema = z11.object({
+var goalCreationDraftSchema = z12.object({
   type: goalTypeSchema,
-  name: z11.string().trim().min(1, "Ingres\xE1 un nombre.").max(120, "Us\xE1 hasta 120 caracteres."),
-  targetAmount: z11.string(),
-  currency: z11.enum(["ARS", "USD"]),
-  desiredMonth: z11.string(),
+  name: z12.string().trim().min(1, "Ingres\xE1 un nombre.").max(120, "Us\xE1 hasta 120 caracteres."),
+  targetAmount: z12.string(),
+  currency: z12.enum(["ARS", "USD"]),
+  desiredMonth: z12.string(),
   priority: goalPrioritySchema,
   strategy: goalStrategySchema,
-  annualReturnRate: z11.string(),
+  annualReturnRate: z12.string(),
   availability: investmentAvailabilitySchema,
-  availableFromMonth: z11.string(),
-  allocations: z11.array(allocationEntrySchema)
+  availableFromMonth: z12.string(),
+  allocations: z12.array(allocationEntrySchema)
 });
 function isValidAnnualReturnRate(value) {
   try {
@@ -839,7 +834,7 @@ function createObjectiveSchema(currentMonth) {
     if (draft.type === "emergency_fund") {
       if (draft.currency !== "USD") context.addIssue({ code: "custom", path: ["currency"], message: "El colch\xF3n financiero se planifica en USD." });
     } else {
-      const target = parseMoneyInput(draft.targetAmount, draft.currency);
+      const target = parseMoneyInput2(draft.targetAmount, draft.currency);
       if (!target || new BigNumber2(target.amount).lte(0)) context.addIssue({ code: "custom", path: ["targetAmount"], message: "Ingres\xE1 un monto objetivo mayor a cero." });
     }
     if (draft.desiredMonth && draft.desiredMonth <= currentMonth) context.addIssue({ code: "custom", path: ["desiredMonth"], message: "Eleg\xED un mes posterior al actual." });
@@ -854,8 +849,8 @@ var goalPlanSchema = goalCreationDraftSchema.superRefine((draft, context) => {
     context.addIssue({ code: "custom", path: ["availableFromMonth"], message: "Eleg\xED desde qu\xE9 mes estar\xE1 disponible." });
   }
 });
-var goalImpactSchema = z11.object({
-  allocations: z11.array(allocationEntrySchema).min(1)
+var goalImpactSchema = z12.object({
+  allocations: z12.array(allocationEntrySchema).min(1)
 }).superRefine((data, context) => {
   let total = new BigNumber2(0);
   for (const entry of data.allocations) {
@@ -871,36 +866,30 @@ var goalImpactSchema = z11.object({
     context.addIssue({ code: "custom", path: ["allocations"], message: `La distribuci\xF3n debe sumar 100%. Ahora suma ${total.toFixed(2)}%.` });
   }
 });
-var confirmGoalCreationSchema = z11.object({
-  draft: goalCreationDraftSchema,
-  previewToken: z11.string().regex(/^[a-f0-9]{64}$/)
-}).superRefine((input, context) => {
+function refineDraftAllocations(input, context) {
   const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations });
   if (!impactResult.success) {
     for (const issue of impactResult.error.issues) {
       context.addIssue({ code: "custom", message: issue.message, path: ["draft", ...issue.path] });
     }
   }
+}
+var confirmGoalCreationSchema = z12.object({
+  draft: goalCreationDraftSchema,
+  previewToken: z12.string().regex(/^[a-f0-9]{64}$/)
+}).superRefine(refineDraftAllocations);
+var goalEditRequestSchema = z12.object({
+  goalId: z12.string().uuid()
 });
-var goalEditRequestSchema = z11.object({
-  goalId: z11.string().uuid()
-});
-var previewGoalEditSchema = z11.object({
-  goalId: z11.string().uuid(),
+var previewGoalEditSchema = z12.object({
+  goalId: z12.string().uuid(),
   draft: goalCreationDraftSchema
 });
-var confirmGoalEditSchema = z11.object({
-  goalId: z11.string().uuid(),
+var confirmGoalEditSchema = z12.object({
+  goalId: z12.string().uuid(),
   draft: goalCreationDraftSchema,
-  previewToken: z11.string().regex(/^[a-f0-9]{64}$/)
-}).superRefine((input, context) => {
-  const impactResult = goalImpactSchema.safeParse({ allocations: input.draft.allocations });
-  if (!impactResult.success) {
-    for (const issue of impactResult.error.issues) {
-      context.addIssue({ code: "custom", message: issue.message, path: ["draft", ...issue.path] });
-    }
-  }
-});
+  previewToken: z12.string().regex(/^[a-f0-9]{64}$/)
+}).superRefine(refineDraftAllocations);
 function parseGoalCreationSubmission(input, currentMonth) {
   const draft = goalCreationDraftSchema.parse(input);
   createObjectiveSchema(currentMonth).parse(draft);

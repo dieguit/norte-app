@@ -6,7 +6,28 @@ import {
   updateExpenseServer,
 } from "./expenses.server";
 
-vi.mock("./financial.server", () => ({ callFinancialApi: vi.fn() }));
+vi.mock("./financial.server", () => {
+  const callFinancialApi = vi.fn();
+  return {
+    callFinancialApi,
+    mutateFinancialApi: vi.fn(async (path, method, body, failureMessage) => {
+      const response = await callFinancialApi(path, {
+        method,
+        ...(body === undefined
+          ? {}
+          : {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.message ?? failureMessage);
+      }
+      return response;
+    }),
+  };
+});
 
 const expense = {
   id: "00000000-0000-4000-8000-000000000001",

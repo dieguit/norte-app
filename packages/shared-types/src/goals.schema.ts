@@ -93,11 +93,14 @@ export const AllocationChangeContextStateSchema = z.discriminatedUnion('profile'
 
 export const GoalLifecycleActionSchema = z.enum(['pause', 'resume']);
 const GoalLifecycleAllocationEntrySchema = z.object({ goalId: z.string(), percentage: z.string() }).strict();
-export const GoalLifecycleContextSchema = z.object({
-  goalId: z.string(), lifecycle: GoalLifecycleActionSchema, goalName: z.string(), goalCurrency: CurrencySchema, currentMonth: MonthSchema,
+const allocationContextFields = {
   plannedMonthlyContribution: MoneySchema.optional(),
   activeGoals: z.array(z.object({ id: z.string(), name: z.string(), currency: CurrencySchema }).strict()),
   currentAllocation: AllocationSnapshotSchema.optional(), pendingAllocation: AllocationSnapshotSchema.optional(),
+};
+export const GoalLifecycleContextSchema = z.object({
+  goalId: z.string(), lifecycle: GoalLifecycleActionSchema, goalName: z.string(), goalCurrency: CurrencySchema, currentMonth: MonthSchema,
+  ...allocationContextFields,
 }).strict();
 export const GoalLifecyclePreviewWireSchema = z.object({ lifecycle: GoalLifecycleActionSchema, allocations: z.array(GoalLifecycleAllocationEntrySchema).optional() }).strict();
 export const ConfirmGoalLifecycleWireSchema = z.object({
@@ -118,10 +121,8 @@ export const GoalLifecycleConfirmationSchema = z.discriminatedUnion('status', [G
 
 export const GoalCompletionContextSchema = z.object({
   goalId: z.string(), goalName: z.string(), targetAmount: MoneySchema, savingsValue: MoneySchema, currentMonth: MonthSchema,
-  plannedMonthlyContribution: MoneySchema.optional(),
   savingsPlaces: z.array(z.object({ id: z.string(), name: z.string(), balance: MoneySchema }).strict()),
-  activeGoals: z.array(z.object({ id: z.string(), name: z.string(), currency: CurrencySchema }).strict()),
-  currentAllocation: AllocationSnapshotSchema.optional(), pendingAllocation: AllocationSnapshotSchema.optional(),
+  ...allocationContextFields,
 }).strict();
 export const GoalCompletionContextPresentSchema = z.object({ profile: z.literal('present'), context: GoalCompletionContextSchema }).strict();
 export const GoalCompletionContextStateSchema = z.discriminatedUnion('profile', [GoalCreationContextMissingSchema, GoalCompletionContextPresentSchema]);
