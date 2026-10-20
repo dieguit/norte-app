@@ -12,10 +12,8 @@ describe('calendar helpers', () => {
     expect(getPreviousCalendarMonth(new Date('2026-01-01T00:00:00Z'))).toBe('2025-12')
   })
 
-  it('defaults to current time when no date is supplied', () => {
-    const next = getNextCalendarMonth()
+  it('defaults to current time when no date is supplied for getPreviousCalendarMonth', () => {
     const prev = getPreviousCalendarMonth()
-    expect(next).toMatch(/^\d{4}-\d{2}$/)
     expect(prev).toMatch(/^\d{4}-\d{2}$/)
   })
 })

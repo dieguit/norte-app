@@ -1,4 +1,4 @@
-export function getNextCalendarMonth(now: Date = new Date()): string {
+export function getNextCalendarMonth(now: Date): string {
   const year = now.getUTCFullYear()
   const month = now.getUTCMonth() + 1
   const next = new Date(Date.UTC(year, month, 1))
