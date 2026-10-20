@@ -35,6 +35,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
+    "iron-session": "^9.0.1",
     "lucide-react": "^0.545.0",
     "motion": "^12.42.2",
     "pg": "^8.22.0",
