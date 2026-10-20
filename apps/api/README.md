@@ -43,11 +43,11 @@ $ pnpm --filter @repo/api db:migrate     # explicit, manual
 $ pnpm --filter @repo/api dev
 ```
 
-WhatsApp (`WHATSAPP_ENABLED=true`) needs the migrated `whatsapp_auth_state` table; migrate before enabling it. Never point `db:migrate` at a shared or production database outside the human checklist in [`docs/database-ownership-rollout.md`](../../docs/database-ownership-rollout.md).
+Never point `db:migrate` at a shared or production database without a verified backup.
 
-Docker E2E migrates in Playwright global setup, before fixtures run. The API container starts earlier only because its health check is schema-independent and WhatsApp is disabled there. Direct E2E mode requires an explicit disposable-database opt-in; see `apps/e2e/README.md`.
+Docker E2E migrates in Playwright global setup, before fixtures run. The API container starts earlier only because its health check is schema-independent. Direct E2E mode requires an explicit disposable-database opt-in; see `apps/e2e/README.md`.
 
-`test:migrations` and fixture tests create their own disposable PostgreSQL containers. The rollback suites in `test:e2e` skip silently unless `DATABASE_URL` names `norte_test`; point them only at a disposable, already migrated database.
+Fixture tests create their own disposable PostgreSQL containers. The rollback suites in `test:e2e` skip silently unless `DATABASE_URL` names `norte_test`; point them only at a disposable, already migrated database.
 
 ## Compile and run the project
 
@@ -114,9 +114,3 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-
-## WhatsApp Baileys Service
-
-The API starts the WhatsApp Baileys socket automatically. On first login, scan the QR or pairing information printed in the API logs. Baileys auth state is stored in Postgres in `whatsapp_auth_state`, so production should run the database migration before starting the API.
-
-Run only one WhatsApp-owning API instance for v1. Multiple replicas can race on the same WhatsApp session.

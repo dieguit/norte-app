@@ -1,5 +1,3 @@
-import { users } from '../users/users.schema';
-import { whatsappAuthState } from '../whatsapp/whatsapp.schema';
 import { onboardingDrafts } from './legacy.schema';
 import {
   allocationPlanEntries,
@@ -23,8 +21,6 @@ import {
 
 export const schema = {
   onboardingDrafts,
-  users,
-  whatsappAuthState,
   financialProfiles,
   incomes,
   incomeSources,
@@ -64,6 +60,4 @@ export {
   savingsPlaceTransfers,
   savingsPlaces,
   onboardingDrafts,
-  users,
-  whatsappAuthState,
 };

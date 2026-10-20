@@ -19,7 +19,6 @@ const envSchema = z.object({
         .filter(Boolean),
     )
     .pipe(z.array(z.url()).min(1)),
-  WHATSAPP_ENABLED: z.preprocess((value) => value ?? 'true', z.stringbool()),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -710,8 +710,8 @@
         }
       },
       "foreignKeys": {
-        "goal_completion_withdrawals_goal_id_financial_goals_id_fk": {
-          "name": "goal_completion_withdrawals_goal_id_financial_goals_id_fk",
+        "goal_completion_withdrawals_goal_id_fk": {
+          "name": "goal_completion_withdrawals_goal_id_fk",
           "tableFrom": "goal_completion_withdrawals",
           "tableTo": "financial_goals",
           "columnsFrom": [
@@ -723,8 +723,8 @@
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
-        "goal_completion_withdrawals_place_id_savings_places_id_fk": {
-          "name": "goal_completion_withdrawals_place_id_savings_places_id_fk",
+        "goal_completion_withdrawals_place_id_fk": {
+          "name": "goal_completion_withdrawals_place_id_fk",
           "tableFrom": "goal_completion_withdrawals",
           "tableTo": "savings_places",
           "columnsFrom": [
@@ -1776,8 +1776,8 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "saving_contributions_place_id_savings_places_id_fk": {
-          "name": "saving_contributions_place_id_savings_places_id_fk",
+        "saving_contributions_place_id_fk": {
+          "name": "saving_contributions_place_id_fk",
           "tableFrom": "saving_contributions",
           "tableTo": "savings_places",
           "columnsFrom": [
@@ -1907,8 +1907,8 @@
         }
       },
       "foreignKeys": {
-        "savings_place_transfers_user_id_financial_profiles_user_id_fk": {
-          "name": "savings_place_transfers_user_id_financial_profiles_user_id_fk",
+        "savings_place_transfers_user_id_fk": {
+          "name": "savings_place_transfers_user_id_fk",
           "tableFrom": "savings_place_transfers",
           "tableTo": "financial_profiles",
           "columnsFrom": [
@@ -1920,8 +1920,8 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "savings_place_transfers_from_place_id_savings_places_id_fk": {
-          "name": "savings_place_transfers_from_place_id_savings_places_id_fk",
+        "savings_place_transfers_from_place_id_fk": {
+          "name": "savings_place_transfers_from_place_id_fk",
           "tableFrom": "savings_place_transfers",
           "tableTo": "savings_places",
           "columnsFrom": [
@@ -1933,8 +1933,8 @@
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
-        "savings_place_transfers_to_place_id_savings_places_id_fk": {
-          "name": "savings_place_transfers_to_place_id_savings_places_id_fk",
+        "savings_place_transfers_to_place_id_fk": {
+          "name": "savings_place_transfers_to_place_id_fk",
           "tableFrom": "savings_place_transfers",
           "tableTo": "savings_places",
           "columnsFrom": [
@@ -2034,8 +2034,8 @@
         }
       },
       "foreignKeys": {
-        "savings_places_user_id_financial_profiles_user_id_fk": {
-          "name": "savings_places_user_id_financial_profiles_user_id_fk",
+        "savings_places_user_id_fk": {
+          "name": "savings_places_user_id_fk",
           "tableFrom": "savings_places",
           "tableTo": "financial_profiles",
           "columnsFrom": [

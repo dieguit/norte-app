@@ -16,7 +16,6 @@ describe('validateEnv', () => {
     expect(result.DATABASE_URL).toBe(validEnv.DATABASE_URL);
     expect(result.NODE_ENV).toBe('development');
     expect(result.PORT).toBe(3001);
-    expect(result.WHATSAPP_ENABLED).toBe(true);
   });
 
   it('throws when DATABASE_URL is missing', () => {
@@ -44,12 +43,6 @@ describe('validateEnv', () => {
     const rest = { ...validEnv, NODE_ENV: undefined };
     const result = validateEnv(rest);
     expect(result.NODE_ENV).toBe('development');
-  });
-
-  it('parses WHATSAPP_ENABLED=false', () => {
-    expect(
-      validateEnv({ ...validEnv, WHATSAPP_ENABLED: 'false' }).WHATSAPP_ENABLED,
-    ).toBe(false);
   });
 
   it('throws when PORT is not a valid number', () => {

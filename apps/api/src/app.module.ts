@@ -5,8 +5,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { PlaceholderModule } from './placeholder/placeholder.module';
-import { UsersModule } from './users/users.module';
-import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { ProfileModule } from './profile/profile.module';
 import { IncomesModule } from './incomes/incomes.module';
 import { ExpensesModule } from './expenses/expenses.module';
@@ -26,8 +24,6 @@ import { HomeModule } from './home/home.module';
     }),
     DatabaseModule,
     PlaceholderModule,
-    UsersModule,
-    WhatsappModule,
     ProfileModule,
     IncomesModule,
     ExpensesModule,
