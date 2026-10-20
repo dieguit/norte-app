@@ -19,6 +19,10 @@ const envSchema = z.object({
         .filter(Boolean),
     )
     .pipe(z.array(z.url()).min(1)),
+  LLM_BASE_URL: z.url(),
+  LLM_API_KEY: z.string().min(1),
+  LLM_MODEL: z.string().min(1),
+  MASTRA_API_KEY: z.string().min(1),
 });
 
 export type Env = z.infer<typeof envSchema>;
