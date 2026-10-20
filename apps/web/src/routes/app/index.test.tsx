@@ -1,58 +1,64 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getFinancesWorkspace } from '../../features/financial/financial.functions'
-import { getGoalsWorkspace } from '../../features/goals/goals.functions'
+import { getHomeRoadmap } from '../../features/home/home.functions'
 import { loadHomeRoadmap } from './index'
 
-vi.mock('../../features/financial/financial.functions', () => ({
-  getFinancesWorkspace: vi.fn(),
-}))
-
-vi.mock('../../features/goals/goals.functions', () => ({
-  getGoalsWorkspace: vi.fn(),
+vi.mock('../../features/home/home.functions', () => ({
+  getHomeRoadmap: vi.fn(),
 }))
 
 describe('loadHomeRoadmap', () => {
-  const goals: any = {
-    groups: [],
-    availableCurrencies: [],
+  const eligibleGoal: any = {
+    id: 'goal-eligible',
+    completionEligible: true,
+    status: 'active',
+    projection: { status: 'available', completionMonth: '2026-08' },
+    contributions: [],
   }
-  const finances: any = {
-    incomes: { incomes: [] },
-    expenses: { expenses: [] },
+
+  const sampleRoadmap: any = {
+    undatedObjectives: [],
+    futureMonths: [],
+    currentMonth: {
+      month: '2026-08',
+      objectives: [eligibleGoal],
+      oneTimeExpenses: [],
+      recurringExpenses: [],
+      endingExpenses: [],
+      oneTimeIncomes: [],
+      recurringIncomes: [],
+      contributions: [],
+    },
+    historyMonths: [],
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('loads existing goals and finances in parallel and builds the roadmap', async () => {
-    const eligibleGoal = { id: 'goal-eligible', completionEligible: true, status: 'active', projection: { status: 'available', completionMonth: '2026-08' }, contributions: [] }
-    const ineligibleGoal = { id: 'goal-ineligible', completionEligible: false, status: 'active', projection: { status: 'available', completionMonth: '2026-08' }, contributions: [] }
-    vi.mocked(getGoalsWorkspace).mockResolvedValue({
-      profile: 'present',
-      workspace: { ...goals, groups: [{ status: 'active', goals: [eligibleGoal, ineligibleGoal] }] },
+  it('loads home roadmap from server function for present profile', async () => {
+    vi.mocked(getHomeRoadmap).mockResolvedValue({
+      roadmap: sampleRoadmap,
+      completionGoals: [eligibleGoal],
     })
-    vi.mocked(getFinancesWorkspace).mockResolvedValue(finances)
 
     const result = await loadHomeRoadmap('present', '2026-08')
 
     expect(result).not.toBeNull()
     if (!result) throw new Error('Expected present-profile home data.')
-    expect(getGoalsWorkspace).toHaveBeenCalledOnce()
-    expect(getFinancesWorkspace).toHaveBeenCalledOnce()
+    expect(getHomeRoadmap).toHaveBeenCalledWith({ data: { currentMonth: '2026-08' } })
     expect(result.roadmap.currentMonth.month).toBe('2026-08')
     expect(result.completionGoals).toEqual([eligibleGoal])
   })
 
   it('does not load roadmap workspaces before onboarding', async () => {
     await expect(loadHomeRoadmap('missing', '2026-08')).resolves.toBeNull()
-    expect(getGoalsWorkspace).not.toHaveBeenCalled()
-    expect(getFinancesWorkspace).not.toHaveBeenCalled()
+    expect(getHomeRoadmap).not.toHaveBeenCalled()
   })
 
   it('rejects inconsistent missing workspace data for a present profile', async () => {
-    vi.mocked(getGoalsWorkspace).mockResolvedValue({ profile: 'missing' } as any)
-    vi.mocked(getFinancesWorkspace).mockResolvedValue(null)
-    await expect(loadHomeRoadmap('present', '2026-08')).rejects.toThrow('Roadmap data is unavailable.')
+    vi.mocked(getHomeRoadmap).mockResolvedValue({ profile: 'missing' })
+    await expect(loadHomeRoadmap('present', '2026-08')).rejects.toThrow(
+      'Roadmap data is unavailable.',
+    )
   })
 })

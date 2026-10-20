@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FinancialSummaryCards } from '../../../../components/FinancialSummaryCards'
 import { Button } from '../../../../components/ui/button'
-import type { GoalsWorkspace as GoalsWorkspaceType } from '../../../../features/goals/goals'
+import type { GoalsWorkspaceData as GoalsWorkspaceType } from '@repo/shared-types'
 import { GoalCard, SecondaryGoalGroup } from './GoalsWorkspaceParts'
 
 export interface GoalsWorkspaceProps {

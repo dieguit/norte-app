@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getFinancialAppState } from '../../features/financial/financial.functions'
-import type { RoadmapData } from '../../features/roadmap/roadmap'
+import type { RoadmapData } from '@repo/shared-types'
 import { FinancialOnboarding } from './-components/FinancialOnboarding'
 import { Home } from './-components/Home'
 import { Route as rootRoute } from '../__root'

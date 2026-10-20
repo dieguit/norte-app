@@ -1,7 +1,4 @@
 import BigNumber from 'bignumber.js'
-import type { SavingContribution } from '@/db/schema'
-import type { SavingsPlaceTransfer } from '@/db/schema'
-import type { GoalCompletionWithdrawal } from '@/db/schema'
 import type { CurrencyCode } from '../../lib/money'
 
 export interface SavingsPlaceSummary {
@@ -67,17 +64,22 @@ export function getSavingsPlaceEntries(
     .slice(0, 20)
 }
 
+type MovementInput = { id: string; amount: string; currency: string; createdAt: Date | string }
 type SavingsPlacesInput = {
   places: Array<{ id: string; name: string }>
-  contributions: Pick<SavingContribution, 'id' | 'placeId' | 'amount' | 'currency' | 'createdAt'>[]
-  transfers: (Pick<SavingsPlaceTransfer, 'id' | 'fromPlaceId' | 'toPlaceId' | 'amount' | 'currency' | 'createdAt'> & {
+  contributions: Array<MovementInput & { placeId: string }>
+  transfers: Array<MovementInput & {
+    fromPlaceId: string
+    toPlaceId: string
     fromPlaceName: string
     toPlaceName: string
-  })[]
-  completionWithdrawals?: (Pick<GoalCompletionWithdrawal, 'id' | 'goalId' | 'placeId' | 'amount' | 'currency' | 'createdAt'> & {
+  }>
+  completionWithdrawals?: Array<MovementInput & {
+    goalId: string
+    placeId: string
     goalName: string
     placeName: string
-  })[]
+  }>
 }
 
 type Contribution = SavingsPlacesInput['contributions'][number]

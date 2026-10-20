@@ -1,9 +1,13 @@
 import { execSync } from 'node:child_process'
 import { clerkSetup } from '@clerk/testing/playwright'
+import { createFixtureDatabase } from '../../api/test/fixture-database'
 
 export default async function globalSetup() {
-  if (new URL(process.env.DATABASE_URL!).pathname !== '/norte_test') throw new Error('E2E requires DATABASE_URL to point at norte_test')
-  // ponytail: migrations owned by web today; switch to the API's migrate command once it owns the DB
-  execSync('pnpm --filter @repo/web db:migrate', { stdio: 'inherit' })
+  const { pool } = await createFixtureDatabase(process.env)
+  try {
+    execSync('pnpm --filter @repo/api db:migrate', { stdio: 'inherit' })
+  } finally {
+    await pool.end()
+  }
   await clerkSetup({ publishableKey: process.env.VITE_CLERK_PUBLISHABLE_KEY, dotenv: false })
 }

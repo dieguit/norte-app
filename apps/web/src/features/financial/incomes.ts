@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js";
+export { FIXED_INCOME_SOURCES } from "@repo/shared-types";
 import { createMoney, type Money } from "../../lib/money";
 import { PLANNING_ARS_PER_USD } from "./financial";
 
@@ -22,11 +23,6 @@ export const ONE_TIME_INCOME_SOURCES = {
   uncategorized: "Sin categoría",
 } as const;
 
-export const FIXED_INCOME_SOURCES = {
-  ...RECURRING_INCOME_SOURCES,
-  ...ONE_TIME_INCOME_SOURCES,
-} as const;
-
 export interface IncomeMonthInput {
   amount: Money;
   recurring: boolean;
@@ -48,13 +44,8 @@ export interface IncomesWorkspace {
   }>;
 }
 
-export function isIncomeIncludedInMonth(
-  income: Pick<IncomeMonthInput, "recurring" | "effectiveMonth">,
-  month: string,
-) {
-  const effectiveMonth = income.effectiveMonth.slice(0, 7);
-  return income.recurring ? effectiveMonth <= month : effectiveMonth === month;
-}
+import { isIncomeIncludedInMonth } from '@repo/shared-types';
+export { isIncomeIncludedInMonth };
 
 export function getIncomeTotalArs(
   incomes: IncomeMonthInput[],

@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { RoadmapData } from '../../../features/roadmap/roadmap'
+import type { RoadmapData } from '@repo/shared-types'
 import { AppShell } from './AppShell'
 import { Home } from './Home'
 

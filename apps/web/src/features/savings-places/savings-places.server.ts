@@ -1,37 +1,41 @@
 import '@tanstack/react-start/server-only'
-import { requireFinancialUser } from '../financial/auth.server'
-import {
-  createSavingsPlaceInRepository,
-  deleteSavingsPlaceInRepository,
-  renameSavingsPlaceInRepository,
-  transferSavingsInRepository,
-} from './savings-places.repository.server'
+import { SavingsPlaceMutationResponseSchema, SavingsTransferResponseSchema } from '@repo/shared-types'
+import { mutateFinancialApi } from '../financial/financial.server'
 
 export async function createSavingsPlaceServer({ data }: { data: { name: string } }) {
-  return createSavingsPlaceInRepository(await requireFinancialUser(), data.name)
+  const response = await mutateFinancialApi(
+    '/savings-places',
+    'POST',
+    data,
+    'No se pudo guardar el lugar de ahorro.',
+  )
+  return SavingsPlaceMutationResponseSchema.parse(await response.json())
 }
 
-export async function renameSavingsPlaceServer({
-  data,
-}: {
-  data: { placeId: string; name: string }
-}) {
-  return renameSavingsPlaceInRepository(await requireFinancialUser(), data.placeId, data.name)
+export async function renameSavingsPlaceServer({ data }: { data: { placeId: string; name: string } }) {
+  await mutateFinancialApi(
+    `/savings-places/${data.placeId}`,
+    'PATCH',
+    { name: data.name },
+    'No se pudo guardar el lugar de ahorro.',
+  )
 }
 
 export async function deleteSavingsPlaceServer({ data }: { data: { placeId: string } }) {
-  return deleteSavingsPlaceInRepository(await requireFinancialUser(), data.placeId)
+  await mutateFinancialApi(
+    `/savings-places/${data.placeId}`,
+    'DELETE',
+    undefined,
+    'No se pudo guardar el lugar de ahorro.',
+  )
 }
 
-export async function transferSavingsServer({
-  data,
-}: {
-  data: {
-    fromPlaceId: string
-    toPlaceId: string
-    currency: 'ARS' | 'USD'
-    amount: string
-  }
-}) {
-  return transferSavingsInRepository({ ...data, userId: await requireFinancialUser() })
+export async function transferSavingsServer({ data }: { data: { fromPlaceId: string; toPlaceId: string; currency: 'ARS' | 'USD'; amount: string } }) {
+  const response = await mutateFinancialApi(
+    '/savings-places/transfers',
+    'POST',
+    data,
+    'No se pudo guardar el lugar de ahorro.',
+  )
+  return SavingsTransferResponseSchema.parse(await response.json())
 }

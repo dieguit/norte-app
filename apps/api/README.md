@@ -31,6 +31,24 @@
 $ pnpm install
 ```
 
+## Database ownership and local workflow
+
+The API owns the schema and its Drizzle migrations (`drizzle/`, `drizzle.config.ts`). Nothing runs migrations automatically: `dev`, `start` and API startup never migrate. Run it manually against an intended **local** database:
+
+```bash
+# from the repository root
+$ pnpm db:up                             # local PostgreSQL
+$ cp apps/api/.env.example apps/api/.env # configure the local DATABASE_URL, Clerk values
+$ pnpm --filter @repo/api db:migrate     # explicit, manual
+$ pnpm --filter @repo/api dev
+```
+
+Never point `db:migrate` at a shared or production database without a verified backup.
+
+Docker E2E migrates in Playwright global setup, before fixtures run. The API container starts earlier only because its health check is schema-independent. Direct E2E mode requires an explicit disposable-database opt-in; see `apps/e2e/README.md`.
+
+Fixture tests create their own disposable PostgreSQL containers. The rollback suites in `test:e2e` skip silently unless `DATABASE_URL` names `norte_test`; point them only at a disposable, already migrated database.
+
 ## Compile and run the project
 
 ```bash
@@ -96,9 +114,3 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-
-## WhatsApp Baileys Service
-
-The API starts the WhatsApp Baileys socket automatically. On first login, scan the QR or pairing information printed in the API logs. Baileys auth state is stored in Postgres in `whatsapp_auth_state`, so production should run the database migration before starting the API.
-
-Run only one WhatsApp-owning API instance for v1. Multiple replicas can race on the same WhatsApp session.

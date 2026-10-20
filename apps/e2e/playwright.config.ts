@@ -1,9 +1,17 @@
-import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 
-const envFile = path.join(import.meta.dirname, '.env.test')
-if (existsSync(envFile)) process.loadEnvFile(envFile)
+process.loadEnvFile(path.join(import.meta.dirname, '.env.test'))
+const { VITE_CLERK_PUBLISHABLE_KEY: pk = '', CLERK_SECRET_KEY: sk = '' } = process.env
+if (!pk.startsWith('pk_test_') || !sk.startsWith('sk_test_')) throw new Error('E2E requires Clerk development keys')
+
+// The e2e compose stack owns this database; it is disposable by construction.
+const databaseUrl = 'postgres://norte:norte@localhost:5435/norte_test'
+Object.assign(process.env, {
+  DATABASE_URL: databaseUrl,
+  E2E_ALLOW_DISPOSABLE_DATABASE: '1',
+  E2E_DISPOSABLE_DATABASE_URL: databaseUrl,
+})
 
 export const AUTH_FILE = path.join(import.meta.dirname, '.auth/user.json')
 
@@ -14,10 +22,10 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:3100',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     locale: 'es-AR',
   },
   projects: [
@@ -28,13 +36,13 @@ export default defineConfig({
       dependencies: ['setup'],
     },
   ],
-  webServer: [
-    {
-      command: 'pnpm --filter @repo/web build && pnpm --filter @repo/web start',
-      url: 'http://localhost:3100',
-      env: { PORT: '3100' },
-      reuseExistingServer: !process.env.CI,
-      timeout: 180_000,
-    },
-  ],
+  webServer: {
+    // CI prebuilds both images with Bake; a missing image must fail instead of rebuilding uncached.
+    command: `docker compose --profile e2e --env-file apps/e2e/.env.test up ${process.env.CI ? '--no-build' : '--build'} postgres-e2e api-e2e web-e2e`,
+    cwd: path.join(import.meta.dirname, '../..'),
+    url: 'http://localhost:3100',
+    reuseExistingServer: !process.env.CI,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 15_000 },
+    timeout: 600_000,
+  },
 })

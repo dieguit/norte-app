@@ -209,7 +209,7 @@ describe('GoalCreation component (2-step flow)', () => {
       // Change type to emergency_fund
       const typeSelect = screen.getByLabelText(/tipo de objetivo/i)
       await user.click(typeSelect)
-      await user.click(screen.getByRole('option', { name: /colchón financiero/i }))
+      await user.click(await screen.findByRole('option', { name: /colchón financiero/i }))
 
       // Name field is hidden for emergency fund (default name is used)
       expect(screen.queryByLabelText(/nombre/i)).not.toBeInTheDocument()

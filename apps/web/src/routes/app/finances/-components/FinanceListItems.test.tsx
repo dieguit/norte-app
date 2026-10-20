@@ -51,6 +51,7 @@ describe('finance list items', () => {
           recurring: false,
           effectiveMonth: '2026-08-01',
           endMonth: null,
+          arsEquivalent: '300000.00',
         }}
         selectedMonth="2026-08"
         onEdit={vi.fn()}

@@ -190,7 +190,7 @@ describe('IncomeSheet', () => {
     renderSheet()
 
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
-    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.click(await screen.findByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
 
     expect(screen.getByText('Equivale a ARS 187.500.000')).toBeInTheDocument()
@@ -201,7 +201,7 @@ describe('IncomeSheet', () => {
     renderSheet()
 
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
-    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.click(await screen.findByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125,50')
 
     expect(screen.getByText('Equivale a ARS 188.250')).toBeInTheDocument()
@@ -296,7 +296,7 @@ describe('IncomeSheet', () => {
     renderSheet()
 
     await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
-    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Consultoría')
     await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Honorarios')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
@@ -312,7 +312,7 @@ describe('IncomeSheet', () => {
     renderSheet()
 
     await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
-    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
@@ -364,7 +364,7 @@ describe('IncomeSheet', () => {
     const onOpenChange = vi.fn()
     let resolveCreate!: () => void
     vi.mocked(createIncome).mockImplementation(
-      () => new Promise<void>((resolve) => { resolveCreate = resolve }),
+      () => new Promise((resolve) => { resolveCreate = () => resolve({ id: '00000000-0000-4000-8000-000000000001', userId: 'user', sourceKind: 'salary', sourceId: null, concept: null, amount: '1.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-08-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }) }),
     )
     render(
       <IncomeSheet
@@ -604,7 +604,7 @@ describe('IncomeSheet', () => {
     expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
-    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
 
     expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toBeVisible()
     expect(screen.queryByText('Esta categoría se va a guardar para que puedas volver a usarla')).not.toBeInTheDocument()

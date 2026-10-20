@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js'
 import { formatMoneyInput } from '../../../lib/money'
-import { deriveUsdPurchase } from '../../../features/contributions/saving-contribution'
+import { deriveUsdPurchase } from '@repo/shared-types'
 
 export type DerivedContributionField = 'arsSpent' | 'effectiveRate' | 'amount' | null
 

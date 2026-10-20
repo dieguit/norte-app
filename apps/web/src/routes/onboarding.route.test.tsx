@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Route as rootRoute } from './__root'
 import { Route } from './onboarding'
 import { OnboardingPage } from './onboarding/-components/onboarding-page'
+
+vi.mock('@/features/onboarding/repository.server', () => ({}))
 
 describe('Onboarding route', () => {
   it('registers its path, metadata, and page component', () => {

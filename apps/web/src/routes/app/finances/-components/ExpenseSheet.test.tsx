@@ -226,7 +226,7 @@ describe('ExpenseSheet', () => {
     renderSheet()
 
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
-    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.click(await screen.findByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
 
     expect(screen.getByText('Equivale a ARS 187.500.000')).toBeInTheDocument()
@@ -237,7 +237,7 @@ describe('ExpenseSheet', () => {
     renderSheet()
 
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
-    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.click(await screen.findByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125,50')
 
     expect(screen.getByText('Equivale a ARS 188.250')).toBeInTheDocument()
@@ -283,7 +283,7 @@ describe('ExpenseSheet', () => {
     renderSheet()
 
     await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
-    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '125000')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
@@ -691,7 +691,7 @@ describe('ExpenseSheet', () => {
     expect(screen.queryByRole('button', { name: /mes/i })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
-    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
 
     expect(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' })).toBeVisible()
     expect(screen.queryByText(/se va a guardar para que puedas volver a usarlo/i)).not.toBeInTheDocument()

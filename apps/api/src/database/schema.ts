@@ -1,10 +1,63 @@
-import { users } from '../users/users.schema';
-import { whatsappAuthState } from '../whatsapp/whatsapp.schema';
+import { onboardingDrafts } from './legacy.schema';
+import {
+  allocationPlanEntries,
+  allocationPlanSnapshots,
+  expenses,
+  expenseSources,
+  financialGoals,
+  financialProfiles,
+  goalInvestmentPositions,
+  goalSavingsPositions,
+  goalCompletionWithdrawals,
+  incomes,
+  incomeSources,
+  investmentContributions,
+  investmentContributionAllocations,
+  savingContributions,
+  savingContributionAllocations,
+  savingsPlaceTransfers,
+  savingsPlaces,
+} from '../profile/profile.schema';
 
 export const schema = {
-  users,
-  whatsappAuthState,
+  onboardingDrafts,
+  financialProfiles,
+  incomes,
+  incomeSources,
+  expenses,
+  expenseSources,
+  allocationPlanSnapshots,
+  allocationPlanEntries,
+  financialGoals,
+  goalSavingsPositions,
+  goalInvestmentPositions,
+  savingContributions,
+  savingContributionAllocations,
+  savingsPlaces,
+  savingsPlaceTransfers,
+  goalCompletionWithdrawals,
+  investmentContributions,
+  investmentContributionAllocations,
 };
 
 export type Schema = typeof schema;
-export { users, whatsappAuthState };
+export {
+  allocationPlanEntries,
+  allocationPlanSnapshots,
+  expenses,
+  expenseSources,
+  financialGoals,
+  financialProfiles,
+  goalInvestmentPositions,
+  goalSavingsPositions,
+  goalCompletionWithdrawals,
+  incomes,
+  incomeSources,
+  investmentContributions,
+  investmentContributionAllocations,
+  savingContributions,
+  savingContributionAllocations,
+  savingsPlaceTransfers,
+  savingsPlaces,
+  onboardingDrafts,
+};

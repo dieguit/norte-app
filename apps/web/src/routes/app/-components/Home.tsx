@@ -5,7 +5,7 @@ import {
   getPreviousCalendarMonth,
   type InitialHomeState,
 } from "../../../features/financial/financial";
-import type { RoadmapData } from "../../../features/roadmap/roadmap";
+import type { RoadmapData } from "@repo/shared-types";
 import type { GoalWorkspaceItem } from "../../../features/goals/goals";
 import { GoalCompletionBanner } from "./GoalCompletionBanner";
 import type { CatchUpContribution } from "./ContributionActionSheet";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { GoalWorkspaceItem } from '../../../../features/goals/goals'
+import type { GoalWorkspaceItem } from '@repo/shared-types'
 import { GOAL_PRIORITY_LABELS, getGoalProjectionDisplay } from './goal-display'
 
 function makeGoal(overrides: Partial<GoalWorkspaceItem> = {}): GoalWorkspaceItem {

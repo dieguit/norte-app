@@ -33,6 +33,90 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres-e2e:
+    profiles: [e2e]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: norte_test
+      POSTGRES_USER: norte
+      POSTGRES_PASSWORD: norte
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_e2e_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U norte -d norte_test]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  api-e2e:
+    profiles: [e2e]
+    image: norte-e2e-api:local
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+      target: api
+    environment:
+      NODE_ENV: test
+      PORT: '3001'
+      DATABASE_URL: postgres://norte:norte@postgres-e2e:5432/norte_test
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:-}
+      CLERK_AUTHORIZED_PARTIES: http://localhost:3100
+    depends_on:
+      postgres-e2e:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/', { signal: AbortSignal.timeout(3000) }).then(async r => { if (r.status !== 200 || await r.text() !== 'Hello World!') process.exit(1) }).catch(() => process.exit(1))"
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  web-e2e:
+    profiles: [e2e]
+    image: norte-e2e-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+      target: web
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+        VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: ${VITE_PUBLIC_POSTHOG_PROJECT_TOKEN:-}
+        VITE_PUBLIC_POSTHOG_HOST: ${VITE_PUBLIC_POSTHOG_HOST:-}
+    ports:
+      - "3100:3100"
+    environment:
+      NODE_ENV: test
+      HOST: 0.0.0.0
+      NITRO_HOST: 0.0.0.0
+      PORT: '3100'
+      API_BASE_URL: http://api-e2e:3001
+      VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      CLERK_SIGN_IN_URL: /sign-in
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+    depends_on:
+      api-e2e:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3100/', { redirect: 'manual', signal: AbortSignal.timeout(3000) }).then(r => { const redirect = [301,302,303,307,308].includes(r.status) && new URL(r.headers.get('location') || '/', 'http://localhost:3100').pathname.startsWith('/sign-in'); if (!r.ok && !redirect) process.exit(1) }).catch(() => process.exit(1))"
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
 volumes:
   postgres_data:
   postgres_test_data:
+  postgres_e2e_data:

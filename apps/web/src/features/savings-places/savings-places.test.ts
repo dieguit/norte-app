@@ -94,6 +94,20 @@ describe('getSavingsPlaceEntries', () => {
 })
 
 describe('calculateSavingsPlacesWorkspace', () => {
+  it('preserves identical ISO movement timestamps for Date and serialized inputs', () => {
+    const iso = '2026-01-02T03:04:05.000Z'
+    const workspace = (createdAt: Date | string) => calculateSavingsPlacesWorkspace({
+      places: [{ id: 'p1', name: 'Banco' }, { id: 'p2', name: 'Caja' }],
+      contributions: [{ id: 'c', placeId: 'p1', amount: '100.00', currency: 'ARS', createdAt }],
+      transfers: [{ id: 't', fromPlaceId: 'p1', toPlaceId: 'p2', fromPlaceName: 'Banco',
+        toPlaceName: 'Caja', amount: '20.00', currency: 'ARS', createdAt }],
+      completionWithdrawals: [{ id: 'w', goalId: 'g', goalName: 'Meta', placeId: 'p2',
+        placeName: 'Caja', amount: '5.00', currency: 'ARS', createdAt }],
+    })
+    expect(workspace(new Date(iso))).toEqual(workspace(iso))
+    expect(workspace(iso).movements.map((movement) => movement.createdAt)).toEqual([iso, iso, iso])
+  })
+
   const placeA = { id: 'p1', name: 'Banco' }
   const placeB = { id: 'p2', name: 'Caja' }
 

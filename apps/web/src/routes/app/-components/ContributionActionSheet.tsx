@@ -26,7 +26,7 @@ export function ContributionActionSheet({
   const isContextual = Boolean(
     catchUpContribution &&
       selection.selectedAction?.kind === catchUpContribution.kind &&
-      selection.selectedAction.currency === catchUpContribution.currency,
+      selection.selectedAction?.currency === catchUpContribution.currency,
   )
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) selection.setSelectedAction(null)

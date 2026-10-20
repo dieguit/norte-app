@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getFinancesWorkspace } from "../../../../features/financial/financial.functions";
 import { FinancesWorkspace } from "./FinancesWorkspace";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -25,12 +26,30 @@ vi.mock("../../../../features/financial/financial.functions", () => ({
   createIncome: vi.fn(),
   deleteIncome: vi.fn(),
   updateIncome: vi.fn(),
+  getFinancesWorkspace: vi.fn(),
 }));
 
 afterEach(cleanup);
+beforeEach(() => {
+  vi.mocked(getFinancesWorkspace).mockImplementation((options: any) => Promise.resolve({
+    ...sampleWorkspace,
+    month: options.data.month,
+    summary: options.data.month === "2026-07" ? {
+      income: { amount: "600000.00", currency: "ARS" }, expenses: { amount: "250000.00", currency: "ARS" },
+      balance: { amount: "350000.00", currency: "ARS" }, contribution: { amount: "315000.00", currency: "ARS" },
+    } : sampleWorkspace.summary,
+  } as never) as never);
+});
 
 const sampleWorkspace = {
   goalDedicationPercentage: "90",
+  month: "2026-08",
+  summary: {
+    income: { amount: "700000.00", currency: "ARS" as const },
+    expenses: { amount: "500000.00", currency: "ARS" as const },
+    balance: { amount: "200000.00", currency: "ARS" as const },
+    contribution: { amount: "180000.00", currency: "ARS" as const },
+  },
           savings: {
             places: [
               {
@@ -55,6 +74,7 @@ const sampleWorkspace = {
         currency: "ARS" as const,
         recurring: true,
         effectiveMonth: "2026-01-01",
+        arsEquivalent: null,
       },
       {
         id: "income_bonus",
@@ -66,6 +86,7 @@ const sampleWorkspace = {
         currency: "ARS" as const,
         recurring: false,
         effectiveMonth: "2026-08-01",
+        arsEquivalent: null,
       },
     ],
   },
@@ -83,6 +104,7 @@ const sampleWorkspace = {
         recurring: true,
         effectiveMonth: "2026-06-01",
         endMonth: null,
+        arsEquivalent: null,
       },
       {
         id: "exp_utilities_closed",
@@ -95,6 +117,7 @@ const sampleWorkspace = {
         recurring: true,
         effectiveMonth: "2026-01-01",
         endMonth: "2026-08-01",
+        arsEquivalent: null,
       },
       {
         id: "exp_flight_usd",
@@ -107,6 +130,7 @@ const sampleWorkspace = {
         recurring: false,
         effectiveMonth: "2026-08-01",
         endMonth: null,
+        arsEquivalent: "300000.00",
       },
     ],
   },
@@ -402,6 +426,7 @@ describe("FinancesWorkspace", () => {
       <FinancesWorkspace
         workspace={{
           goalDedicationPercentage: "90",
+          month: "2026-08", summary: { income: { amount: "0.00", currency: "ARS" }, expenses: { amount: "0.00", currency: "ARS" }, balance: { amount: "0.00", currency: "ARS" }, contribution: { amount: "0.00", currency: "ARS" } },
           savings: { places: [], movements: [] },
           incomes: { sources: [], incomes: [] },
           expenses: { sources: [], expenses: [] },
@@ -483,11 +508,78 @@ describe("FinancesWorkspace", () => {
     expect(within(oneOffSection).queryByText("Vuelo")).not.toBeInTheDocument();
   });
 
+  it("shows a visible error and no stale summary when the selected month request fails", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getFinancesWorkspace).mockRejectedValueOnce(new Error("offline"));
+    render(<FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />);
+    await user.click(screen.getByRole("button", { name: "Mes de finanzas" }));
+    await user.click(screen.getByRole("button", { name: "Jul" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar las finanzas de este mes.");
+    expect(screen.queryByRole("region", { name: "Resumen mensual para objetivos" })).not.toBeInTheDocument();
+  });
+
+  it("hides previously loaded month data after failed router revalidation and recovers on a new month", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />);
+    await user.click(screen.getByRole("button", { name: "Mes de finanzas" }));
+    await user.click(screen.getByRole("button", { name: "Jul" }));
+    expect(await screen.findByRole("heading", { name: "Finanzas de Julio de 2026" })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Ahorros" }));
+    expect(screen.getByText("Banco Nación")).toBeInTheDocument();
+
+    vi.mocked(getFinancesWorkspace).mockRejectedValueOnce(new Error("offline"));
+    rerender(<FinancesWorkspace workspace={{ ...sampleWorkspace, month: "2026-08" }} initialMonth="2026-08" />);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Resumen mensual para objetivos" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Ingresos" }));
+    expect(screen.queryByText("Sueldo mensual")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Ahorros" }));
+    expect(screen.queryByText("Banco Nación")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Gastos de Julio de 2026" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Mes de finanzas" }));
+    await user.click(screen.getByRole("button", { name: "Jun" }));
+    expect(await screen.findByRole("heading", { name: "Finanzas de Junio de 2026" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the latest selected month when responses arrive in reverse order", async () => {
+    const user = userEvent.setup();
+    const pending = new Map<string, (value: unknown) => void>();
+    vi.mocked(getFinancesWorkspace).mockImplementation((options: any) => new Promise((resolve) => pending.set(options.data.month, resolve)) as never);
+    render(<FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />);
+    await user.click(screen.getByRole("button", { name: "Mes de finanzas" }));
+    await user.click(screen.getByRole("button", { name: "Jul" }));
+    await waitFor(() => expect(pending.has("2026-07")).toBe(true));
+    await user.click(screen.getByRole("button", { name: "Mes de finanzas" }));
+    await user.click(screen.getByRole("button", { name: "Jun" }));
+    await waitFor(() => expect(pending.has("2026-06")).toBe(true));
+    const june = { ...sampleWorkspace, month: "2026-06", summary: { ...sampleWorkspace.summary, income: { amount: "600.00", currency: "ARS" as const } } };
+    pending.get("2026-06")!(june);
+    expect(await screen.findByRole("heading", { name: "Finanzas de Junio de 2026" })).toBeInTheDocument();
+    pending.get("2026-07")!({ ...sampleWorkspace, month: "2026-07" });
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Finanzas de Junio de 2026" })).toBeInTheDocument());
+    expect(screen.queryByRole("heading", { name: "Finanzas de Julio de 2026" })).not.toBeInTheDocument();
+  });
+
+  it("refreshes the selected prior month when the route loader is invalidated", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-08" />);
+    await user.click(screen.getByRole("button", { name: "Mes de finanzas" }));
+    await user.click(screen.getByRole("button", { name: "Jul" }));
+    expect(await screen.findByRole("heading", { name: "Finanzas de Julio de 2026" })).toBeInTheDocument();
+    vi.mocked(getFinancesWorkspace).mockResolvedValueOnce({ ...sampleWorkspace, month: "2026-07", goalDedicationPercentage: "80.00" } as never);
+    rerender(<FinancesWorkspace workspace={{ ...sampleWorkspace }} initialMonth="2026-08" />);
+    await waitFor(() => expect(getFinancesWorkspace).toHaveBeenLastCalledWith({ data: { month: "2026-07" } }));
+    expect(await screen.findByText(/80\.00% · aproximadamente/)).toBeInTheDocument();
+  });
+
   it("keeps the goals link available when the selected month has no balance", () => {
     render(
       <FinancesWorkspace
         workspace={{
           goalDedicationPercentage: "90",
+          month: "2026-08", summary: { income: { amount: "0.00", currency: "ARS" }, expenses: { amount: "0.00", currency: "ARS" }, balance: { amount: "0.00", currency: "ARS" }, contribution: { amount: "0.00", currency: "ARS" } },
           savings: { places: [], movements: [] },
           incomes: { sources: [], incomes: [] },
           expenses: { sources: [], expenses: [] },
@@ -515,6 +607,7 @@ describe("FinancesWorkspace", () => {
       <FinancesWorkspace
         workspace={{
           goalDedicationPercentage: "90",
+          month: "2026-08", summary: { income: { amount: "0.00", currency: "ARS" }, expenses: { amount: "0.00", currency: "ARS" }, balance: { amount: "0.00", currency: "ARS" }, contribution: { amount: "0.00", currency: "ARS" } },
           savings: { places: [], movements: [] },
           incomes: {
             sources: [],
@@ -529,6 +622,7 @@ describe("FinancesWorkspace", () => {
                 currency: "ARS" as const,
                 recurring: true,
                 effectiveMonth: "2026-08-01",
+                arsEquivalent: null,
               },
             ],
           },

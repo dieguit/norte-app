@@ -54,17 +54,8 @@ export interface ExpensesWorkspace {
   }>
 }
 
-export function isExpenseIncludedInMonth(
-  expense: Pick<ExpenseMonthInput, 'recurring' | 'effectiveMonth' | 'endMonth'>,
-  month: string,
-) {
-  const targetMonth = month.slice(0, 7)
-  const effectiveMonth = expense.effectiveMonth.slice(0, 7)
-  const endMonth = expense.endMonth?.slice(0, 7)
-  return expense.recurring
-    ? effectiveMonth <= targetMonth && (endMonth === undefined || targetMonth < endMonth)
-    : effectiveMonth === targetMonth
-}
+import { isExpenseIncludedInMonth } from '@repo/shared-types'
+export { isExpenseIncludedInMonth }
 
 export function getExpenseTotalArs(expenses: ExpenseMonthInput[], month: string): Money {
   const total = expenses.reduce((sum, expense) => {

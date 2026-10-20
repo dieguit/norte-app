@@ -1,29 +1,48 @@
-import '@tanstack/react-start/server-only'
-import { requireFinancialUser } from './auth.server'
-import type { CreateExpenseInput, DeleteExpenseInput, UpdateExpenseInput } from './expenses.schema'
-import {
-  createExpenseInRepository,
-  deleteExpenseInRepository,
-  updateExpenseInRepository,
-} from './expenses.repository.server'
+import "@tanstack/react-start/server-only";
+import { ExpenseMutationResponseSchema } from "@repo/shared-types";
+import { mutateFinancialApi } from "./financial.server";
+import type { ExpenseDraft } from "./expenses.schema";
 
-export async function createExpenseServer({ data }: { data: CreateExpenseInput }) {
-  return createExpenseInRepository(await requireFinancialUser(), data.draft, data.effectiveMonth)
+export async function createExpenseServer({
+  data,
+}: {
+  data: { draft: ExpenseDraft; effectiveMonth: string };
+}) {
+  const response = await mutateFinancialApi(
+    "/expenses",
+    "POST",
+    data,
+    "No se pudo guardar el gasto.",
+  );
+  ExpenseMutationResponseSchema.parse(await response.json());
 }
 
-export async function updateExpenseServer({ data }: { data: UpdateExpenseInput }) {
-  return updateExpenseInRepository(
-    await requireFinancialUser(),
-    data.expenseId,
-    data.effectiveMonth,
-    data.draft,
-  )
+export async function updateExpenseServer({
+  data,
+}: {
+  data: { expenseId: string; draft: ExpenseDraft; effectiveMonth: string };
+}) {
+  const { expenseId, ...body } = data;
+  const response = await mutateFinancialApi(
+    `/expenses/${expenseId}`,
+    "PATCH",
+    body,
+    "No se pudo guardar el gasto.",
+  );
+  ExpenseMutationResponseSchema.parse(await response.json());
 }
 
-export async function deleteExpenseServer({ data }: { data: DeleteExpenseInput }) {
-  return deleteExpenseInRepository(
-    await requireFinancialUser(),
-    data.expenseId,
-    data.effectiveMonth,
-  )
+export async function deleteExpenseServer({
+  data,
+}: {
+  data: { expenseId: string; effectiveMonth: string };
+}) {
+  await mutateFinancialApi(
+    `/expenses/${data.expenseId}`,
+    "DELETE",
+    {
+      effectiveMonth: data.effectiveMonth,
+    },
+    "No se pudo guardar el gasto.",
+  );
 }

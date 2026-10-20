@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js'
 import { ChevronDown, ChevronRight, CircleCheck, Pause, Pencil, Play } from 'lucide-react'
 import { formatCalendarMonth, formatDate, formatMoney, formatPercentage } from '../../../../lib/format'
-import type { GoalWorkspaceItem } from '../../../../features/goals/goals'
+import type { GoalWorkspaceItem } from '@repo/shared-types'
 import { getGoalProjectionDisplay } from './goal-display'
 import { SavingContributionActions } from './SavingContributionActions'
 import { Button } from '../../../../components/ui/button'

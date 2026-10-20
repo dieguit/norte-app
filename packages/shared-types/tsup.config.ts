@@ -1,14 +1,14 @@
 import { defineConfig } from 'tsup';
 
-export default defineConfig({
+export default defineConfig((options) => ({
   entry: ['src/index.ts'],
   format: ['esm', 'cjs'],
   dts: true,
-  clean: true,
+  clean: !options.watch,
   target: 'es2021',
   outExtension({ format }) {
     return {
       js: format === 'esm' ? '.js' : '.cjs',
     };
   },
-});
+}));

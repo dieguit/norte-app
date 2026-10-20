@@ -6,6 +6,9 @@ describe('validateEnv', () => {
     DATABASE_URL: 'postgres://user:pass@localhost:5432/db',
     NODE_ENV: 'development',
     PORT: '3001',
+    CLERK_SECRET_KEY: 'placeholder',
+    CLERK_ISSUER_URL: 'https://clerk.example.test',
+    CLERK_AUTHORIZED_PARTIES: 'http://localhost:3100',
   };
 
   it('returns parsed env when all required vars are present', () => {
@@ -31,16 +34,13 @@ describe('validateEnv', () => {
   });
 
   it('defaults PORT to 3001 when missing', () => {
-    const rest = {
-      DATABASE_URL: validEnv.DATABASE_URL,
-      NODE_ENV: validEnv.NODE_ENV,
-    };
+    const rest = { ...validEnv, PORT: undefined };
     const result = validateEnv(rest);
     expect(result.PORT).toBe(3001);
   });
 
   it('defaults NODE_ENV to development when missing', () => {
-    const rest = { DATABASE_URL: validEnv.DATABASE_URL, PORT: validEnv.PORT };
+    const rest = { ...validEnv, NODE_ENV: undefined };
     const result = validateEnv(rest);
     expect(result.NODE_ENV).toBe('development');
   });

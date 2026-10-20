@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { RoadmapData } from "../../../features/roadmap/roadmap";
+import type { RoadmapData } from "@repo/shared-types";
 import {
   LoadMoreHistory,
   RoadmapEmptyState,

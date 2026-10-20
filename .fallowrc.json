@@ -1,0 +1,7 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  // The E2E global setup runs `pnpm --filter @repo/api db:migrate` (no import); the dependency orders the workspace build.
+  "ignoreDependencies": ["@repo/api"],
+  // The web onboarding/admin legacy schema is intentionally duplicated in the API until those features move.
+  "duplicates": { "ignore": ["apps/api/src/database/legacy.schema.ts", "apps/web/src/db/schema.ts"] }
+}

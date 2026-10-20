@@ -108,7 +108,7 @@ describe('FinancialOnboarding', () => {
 
     await user.click(screen.getByRole('button', { name: 'Empezar' }))
     await user.click(screen.getByLabelText('Tipo de objetivo'))
-    await user.click(screen.getByRole('option', { name: 'Compra o gasto grande' }))
+    await user.click(await screen.findByRole('option', { name: 'Compra o gasto grande' }))
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(screen.getByText('Ingresá un nombre.')).toBeVisible()
@@ -142,7 +142,7 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
     await user.click(await screen.findByRole('option', { name: 'Sueldo' }))
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
-    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.click(await screen.findByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100')
     await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Sueldo principal')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
@@ -188,7 +188,7 @@ describe('FinancialOnboarding', () => {
 
     await user.click(screen.getByRole('button', { name: 'Agregar ingreso' }))
     await user.click(screen.getByRole('combobox', { name: 'Categoría del ingreso' }))
-    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Consultoría')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '50000')
     await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Honorarios')
@@ -208,7 +208,7 @@ describe('FinancialOnboarding', () => {
 
     await user.click(screen.getByRole('button', { name: 'Empezar' }))
     await user.click(screen.getByLabelText('Tipo de objetivo'))
-    await user.click(screen.getByRole('option', { name: 'Otro objetivo' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro objetivo' }))
     await user.type(screen.getByLabelText('Nombre del objetivo'), 'Viaje al sur')
     await user.type(screen.getByLabelText('Monto objetivo'), '2.000.000')
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
@@ -278,7 +278,7 @@ describe('FinancialOnboarding', () => {
 
     await user.click(screen.getByRole('button', { name: 'Agregar gasto' }))
     await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
-    await user.click(screen.getByRole('option', { name: 'Otro (agregar nuevo)' }))
+    await user.click(await screen.findByRole('option', { name: 'Otro (agregar nuevo)' }))
     await user.type(screen.getByRole('textbox', { name: 'Nombre de la categoría nueva' }), 'Gimnasio')
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '50000')
     await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Cuota mensual')
@@ -315,7 +315,7 @@ describe('FinancialOnboarding', () => {
     await user.click(screen.getByRole('combobox', { name: 'Categoría del gasto' }))
     await user.click(await screen.findByRole('option', { name: 'Alquiler / vivienda' }))
     await user.click(screen.getByRole('combobox', { name: 'Moneda' }))
-    await user.click(screen.getByRole('option', { name: 'Dólares (USD)' }))
+    await user.click(await screen.findByRole('option', { name: 'Dólares (USD)' }))
     await user.type(screen.getByRole('textbox', { name: 'Monto' }), '100')
     await user.type(screen.getByRole('textbox', { name: 'Concepto (opcional)' }), 'Alquiler')
     await user.click(screen.getByRole('button', { name: 'Guardar' }))

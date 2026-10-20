@@ -1,0 +1,17 @@
+**/.git
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/.auth
+**/playwright-report
+**/test-results
+**/dist
+**/.output
+**/.nitro
+**/.tanstack
+**/.turbo
+**/coverage
+.superpowers
+docs/superpowers
