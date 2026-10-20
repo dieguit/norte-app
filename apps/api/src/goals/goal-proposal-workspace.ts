@@ -1,4 +1,4 @@
-import type { Money } from '../finances/goals.money'
+import type { Money } from '@repo/finance-utils'
 import type { GoalWorkspaceItem, GoalsWorkspace, GoalsWorkspaceSource } from '../finances/goals.engine'
 
 export function findGoalInWorkspace(workspace: GoalsWorkspace, goalId: string): GoalWorkspaceItem | undefined {

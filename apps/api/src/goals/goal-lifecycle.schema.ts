@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { allocationEntrySchema } from './goal-creation.schema'
+import { allocationEntrySchema } from '@repo/shared-types'
 
 const goalLifecycleSchema = z.enum(['pause', 'resume'])
 

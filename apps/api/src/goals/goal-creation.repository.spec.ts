@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { allocationPlanEntries, allocationPlanSnapshots, financialGoals, financialProfiles, goalInvestmentPositions } from '../profile/profile.schema'
 import { buildGoalCreationProposal } from './goal-creation'
 import { buildGoalLifecycleProposal } from './goal-lifecycle'
-import { goalCreationDraftSchema } from './goal-creation.schema'
+import { goalCreationDraftSchema } from '@repo/shared-types'
 import { confirmAllocationChangeInRepository, confirmGoalCreationInRepository, confirmGoalEditInRepository, confirmGoalLifecycleInRepository, createAllocationChangePreviewToken, createGoalCreationPreviewToken, createGoalEditPreviewToken, createGoalLifecyclePreviewToken, getGoalCreationState, getGoalEditState, getGoalLifecycleState, StaleAllocationChangePreviewError, StaleGoalLifecyclePreviewError } from './goal-creation.repository'
 import { allocationChangeDraftSchema } from './allocation-change.schema'
 

@@ -12,11 +12,11 @@ import {
 } from '../profile/profile.schema';
 import { buildCurrentGoalsPlanWorkspace, buildGoalsWorkspace, type GoalsWorkspaceSource } from '../finances/goals.engine';
 import { mapRowsToGoalsWorkspaceSource } from './goals.source';
-import { createMoney } from '../finances/goals.money';
+import { createMoney } from '@repo/finance-utils';
 import { buildGoalCreationProposal, selectGoalPlanSnapshot, type GoalCreationState } from './goal-creation';
 import { buildGoalLifecycleContext, buildGoalLifecycleProposal } from './goal-lifecycle';
 import { confirmGoalLifecycleSchema, goalLifecyclePreviewSchema, type GoalLifecycle } from './goal-lifecycle.schema';
-import { parseGoalCreationSubmission, type GoalCreationDraft } from './goal-creation.schema';
+import { parseGoalCreationSubmission, type GoalCreationDraft } from '@repo/shared-types';
 import { confirmAllocationChangeInRepository, confirmGoalCreationInRepository, confirmGoalEditInRepository, confirmGoalLifecycleInRepository, createAllocationChangePreviewToken, createGoalCreationPreviewToken, createGoalEditPreviewToken, createGoalLifecyclePreviewToken, getGoalCreationState, getGoalEditState, getGoalLifecycleState, StaleAllocationChangePreviewError, StaleGoalCreationPreviewError, StaleGoalEditPreviewError, StaleGoalLifecyclePreviewError } from './goal-creation.repository';
 import { GoalCreationContextStateSchema, GoalCreationPreviewSchema, GoalCreationConfirmationSchema, GoalEditConfirmationSchema, GoalPlanContextStateSchema, type GoalCreationContextState } from '@repo/shared-types';
 import { ZodError, type ZodType } from 'zod';

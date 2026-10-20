@@ -1,8 +1,9 @@
 import {
   type CurrencyCode,
   type Money,
-} from '../finances/goals.money'
-import { PLANNING_ARS_PER_USD } from '../finances/goals.financial'
+  PLANNING_ARS_PER_USD,
+  calculatePercentageSum,
+} from '@repo/finance-utils'
 import {
   type GoalProjection,
   type GoalsFinancialSummary,
@@ -17,7 +18,6 @@ import {
 import {
   addGoalAllocationAmounts,
   buildGoalAllocationEntries,
-  calculatePercentageSum,
   overlayGoalAllocationPercentages,
 } from './goal-proposal-allocation'
 import { buildGoalProposalSource } from './goal-proposal-source'

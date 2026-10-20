@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createMoney } from './goals.money'
+import { createMoney } from '@repo/finance-utils'
 import {
   buildGoalsWorkspace,
   buildCurrentGoalsPlanWorkspace,

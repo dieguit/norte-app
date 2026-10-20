@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js'
 import { z } from 'zod'
-import { allocationEntrySchema } from './goal-creation.schema'
+import { allocationEntrySchema } from '@repo/shared-types'
 
 export function isPlainDecimalMoneyString(value: unknown): value is string {
   return typeof value === 'string' && /^\d+(?:[.,]\d{1,2})?$/.test(value.trim())

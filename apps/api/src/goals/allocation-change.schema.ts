@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { goalImpactSchema } from './goal-creation.schema'
+import { goalImpactSchema } from '@repo/shared-types'
 
 export const allocationChangeDraftSchema = goalImpactSchema.extend({
   dedicationPercentage: z.number().int().min(0).max(100),

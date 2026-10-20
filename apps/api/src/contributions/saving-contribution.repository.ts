@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import { eq, inArray } from 'drizzle-orm';
 import type { Database } from '../database/database.types';
 import type { GoalsWorkspaceSource } from '../finances/goals.engine';
-import { calculateAllocationAmounts, type Money } from '../finances/goals.money';
+import { calculateAllocationAmounts, type Money } from '@repo/finance-utils';
 import { getGoalPlanStateWithExecutor } from '../goals/goal-creation.repository';
 import { lockFinancialProfile } from '../profile/financial-profile.lock';
 import { goalInvestmentPositions, goalSavingsPositions, investmentContributionAllocations, investmentContributions, savingContributionAllocations, savingContributions } from '../profile/profile.schema';

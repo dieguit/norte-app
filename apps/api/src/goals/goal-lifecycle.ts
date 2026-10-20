@@ -3,8 +3,10 @@ import {
   type CurrencyCode,
   type Money,
   createMoney,
-} from '../finances/goals.money'
-import { PLANNING_ARS_PER_USD } from '../finances/goals.financial'
+  PLANNING_ARS_PER_USD,
+  rebalanceAllocationEntries,
+  calculatePercentageSum,
+} from '@repo/finance-utils'
 import {
   type GoalProjection,
   type GoalStatus,
@@ -17,13 +19,11 @@ import {
 import {
   type GoalCreationAllocation,
   type GoalCreationImpact,
-  rebalanceAllocationEntries,
   selectGoalPlanSnapshot,
 } from './goal-creation'
 import {
   addGoalAllocationAmounts,
   buildGoalAllocationEntries,
-  calculatePercentageSum,
 } from './goal-proposal-allocation'
 import { buildGoalProposalSource } from './goal-proposal-source'
 import { findGoalInWorkspace, getAllocatedMonthlyAmounts } from './goal-proposal-workspace'

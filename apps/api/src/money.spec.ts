@@ -10,6 +10,10 @@ describe('normalizeMoneyAmount', () => {
     );
   });
 
+  it('rejects amounts that round to zero', () => {
+    expect(() => normalizeMoneyAmount('0,001')).toThrow('Ingresá un monto mayor a cero.');
+  });
+
   it('accepts a positive amount at the rounding boundary', () => {
     expect(normalizeMoneyAmount('0,005')).toBe('0.01');
   });

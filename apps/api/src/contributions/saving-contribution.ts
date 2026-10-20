@@ -1,13 +1,26 @@
 import BigNumber from 'bignumber.js'
-import { deriveUsdPurchase } from '@repo/shared-types'
+import {
+  deriveUsdPurchase,
+  type EligibleGoal,
+  type InvestmentContributionCurrencyState,
+  type InvestmentContributionDataState,
+  type SavingAllocationPreview,
+  type SavingContributionContext,
+  type SavingContributionPreviewResult as BaseSavingContributionPreviewResult,
+  type SavingDraft,
+  type SavingDraftInput,
+  type SavingPreviewResult,
+} from '@repo/shared-types'
 import {
   type CurrencyCode,
   type Money,
   calculateAllocationAmounts,
   createMoney,
+  getPreviousCalendarMonth,
   isPositiveMoney,
   parseMoneyInput,
-} from '../finances/goals.money'
+  PLANNING_ARS_PER_USD,
+} from '@repo/finance-utils'
 import {
   type ContributionKind,
   type GoalProjection,
@@ -20,9 +33,9 @@ import {
   serializeGoalPlanCollections,
   serializeGoalProfile,
 } from '../goals/goal-proposal-serialization'
-import { PLANNING_ARS_PER_USD } from '../finances/goals.financial'
 
 export type { ContributionKind } from '../finances/goals.engine'
+export { getPreviousCalendarMonth } from '@repo/finance-utils'
 
 export interface EligibleGoalSource {
   id: string
@@ -77,72 +90,15 @@ export function requireEligibleContributionGoals(
   return goals
 }
 
-export interface SavingDraftInput {
-  kind?: ContributionKind
-  currency: CurrencyCode
-  amount: string
-  place?: { kind: 'existing'; placeId: string } | { kind: 'new'; name: string }
-  arsSpent?: string | null
-  effectiveRate?: string | null
-}
-
-export interface SavingDraft {
-  kind?: ContributionKind
-  currency: CurrencyCode
-  amount: Money
-  place?: { kind: 'existing'; placeId: string } | { kind: 'new'; name: string }
-  arsSpent?: Money
-  effectiveRate?: string
-}
-
-export interface EligibleGoal {
-  id: string
-  name: string
-  percentage: string | number
-}
-
-export interface SavingAllocationPreview {
-  goalId: string
-  goalName: string
-  percentage: string
-  amount: Money
-  progressBefore?: string
-  progressAfter?: string
-  projectionBefore?: GoalProjection
-  projectionAfter?: GoalProjection
-}
-
-export interface SavingPreviewResult {
-  draft: SavingDraft
-  allocations: SavingAllocationPreview[]
-}
-
-export interface SavingContributionPreviewResult {
-  preview: SavingPreviewResult
+export type SavingContributionPreviewResult = BaseSavingContributionPreviewResult & {
   previewToken: string
 }
 
-interface SavingContributionContext {
-  currentMonth: string
-  eligibleGoals: EligibleGoal[]
-  eligibleGoalsUsd: EligibleGoal[]
-  eligibleInvestmentGoals?: EligibleGoal[]
-  eligibleInvestmentGoalsUsd?: EligibleGoal[]
-  monthlyTargetArs?: Money | null
-  monthlyTargetUsd?: Money | null
-  monthlyInvestmentTargetArs?: Money | null
-  monthlyInvestmentTargetUsd?: Money | null
-  places: Array<{ id: string; name: string }>
-  investmentState: InvestmentContributionDataState
-}
-
-export type InvestmentContributionCurrencyState =
-  | { status: 'ready' }
-  | { status: 'incomplete'; reason: 'missing_investment_position' }
-
-export interface InvestmentContributionDataState {
-  ars: InvestmentContributionCurrencyState
-  usd: InvestmentContributionCurrencyState
+export type {
+  EligibleGoal,
+  SavingDraft,
+  SavingDraftInput,
+  SavingPreviewResult,
 }
 
 function getInvestmentContributionCurrencyState(
@@ -638,13 +594,6 @@ function getContributionMonth(createdAt: Date | string): string | null {
   } catch {
     return null
   }
-}
-
-export function getPreviousCalendarMonth(now: Date = new Date()): string {
-  const year = now.getUTCFullYear()
-  const month = now.getUTCMonth() - 1
-  const prev = new Date(Date.UTC(year, month, 1))
-  return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
 export function getCatchUpCreatedAt(catchUpMonth: string | undefined, now: Date): Date | undefined {

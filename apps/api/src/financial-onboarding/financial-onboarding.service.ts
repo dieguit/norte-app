@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ZodError } from 'zod';
-import { FinancialOnboardingSchema } from '@repo/shared-types';
+import { FinancialOnboardingSchema, parseGoalCreationSubmission } from '@repo/shared-types';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
 import { ExpensesService } from '../expenses/expenses.service';
@@ -8,11 +8,12 @@ import { IncomesService } from '../incomes/incomes.service';
 import { normalizeMoneyAmount } from '../money';
 import {
   deriveEmergencyFundTarget,
+  parseMoneyInput,
+} from '@repo/finance-utils';
+import {
   getGoalContributionArs,
   getMonthlyFinancialSummary,
 } from '../finances/goals.financial';
-import { parseMoneyInput } from '../finances/goals.money';
-import { parseGoalCreationSubmission } from '../goals/goal-creation.schema';
 import {
   allocationPlanEntries,
   allocationPlanSnapshots,

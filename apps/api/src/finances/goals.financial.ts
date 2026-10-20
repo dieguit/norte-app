@@ -1,19 +1,10 @@
 import BigNumber from 'bignumber.js';
-import { createMoney, type CurrencyCode, type Money } from './goals.money';
-
-export const PLANNING_ARS_PER_USD = '1500';
-export const PROJECTION_HORIZON_MONTHS = 720;
-
-export function convertCommitmentToDestination(commitment: Money, currency: CurrencyCode): Money {
-  if (commitment.currency === currency) return commitment;
-  if (commitment.currency !== 'ARS' || currency !== 'USD') throw new Error('Unsupported planning-rate conversion.');
-  return createMoney(new BigNumber(commitment.amount).dividedBy(PLANNING_ARS_PER_USD), 'USD');
-}
-
-export function deriveEmergencyFundTarget(expenses: Money, months: number): Money {
-  if (expenses.currency !== 'ARS') throw new Error('Emergency expenses must use ARS.');
-  return createMoney(new BigNumber(expenses.amount).times(months).dividedBy(PLANNING_ARS_PER_USD), 'USD');
-}
+import {
+  createMoney,
+  PLANNING_ARS_PER_USD,
+  type CurrencyCode,
+  type Money,
+} from '@repo/finance-utils';
 
 export interface MonthlyFinancialPlan {
   incomes: Array<{ amount: string; currency: CurrencyCode; recurring: boolean; effectiveMonth: string }>;

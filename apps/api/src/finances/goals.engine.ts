@@ -5,12 +5,10 @@ import {
   createMoney,
   addMoney,
   multiplyMoneyByFactor,
-} from './goals.money'
-import {
   convertCommitmentToDestination,
   deriveEmergencyFundTarget,
   PROJECTION_HORIZON_MONTHS,
-} from './goals.financial'
+} from '@repo/finance-utils'
 import {
   type MonthlyFinancialPlan,
   type MonthlyFinancialSummary,

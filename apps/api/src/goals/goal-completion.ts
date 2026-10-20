@@ -1,6 +1,5 @@
 import BigNumber from 'bignumber.js'
-import { type Money, createMoney } from '../finances/goals.money'
-import { PLANNING_ARS_PER_USD } from '../finances/goals.financial'
+import { type Money, createMoney, PLANNING_ARS_PER_USD } from '@repo/finance-utils'
 import { isPlainDecimalMoneyString } from './goal-completion.schema'
 import {
   buildGoalsWorkspace,

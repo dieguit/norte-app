@@ -32,6 +32,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.4.5",
+    "@repo/finance-utils": "workspace:^",
     "@repo/shared-types": "workspace:^",
     "@whiskeysockets/baileys": "7.0.0-rc13",
     "bignumber.js": "^11.1.5",

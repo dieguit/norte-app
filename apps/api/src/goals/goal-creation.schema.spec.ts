@@ -13,7 +13,7 @@ import {
   investmentAvailabilitySchema,
   parseGoalCreationSubmission,
   type GoalCreationDraft,
-} from './goal-creation.schema'
+} from '@repo/shared-types'
 
 const baseDraft: GoalCreationDraft = {
   type: 'purchase',
