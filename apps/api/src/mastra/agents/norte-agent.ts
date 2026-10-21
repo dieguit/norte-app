@@ -13,6 +13,8 @@ import {
   createPendingActionTools,
 } from '../tools/pending-actions';
 import { createRoadmapTools } from '../tools/roadmap-tools';
+import { createSourceTools } from '../tools/source-tools';
+import { sourcesIndex } from '../sources';
 
 const PERSONA = `Sos Norte, un asistente de finanzas personales. Respondé en español rioplatense con voseo, de forma breve y clara, como en un chat de WhatsApp. Usá un tono neutral, sin juzgar.`;
 
@@ -34,6 +36,14 @@ const DOMAIN_GUIDE = `Qué herramienta usar:
 - Objetivos (crear, editar, pausar, reactivar, completar, cambiar la distribución o el % dedicado): primero listGoals y getGoalPlan (o getGoalCompletionContext para completar), después la herramienta preview correspondiente. Mostrá el impacto en las fechas de cada objetivo.
 - Plata que el usuario realmente ahorró o invirtió ("ahorré", "invertí", "compré dólares"): getContributionContext y después previewSaving. Es lo único que mueve el progreso real de los objetivos; un plan o un margen estimado no cuentan como ahorro.`;
 
+const SOURCES_RULES = `Consejos y explicaciones:
+- Para consejos, educación financiera o "cómo funciona X", primero leé la fuente que corresponda con readSource y basá tu respuesta en ella. Mencioná el título de la fuente (y el link si tiene).
+- Podés combinar la fuente con los datos del usuario que obtengas con las herramientas.
+- Si ninguna fuente cubre la pregunta, decilo y limitate a una orientación general. Nunca presentes conocimiento general como si viniera de las fuentes de Norte.
+
+Fuentes disponibles:
+${sourcesIndex()}`;
+
 function linksSection(webAppUrl?: string) {
   if (!webAppUrl) return undefined;
   return `Links a la app (usalos cuando la respuesta sea larga o el usuario quiera ver el detalle):
@@ -48,6 +58,7 @@ export function buildInstructions(webAppUrl?: string): string {
     DATA_RULES,
     CONFIRMATION_RULES,
     DOMAIN_GUIDE,
+    SOURCES_RULES,
     linksSection(webAppUrl),
   ]
     .filter(Boolean)
@@ -83,6 +94,7 @@ export function createNorteAgent(
       ...createRoadmapTools(options.services, options.webAppUrl),
       ...createGoalTools(options.services, stores),
       ...createContributionTools(options.services, stores),
+      ...createSourceTools(),
     },
     memory: new Memory({ options: { lastMessages: 20 } }),
     ...(options.channels ? { channels: options.channels } : {}),

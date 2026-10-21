@@ -18,6 +18,7 @@ describe('norte agent', () => {
         'recordExpense',
         'getFinancesSummary',
         'getRoadmap',
+        'readSource',
       ]),
     );
   });
@@ -31,5 +32,6 @@ describe('norte agent', () => {
 
   it('omits links when no web app url is configured', () => {
     expect(buildInstructions()).not.toContain('/app/goals');
+    expect(buildInstructions()).toContain('fondo-de-emergencia: ');
   });
 });
