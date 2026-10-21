@@ -22,6 +22,18 @@ function setup() {
   return { pending, undo, confirm, undoLast, advance: (ms: number) => (now += ms) };
 }
 
+describe('UserActionStore', () => {
+  it('reports active entry presence and ignores expired entries', () => {
+    let now = 0;
+    const store = new UserActionStore(1000, () => now);
+    expect(store.has('u1')).toBe(false);
+    store.set('u1', { summary: 'A', run: vi.fn() });
+    expect(store.has('u1')).toBe(true);
+    now += 1001;
+    expect(store.has('u1')).toBe(false);
+  });
+});
+
 describe('confirmPendingAction', () => {
   it('runs the stored action once', async () => {
     const { pending, confirm } = setup();
@@ -100,6 +112,66 @@ describe('undoLastWrite', () => {
 });
 
 describe('stagePreview', () => {
+  it('captures previewToken at staging and is immune to later mutation', async () => {
+    const store = new UserActionStore();
+    const confirmFn = vi.fn().mockResolvedValue({ status: 'created' });
+    const preview = { previewToken: 'orig', n: 1 };
+    stagePreview({
+      store,
+      userId: 'u1',
+      summary: 'Crear objetivo',
+      preview,
+      present: (p) => p,
+      confirm: confirmFn,
+    });
+    preview.previewToken = 'x';
+    await store.take('u1')!.run();
+    expect(confirmFn).toHaveBeenCalledWith('orig');
+  });
+
+  it('does not overwrite newer proposals when a stale confirm resolves', async () => {
+    const store = new UserActionStore();
+    let resolveConfirm!: (value: {
+      status: string;
+      preview?: { previewToken: string; n: number };
+    }) => void;
+    const confirmPromise = new Promise<{
+      status: string;
+      preview?: { previewToken: string; n: number };
+    }>((res) => {
+      resolveConfirm = res;
+    });
+    const confirmFn = vi.fn().mockReturnValue(confirmPromise);
+
+    stagePreview({
+      store,
+      userId: 'u1',
+      summary: 'Proposal A',
+      preview: { previewToken: 'token-a', n: 1 },
+      present: (p) => p,
+      confirm: confirmFn,
+    });
+
+    const actionA = store.take('u1')!;
+    const runPromiseA = actionA.run();
+
+    store.set('u1', { summary: 'Proposal B', run: vi.fn() });
+
+    resolveConfirm({
+      status: 'stale',
+      preview: { previewToken: 'token-b', n: 2 },
+    });
+    const resA = await runPromiseA;
+
+    expect(resA).toEqual({
+      status: 'stale',
+      message:
+        'Los datos cambiaron. Mostrá esta nueva vista previa y pedí confirmación otra vez.',
+      preview: { previewToken: 'token-b', n: 2 },
+    });
+    expect(store.take('u1')?.summary).toBe('Proposal B');
+  });
+
   it('re-stages with the refreshed token when confirm is stale', async () => {
     const store = new UserActionStore();
     const confirmFn = vi

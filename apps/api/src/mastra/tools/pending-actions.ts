@@ -29,6 +29,11 @@ export class UserActionStore {
     this.entries.delete(userId);
     return entry && entry.expiresAt > this.now() ? entry : undefined;
   }
+
+  has(userId: string): boolean {
+    const entry = this.entries.get(userId);
+    return !!entry && entry.expiresAt > this.now();
+  }
 }
 
 // The stored closure captures the previewed input, so what runs on "sí" is exactly what the user saw.
@@ -43,12 +48,15 @@ export function stagePreview<P extends { previewToken: string }>(args: {
   ) => Promise<{ status: string; preview?: P } | undefined>;
 }) {
   const { store, userId, summary, preview, present, confirm } = args;
+  const { previewToken } = preview;
   store.set(userId, {
     summary,
     run: async () => {
-      const result = await confirm(preview.previewToken);
+      const result = await confirm(previewToken);
       if (result?.status === 'stale' && result.preview) {
-        stagePreview({ ...args, preview: result.preview });
+        if (!store.has(userId)) {
+          stagePreview({ ...args, preview: result.preview });
+        }
         return {
           status: 'stale',
           message:
