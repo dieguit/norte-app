@@ -12,8 +12,8 @@ function ctx(userId?: string) {
 
 const ID = '7b0c1f3e-4a2d-4c8e-9a1b-2f3d4e5f6a7b';
 const expenseDraft = {
-  concept: 'Súper',
-  source: { kind: 'uncategorized' },
+  concept: 'Reparación de canilla',
+  source: { kind: 'maintenance' },
   amount: '5000',
   currency: 'ARS',
   recurring: false,
@@ -64,7 +64,12 @@ describe('finance tools', () => {
   it('stages recurring expenses for confirmation without writing', async () => {
     const { services, stores, tools } = setup();
     const input = {
-      draft: { ...expenseDraft, concept: 'Alquiler', recurring: true },
+      draft: {
+        ...expenseDraft,
+        concept: 'Alquiler',
+        source: { kind: 'housing' },
+        recurring: true,
+      },
       effectiveMonth: '2026-11',
     };
     const result = await tools.recordExpense.execute!(
@@ -154,7 +159,7 @@ describe('finance tools', () => {
     expect(services.expenses.create).not.toHaveBeenCalled();
   });
 
-  it('lists fixed and custom categories for expenses and incomes', async () => {
+  it('lists fixed and custom categories for expenses and incomes without uncategorized', async () => {
     const { services, tools } = setup();
     services.finances.getWorkspace.mockResolvedValueOnce({
       expenses: {
@@ -187,7 +192,106 @@ describe('finance tools', () => {
         custom: [{ sourceId: 'cs-inc-1', name: 'Freelance' }],
       },
     });
+
+    const categories = result as {
+      expense: {
+        recurring: Array<{ kind: string }>;
+        oneTime: Array<{ kind: string }>;
+      };
+      income: { fixed: Array<{ kind: string }> };
+    };
+    expect(categories.expense.recurring).not.toContainEqual(
+      expect.objectContaining({ kind: 'uncategorized' }),
+    );
+    expect(categories.expense.oneTime).not.toContainEqual(
+      expect.objectContaining({ kind: 'uncategorized' }),
+    );
+    expect(categories.income.fixed).not.toContainEqual(
+      expect.objectContaining({ kind: 'uncategorized' }),
+    );
   });
+
+  it('records an expense with a valid custom category ID', async () => {
+    const { services, tools } = setup();
+    const customSourceId = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
+    const input = {
+      draft: {
+        concept: 'Comida gato',
+        source: { kind: 'custom' as const, sourceId: customSourceId },
+        amount: '3500',
+      },
+      effectiveMonth: '2026-10',
+    };
+    const result = await tools.recordExpense.execute!(
+      input as never,
+      ctx('u1'),
+    );
+    expect(result).toMatchObject({ created: { id: ID }, undoAvailable: true });
+    expect(services.expenses.create).toHaveBeenCalledWith('u1', {
+      draft: expect.objectContaining({
+        concept: 'Comida gato',
+        source: { kind: 'custom', sourceId: customSourceId },
+        amount: '3500',
+      }) as unknown,
+      effectiveMonth: '2026-10',
+    });
+  });
+
+  const uncategorizedExpenseDraft = {
+    concept: 'Supermercado',
+    source: { kind: 'uncategorized' },
+    amount: '5000',
+    currency: 'ARS' as const,
+    recurring: false,
+  };
+  const uncategorizedIncomeDraft = {
+    concept: 'Cobro',
+    source: { kind: 'uncategorized' },
+    amount: '15000',
+    currency: 'ARS' as const,
+    recurring: false,
+    effectiveMonth: '2026-10',
+  };
+
+  it.each([
+    {
+      toolName: 'recordExpense' as const,
+      input: { draft: uncategorizedExpenseDraft, effectiveMonth: '2026-10' },
+    },
+    {
+      toolName: 'updateExpense' as const,
+      input: {
+        id: ID,
+        draft: uncategorizedExpenseDraft,
+        effectiveMonth: '2026-10',
+      },
+    },
+    {
+      toolName: 'recordIncome' as const,
+      input: { draft: uncategorizedIncomeDraft },
+    },
+    {
+      toolName: 'updateIncome' as const,
+      input: { id: ID, draft: uncategorizedIncomeDraft },
+    },
+  ])(
+    'rejects uncategorized source in $toolName and requires an existing category',
+    async ({ toolName, input }) => {
+      const { services, stores, tools } = setup();
+      const result = await tools[toolName].execute!(input as never, ctx('u1'));
+
+      expect(result).toMatchObject({ error: true });
+      expect(JSON.stringify(result)).toContain(
+        'Elegí una categoría existente; si no podés deducirla, preguntale al usuario antes de registrar.',
+      );
+      expect(services.expenses.create).not.toHaveBeenCalled();
+      expect(services.expenses.update).not.toHaveBeenCalled();
+      expect(services.incomes.create).not.toHaveBeenCalled();
+      expect(services.incomes.update).not.toHaveBeenCalled();
+      expect(stores.pending.take('u1')).toBeUndefined();
+      expect(stores.undo.take('u1')).toBeUndefined();
+    },
+  );
 
   it('returns missing profile when listCategories finds no workspace', async () => {
     const { tools } = setup();
@@ -200,8 +304,8 @@ describe('finance tools', () => {
     const currentMonth = todayInArgentina().month;
     const input = {
       draft: {
-        concept: 'Súper',
-        source: { kind: 'uncategorized' },
+        concept: 'Reparación de canilla',
+        source: { kind: 'maintenance' },
         amount: '5000',
       },
     };

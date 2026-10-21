@@ -23,11 +23,25 @@ const IdSchema = z
   .describe('Record id from getFinancesSummary');
 
 const ToolExpenseDraftSchema = ExpenseDraftSchema.extend({
+  source: ExpenseDraftSchema.shape.source.refine(
+    (source) => source.kind !== 'uncategorized',
+    {
+      message:
+        'Elegí una categoría existente; si no podés deducirla, preguntale al usuario antes de registrar.',
+    },
+  ),
   currency: z.enum(['ARS', 'USD']).default('ARS'),
   recurring: z.boolean().default(false),
 });
 
 const ToolIncomeDraftSchema = IncomeDraftSchema.extend({
+  source: IncomeDraftSchema.shape.source.refine(
+    (source) => source.kind !== 'uncategorized',
+    {
+      message:
+        'Elegí una categoría existente; si no podés deducirla, preguntale al usuario antes de registrar.',
+    },
+  ),
   currency: z.enum(['ARS', 'USD']).default('ARS'),
   recurring: z.boolean().default(false),
   effectiveMonth: MonthSchema.optional(),
@@ -38,7 +52,9 @@ type FinanceServices = Pick<NorteServices, 'expenses' | 'incomes' | 'finances'>;
 const staged = (preview: unknown) => ({ needsConfirmation: true, preview });
 
 const toKindLabels = (sources: Record<string, string>) =>
-  Object.entries(sources).map(([kind, label]) => ({ kind, label }));
+  Object.entries(sources)
+    .filter(([kind]) => kind !== 'uncategorized')
+    .map(([kind, label]) => ({ kind, label }));
 
 const toCustomList = (sources: Array<{ id: string; name: string }>) =>
   sources.map((s) => ({ sourceId: s.id, name: s.name }));
@@ -68,7 +84,7 @@ export function createFinanceTools(
     listCategories: createTool({
       id: 'list-categories',
       description:
-        "Lists available fixed and custom categories for expenses and incomes. Use before recording or editing an income or expense to map the user's words to a category; reuse a custom one with { kind: 'custom', sourceId }; if nothing fits create { kind: 'custom', name } with a short Spanish name (e.g. 'Supermercado').",
+        "Lists available fixed and custom categories for expenses and incomes. Always use before recording or editing an income or expense to map to an existing fixed category or custom sourceId. Never choose uncategorized. If unclear or no match, ask the user before writing. Only use { kind: 'custom', name } if the user explicitly requests or approves creating a new category.",
       inputSchema: z.object({}),
       execute: (_input, context) =>
         toolResult(() =>
@@ -108,7 +124,7 @@ export function createFinanceTools(
     recordExpense: createTool({
       id: 'record-expense',
       description:
-        'Records an expense. Currency defaults to ARS and effectiveMonth to current month. recurring=false is a one-time expense for effectiveMonth (written immediately, undoable). recurring=true is monthly from effectiveMonth (returns a preview that needs confirmation). Use listCategories to pick or create a category.',
+        'Records an expense. Currency defaults to ARS and effectiveMonth to current month. recurring=false is a one-time expense for effectiveMonth (written immediately, undoable). recurring=true is monthly from effectiveMonth (returns a preview that needs confirmation). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
       inputSchema: z.object({
         draft: ToolExpenseDraftSchema,
         effectiveMonth: MonthSchema.optional(),
@@ -146,7 +162,7 @@ export function createFinanceTools(
     recordIncome: createTool({
       id: 'record-income',
       description:
-        'Records an income. Currency defaults to ARS and effectiveMonth to current month. recurring=false is one-time for draft.effectiveMonth (written immediately, undoable). recurring=true is monthly from draft.effectiveMonth (returns a preview that needs confirmation). Use listCategories to pick or create a category.',
+        'Records an income. Currency defaults to ARS and effectiveMonth to current month. recurring=false is one-time for draft.effectiveMonth (written immediately, undoable). recurring=true is monthly from draft.effectiveMonth (returns a preview that needs confirmation). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
       inputSchema: z.object({ draft: ToolIncomeDraftSchema }),
       execute: (input, context) =>
         toolResult(async () => {
@@ -176,7 +192,7 @@ export function createFinanceTools(
     updateExpense: createTool({
       id: 'update-expense',
       description:
-        'Previews replacing an expense. Currency defaults to ARS and effectiveMonth to current month. For recurring expenses, effectiveMonth is the month the change applies from (history before it is kept). Needs confirmation.',
+        'Previews replacing an expense. Currency defaults to ARS and effectiveMonth to current month. For recurring expenses, effectiveMonth is the month the change applies from (history before it is kept). Needs confirmation. Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
       inputSchema: z.object({
         id: IdSchema,
         draft: ToolExpenseDraftSchema,
@@ -226,7 +242,7 @@ export function createFinanceTools(
     updateIncome: createTool({
       id: 'update-income',
       description:
-        'Previews replacing an income record. Currency defaults to ARS and effectiveMonth to current month. Needs confirmation.',
+        'Previews replacing an income record. Currency defaults to ARS and effectiveMonth to current month. Needs confirmation. Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
       inputSchema: z.object({ id: IdSchema, draft: ToolIncomeDraftSchema }),
       execute: ({ id, draft: rawDraft }, context) =>
         toolResult(() => {
