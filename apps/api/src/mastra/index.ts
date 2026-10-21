@@ -4,7 +4,7 @@ import { SimpleAuth } from '@mastra/core/server';
 import { PostgresStore } from '@mastra/pg';
 import type { Env } from '../config/env';
 import { createNorteAgent } from './agents/norte-agent';
-import { createWeatherAgent } from './agents/weather-agent';
+import type { NorteServices } from './services';
 
 export function createMastra(
   env: Pick<
@@ -15,12 +15,15 @@ export function createMastra(
     | 'LLM_API_KEY'
     | 'LLM_MODEL'
   >,
-  options: { channels?: ChannelConfig } = {},
+  options: {
+    services: NorteServices;
+    webAppUrl?: string;
+    channels?: ChannelConfig;
+  },
 ): Mastra {
   return new Mastra({
     agents: {
-      weatherAgent: createWeatherAgent(env),
-      norteAgent: createNorteAgent(env, options.channels),
+      norteAgent: createNorteAgent(env, options),
     },
     storage: new PostgresStore({
       id: 'mastra-storage',

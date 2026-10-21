@@ -11,7 +11,7 @@ describe('Mastra routes (e2e)', () => {
   let app: INestApplication<App>;
   let upstream: Server;
   const calls: UpstreamCall[] = [];
-  const generatePath = '/agents/agents/weather-agent/generate';
+  const generatePath = '/agents/agents/norte-agent/generate';
   const body = { messages: [{ role: 'user', content: 'hello' }] };
 
   beforeAll(async () => {
