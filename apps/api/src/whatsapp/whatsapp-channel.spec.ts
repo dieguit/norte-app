@@ -101,6 +101,11 @@ describe('createWhatsappChannel', () => {
         'Ups, algo salió mal. Probá de nuevo en un rato.',
       );
     });
+
+    it('never posts tool calls or tool errors to the chat', () => {
+      const { channel } = setup(null, key);
+      expect(channel.adapters[key]).toMatchObject({ toolDisplay: 'hidden' });
+    });
   });
 
   it('ignores messages typed on the paired phone (raw.key.fromMe)', async () => {

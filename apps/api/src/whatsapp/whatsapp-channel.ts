@@ -17,6 +17,8 @@ export function createWhatsappChannel({
         // BaileysAdapter.reply(message, content) doesn't match Chat's reply(threadId, messageId, content); Mastra only uses thread.post, so never call thread.reply on this channel.
         adapter: channel.adapter as never,
         formatError: () => 'Ups, algo salió mal. Probá de nuevo en un rato.',
+        // Users only see Norte's reply; tool calls, args and tool errors stay internal.
+        toolDisplay: 'hidden',
       },
     },
     // Finance data is private: groups are ignored, only DMs reach the agent.
