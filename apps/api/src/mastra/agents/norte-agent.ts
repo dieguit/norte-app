@@ -3,6 +3,7 @@ import type { ChannelConfig } from '@mastra/core/channels';
 import { Memory } from '@mastra/memory';
 import type { Env } from '../../config/env';
 import type { NorteServices } from '../services';
+import { createFinanceTools } from '../tools/finance-tools';
 import {
   UserActionStore,
   createPendingActionTools,
@@ -22,6 +23,9 @@ const CONFIRMATION_RULES = `Confirmaciones:
 - Llamá a confirmPendingAction sólo cuando el usuario acepte explícitamente la última vista previa. Si cambia algún dato, generá una vista previa nueva.
 - Si el usuario pide deshacer, usá undoLastWrite.`;
 
+const DOMAIN_GUIDE = `Qué herramienta usar:
+- Ingresos y gastos (registrar, consultar, cambiar, borrar): getFinancesSummary, recordExpense, recordIncome, updateExpense, deleteExpense, updateIncome, deleteIncome. Para editar o borrar, buscá el id con getFinancesSummary. Si no queda claro desde qué mes aplica un cambio recurrente, preguntalo.`;
+
 function linksSection(webAppUrl?: string) {
   if (!webAppUrl) return undefined;
   return `Links a la app (usalos cuando la respuesta sea larga o el usuario quiera ver el detalle):
@@ -31,7 +35,13 @@ function linksSection(webAppUrl?: string) {
 }
 
 export function buildInstructions(webAppUrl?: string): string {
-  return [PERSONA, DATA_RULES, CONFIRMATION_RULES, linksSection(webAppUrl)]
+  return [
+    PERSONA,
+    DATA_RULES,
+    CONFIRMATION_RULES,
+    DOMAIN_GUIDE,
+    linksSection(webAppUrl),
+  ]
     .filter(Boolean)
     .join('\n\n');
 }
@@ -61,6 +71,7 @@ export function createNorteAgent(
     },
     tools: {
       ...createPendingActionTools(stores),
+      ...createFinanceTools(options.services, stores),
     },
     memory: new Memory({ options: { lastMessages: 20 } }),
     ...(options.channels ? { channels: options.channels } : {}),

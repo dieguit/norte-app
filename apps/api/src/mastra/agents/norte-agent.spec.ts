@@ -12,7 +12,12 @@ describe('norte agent', () => {
     const agent = createNorteAgent(env, { services: {} as never });
     const tools = await agent.listTools();
     expect(Object.keys(tools)).toEqual(
-      expect.arrayContaining(['confirmPendingAction', 'undoLastWrite']),
+      expect.arrayContaining([
+        'confirmPendingAction',
+        'undoLastWrite',
+        'recordExpense',
+        'getFinancesSummary',
+      ]),
     );
   });
 
