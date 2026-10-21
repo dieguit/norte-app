@@ -1,12 +1,11 @@
-import { Logger } from '@nestjs/common';
+import { HttpException, Logger } from '@nestjs/common';
 
 const logger = new Logger('NorteTools');
 const GENERIC_ERROR = 'No pude hacerlo ahora, probá de nuevo en un rato.';
 
 function clientErrorMessage(error: unknown): string | undefined {
   // Nest HttpExceptions (BadRequest/NotFound) carry user-facing Spanish messages from the services.
-  const status = (error as { getStatus?: () => number }).getStatus?.();
-  return status !== undefined && status < 500 && error instanceof Error
+  return error instanceof HttpException && error.getStatus() < 500
     ? error.message
     : undefined;
 }

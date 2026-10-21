@@ -63,4 +63,23 @@ describe('toolResult', () => {
       error: 'No pude hacerlo ahora, probá de nuevo en un rato.',
     });
   });
+
+  it('handles non-Error or non-exception thrown values gracefully', async () => {
+    await expect(
+      toolResult(async () => {
+        await Promise.resolve();
+        throw null as unknown as Error;
+      }),
+    ).resolves.toEqual({
+      error: 'No pude hacerlo ahora, probá de nuevo en un rato.',
+    });
+    await expect(
+      toolResult(async () => {
+        await Promise.resolve();
+        throw { getStatus: 42 } as unknown as Error;
+      }),
+    ).resolves.toEqual({
+      error: 'No pude hacerlo ahora, probá de nuevo en un rato.',
+    });
+  });
 });
