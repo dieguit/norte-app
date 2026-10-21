@@ -4,6 +4,7 @@ import {
   GoalCompletionPreviewWireSchema,
   GoalCreationDraftWireSchema,
   GoalLifecycleActionSchema,
+  SavingContributionDraftWireSchema,
 } from '@repo/shared-types';
 import { z } from 'zod';
 import type { NorteServices } from '../services';
@@ -220,3 +221,85 @@ export function createGoalTools(
     }),
   };
 }
+
+const ContributionIdSchema = z
+  .string()
+  .uuid()
+  .describe('Contribution id from listGoals or getFinancesSummary movements');
+
+export function createContributionTools(
+  { contributions }: Pick<NorteServices, 'contributions'>,
+  { pending }: ActionStores,
+) {
+  return {
+    getContributionContext: createTool({
+      id: 'get-contribution-context',
+      description:
+        'Context needed before recording a saving or investment: eligible goals, monthly targets, and existing savings places with ids.',
+      inputSchema: z.object({}),
+      execute: (_input, context) =>
+        toolResult(() =>
+          contributions.getContext(requireUserId(context?.requestContext)),
+        ),
+    }),
+
+    previewSaving: createTool({
+      id: 'preview-saving',
+      description:
+        'Previews recording money the user actually saved or invested ("ahorré", "invertí"), split across goals by the current allocation. kind "saving" requires a place (existing placeId or a new name). USD bought with pesos: send arsSpent. Needs confirmation.',
+      inputSchema: z.object({ draft: SavingContributionDraftWireSchema }),
+      execute: ({ draft }, context) =>
+        toolResult(async () => {
+          const userId = requireUserId(context?.requestContext);
+          return stagePreview({
+            store: pending,
+            userId,
+            summary: draft.kind === 'investment' ? 'Inversión registrada' : 'Ahorro registrado',
+            preview: await contributions.previewSaving(userId, draft),
+            present: ({ preview }) => preview,
+            confirm: (previewToken) =>
+              contributions.confirmSaving(userId, { draft, previewToken }),
+          });
+        }),
+    }),
+
+    previewSavingEdit: createTool({
+      id: 'preview-saving-edit',
+      description: 'Previews correcting a recorded saving or investment. Needs confirmation.',
+      inputSchema: z.object({
+        contributionId: ContributionIdSchema,
+        draft: SavingContributionDraftWireSchema,
+      }),
+      execute: ({ contributionId, draft }, context) =>
+        toolResult(async () => {
+          const userId = requireUserId(context?.requestContext);
+          const { preview } = await contributions.previewSavingEdit(
+            userId,
+            contributionId,
+            draft,
+          );
+          pending.set(userId, {
+            summary: 'Aporte corregido',
+            run: () => contributions.updateSaving(userId, contributionId, { draft }),
+          });
+          return { needsConfirmation: true, preview };
+        }),
+    }),
+
+    previewSavingDelete: createTool({
+      id: 'preview-saving-delete',
+      description: 'Stages deleting a recorded saving or investment. Needs confirmation.',
+      inputSchema: z.object({ contributionId: ContributionIdSchema }),
+      execute: ({ contributionId }, context) =>
+        toolResult(async () => {
+          const userId = requireUserId(context?.requestContext);
+          pending.set(userId, {
+            summary: 'Aporte eliminado',
+            run: () => contributions.deleteSaving(userId, contributionId),
+          });
+          return { needsConfirmation: true, preview: { delete: contributionId } };
+        }),
+    }),
+  };
+}
+

@@ -4,7 +4,10 @@ import { Memory } from '@mastra/memory';
 import type { Env } from '../../config/env';
 import type { NorteServices } from '../services';
 import { createFinanceTools } from '../tools/finance-tools';
-import { createGoalTools } from '../tools/goal-tools';
+import {
+  createContributionTools,
+  createGoalTools,
+} from '../tools/goal-tools';
 import {
   UserActionStore,
   createPendingActionTools,
@@ -28,7 +31,8 @@ const CONFIRMATION_RULES = `Confirmaciones:
 const DOMAIN_GUIDE = `Qué herramienta usar:
 - Ingresos y gastos (registrar, consultar, cambiar, borrar): getFinancesSummary, recordExpense, recordIncome, updateExpense, deleteExpense, updateIncome, deleteIncome. Para editar o borrar, buscá el id con getFinancesSummary. Si no queda claro desde qué mes aplica un cambio recurrente, preguntalo.
 - Hoja de ruta, "¿voy bien?", "¿cuándo llego a mi objetivo?": getRoadmap. Resumí lo importante y sumá el link a la app.
-- Objetivos (crear, editar, pausar, reactivar, completar, cambiar la distribución o el % dedicado): primero listGoals y getGoalPlan (o getGoalCompletionContext para completar), después la herramienta preview correspondiente. Mostrá el impacto en las fechas de cada objetivo.`;
+- Objetivos (crear, editar, pausar, reactivar, completar, cambiar la distribución o el % dedicado): primero listGoals y getGoalPlan (o getGoalCompletionContext para completar), después la herramienta preview correspondiente. Mostrá el impacto en las fechas de cada objetivo.
+- Plata que el usuario realmente ahorró o invirtió ("ahorré", "invertí", "compré dólares"): getContributionContext y después previewSaving. Es lo único que mueve el progreso real de los objetivos; un plan o un margen estimado no cuentan como ahorro.`;
 
 function linksSection(webAppUrl?: string) {
   if (!webAppUrl) return undefined;
@@ -78,6 +82,7 @@ export function createNorteAgent(
       ...createFinanceTools(options.services, stores),
       ...createRoadmapTools(options.services, options.webAppUrl),
       ...createGoalTools(options.services, stores),
+      ...createContributionTools(options.services, stores),
     },
     memory: new Memory({ options: { lastMessages: 20 } }),
     ...(options.channels ? { channels: options.channels } : {}),

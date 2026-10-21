@@ -1,6 +1,6 @@
 import { RequestContext } from '@mastra/core/request-context';
 import { describe, expect, it, vi } from 'vitest';
-import { createGoalTools } from './goal-tools';
+import { createGoalTools, createContributionTools } from './goal-tools';
 import { UserActionStore } from './pending-actions';
 
 function ctx(userId?: string) {
@@ -165,3 +165,68 @@ describe('goal tools', () => {
     expect(JSON.stringify(result)).not.toContain('funding');
   });
 });
+
+describe('contribution tools', () => {
+  const CONTRIBUTION_ID = '1b0c1f3e-4a2d-4c8e-9a1b-2f3d4e5f6a7b';
+  const savingDraft = {
+    kind: 'saving',
+    currency: 'ARS',
+    amount: '50000',
+    place: { kind: 'new', name: 'Mercado Pago' },
+  };
+
+  function setupContributions() {
+    const contributions = {
+      getContext: vi.fn(),
+      previewSaving: vi.fn().mockResolvedValue({ preview: { allocations: [] }, previewToken: TOKEN_A }),
+      confirmSaving: vi.fn().mockResolvedValue({ status: 'created', contributionId: CONTRIBUTION_ID }),
+      previewSavingEdit: vi.fn().mockResolvedValue({ preview: { allocations: [] } }),
+      updateSaving: vi.fn().mockResolvedValue({ status: 'updated' }),
+      deleteSaving: vi.fn().mockResolvedValue({ status: 'deleted' }),
+    };
+    const stores = { pending: new UserActionStore(), undo: new UserActionStore() };
+    return { contributions, stores, tools: createContributionTools({ contributions } as never, stores) };
+  }
+
+  it('previews and confirms a saving with the stored token', async () => {
+    const { contributions, stores, tools } = setupContributions();
+    await expect(
+      tools.previewSaving.execute!({ draft: savingDraft } as never, ctx('u1')),
+    ).resolves.toEqual({ needsConfirmation: true, preview: { allocations: [] } });
+    expect(contributions.confirmSaving).not.toHaveBeenCalled();
+    await stores.pending.take('u1')!.run();
+    expect(contributions.confirmSaving).toHaveBeenCalledWith('u1', {
+      draft: expect.objectContaining({ amount: '50000' }),
+      previewToken: TOKEN_A,
+    });
+  });
+
+  it('stages edits and deletes', async () => {
+    const { contributions, stores, tools } = setupContributions();
+    await tools.previewSavingEdit.execute!(
+      { contributionId: CONTRIBUTION_ID, draft: savingDraft } as never,
+      ctx('u1'),
+    );
+    await stores.pending.take('u1')!.run();
+    expect(contributions.updateSaving).toHaveBeenCalledWith('u1', CONTRIBUTION_ID, {
+      draft: expect.objectContaining({ amount: '50000' }),
+    });
+
+    await tools.previewSavingDelete.execute!(
+      { contributionId: CONTRIBUTION_ID } as never,
+      ctx('u1'),
+    );
+    expect(contributions.deleteSaving).not.toHaveBeenCalled();
+    await stores.pending.take('u1')!.run();
+    expect(contributions.deleteSaving).toHaveBeenCalledWith('u1', CONTRIBUTION_ID);
+  });
+
+  it('asks for a place when saving without one', async () => {
+    const { contributions, tools } = setupContributions();
+    const { place: _p, ...noPlace } = savingDraft;
+    const result = await tools.previewSaving.execute!({ draft: noPlace } as never, ctx('u1'));
+    expect(JSON.stringify(result)).toContain('Elegí un lugar para tu ahorro.');
+    expect(contributions.previewSaving).not.toHaveBeenCalled();
+  });
+});
+
