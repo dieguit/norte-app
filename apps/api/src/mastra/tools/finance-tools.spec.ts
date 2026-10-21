@@ -2,7 +2,7 @@ import { RequestContext } from '@mastra/core/request-context';
 import { describe, expect, it, vi } from 'vitest';
 import { todayInArgentina } from './date';
 import { createFinanceTools } from './finance-tools';
-import { UserActionStore } from './pending-actions';
+import { UserActionStore, createPendingActionTools } from './pending-actions';
 
 function ctx(userId?: string) {
   const requestContext = new RequestContext();
@@ -23,7 +23,9 @@ function setup() {
   const services = {
     expenses: {
       create: vi.fn().mockResolvedValue({ id: ID }),
-      update: vi.fn().mockResolvedValue({ id: ID }),
+      update: vi
+        .fn()
+        .mockImplementation((_userId, id: string) => Promise.resolve({ id })),
       delete: vi.fn().mockResolvedValue(undefined),
     },
     incomes: {
@@ -38,7 +40,8 @@ function setup() {
     undo: new UserActionStore(),
   };
   const tools = createFinanceTools(services as never, stores);
-  return { services, stores, tools };
+  const pendingTools = createPendingActionTools(stores);
+  return { services, stores, tools, pendingTools };
 }
 
 describe('finance tools', () => {
@@ -395,5 +398,50 @@ describe('finance tools', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('updates distinct expenses sequentially by staging and confirming each', async () => {
+    const { services, stores, tools, pendingTools } = setup();
+    const customSourceId = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
+    const ID1 = '11111111-1111-4111-8111-111111111111';
+    const ID2 = '22222222-2222-4222-8222-222222222222';
+    const draft = {
+      concept: 'Servicio',
+      source: { kind: 'custom' as const, sourceId: customSourceId },
+      amount: '10000',
+    };
+
+    for (const id of [ID1, ID2]) {
+      const stageRes = await tools.updateExpense.execute!(
+        { id, draft } as never,
+        ctx('u1'),
+      );
+      expect(stageRes).toEqual({
+        needsConfirmation: true,
+        preview: expect.objectContaining({ id }) as unknown,
+      });
+      expect(stores.pending.has('u1')).toBe(true);
+
+      const confirmRes = await pendingTools.confirmPendingAction.execute!(
+        {},
+        ctx('u1'),
+      );
+      expect(confirmRes).toEqual({
+        done: 'Gasto actualizado',
+        result: { id },
+      });
+      expect(stores.pending.has('u1')).toBe(false);
+    }
+
+    expect(services.expenses.update).toHaveBeenCalledTimes(2);
+    expect(services.expenses.update).toHaveBeenNthCalledWith(1, 'u1', ID1, {
+      draft: expect.objectContaining(draft) as unknown,
+      effectiveMonth: todayInArgentina().month,
+    });
+    expect(services.expenses.update).toHaveBeenNthCalledWith(2, 'u1', ID2, {
+      draft: expect.objectContaining(draft) as unknown,
+      effectiveMonth: todayInArgentina().month,
+    });
+    expect(stores.pending.has('u1')).toBe(false);
   });
 });

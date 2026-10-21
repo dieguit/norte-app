@@ -1,7 +1,7 @@
 import { RequestContext } from '@mastra/core/request-context';
 import { describe, expect, it, vi } from 'vitest';
 import { createGoalTools, createContributionTools } from './goal-tools';
-import { UserActionStore } from './pending-actions';
+import { UserActionStore, createPendingActionTools } from './pending-actions';
 
 function ctx(userId?: string) {
   const requestContext = new RequestContext();
@@ -55,12 +55,17 @@ function setup() {
     pending: new UserActionStore(),
     undo: new UserActionStore(),
   };
-  return { goals, stores, tools: createGoalTools({ goals } as never, stores) };
+  return {
+    goals,
+    stores,
+    tools: createGoalTools({ goals } as never, stores),
+    pendingTools: createPendingActionTools(stores),
+  };
 }
 
 describe('goal tools', () => {
-  it('previews creation without proposedSource and confirms with the stored token', async () => {
-    const { goals, stores, tools } = setup();
+  it('previews creation without proposedSource and confirms via confirmPendingAction', async () => {
+    const { goals, stores, tools, pendingTools } = setup();
     goals.confirmCreation.mockResolvedValue({
       status: 'created',
       goalId: GOAL_ID,
@@ -73,15 +78,45 @@ describe('goal tools', () => {
       needsConfirmation: true,
       preview: { impacts: [{ goalName: 'Viaje', n: 1 }] },
     });
+    expect(stores.pending.has('u1')).toBe(true);
     expect(goals.confirmCreation).not.toHaveBeenCalled();
-    await expect(stores.pending.take('u1')!.run()).resolves.toEqual({
-      status: 'created',
-      goalId: GOAL_ID,
+
+    const confirmResult = await pendingTools.confirmPendingAction.execute!(
+      {},
+      ctx('u1'),
+    );
+    expect(confirmResult).toEqual({
+      done: 'Objetivo creado',
+      result: { status: 'created', goalId: GOAL_ID },
     });
+    expect(stores.pending.has('u1')).toBe(false);
     expect(goals.confirmCreation).toHaveBeenCalledWith('u1', {
       draft: expect.objectContaining({ name: 'Viaje' }) as unknown,
       previewToken: TOKEN_A,
     });
+  });
+
+  it('returns stale outcome via confirmPendingAction without claiming done and keeps refreshed preview pending', async () => {
+    const { goals, stores, tools, pendingTools } = setup();
+    goals.confirmCreation.mockResolvedValue({
+      status: 'stale',
+      preview: { proposal: proposal(2), previewToken: TOKEN_B },
+    });
+    await tools.previewGoalCreation.execute!({ draft } as never, ctx('u1'));
+    expect(stores.pending.has('u1')).toBe(true);
+
+    const confirmResult = await pendingTools.confirmPendingAction.execute!(
+      {},
+      ctx('u1'),
+    );
+    expect(confirmResult).toEqual({
+      status: 'stale',
+      message:
+        'Los datos cambiaron. Mostrá esta nueva vista previa y pedí confirmación otra vez.',
+      preview: { impacts: [{ goalName: 'Viaje', n: 2 }] },
+    });
+    expect(confirmResult).not.toHaveProperty('done');
+    expect(stores.pending.has('u1')).toBe(true);
   });
 
   it('re-stages a stale creation with the refreshed token', async () => {

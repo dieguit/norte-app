@@ -80,7 +80,7 @@ export function createPendingActionTools({ pending, undo }: ActionStores) {
     confirmPendingAction: createTool({
       id: 'confirm-pending-action',
       description:
-        'Executes the latest preview. Call ONLY right after the user explicitly accepts the latest preview ("sí", "dale", "confirmo"). Never call it on your own initiative.',
+        'Executes the latest staged preview. Call immediately when authorized by a clear explicit write instruction from the user, or right after the user explicitly accepts a proposal ("sí", "dale", "confirmo"). Never call it on unrequested changes, agent proposals without confirmation, or stale refreshed previews without fresh explicit user approval.',
       inputSchema: z.object({}),
       execute: (_input, context) =>
         toolResult(async () => {

@@ -124,7 +124,7 @@ export function createFinanceTools(
     recordExpense: createTool({
       id: 'record-expense',
       description:
-        'Records an expense. Currency defaults to ARS and effectiveMonth to current month. recurring=false is a one-time expense for effectiveMonth (written immediately, undoable). recurring=true is monthly from effectiveMonth (returns a preview that needs confirmation). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
+        'Records an expense. Currency defaults to ARS and effectiveMonth to current month. recurring=false is a one-time expense for effectiveMonth (written immediately, undoable). recurring=true is monthly from effectiveMonth (stages a preview; execute via confirmPendingAction). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
       inputSchema: z.object({
         draft: ToolExpenseDraftSchema,
         effectiveMonth: MonthSchema.optional(),
@@ -162,7 +162,7 @@ export function createFinanceTools(
     recordIncome: createTool({
       id: 'record-income',
       description:
-        'Records an income. Currency defaults to ARS and effectiveMonth to current month. recurring=false is one-time for draft.effectiveMonth (written immediately, undoable). recurring=true is monthly from draft.effectiveMonth (returns a preview that needs confirmation). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
+        'Records an income. Currency defaults to ARS and effectiveMonth to current month. recurring=false is one-time for draft.effectiveMonth (written immediately, undoable). recurring=true is monthly from draft.effectiveMonth (stages a preview; execute via confirmPendingAction). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
       inputSchema: z.object({ draft: ToolIncomeDraftSchema }),
       execute: (input, context) =>
         toolResult(async () => {
@@ -192,7 +192,7 @@ export function createFinanceTools(
     updateExpense: createTool({
       id: 'update-expense',
       description:
-        'Previews replacing an expense. Currency defaults to ARS and effectiveMonth to current month. For recurring expenses, effectiveMonth is the month the change applies from (history before it is kept). Needs confirmation. Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
+        'Stages replacing an expense (execute via confirmPendingAction). Currency defaults to ARS and effectiveMonth to current month. For recurring expenses, effectiveMonth is the month the change applies from (history before it is kept). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
       inputSchema: z.object({
         id: IdSchema,
         draft: ToolExpenseDraftSchema,
@@ -222,7 +222,7 @@ export function createFinanceTools(
     deleteExpense: createTool({
       id: 'delete-expense',
       description:
-        'Previews deleting an expense. effectiveMonth defaults to current month. For recurring expenses it stops from effectiveMonth (past months are kept). Needs confirmation.',
+        'Stages deleting an expense (execute via confirmPendingAction). effectiveMonth defaults to current month. For recurring expenses it stops from effectiveMonth (past months are kept).',
       inputSchema: z.object({
         id: IdSchema,
         effectiveMonth: MonthSchema.optional(),
@@ -242,7 +242,7 @@ export function createFinanceTools(
     updateIncome: createTool({
       id: 'update-income',
       description:
-        'Previews replacing an income record. Currency defaults to ARS and effectiveMonth to current month. Needs confirmation. Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
+        'Stages replacing an income record (execute via confirmPendingAction). Currency defaults to ARS and effectiveMonth to current month. Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
       inputSchema: z.object({ id: IdSchema, draft: ToolIncomeDraftSchema }),
       execute: ({ id, draft: rawDraft }, context) =>
         toolResult(() => {
@@ -261,7 +261,8 @@ export function createFinanceTools(
 
     deleteIncome: createTool({
       id: 'delete-income',
-      description: 'Previews deleting an income record. Needs confirmation.',
+      description:
+        'Stages deleting an income record (execute via confirmPendingAction).',
       inputSchema: z.object({ id: IdSchema }),
       execute: ({ id }, context) =>
         toolResult(() => {

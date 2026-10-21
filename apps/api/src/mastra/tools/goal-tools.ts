@@ -112,7 +112,7 @@ export function createGoalTools(
     previewGoalCreation: createTool({
       id: 'preview-goal-creation',
       description:
-        'Previews creating a goal (Antes → Con este cambio). Call getGoalPlan first. Defaults: currency ARS, priority medium, strategy save, availability available_now. allocations must include every active goal plus { goalId: "pending-goal" } for the new one, summing 100. Needs confirmation.',
+        'Stages creating a goal (Antes → Con este cambio; execute via confirmPendingAction). Call getGoalPlan first. Defaults: currency ARS, priority medium, strategy save, availability available_now. allocations must include every active goal plus { goalId: "pending-goal" } for the new one, summing 100.',
       inputSchema: z.object({ draft: ToolGoalCreationDraftSchema }),
       execute: ({ draft }, context) =>
         toolResult(async () => {
@@ -132,7 +132,7 @@ export function createGoalTools(
     previewGoalEdit: createTool({
       id: 'preview-goal-edit',
       description:
-        'Previews editing a goal. Get the current draft with getGoalPlan({ goalId }) and change only what the user asked. Needs confirmation.',
+        'Stages editing a goal (execute via confirmPendingAction). Get the current draft with getGoalPlan({ goalId }) and change only what the user asked.',
       inputSchema: z.object({
         goalId: GoalIdSchema,
         draft: GoalCreationDraftWireSchema,
@@ -155,7 +155,7 @@ export function createGoalTools(
     previewAllocationChange: createTool({
       id: 'preview-allocation-change',
       description:
-        'Previews changing the share of income dedicated to goals (dedicationPercentage, integer 0-100) and/or the split between active goals. Needs confirmation.',
+        'Stages changing the share of income dedicated to goals (dedicationPercentage, integer 0-100) and/or the split between active goals (execute via confirmPendingAction).',
       inputSchema: z.object({ draft: AllocationChangeDraftWireSchema }),
       execute: ({ draft }, context) =>
         toolResult(async () => {
@@ -175,7 +175,7 @@ export function createGoalTools(
     previewGoalLifecycle: createTool({
       id: 'preview-goal-lifecycle',
       description:
-        'Previews pausing or resuming a goal. Call getGoalPlan({ goalId, action }) first to get the allocation to redistribute. Needs confirmation.',
+        'Stages pausing or resuming a goal (execute via confirmPendingAction). Call getGoalPlan({ goalId, action }) first to get the allocation to redistribute.',
       inputSchema: z.object({
         goalId: GoalIdSchema,
         lifecycle: GoalLifecycleActionSchema,
@@ -209,7 +209,7 @@ export function createGoalTools(
     previewGoalCompletion: createTool({
       id: 'preview-goal-completion',
       description:
-        'Previews marking a goal as completed, withdrawing money from savings places and redistributing its allocation. Call getGoalCompletionContext first. Needs confirmation.',
+        'Stages marking a goal as completed, withdrawing money from savings places and redistributing its allocation (execute via confirmPendingAction). Call getGoalCompletionContext first.',
       inputSchema: z.object({
         goalId: GoalIdSchema,
         ...GoalCompletionPreviewWireSchema.shape,
@@ -278,7 +278,7 @@ export function createContributionTools(
     previewSaving: createTool({
       id: 'preview-saving',
       description:
-        'Previews recording money the user actually saved or invested ("ahorré", "invertí"), split across goals by the current allocation. Currency defaults to ARS. If the user has a single savings place it is used automatically. Otherwise kind "saving" requires a place (existing placeId or a new name). USD bought with pesos: send arsSpent. Needs confirmation.',
+        'Stages recording money the user actually saved or invested ("ahorré", "invertí"; execute via confirmPendingAction), split across goals by the current allocation. Currency defaults to ARS. If the user has a single savings place it is used automatically. Otherwise kind "saving" requires a place (existing placeId or a new name). USD bought with pesos: send arsSpent.',
       inputSchema: z.object({ draft: ToolSavingContributionDraftSchema }),
       execute: ({ draft }, context) =>
         toolResult(async () => {
@@ -323,7 +323,7 @@ export function createContributionTools(
     previewSavingEdit: createTool({
       id: 'preview-saving-edit',
       description:
-        'Previews correcting a recorded saving or investment. Needs confirmation.',
+        'Stages correcting a recorded saving or investment (execute via confirmPendingAction).',
       inputSchema: z.object({
         contributionId: ContributionIdSchema,
         draft: SavingContributionDraftWireSchema,
@@ -348,7 +348,7 @@ export function createContributionTools(
     previewSavingDelete: createTool({
       id: 'preview-saving-delete',
       description:
-        'Stages deleting a recorded saving or investment. Needs confirmation.',
+        'Stages deleting a recorded saving or investment (execute via confirmPendingAction).',
       inputSchema: z.object({ contributionId: ContributionIdSchema }),
       execute: ({ contributionId }, context) =>
         toolResult(() => {
