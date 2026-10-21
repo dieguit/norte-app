@@ -9,20 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as AppRouteRouteImport } from './routes/app/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AppFinancesRouteRouteImport } from './routes/app/finances/route'
-import { Route as AppGoalsRouteRouteImport } from './routes/app/goals/route'
-import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$deviceId/route'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
-import { Route as AppFinancesIndexRouteImport } from './routes/app/finances/index'
+import { Route as LinkWhatsappRouteImport } from './routes/link/whatsapp'
+import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$deviceId/route'
+import { Route as AppGoalsRouteRouteImport } from './routes/app/goals/route'
+import { Route as AppFinancesRouteRouteImport } from './routes/app/finances/route'
 import { Route as AppGoalsIndexRouteImport } from './routes/app/goals/index'
+import { Route as AppFinancesIndexRouteImport } from './routes/app/finances/index'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRouteRoute = AppRouteRouteImport.update({
@@ -30,9 +31,9 @@ const AppRouteRoute = AppRouteRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -40,35 +41,40 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppFinancesRouteRoute = AppFinancesRouteRouteImport.update({
-  id: '/finances',
-  path: '/finances',
-  getParentRoute: () => AppRouteRoute,
+const SignInSplatRoute = SignInSplatRouteImport.update({
+  id: '/sign-in/$',
+  path: '/sign-in/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppGoalsRouteRoute = AppGoalsRouteRouteImport.update({
-  id: '/goals',
-  path: '/goals',
-  getParentRoute: () => AppRouteRoute,
+const LinkWhatsappRoute = LinkWhatsappRouteImport.update({
+  id: '/link/whatsapp',
+  path: '/link/whatsapp',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const InformeDeviceIdRouteRoute = InformeDeviceIdRouteRouteImport.update({
   id: '/informe/$deviceId',
   path: '/informe/$deviceId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignInSplatRoute = SignInSplatRouteImport.update({
-  id: '/sign-in/$',
-  path: '/sign-in/$',
-  getParentRoute: () => rootRouteImport,
+const AppGoalsRouteRoute = AppGoalsRouteRouteImport.update({
+  id: '/goals',
+  path: '/goals',
+  getParentRoute: () => AppRouteRoute,
 } as any)
-const AppFinancesIndexRoute = AppFinancesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppFinancesRouteRoute,
+const AppFinancesRouteRoute = AppFinancesRouteRouteImport.update({
+  id: '/finances',
+  path: '/finances',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppGoalsIndexRoute = AppGoalsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppGoalsRouteRoute,
+} as any)
+const AppFinancesIndexRoute = AppFinancesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppFinancesRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/app/finances': typeof AppFinancesRouteRouteWithChildren
   '/app/goals': typeof AppGoalsRouteRouteWithChildren
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
+  '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
   '/app/finances/': typeof AppFinancesIndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
+  '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app': typeof AppIndexRoute
   '/app/finances': typeof AppFinancesIndexRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/app/finances': typeof AppFinancesRouteRouteWithChildren
   '/app/goals': typeof AppGoalsRouteRouteWithChildren
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
+  '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
   '/app/finances/': typeof AppFinancesIndexRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/app/finances'
     | '/app/goals'
     | '/informe/$deviceId'
+    | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
     | '/app/finances/'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/'
     | '/onboarding'
     | '/informe/$deviceId'
+    | '/link/whatsapp'
     | '/sign-in/$'
     | '/app'
     | '/app/finances'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/app/finances'
     | '/app/goals'
     | '/informe/$deviceId'
+    | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
     | '/app/finances/'
@@ -146,16 +158,17 @@ export interface RootRouteChildren {
   AppRouteRoute: typeof AppRouteRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   InformeDeviceIdRouteRoute: typeof InformeDeviceIdRouteRoute
+  LinkWhatsappRoute: typeof LinkWhatsappRoute
   SignInSplatRoute: typeof SignInSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -165,11 +178,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -179,19 +192,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/app/finances': {
-      id: '/app/finances'
-      path: '/finances'
-      fullPath: '/app/finances'
-      preLoaderRoute: typeof AppFinancesRouteRouteImport
-      parentRoute: typeof AppRouteRoute
+    '/sign-in/$': {
+      id: '/sign-in/$'
+      path: '/sign-in/$'
+      fullPath: '/sign-in/$'
+      preLoaderRoute: typeof SignInSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/app/goals': {
-      id: '/app/goals'
-      path: '/goals'
-      fullPath: '/app/goals'
-      preLoaderRoute: typeof AppGoalsRouteRouteImport
-      parentRoute: typeof AppRouteRoute
+    '/link/whatsapp': {
+      id: '/link/whatsapp'
+      path: '/link/whatsapp'
+      fullPath: '/link/whatsapp'
+      preLoaderRoute: typeof LinkWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/informe/$deviceId': {
       id: '/informe/$deviceId'
@@ -200,19 +213,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InformeDeviceIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sign-in/$': {
-      id: '/sign-in/$'
-      path: '/sign-in/$'
-      fullPath: '/sign-in/$'
-      preLoaderRoute: typeof SignInSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/app/goals': {
+      id: '/app/goals'
+      path: '/goals'
+      fullPath: '/app/goals'
+      preLoaderRoute: typeof AppGoalsRouteRouteImport
+      parentRoute: typeof AppRouteRoute
     }
-    '/app/finances/': {
-      id: '/app/finances/'
-      path: '/'
-      fullPath: '/app/finances/'
-      preLoaderRoute: typeof AppFinancesIndexRouteImport
-      parentRoute: typeof AppFinancesRouteRoute
+    '/app/finances': {
+      id: '/app/finances'
+      path: '/finances'
+      fullPath: '/app/finances'
+      preLoaderRoute: typeof AppFinancesRouteRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/app/goals/': {
       id: '/app/goals/'
@@ -220,6 +233,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/goals/'
       preLoaderRoute: typeof AppGoalsIndexRouteImport
       parentRoute: typeof AppGoalsRouteRoute
+    }
+    '/app/finances/': {
+      id: '/app/finances/'
+      path: '/'
+      fullPath: '/app/finances/'
+      preLoaderRoute: typeof AppFinancesIndexRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
     }
   }
 }
@@ -268,18 +288,9 @@ const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   InformeDeviceIdRouteRoute: InformeDeviceIdRouteRoute,
+  LinkWhatsappRoute: LinkWhatsappRoute,
   SignInSplatRoute: SignInSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

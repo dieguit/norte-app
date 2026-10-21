@@ -69,4 +69,26 @@ describe('validateEnv', () => {
       validateEnv({ ...validEnv, LLM_BASE_URL: 'not-a-url' }),
     ).toThrow('LLM_BASE_URL');
   });
+
+  it('defaults WHATSAPP_ENABLED to false and does not require WEB_APP_URL', () => {
+    const result = validateEnv(validEnv);
+    expect(result.WHATSAPP_ENABLED).toBe(false);
+    expect(result.WEB_APP_URL).toBeUndefined();
+  });
+
+  it('requires WEB_APP_URL when WHATSAPP_ENABLED is true', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, WHATSAPP_ENABLED: 'true' }),
+    ).toThrow(/WEB_APP_URL/);
+  });
+
+  it('parses WhatsApp settings when enabled', () => {
+    const result = validateEnv({
+      ...validEnv,
+      WHATSAPP_ENABLED: 'true',
+      WEB_APP_URL: 'https://app.norte.test',
+    });
+    expect(result.WHATSAPP_ENABLED).toBe(true);
+    expect(result.WEB_APP_URL).toBe('https://app.norte.test');
+  });
 });

@@ -22,6 +22,9 @@ const expectedTables = [
   'saving_contributions',
   'savings_place_transfers',
   'savings_places',
+  'whatsapp_auth_state',
+  'whatsapp_link_tokens',
+  'whatsapp_links',
 ].sort();
 
 describe('canonical schema registry', () => {
@@ -32,8 +35,8 @@ describe('canonical schema registry', () => {
     expect(tables.map((table) => getTableConfig(table).name).sort()).toEqual(
       expectedTables,
     );
-    expect(new Set(tables).size).toBe(18);
-    expect(Object.values(registry.schema)).toHaveLength(18);
+    expect(new Set(tables).size).toBe(21);
+    expect(Object.values(registry.schema)).toHaveLength(21);
   });
 
   it('retains application-side timestamp updates', () => {
