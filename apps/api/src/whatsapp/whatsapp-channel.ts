@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import type { ChannelConfig } from '@mastra/core/channels';
 import type { ChatChannel } from './whatsapp.adapter.provider';
 import type { WhatsappLinksService } from './whatsapp-links.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 
 const logger = new Logger('ChatChannel');
 const turn = new AsyncLocalStorage<{ failed: boolean }>();
@@ -10,10 +11,12 @@ const turn = new AsyncLocalStorage<{ failed: boolean }>();
 export function createWhatsappChannel({
   channel,
   links,
+  notifications,
   webAppUrl,
 }: {
   channel: ChatChannel;
   links: Pick<WhatsappLinksService, 'findUserByJid' | 'issueToken'>;
+  notifications: Pick<NotificationsService, 'markAnswered'>;
   webAppUrl: string;
 }): ChannelConfig {
   return {
@@ -53,6 +56,16 @@ export function createWhatsappChannel({
           return;
         }
         ctx.requestContext.set('userId', userId);
+        // Any reply closes the day-close check-in window, so no timeout message follows.
+        // ponytail: markAnswered runs here in onDirectMessage (after queue drain) because neither
+        // Mastra channels nor Chat SDK expose a pre-queue hook on message receipt. A reply queued
+        // behind a busy agent turn at the window boundary may still get the timeout message.
+        // Upgrade when Chat SDK adds onEnqueue/pre-dispatch hooks or custom StateAdapter queue observation.
+        await notifications
+          .markAnswered(userId)
+          .catch((error: unknown) =>
+            logger.warn(`markAnswered failed for ${userId}: ${String(error)}`),
+          );
         const batch = [...ctx.skipped, message];
         const react = (emoji: string, remove = false) =>
           Promise.all(

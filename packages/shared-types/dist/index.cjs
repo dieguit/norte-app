@@ -100,6 +100,11 @@ __export(index_exports, {
   IncomeDraftSchema: () => IncomeDraftSchema,
   IncomeMutationResponseSchema: () => IncomeMutationResponseSchema,
   InitialHomeStateSchema: () => InitialHomeStateSchema,
+  NOTIFICATION_TYPES: () => NOTIFICATION_TYPES,
+  NotificationSettingSchema: () => NotificationSettingSchema,
+  NotificationSettingsResponseSchema: () => NotificationSettingsResponseSchema,
+  NotificationTimeSchema: () => NotificationTimeSchema,
+  NotificationTypeSchema: () => NotificationTypeSchema,
   ONE_TIME_EXPENSE_SOURCES: () => ONE_TIME_EXPENSE_SOURCES,
   PlaceholderItemListSchema: () => PlaceholderItemListSchema,
   PlaceholderItemSchema: () => PlaceholderItemSchema,
@@ -128,6 +133,7 @@ __export(index_exports, {
   SavingsPlaceMutationResponseSchema: () => SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema: () => SavingsTransferResponseSchema,
   SavingsTransferSchema: () => SavingsTransferSchema,
+  UpdateNotificationSettingSchema: () => UpdateNotificationSettingSchema,
   UpdatePlaceholderItemSchema: () => UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema: () => UpdateSavingContributionWireSchema,
   allocationEntrySchema: () => allocationEntrySchema,
@@ -1060,6 +1066,30 @@ function parseGoalCreationSubmission(input, currentMonth) {
   }
   return draft;
 }
+
+// src/notification.schema.ts
+var import_zod13 = require("zod");
+var NOTIFICATION_TYPES = ["day_close_checkin"];
+var NotificationTypeSchema = import_zod13.z.enum(NOTIFICATION_TYPES);
+var NotificationTimeSchema = import_zod13.z.string().regex(
+  /^([01]\d|2[0-3]):(00|30)$/,
+  "Eleg\xED un horario en punto o y media (ej. 21:00 o 21:30)."
+);
+var NotificationSettingSchema = import_zod13.z.object({
+  type: NotificationTypeSchema,
+  enabled: import_zod13.z.boolean(),
+  frequency: import_zod13.z.literal("daily"),
+  time: NotificationTimeSchema
+});
+var NotificationSettingsResponseSchema = import_zod13.z.object({
+  settings: import_zod13.z.array(NotificationSettingSchema)
+});
+var UpdateNotificationSettingSchema = import_zod13.z.object({
+  enabled: import_zod13.z.boolean().optional(),
+  time: NotificationTimeSchema.optional()
+}).refine((v) => v.enabled !== void 0 || v.time !== void 0, {
+  message: "Indic\xE1 si activar/desactivar o el horario."
+});
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AllocationChangeConfirmationSchema,
@@ -1132,6 +1162,11 @@ function parseGoalCreationSubmission(input, currentMonth) {
   IncomeDraftSchema,
   IncomeMutationResponseSchema,
   InitialHomeStateSchema,
+  NOTIFICATION_TYPES,
+  NotificationSettingSchema,
+  NotificationSettingsResponseSchema,
+  NotificationTimeSchema,
+  NotificationTypeSchema,
   ONE_TIME_EXPENSE_SOURCES,
   PlaceholderItemListSchema,
   PlaceholderItemSchema,
@@ -1160,6 +1195,7 @@ function parseGoalCreationSubmission(input, currentMonth) {
   SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema,
   SavingsTransferSchema,
+  UpdateNotificationSettingSchema,
   UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema,
   allocationEntrySchema,

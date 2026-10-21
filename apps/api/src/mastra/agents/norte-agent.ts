@@ -11,6 +11,7 @@ import {
   createPendingActionTools,
 } from '../tools/pending-actions';
 import { createRoadmapTools } from '../tools/roadmap-tools';
+import { createNotificationTools } from '../tools/notification-tools';
 import { createSourceTools } from '../tools/source-tools';
 import { sourcesIndex } from '../sources';
 
@@ -41,6 +42,13 @@ const DOMAIN_GUIDE = `Qué herramienta usar:
 - Objetivos (crear, editar, pausar, reactivar, completar, cambiar la distribución o el % dedicado): primero listGoals y getGoalPlan (o getGoalCompletionContext para completar), después la herramienta preview correspondiente. Los defaults de creación son ARS, prioridad media, ahorro, disponible ya; pedí sólo nombre, monto objetivo y fecha deseada si faltan. Mostrá el impacto en las fechas sólo si estás pidiendo confirmación o el usuario pide el detalle; en ejecución directa inspeccionalo internamente.
 - Plata que el usuario realmente ahorró o invirtió ("ahorré", "invertí", "compré dólares"): getContributionContext y después previewSaving. Si el usuario tiene un único lugar de ahorro se usa automáticamente (aclaralo sólo si estás pidiendo confirmación o el usuario pregunta). Es lo único que mueve el progreso real de los objetivos; un plan o un margen estimado no cuentan como ahorro.`;
 
+const NOTIFICATIONS_RULES = `Notificaciones (chequeo diario de cierre del día, tipo day_close_checkin):
+- Para activarlo, desactivarlo o cambiar el horario usá getNotificationSettings y updateNotificationSetting, directo y sin pedir confirmación. Los horarios son siempre hora de Argentina, en punto o y media (ej. 21:00, 21:30). Si pide otro horario (ej. 21:15), explicalo y proponé el más cercano. Si lo activa sin decir horario, mantené el configurado y decile cuál quedó.
+- Cuando el usuario responde al chequeo diario ("Paso por nuestro chequeo diario 🧭"):
+  - Si manda movimientos, registralos con las reglas de siempre (moneda, monto y categoría obligatorios) y respondé: "🫡, te paso resumen del día?".
+  - Si responde "Listo" o que no hubo nada más, respondé: "Cerramos el día. Hasta mañana!🧭".
+- Si pide el resumen del día o acepta que se lo pases, usá getDailySummary y resumí en pocas líneas ingresos, gastos y aportes de hoy con totales por moneda.`;
+
 const SOURCES_RULES = `Consejos y explicaciones:
 - Para consejos, educación financiera o "cómo funciona X", primero leé la fuente que corresponda con readSource y basá tu respuesta en ella. Mencioná el título de la fuente (y el link si tiene).
 - Podés combinar la fuente con los datos del usuario que obtengas con las herramientas.
@@ -63,6 +71,7 @@ export function buildInstructions(webAppUrl?: string): string {
     DATA_RULES,
     CONFIRMATION_RULES,
     DOMAIN_GUIDE,
+    NOTIFICATIONS_RULES,
     SOURCES_RULES,
     linksSection(webAppUrl),
   ]
@@ -100,6 +109,7 @@ export function createNorteAgent(
       ...createRoadmapTools(options.services, options.webAppUrl),
       ...createGoalTools(options.services, stores),
       ...createContributionTools(options.services, stores),
+      ...createNotificationTools(options.services),
       ...createSourceTools(),
     },
     memory: new Memory({ options: { lastMessages: 20 } }),

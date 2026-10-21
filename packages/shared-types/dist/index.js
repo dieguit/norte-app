@@ -908,6 +908,30 @@ function parseGoalCreationSubmission(input, currentMonth) {
   }
   return draft;
 }
+
+// src/notification.schema.ts
+import { z as z13 } from "zod";
+var NOTIFICATION_TYPES = ["day_close_checkin"];
+var NotificationTypeSchema = z13.enum(NOTIFICATION_TYPES);
+var NotificationTimeSchema = z13.string().regex(
+  /^([01]\d|2[0-3]):(00|30)$/,
+  "Eleg\xED un horario en punto o y media (ej. 21:00 o 21:30)."
+);
+var NotificationSettingSchema = z13.object({
+  type: NotificationTypeSchema,
+  enabled: z13.boolean(),
+  frequency: z13.literal("daily"),
+  time: NotificationTimeSchema
+});
+var NotificationSettingsResponseSchema = z13.object({
+  settings: z13.array(NotificationSettingSchema)
+});
+var UpdateNotificationSettingSchema = z13.object({
+  enabled: z13.boolean().optional(),
+  time: NotificationTimeSchema.optional()
+}).refine((v) => v.enabled !== void 0 || v.time !== void 0, {
+  message: "Indic\xE1 si activar/desactivar o el horario."
+});
 export {
   AllocationChangeConfirmationSchema,
   AllocationChangeContextSchema,
@@ -979,6 +1003,11 @@ export {
   IncomeDraftSchema,
   IncomeMutationResponseSchema,
   InitialHomeStateSchema,
+  NOTIFICATION_TYPES,
+  NotificationSettingSchema,
+  NotificationSettingsResponseSchema,
+  NotificationTimeSchema,
+  NotificationTypeSchema,
   ONE_TIME_EXPENSE_SOURCES,
   PlaceholderItemListSchema,
   PlaceholderItemSchema,
@@ -1007,6 +1036,7 @@ export {
   SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema,
   SavingsTransferSchema,
+  UpdateNotificationSettingSchema,
   UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema,
   allocationEntrySchema,

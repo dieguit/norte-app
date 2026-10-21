@@ -1,10 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import BigNumber from 'bignumber.js';
 import {
   FinancesWorkspaceSchema,
   type FinancesWorkspace,
 } from '@repo/shared-types';
+import { argentinaInstant, DAY_MS, todayInArgentina } from '../argentina-time';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
 import {
@@ -15,6 +17,7 @@ import {
   goalCompletionWithdrawals,
   incomes,
   incomeSources,
+  investmentContributions,
   savingContributions,
   savingsPlaceTransfers,
   savingsPlaces,
@@ -37,6 +40,54 @@ const ars = (amount: BigNumber) => ({
   amount: amount.toFixed(2, BigNumber.ROUND_HALF_UP),
   currency: 'ARS' as const,
 });
+
+const arsEquivalent = (amount: string, currency: string) =>
+  currency === 'USD'
+    ? new BigNumber(amount).times(RATE).toFixed(2, BigNumber.ROUND_HALF_UP)
+    : null;
+
+type IncomeRow = typeof incomes.$inferSelect;
+type ExpenseRow = typeof expenses.$inferSelect;
+
+const toIncomeItem = (row: IncomeRow, sourceNames: Map<string, string>) => ({
+  id: row.id,
+  sourceKind: row.sourceKind,
+  sourceId: row.sourceId,
+  sourceName: row.sourceId
+    ? (sourceNames.get(row.sourceId) ?? 'Fuente eliminada')
+    : row.sourceKind,
+  concept: row.concept,
+  amount: row.amount,
+  currency: row.currency as 'ARS' | 'USD',
+  recurring: row.recurring,
+  effectiveMonth: row.effectiveMonth,
+  arsEquivalent: arsEquivalent(row.amount, row.currency),
+});
+
+const toExpenseItem = (row: ExpenseRow, sourceNames: Map<string, string>) => ({
+  id: row.id,
+  sourceKind: row.sourceKind,
+  sourceId: row.sourceId,
+  sourceName: row.sourceId
+    ? (sourceNames.get(row.sourceId) ?? 'Concepto eliminado')
+    : row.sourceKind,
+  concept: row.concept,
+  amount: row.amount,
+  currency: row.currency as 'ARS' | 'USD',
+  recurring: row.recurring,
+  effectiveMonth: row.effectiveMonth,
+  endMonth: row.endMonth,
+  arsEquivalent: arsEquivalent(row.amount, row.currency),
+});
+
+const totalsByCurrency = (items: { amount: string; currency: string }[]) =>
+  items.reduce<Record<string, string>>(
+    (totals, { amount, currency }) => ({
+      ...totals,
+      [currency]: new BigNumber(totals[currency] ?? 0).plus(amount).toFixed(2),
+    }),
+    {},
+  );
 
 export function calculateFinancesSummary(input: {
   month: string;
@@ -129,18 +180,6 @@ export class FinancesService {
     });
     const incomeSourceMap = new Map(is.map(({ id, name }) => [id, name]));
     const expenseSourceMap = new Map(es.map(({ id, name }) => [id, name]));
-    const toEq = (amount: string, currency: string) =>
-      currency === 'USD'
-        ? new BigNumber(amount).times(RATE).toFixed(2, BigNumber.ROUND_HALF_UP)
-        : null;
-    const incomeRows = ins.map((row) => ({
-      ...row,
-      arsEquivalent: toEq(row.amount, row.currency),
-    }));
-    const expenseRows = exs.map((row) => ({
-      ...row,
-      arsEquivalent: toEq(row.amount, row.currency),
-    }));
     const movements = [
       ...safeContributions.map((c) => ({
         kind: 'contribution' as const,
@@ -189,32 +228,7 @@ export class FinancesService {
           name,
           normalizedName,
         })),
-        incomes: incomeRows.map(
-          ({
-            id,
-            sourceKind,
-            sourceId,
-            concept,
-            amount,
-            currency,
-            recurring,
-            effectiveMonth,
-            arsEquivalent,
-          }) => ({
-            id,
-            sourceKind,
-            sourceId,
-            sourceName: sourceId
-              ? (incomeSourceMap.get(sourceId) ?? 'Fuente eliminada')
-              : sourceKind,
-            concept,
-            amount,
-            currency: currency as 'ARS' | 'USD',
-            recurring,
-            effectiveMonth,
-            arsEquivalent,
-          }),
-        ),
+        incomes: ins.map((row) => toIncomeItem(row, incomeSourceMap)),
       },
       expenses: {
         sources: es.map(({ id, name, normalizedName }) => ({
@@ -222,34 +236,7 @@ export class FinancesService {
           name,
           normalizedName,
         })),
-        expenses: expenseRows.map(
-          ({
-            id,
-            sourceKind,
-            sourceId,
-            concept,
-            amount,
-            currency,
-            recurring,
-            effectiveMonth,
-            endMonth,
-            arsEquivalent,
-          }) => ({
-            id,
-            sourceKind,
-            sourceId,
-            sourceName: sourceId
-              ? (expenseSourceMap.get(sourceId) ?? 'Concepto eliminado')
-              : sourceKind,
-            concept,
-            amount,
-            currency: currency as 'ARS' | 'USD',
-            recurring,
-            effectiveMonth,
-            endMonth,
-            arsEquivalent,
-          }),
-        ),
+        expenses: exs.map((row) => toExpenseItem(row, expenseSourceMap)),
       },
       savings: {
         places: placesWithBalances.map((place) => ({
@@ -264,5 +251,73 @@ export class FinancesService {
         movements,
       },
     });
+  }
+
+  // Incomes/expenses only carry a month, so "movements in range" means registered (createdAt) in range.
+  async getMovementsInRange(userId: string, from: Date, to: Date) {
+    const inRange = (owner: AnyPgColumn, created: AnyPgColumn) =>
+      and(eq(owner, userId), gte(created, from), lt(created, to));
+    const [is, ins, es, exs, savings, investments] = await Promise.all([
+      this.db.query.incomeSources.findMany({
+        where: eq(incomeSources.userId, userId),
+      }),
+      this.db.query.incomes.findMany({
+        where: inRange(incomes.userId, incomes.createdAt),
+      }),
+      this.db.query.expenseSources.findMany({
+        where: eq(expenseSources.userId, userId),
+      }),
+      this.db.query.expenses.findMany({
+        where: inRange(expenses.userId, expenses.createdAt),
+      }),
+      this.db.query.savingContributions.findMany({
+        where: inRange(
+          savingContributions.userId,
+          savingContributions.createdAt,
+        ),
+      }),
+      this.db.query.investmentContributions.findMany({
+        where: inRange(
+          investmentContributions.userId,
+          investmentContributions.createdAt,
+        ),
+      }),
+    ]);
+    const incomeNames = new Map(is.map(({ id, name }) => [id, name]));
+    const expenseNames = new Map(es.map(({ id, name }) => [id, name]));
+    const incomeItems = ins.map((row) => toIncomeItem(row, incomeNames));
+    const expenseItems = exs.map((row) => toExpenseItem(row, expenseNames));
+    const contributions = [
+      ...savings.map((c) => ({ kind: 'saving' as const, c })),
+      ...investments.map((c) => ({ kind: 'investment' as const, c })),
+    ].map(({ kind, c }) => ({
+      kind,
+      id: c.id,
+      amount: c.amount,
+      currency: c.currency as 'ARS' | 'USD',
+    }));
+    return {
+      from: from.toISOString(),
+      to: to.toISOString(),
+      incomes: incomeItems,
+      expenses: expenseItems,
+      contributions,
+      totals: {
+        incomes: totalsByCurrency(incomeItems),
+        expenses: totalsByCurrency(expenseItems),
+        contributions: totalsByCurrency(contributions),
+      },
+    };
+  }
+
+  async getDailySummary(userId: string, now = new Date()) {
+    const { today } = todayInArgentina(now);
+    const from = argentinaInstant(today);
+    const movements = await this.getMovementsInRange(
+      userId,
+      from,
+      new Date(from.getTime() + DAY_MS),
+    );
+    return { day: today, ...movements };
   }
 }

@@ -4,6 +4,7 @@ import { validateEnv } from './config/env';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PlaceholderModule } from './placeholder/placeholder.module';
 import { ProfileModule } from './profile/profile.module';
 import { IncomesModule } from './incomes/incomes.module';
@@ -16,6 +17,7 @@ import { ContributionsModule } from './contributions/contributions.module';
 import { HomeModule } from './home/home.module';
 import { MastraIntegrationModule } from './mastra/mastra.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
       envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
     }),
     DatabaseModule,
+    ScheduleModule.forRoot(),
     PlaceholderModule,
     ProfileModule,
     IncomesModule,
@@ -36,6 +39,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     ContributionsModule,
     HomeModule,
     WhatsappModule,
+    NotificationsModule,
     // Mastra registers a catch-all controller; must stay last so it doesn't shadow app routes.
     MastraIntegrationModule,
   ],

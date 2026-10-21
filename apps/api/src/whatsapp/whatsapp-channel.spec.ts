@@ -14,9 +14,13 @@ function setup(
     findUserByJid: vi.fn().mockResolvedValue(linkedUser),
     issueToken: vi.fn().mockResolvedValue('tok123'),
   };
+  const notifications = {
+    markAnswered: vi.fn().mockResolvedValue(undefined),
+  };
   const channel = createWhatsappChannel({
     channel: { key: channelKey, adapter: {} as never },
     links,
+    notifications,
     webAppUrl: 'https://app.norte.test',
   });
   const adapter = {
@@ -42,7 +46,17 @@ function setup(
       defaultHandler,
       ctx,
     );
-  return { channel, links, thread, adapter, defaultHandler, ctx, send, dm };
+  return {
+    channel,
+    links,
+    notifications,
+    thread,
+    adapter,
+    defaultHandler,
+    ctx,
+    send,
+    dm,
+  };
 }
 
 describe('createWhatsappChannel', () => {
@@ -84,6 +98,25 @@ describe('createWhatsappChannel', () => {
       expect(ctx.requestContext.get('userId')).toBe('user_1');
       expect(defaultHandler).toHaveBeenCalledOnce();
       expect(thread.post).not.toHaveBeenCalled();
+    });
+
+    it('marks the open check-in answered for linked senders', async () => {
+      const { send, notifications } = setup('user_1', key);
+      await send({ userId: 'jid-1', isMe: false });
+      expect(notifications.markAnswered).toHaveBeenCalledWith('user_1');
+    });
+
+    it('does not mark anything for unlinked senders', async () => {
+      const { send, notifications } = setup(null, key);
+      await send({ userId: 'jid-1', isMe: false });
+      expect(notifications.markAnswered).not.toHaveBeenCalled();
+    });
+
+    it('still runs the agent when markAnswered fails', async () => {
+      const { send, notifications, defaultHandler } = setup('user_1', key);
+      notifications.markAnswered.mockRejectedValue(new Error('db down'));
+      await send({ userId: 'jid-1', isMe: false });
+      expect(defaultHandler).toHaveBeenCalled();
     });
 
     it('ignores the bot own messages', async () => {

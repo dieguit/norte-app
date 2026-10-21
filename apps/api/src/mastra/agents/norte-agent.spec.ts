@@ -21,6 +21,9 @@ describe('norte agent', () => {
         'readSource',
         'getCurrentDate',
         'listCategories',
+        'getNotificationSettings',
+        'updateNotificationSetting',
+        'getDailySummary',
       ]),
     );
   });
@@ -33,6 +36,8 @@ describe('norte agent', () => {
     expect(text).not.toContain('(monto, concepto, categoría');
     expect(text).toContain('getCurrentDate');
     expect(text).toContain('listCategories');
+    expect(text).toContain('getNotificationSettings');
+    expect(text).toContain('day_close_checkin');
   });
 
   it('omits links when no web app url is configured', () => {

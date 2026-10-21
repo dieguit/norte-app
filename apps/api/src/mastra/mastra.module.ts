@@ -33,6 +33,9 @@ import { GoalsModule } from '../goals/goals.module';
 import { GoalsService } from '../goals/goals.service';
 import { ContributionsModule } from '../contributions/contributions.module';
 import { ContributionsService } from '../contributions/contributions.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsCron } from './notifications.cron';
 import { createMastra } from './index';
 
 @Injectable()
@@ -77,6 +80,7 @@ const mastraModule = MastraModule.registerAsync({
     HomeModule,
     GoalsModule,
     ContributionsModule,
+    NotificationsModule,
   ],
   inject: [
     ConfigService,
@@ -88,6 +92,7 @@ const mastraModule = MastraModule.registerAsync({
     HomeService,
     GoalsService,
     ContributionsService,
+    NotificationsService,
   ],
   useFactory: (
     config: ConfigService<Env, true>,
@@ -99,6 +104,7 @@ const mastraModule = MastraModule.registerAsync({
     home: HomeService,
     goals: GoalsService,
     contributions: ContributionsService,
+    notifications: NotificationsService,
   ) => {
     const webAppUrl = config.get('WEB_APP_URL', { infer: true });
     return {
@@ -111,13 +117,22 @@ const mastraModule = MastraModule.registerAsync({
           MASTRA_API_KEY: config.get('MASTRA_API_KEY'),
         },
         {
-          services: { expenses, incomes, finances, home, goals, contributions },
+          services: {
+            expenses,
+            incomes,
+            finances,
+            home,
+            goals,
+            contributions,
+            notifications,
+          },
           webAppUrl,
           ...(channel
             ? {
                 channels: createWhatsappChannel({
                   channel,
                   links,
+                  notifications,
                   webAppUrl: config.getOrThrow('WEB_APP_URL'),
                 }),
               }
@@ -159,8 +174,8 @@ export function stripClientRequestContext(
 }
 
 @Module({
-  imports: [mastraModule, WhatsappModule],
-  providers: [MastraLifecycle],
+  imports: [mastraModule, WhatsappModule, NotificationsModule],
+  providers: [MastraLifecycle, NotificationsCron],
   exports: [mastraModule],
 })
 export class MastraIntegrationModule implements NestModule {
