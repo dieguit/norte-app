@@ -24,15 +24,23 @@ const envSchema = z
     LLM_API_KEY: z.string().min(1),
     LLM_MODEL: z.string().min(1),
     MASTRA_API_KEY: z.string().min(1),
-    WHATSAPP_ENABLED: z.stringbool().default(false),
+    CHAT_CHANNEL: z.enum(['whatsapp', 'telegram']).optional(),
+    TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
     WEB_APP_URL: z.url().optional(),
   })
   .superRefine((env, ctx) => {
-    if (env.WHATSAPP_ENABLED && !env.WEB_APP_URL) {
+    if (env.CHAT_CHANNEL && !env.WEB_APP_URL) {
       ctx.addIssue({
         code: 'custom',
         path: ['WEB_APP_URL'],
-        message: 'WEB_APP_URL is required when WHATSAPP_ENABLED is true',
+        message: 'WEB_APP_URL is required when CHAT_CHANNEL is set',
+      });
+    }
+    if (env.CHAT_CHANNEL === 'telegram' && !env.TELEGRAM_BOT_TOKEN) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['TELEGRAM_BOT_TOKEN'],
+        message: 'TELEGRAM_BOT_TOKEN is required when CHAT_CHANNEL is telegram',
       });
     }
   });

@@ -12,7 +12,7 @@ import type { Mastra } from '@mastra/core/mastra';
 import type { Env } from '../config/env';
 import {
   WHATSAPP_ADAPTER,
-  type WhatsappAdapter,
+  type ChatChannel,
 } from '../whatsapp/whatsapp.adapter.provider';
 import { createWhatsappChannel } from '../whatsapp/whatsapp-channel';
 import { WhatsappLinksService } from '../whatsapp/whatsapp-links.service';
@@ -23,29 +23,31 @@ import { createMastra } from './index';
 export class MastraLifecycle
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
-  private readonly logger = new Logger('WhatsApp');
+  private readonly logger = new Logger('ChatChannel');
 
   constructor(
     @Inject(MASTRA) private readonly mastra: Mastra,
-    @Inject(WHATSAPP_ADAPTER) private readonly whatsapp: WhatsappAdapter | null,
+    @Inject(WHATSAPP_ADAPTER) private readonly channel: ChatChannel | null,
   ) {}
 
-  // Mastra only auto-starts adapters exposing startGatewayListener; Baileys needs an explicit connect() once channel handlers are registered.
+  // Baileys needs explicit connect() once channel handlers are registered; Telegram polling starts on initialize.
   async onApplicationBootstrap() {
-    if (!this.whatsapp) return;
+    if (!this.channel) return;
     try {
       await this.mastra
         .getAgent('norteAgent')
         .getChannels()
         ?.initialize(this.mastra);
-      await this.whatsapp.connect();
+      await this.channel.adapter.connect?.();
     } catch (error) {
-      this.logger.error(`WhatsApp connection failed: ${String(error)}`);
+      this.logger.error(
+        `Chat channel (${this.channel.key}) connection failed: ${String(error)}`,
+      );
     }
   }
 
   async onApplicationShutdown() {
-    await this.whatsapp?.disconnect();
+    await this.channel?.adapter.disconnect();
     await this.mastra.shutdown();
   }
 }
@@ -55,7 +57,7 @@ const mastraModule = MastraModule.registerAsync({
   inject: [ConfigService, WHATSAPP_ADAPTER, WhatsappLinksService],
   useFactory: (
     config: ConfigService<Env, true>,
-    whatsapp: WhatsappAdapter | null,
+    channel: ChatChannel | null,
     links: WhatsappLinksService,
   ) => ({
     mastra: createMastra(
@@ -66,10 +68,10 @@ const mastraModule = MastraModule.registerAsync({
         LLM_MODEL: config.get('LLM_MODEL'),
         MASTRA_API_KEY: config.get('MASTRA_API_KEY'),
       },
-      whatsapp
+      channel
         ? {
             channels: createWhatsappChannel({
-              adapter: whatsapp,
+              channel,
               links,
               webAppUrl: config.getOrThrow('WEB_APP_URL'),
             }),

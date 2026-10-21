@@ -25,6 +25,7 @@
     "db:studio": "drizzle-kit studio --config drizzle.config.ts"
   },
   "dependencies": {
+    "@chat-adapter/telegram": "4.43.0",
     "@clerk/backend": "^3.25.0",
     "@mastra/core": "^1.78.0",
     "@mastra/memory": "^1.38.0",

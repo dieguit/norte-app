@@ -70,25 +70,61 @@ describe('validateEnv', () => {
     ).toThrow('LLM_BASE_URL');
   });
 
-  it('defaults WHATSAPP_ENABLED to false and does not require WEB_APP_URL', () => {
+  it('leaves CHAT_CHANNEL unset by default and does not require WEB_APP_URL', () => {
     const result = validateEnv(validEnv);
-    expect(result.WHATSAPP_ENABLED).toBe(false);
+    expect(result.CHAT_CHANNEL).toBeUndefined();
     expect(result.WEB_APP_URL).toBeUndefined();
   });
 
-  it('requires WEB_APP_URL when WHATSAPP_ENABLED is true', () => {
+  it('requires WEB_APP_URL when CHAT_CHANNEL is set', () => {
     expect(() =>
-      validateEnv({ ...validEnv, WHATSAPP_ENABLED: 'true' }),
+      validateEnv({ ...validEnv, CHAT_CHANNEL: 'whatsapp' }),
+    ).toThrow(/WEB_APP_URL/);
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        CHAT_CHANNEL: 'telegram',
+        TELEGRAM_BOT_TOKEN: 'bot-token',
+      }),
     ).toThrow(/WEB_APP_URL/);
   });
 
-  it('parses WhatsApp settings when enabled', () => {
+  it('parses WhatsApp settings when CHAT_CHANNEL is whatsapp', () => {
     const result = validateEnv({
       ...validEnv,
-      WHATSAPP_ENABLED: 'true',
+      CHAT_CHANNEL: 'whatsapp',
       WEB_APP_URL: 'https://app.norte.test',
     });
-    expect(result.WHATSAPP_ENABLED).toBe(true);
+    expect(result.CHAT_CHANNEL).toBe('whatsapp');
     expect(result.WEB_APP_URL).toBe('https://app.norte.test');
+  });
+
+  it('requires TELEGRAM_BOT_TOKEN when CHAT_CHANNEL is telegram', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        CHAT_CHANNEL: 'telegram',
+        WEB_APP_URL: 'https://app.norte.test',
+      }),
+    ).toThrow(/TELEGRAM_BOT_TOKEN/);
+
+    const result = validateEnv({
+      ...validEnv,
+      CHAT_CHANNEL: 'telegram',
+      WEB_APP_URL: 'https://app.norte.test',
+      TELEGRAM_BOT_TOKEN: '123456:ABC-DEF',
+    });
+    expect(result.CHAT_CHANNEL).toBe('telegram');
+    expect(result.TELEGRAM_BOT_TOKEN).toBe('123456:ABC-DEF');
+  });
+
+  it('throws when CHAT_CHANNEL is invalid', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        CHAT_CHANNEL: 'discord',
+        WEB_APP_URL: 'https://app.norte.test',
+      }),
+    ).toThrow(/CHAT_CHANNEL/);
   });
 });

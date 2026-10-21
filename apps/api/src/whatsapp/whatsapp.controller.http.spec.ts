@@ -10,7 +10,11 @@ import { WHATSAPP_ADAPTER } from './whatsapp.adapter.provider';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappLinksService } from './whatsapp-links.service';
 
-vi.mock('@clerk/backend', () => ({ verifyToken: vi.fn() }));
+const getUser = vi.hoisted(() => vi.fn());
+vi.mock('@clerk/backend', () => ({
+  verifyToken: vi.fn(),
+  createClerkClient: () => ({ users: { getUser } }),
+}));
 
 const token = 'a'.repeat(43);
 const path = `/whatsapp/links/${token}/claim`;
@@ -48,6 +52,7 @@ describe('WhatsappController', () => {
       sub: 'user_1',
       iss: 'https://clerk.example.test',
     } as never);
+    getUser.mockReset().mockResolvedValue({ firstName: 'Ana' });
   });
   afterEach(async () => app?.close());
 
@@ -72,16 +77,37 @@ describe('WhatsappController', () => {
       openDM: vi.fn().mockResolvedValue('whatsapp:thread-123'),
       postMessage: vi.fn().mockResolvedValue({}),
     };
-    app = await makeApp(adapter, claim);
+    app = await makeApp({ key: 'whatsapp', adapter }, claim);
     await request(app.getHttpServer())
       .post(path)
       .set('Authorization', 'Bearer t')
       .expect(200, { linked: true });
     expect(claim).toHaveBeenCalledWith(token, 'user_1');
     expect(adapter.openDM).toHaveBeenCalledWith('123@lid');
+    expect(getUser).toHaveBeenCalledWith('user_1');
     expect(adapter.postMessage).toHaveBeenCalledWith(
       'whatsapp:thread-123',
-      '✅ WhatsApp vinculado a tu cuenta Norte',
+      'Hola Ana! Ya asociamos este número a tu usuario.',
+    );
+  });
+
+  it('greets without a name when the user has no first name', async () => {
+    getUser.mockResolvedValue({ firstName: null });
+    const adapter = {
+      openDM: vi.fn().mockResolvedValue('whatsapp:thread-123'),
+      postMessage: vi.fn().mockResolvedValue({}),
+    };
+    app = await makeApp(
+      { key: 'whatsapp', adapter },
+      vi.fn().mockResolvedValue({ jid: '123@lid', alreadyClaimed: false }),
+    );
+    await request(app.getHttpServer())
+      .post(path)
+      .set('Authorization', 'Bearer t')
+      .expect(200, { linked: true });
+    expect(adapter.postMessage).toHaveBeenCalledWith(
+      'whatsapp:thread-123',
+      'Hola! Ya asociamos este número a tu usuario.',
     );
   });
 
@@ -93,7 +119,7 @@ describe('WhatsappController', () => {
       openDM: vi.fn(),
       postMessage: vi.fn(),
     };
-    app = await makeApp(adapter, claim);
+    app = await makeApp({ key: 'whatsapp', adapter }, claim);
     await request(app.getHttpServer())
       .post(path)
       .set('Authorization', 'Bearer t')
@@ -111,7 +137,7 @@ describe('WhatsappController', () => {
       openDM: vi.fn().mockResolvedValue('whatsapp:thread-123'),
       postMessage: vi.fn().mockRejectedValue(new Error('socket closed')),
     };
-    app = await makeApp(adapter, claim);
+    app = await makeApp({ key: 'whatsapp', adapter }, claim);
     await request(app.getHttpServer())
       .post(path)
       .set('Authorization', 'Bearer t')

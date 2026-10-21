@@ -1,21 +1,21 @@
 import type { ChannelConfig } from '@mastra/core/channels';
-import type { BaileysAdapter } from 'chat-adapter-baileys';
+import type { ChatChannel } from './whatsapp.adapter.provider';
 import type { WhatsappLinksService } from './whatsapp-links.service';
 
 export function createWhatsappChannel({
-  adapter,
+  channel,
   links,
   webAppUrl,
 }: {
-  adapter: BaileysAdapter;
+  channel: ChatChannel;
   links: Pick<WhatsappLinksService, 'findUserByJid' | 'issueToken'>;
   webAppUrl: string;
 }): ChannelConfig {
   return {
     adapters: {
-      whatsapp: {
+      [channel.key]: {
         // BaileysAdapter.reply(message, content) doesn't match Chat's reply(threadId, messageId, content); Mastra only uses thread.post, so never call thread.reply on this channel.
-        adapter: adapter as never,
+        adapter: channel.adapter as never,
         formatError: () => 'Ups, algo salió mal. Probá de nuevo en un rato.',
       },
     },
@@ -35,7 +35,7 @@ export function createWhatsappChannel({
         if (!userId) {
           const token = await links.issueToken(jid);
           await thread.post(
-            `Para usar Norte por WhatsApp, vinculá tu cuenta: ${webAppUrl}/link/whatsapp?token=${token}`,
+            `Para usar Norte por ${channel.key === 'telegram' ? 'Telegram' : 'WhatsApp'}, vinculá tu cuenta: ${webAppUrl}/link/whatsapp?token=${token}`,
           );
           return;
         }

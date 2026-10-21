@@ -1,12 +1,25 @@
 import { useUser } from '@clerk/tanstack-react-start'
 import { PostHogProvider, usePostHog } from '@posthog/react'
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, isRedirect, Outlet, redirect } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { getFinancialAppState } from '../../features/financial/financial.functions'
 import { AppShell } from './-components/AppShell'
 
 export const Route = createFileRoute('/app')({
-  beforeLoad: async () => await getFinancialAppState(),
+  beforeLoad: async ({ location }) => {
+    try {
+      return await getFinancialAppState()
+    } catch (error) {
+      if (isRedirect(error) && error.options.to === '/sign-in/$') {
+        throw redirect({
+          to: '/sign-in/$',
+          params: { _splat: '' },
+          search: { redirect_url: location.href },
+        })
+      }
+      throw error
+    }
+  },
   component: AppLayout,
 })
 

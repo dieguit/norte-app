@@ -8,13 +8,16 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiParam } from '@nestjs/swagger';
+import { createClerkClient } from '@clerk/backend';
 import { ZodValidationPipe } from 'nestjs-zod';
 import type { Request } from 'express';
+import type { Env } from '../config/env';
 import { ClerkAuthGuard } from '../profile/clerk-auth.guard';
 import {
   WHATSAPP_ADAPTER,
-  type WhatsappAdapter,
+  type ChatChannel,
 } from './whatsapp.adapter.provider';
 import { WhatsappLinkTokenPathDto } from './whatsapp.dto';
 import { WhatsappLinksService } from './whatsapp-links.service';
@@ -25,11 +28,17 @@ type AuthenticatedRequest = Request & { user: { id: string } };
 @UseGuards(ClerkAuthGuard)
 export class WhatsappController {
   private readonly logger = new Logger(WhatsappController.name);
+  private readonly clerk: ReturnType<typeof createClerkClient>;
 
   constructor(
     private readonly links: WhatsappLinksService,
-    @Inject(WHATSAPP_ADAPTER) private readonly adapter: WhatsappAdapter | null,
-  ) {}
+    @Inject(WHATSAPP_ADAPTER) private readonly channel: ChatChannel | null,
+    config: ConfigService<Env>,
+  ) {
+    this.clerk = createClerkClient({
+      secretKey: config.getOrThrow('CLERK_SECRET_KEY'),
+    });
+  }
 
   @Post(':token/claim')
   @HttpCode(200)
@@ -45,11 +54,13 @@ export class WhatsappController {
     );
     if (!alreadyClaimed) {
       try {
-        if (this.adapter)
-          await this.adapter.postMessage(
-            await this.adapter.openDM(jid),
-            '✅ WhatsApp vinculado a tu cuenta Norte',
+        if (this.channel) {
+          const { firstName } = await this.clerk.users.getUser(request.user.id);
+          await this.channel.adapter.postMessage(
+            await this.channel.adapter.openDM(jid),
+            `Hola${firstName ? ` ${firstName}` : ''}! Ya asociamos este número a tu usuario.`,
           );
+        }
       } catch (error) {
         this.logger.warn(`WhatsApp link confirmation failed: ${String(error)}`);
       }
