@@ -65,7 +65,9 @@ describe('WhatsappController', () => {
   });
 
   it('claims for the signed-in user and confirms on WhatsApp (lid JID)', async () => {
-    const claim = vi.fn().mockResolvedValue({ jid: '123@lid', alreadyClaimed: false });
+    const claim = vi
+      .fn()
+      .mockResolvedValue({ jid: '123@lid', alreadyClaimed: false });
     const adapter = {
       openDM: vi.fn().mockResolvedValue('whatsapp:thread-123'),
       postMessage: vi.fn().mockResolvedValue({}),
@@ -102,7 +104,9 @@ describe('WhatsappController', () => {
   });
 
   it('still succeeds when the confirmation cannot be sent', async () => {
-    const claim = vi.fn().mockResolvedValue({ jid: '123@lid', alreadyClaimed: false });
+    const claim = vi
+      .fn()
+      .mockResolvedValue({ jid: '123@lid', alreadyClaimed: false });
     const adapter = {
       openDM: vi.fn().mockResolvedValue('whatsapp:thread-123'),
       postMessage: vi.fn().mockRejectedValue(new Error('socket closed')),

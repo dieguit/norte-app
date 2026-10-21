@@ -34,7 +34,10 @@ export class MastraLifecycle
   async onApplicationBootstrap() {
     if (!this.whatsapp) return;
     try {
-      await this.mastra.getAgent('norteAgent').getChannels()?.initialize(this.mastra);
+      await this.mastra
+        .getAgent('norteAgent')
+        .getChannels()
+        ?.initialize(this.mastra);
       await this.whatsapp.connect();
     } catch (error) {
       this.logger.error(`WhatsApp connection failed: ${String(error)}`);

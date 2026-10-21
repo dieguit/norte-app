@@ -72,7 +72,7 @@ describe('createWhatsappChannel', () => {
       auth: {
         state: {
           creds: {},
-          keys: { get: async () => ({}), set: async () => {} },
+          keys: { get: () => Promise.resolve({}), set: async () => {} },
         } as never,
         saveCreds: async () => {},
       },
@@ -81,27 +81,22 @@ describe('createWhatsappChannel', () => {
       key: { remoteJid: '549111@s.whatsapp.net', fromMe: true, id: 'X1' },
       message: { conversation: 'hola' },
       messageTimestamp: 1,
-    } as never);
+    });
     const incoming = adapter.parseMessage({
       key: { remoteJid: '549111@s.whatsapp.net', fromMe: false, id: 'X2' },
       message: { conversation: 'hola' },
       messageTimestamp: 1,
-    } as never);
+    });
 
     const { dm, links, thread, defaultHandler, ctx } = setup(null);
-    await dm(
-      thread as unknown as HandlerArgs[0],
-      fromMe as unknown as HandlerArgs[1],
-      defaultHandler,
-      ctx,
-    );
+    await dm(thread as unknown as HandlerArgs[0], fromMe, defaultHandler, ctx);
     expect(links.findUserByJid).not.toHaveBeenCalled();
     expect(thread.post).not.toHaveBeenCalled();
     expect(defaultHandler).not.toHaveBeenCalled();
 
     await dm(
       thread as unknown as HandlerArgs[0],
-      incoming as unknown as HandlerArgs[1],
+      incoming,
       defaultHandler,
       ctx,
     );

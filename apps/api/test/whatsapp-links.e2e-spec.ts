@@ -10,10 +10,7 @@ import { Pool } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 import { schema } from '../src/database/schema';
 import { WhatsappLinksService } from '../src/whatsapp/whatsapp-links.service';
-import {
-  whatsappLinks,
-  whatsappLinkTokens,
-} from '../src/whatsapp/whatsapp.schema';
+import { whatsappLinkTokens } from '../src/whatsapp/whatsapp.schema';
 
 const databaseUrl = process.env.DATABASE_URL;
 const safe =

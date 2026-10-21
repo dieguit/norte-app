@@ -18,9 +18,14 @@ describe('MastraLifecycle', () => {
   it('connects WhatsApp only after channels initialize', async () => {
     const { initialize, mastra, adapter } = fakes();
     const order: string[] = [];
-    initialize.mockImplementation(async () => order.push('init'));
-    adapter.connect.mockImplementation(async () => order.push('connect'));
-    await new MastraLifecycle(mastra as never, adapter as never).onApplicationBootstrap();
+    initialize.mockImplementation(() => Promise.resolve(order.push('init')));
+    adapter.connect.mockImplementation(() =>
+      Promise.resolve(order.push('connect')),
+    );
+    await new MastraLifecycle(
+      mastra as never,
+      adapter as never,
+    ).onApplicationBootstrap();
     expect(mastra.getAgent).toHaveBeenCalledWith('norteAgent');
     expect(initialize).toHaveBeenCalledWith(mastra);
     expect(order).toEqual(['init', 'connect']);
@@ -36,16 +41,26 @@ describe('MastraLifecycle', () => {
     const { mastra, adapter } = fakes();
     adapter.connect.mockRejectedValue(new Error('boom'));
     await expect(
-      new MastraLifecycle(mastra as never, adapter as never).onApplicationBootstrap(),
+      new MastraLifecycle(
+        mastra as never,
+        adapter as never,
+      ).onApplicationBootstrap(),
     ).resolves.toBeUndefined();
   });
 
   it('disconnects WhatsApp before shutting Mastra down', async () => {
     const { mastra, adapter } = fakes();
     const order: string[] = [];
-    adapter.disconnect.mockImplementation(async () => order.push('disconnect'));
-    mastra.shutdown.mockImplementation(async () => order.push('shutdown'));
-    await new MastraLifecycle(mastra as never, adapter as never).onApplicationShutdown();
+    adapter.disconnect.mockImplementation(() =>
+      Promise.resolve(order.push('disconnect')),
+    );
+    mastra.shutdown.mockImplementation(() =>
+      Promise.resolve(order.push('shutdown')),
+    );
+    await new MastraLifecycle(
+      mastra as never,
+      adapter as never,
+    ).onApplicationShutdown();
     expect(order).toEqual(['disconnect', 'shutdown']);
   });
 });

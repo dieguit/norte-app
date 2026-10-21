@@ -48,7 +48,9 @@ async function assertCanLink(
     .from(whatsappLinks)
     .where(eq(whatsappLinks.jid, jid));
   if (existingJidLink && existingJidLink.userId !== userId) {
-    throw new ConflictException('Este WhatsApp ya está vinculado a otra cuenta');
+    throw new ConflictException(
+      'Este WhatsApp ya está vinculado a otra cuenta',
+    );
   }
 
   return !existingJidLink;
