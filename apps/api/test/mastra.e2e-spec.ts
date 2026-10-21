@@ -86,4 +86,9 @@ describe('Mastra routes (e2e)', () => {
 
   it('does not shadow existing app routes', () =>
     request(app.getHttpServer()).get('/').expect(200).expect('Hello World!'));
+
+  it('does not shadow the WhatsApp link claim route', () =>
+    request(app.getHttpServer())
+      .post(`/whatsapp/links/${'a'.repeat(43)}/claim`)
+      .expect(401));
 });

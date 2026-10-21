@@ -15,6 +15,7 @@ import { FinancialOnboardingModule } from './financial-onboarding/financial-onbo
 import { ContributionsModule } from './contributions/contributions.module';
 import { HomeModule } from './home/home.module';
 import { MastraIntegrationModule } from './mastra/mastra.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { MastraIntegrationModule } from './mastra/mastra.module';
     FinancialOnboardingModule,
     ContributionsModule,
     HomeModule,
+    WhatsappModule,
     // Mastra registers a catch-all controller; must stay last so it doesn't shadow app routes.
     MastraIntegrationModule,
   ],
