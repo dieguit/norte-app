@@ -25,6 +25,9 @@ export {
   type IncomeDraft,
 } from "./income.schema";
 export {
+  RECURRING_EXPENSE_SOURCES,
+  ONE_TIME_EXPENSE_SOURCES,
+  FIXED_EXPENSE_SOURCES,
   ExpenseDraftSchema,
   ExpenseMutationResponseSchema,
   type ExpenseDraft,
@@ -39,6 +42,8 @@ export {
 } from './savings-place.schema';
 export { deriveUsdPurchase, type UsdPurchaseDerivation, type UsdPurchaseInput } from './usd-purchase';
 export {
+  ContributionDraftWireBaseSchema,
+  SavingsPlaceSelectionWireSchema,
   SavingContributionDraftWireSchema,
   ConfirmSavingContributionWireSchema,
   UpdateSavingContributionWireSchema,

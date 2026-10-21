@@ -135,6 +135,34 @@ describe('goal tools', () => {
     expect(stores.pending.take('u1')).toBeUndefined();
   });
 
+  it('applies defaults to previewGoalCreation draft when omitted', async () => {
+    const { goals, tools } = setup();
+    const input = {
+      draft: {
+        name: 'Auto',
+        targetAmount: '10000',
+        desiredMonth: '2027-01',
+        type: 'purchase',
+        allocations: [{ goalId: 'pending-goal', percentage: '100' }],
+      },
+    };
+
+    await tools.previewGoalCreation.execute!(input as never, ctx('u1'));
+    expect(goals.previewCreation).toHaveBeenCalledWith('u1', {
+      name: 'Auto',
+      targetAmount: '10000',
+      desiredMonth: '2027-01',
+      type: 'purchase',
+      currency: 'ARS',
+      priority: 'medium',
+      strategy: 'save',
+      availability: 'available_now',
+      annualReturnRate: '',
+      availableFromMonth: '',
+      allocations: [{ goalId: 'pending-goal', percentage: '100' }],
+    });
+  });
+
   it('lists goals compactly', async () => {
     const { goals, tools } = setup();
     goals.getWorkspace.mockResolvedValue({
@@ -255,5 +283,52 @@ describe('contribution tools', () => {
     );
     expect(JSON.stringify(result)).toContain('Elegí un lugar para tu ahorro.');
     expect(contributions.previewSaving).not.toHaveBeenCalled();
+  });
+
+  it('defaults currency to ARS in previewSaving when omitted', async () => {
+    const { contributions, tools } = setupContributions();
+    const draftWithoutCurrency = {
+      kind: 'saving',
+      amount: '30000',
+      place: { kind: 'new', name: 'Mercado Pago' },
+    };
+
+    await tools.previewSaving.execute!(
+      { draft: draftWithoutCurrency } as never,
+      ctx('u1'),
+    );
+    expect(contributions.previewSaving).toHaveBeenCalledWith('u1', {
+      kind: 'saving',
+      currency: 'ARS',
+      amount: '30000',
+      place: { kind: 'new', name: 'Mercado Pago' },
+    });
+  });
+
+  it('auto-selects single existing savings place when place is omitted for saving', async () => {
+    const { contributions, tools } = setupContributions();
+    const PLACE_ID = '3b0c1f3e-4a2d-4c8e-9a1b-2f3d4e5f6a7b';
+    contributions.getContext.mockResolvedValueOnce({
+      profile: 'present',
+      context: {
+        places: [{ id: PLACE_ID, name: 'Caja de Ahorro' }],
+      },
+    });
+
+    const draftWithoutPlace = {
+      kind: 'saving',
+      amount: '15000',
+    };
+
+    await tools.previewSaving.execute!(
+      { draft: draftWithoutPlace } as never,
+      ctx('u1'),
+    );
+    expect(contributions.previewSaving).toHaveBeenCalledWith('u1', {
+      kind: 'saving',
+      currency: 'ARS',
+      amount: '15000',
+      place: { kind: 'existing', placeId: PLACE_ID },
+    });
   });
 });

@@ -19,6 +19,8 @@ describe('norte agent', () => {
         'getFinancesSummary',
         'getRoadmap',
         'readSource',
+        'getCurrentDate',
+        'listCategories',
       ]),
     );
   });
@@ -28,6 +30,9 @@ describe('norte agent', () => {
     expect(text).toContain('confirmPendingAction');
     expect(text).toContain('https://app.norte.test/app/goals');
     expect(text).not.toContain('Todavía no tenés acceso');
+    expect(text).not.toContain('(monto, concepto, categoría');
+    expect(text).toContain('getCurrentDate');
+    expect(text).toContain('listCategories');
   });
 
   it('omits links when no web app url is configured', () => {

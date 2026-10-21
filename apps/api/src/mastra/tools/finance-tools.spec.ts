@@ -1,5 +1,6 @@
 import { RequestContext } from '@mastra/core/request-context';
 import { describe, expect, it, vi } from 'vitest';
+import { todayInArgentina } from './date';
 import { createFinanceTools } from './finance-tools';
 import { UserActionStore } from './pending-actions';
 
@@ -151,5 +152,119 @@ describe('finance tools', () => {
       ),
     ).resolves.toHaveProperty('error');
     expect(services.expenses.create).not.toHaveBeenCalled();
+  });
+
+  it('lists fixed and custom categories for expenses and incomes', async () => {
+    const { services, tools } = setup();
+    services.finances.getWorkspace.mockResolvedValueOnce({
+      expenses: {
+        sources: [
+          { id: 'cs-exp-1', name: 'Mascotas', normalizedName: 'mascotas' },
+        ],
+      },
+      incomes: {
+        sources: [
+          { id: 'cs-inc-1', name: 'Freelance', normalizedName: 'freelance' },
+        ],
+      },
+    });
+
+    const result = await tools.listCategories.execute!({}, ctx('u1'));
+    expect(result).toEqual({
+      expense: {
+        recurring: expect.arrayContaining([
+          { kind: 'housing', label: 'Alquiler / vivienda' },
+        ]) as unknown,
+        oneTime: expect.arrayContaining([
+          { kind: 'clothing', label: 'Compra de ropa' },
+        ]) as unknown,
+        custom: [{ sourceId: 'cs-exp-1', name: 'Mascotas' }],
+      },
+      income: {
+        fixed: expect.arrayContaining([
+          { kind: 'salary', label: 'Sueldo' },
+        ]) as unknown,
+        custom: [{ sourceId: 'cs-inc-1', name: 'Freelance' }],
+      },
+    });
+  });
+
+  it('returns missing profile when listCategories finds no workspace', async () => {
+    const { tools } = setup();
+    const result = await tools.listCategories.execute!({}, ctx('u1'));
+    expect(result).toEqual({ profile: 'missing' });
+  });
+
+  it('applies defaults for currency (ARS), recurring (false), and current month to recordExpense', async () => {
+    const { services, tools } = setup();
+    const currentMonth = todayInArgentina().month;
+    const input = {
+      draft: {
+        concept: 'Súper',
+        source: { kind: 'uncategorized' },
+        amount: '5000',
+      },
+    };
+
+    const result = await tools.recordExpense.execute!(
+      input as never,
+      ctx('u1'),
+    );
+    expect(result).toMatchObject({ created: { id: ID }, undoAvailable: true });
+    expect(services.expenses.create).toHaveBeenCalledWith('u1', {
+      draft: expect.objectContaining({
+        currency: 'ARS',
+        recurring: false,
+        amount: '5000',
+      }) as unknown,
+      effectiveMonth: currentMonth,
+    });
+  });
+
+  it('applies defaults for currency (ARS), recurring (false), and current month to recordIncome', async () => {
+    const { services, tools } = setup();
+    const currentMonth = todayInArgentina().month;
+    const input = {
+      draft: {
+        concept: 'Changa',
+        source: { kind: 'occasional_work' },
+        amount: '20000',
+      },
+    };
+
+    const result = await tools.recordIncome.execute!(input as never, ctx('u1'));
+    expect(result).toMatchObject({ created: { id: ID }, undoAvailable: true });
+    expect(services.incomes.create).toHaveBeenCalledWith('u1', {
+      draft: expect.objectContaining({
+        currency: 'ARS',
+        recurring: false,
+        amount: '20000',
+        effectiveMonth: currentMonth,
+      }) as unknown,
+    });
+  });
+
+  it('applies current month default to updateExpense and deleteExpense when omitted', async () => {
+    const { services, stores, tools } = setup();
+    const currentMonth = todayInArgentina().month;
+    await tools.updateExpense.execute!(
+      { id: ID, draft: expenseDraft } as never,
+      ctx('u1'),
+    );
+    await stores.pending.take('u1')!.run();
+    expect(services.expenses.update).toHaveBeenCalledWith('u1', ID, {
+      draft: expenseDraft,
+      effectiveMonth: currentMonth,
+    });
+
+    await tools.deleteExpense.execute!({ id: ID }, ctx('u1'));
+    const pendingDelete = stores.pending.take('u1')!;
+    expect(pendingDelete).toBeDefined();
+    await pendingDelete.run();
+    expect(services.expenses.delete).toHaveBeenCalledWith(
+      'u1',
+      ID,
+      currentMonth,
+    );
   });
 });

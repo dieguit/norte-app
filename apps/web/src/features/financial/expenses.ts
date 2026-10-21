@@ -2,34 +2,11 @@ import BigNumber from 'bignumber.js'
 import { createMoney, type Money } from '../../lib/money'
 import { PLANNING_ARS_PER_USD } from './financial'
 
-export const RECURRING_EXPENSE_SOURCES = {
-  housing: 'Alquiler / vivienda',
-  school: 'Colegio',
-  health: 'Prepaga / salud',
-  loans: 'Préstamos',
-  utilities: 'Servicios',
-  insurance: 'Seguros',
-  family_support: 'Ayuda a familiares',
-  subscriptions: 'Suscripciones',
-  uncategorized: 'Sin categoría',
-} as const
-
-export const ONE_TIME_EXPENSE_SOURCES = {
-  clothing: 'Compra de ropa',
-  gift: 'Regalo',
-  family_help: 'Ayuda familiar',
-  occasional_health: 'Salud ocasional',
-  maintenance: 'Reparación / mantenimiento',
-  travel_leisure: 'Viaje / salida',
-  technology: 'Tecnología / electrónica',
-  taxes_fees: 'Trámite / impuesto',
-  uncategorized: 'Sin categoría',
-} as const
-
-export const FIXED_EXPENSE_SOURCES = {
-  ...RECURRING_EXPENSE_SOURCES,
-  ...ONE_TIME_EXPENSE_SOURCES,
-} as const
+export {
+  RECURRING_EXPENSE_SOURCES,
+  ONE_TIME_EXPENSE_SOURCES,
+  FIXED_EXPENSE_SOURCES,
+} from '@repo/shared-types'
 
 export interface ExpenseMonthInput {
   amount: Money

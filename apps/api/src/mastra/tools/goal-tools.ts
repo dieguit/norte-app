@@ -1,10 +1,12 @@
 import { createTool } from '@mastra/core/tools';
 import {
   AllocationChangeDraftWireSchema,
+  ContributionDraftWireBaseSchema,
   GoalCompletionPreviewWireSchema,
   GoalCreationDraftWireSchema,
   GoalLifecycleActionSchema,
   SavingContributionDraftWireSchema,
+  type SavingContributionDraftWire,
 } from '@repo/shared-types';
 import { z } from 'zod';
 import type { NorteServices } from '../services';
@@ -16,6 +18,17 @@ const GoalIdSchema = z.string().uuid().describe('Goal id from listGoals');
 const AllocationsSchema = z
   .array(z.object({ goalId: z.string(), percentage: z.string() }).strict())
   .describe('Percentages per active goal; must sum 100');
+
+const ToolGoalCreationDraftSchema = GoalCreationDraftWireSchema.extend({
+  currency: z.enum(['ARS', 'USD']).default('ARS'),
+  priority: z.enum(['high', 'medium', 'low']).default('medium'),
+  strategy: z.enum(['save', 'invest']).default('save'),
+  availability: z
+    .enum(['available_now', 'available_from', 'long_term'])
+    .default('available_now'),
+  annualReturnRate: z.string().default(''),
+  availableFromMonth: z.string().default(''),
+});
 
 const OMITTED_GOAL_KEYS = [
   'funding',
@@ -100,8 +113,8 @@ export function createGoalTools(
     previewGoalCreation: createTool({
       id: 'preview-goal-creation',
       description:
-        'Previews creating a goal (Antes → Con este cambio). Call getGoalPlan first. allocations must include every active goal plus { goalId: "pending-goal" } for the new one, summing 100. For strategy "save" send annualReturnRate "" and availableFromMonth "". Needs confirmation.',
-      inputSchema: z.object({ draft: GoalCreationDraftWireSchema }),
+        'Previews creating a goal (Antes → Con este cambio). Call getGoalPlan first. Defaults: currency ARS, priority medium, strategy save, availability available_now. allocations must include every active goal plus { goalId: "pending-goal" } for the new one, summing 100. Needs confirmation.',
+      inputSchema: z.object({ draft: ToolGoalCreationDraftSchema }),
       execute: ({ draft }, context) =>
         toolResult(async () => {
           const userId = requireUserId(context?.requestContext);
@@ -227,6 +240,30 @@ const ContributionIdSchema = z
   .uuid()
   .describe('Contribution id from listGoals or getFinancesSummary movements');
 
+const ToolSavingContributionDraftSchema =
+  ContributionDraftWireBaseSchema.extend({
+    currency: z.enum(['ARS', 'USD']).default('ARS'),
+  });
+
+async function resolveSavingsPlace(
+  contributions: Pick<NorteServices['contributions'], 'getContext'>,
+  userId: string,
+  kind: string | undefined,
+  place: unknown,
+) {
+  if (kind !== 'investment' && !place) {
+    try {
+      const res = await contributions.getContext(userId);
+      if (res?.profile === 'present' && res.context.places.length === 1) {
+        return { kind: 'existing' as const, placeId: res.context.places[0].id };
+      }
+    } catch {
+      // Ignore context lookup errors; schema validation handles missing place.
+    }
+  }
+  return place;
+}
+
 export function createContributionTools(
   { contributions }: Pick<NorteServices, 'contributions'>,
   { pending }: ActionStores,
@@ -246,22 +283,49 @@ export function createContributionTools(
     previewSaving: createTool({
       id: 'preview-saving',
       description:
-        'Previews recording money the user actually saved or invested ("ahorré", "invertí"), split across goals by the current allocation. kind "saving" requires a place (existing placeId or a new name). USD bought with pesos: send arsSpent. Needs confirmation.',
-      inputSchema: z.object({ draft: SavingContributionDraftWireSchema }),
+        'Previews recording money the user actually saved or invested ("ahorré", "invertí"), split across goals by the current allocation. Currency defaults to ARS. If the user has a single savings place it is used automatically. Otherwise kind "saving" requires a place (existing placeId or a new name). USD bought with pesos: send arsSpent. Needs confirmation.',
+      inputSchema: z.object({ draft: ToolSavingContributionDraftSchema }),
       execute: ({ draft }, context) =>
         toolResult(async () => {
           const userId = requireUserId(context?.requestContext);
+          const place = await resolveSavingsPlace(
+            contributions,
+            userId,
+            draft.kind,
+            draft.place,
+          );
+          const preparedDraft = {
+            ...draft,
+            kind: draft.kind ?? 'saving',
+            currency: draft.currency ?? 'ARS',
+            ...(place ? { place } : {}),
+          };
+          const parsed =
+            SavingContributionDraftWireSchema.safeParse(preparedDraft);
+          if (!parsed.success) {
+            return {
+              error:
+                parsed.error.issues[0]?.message ?? 'Datos de ahorro inválidos.',
+            };
+          }
+          const validDraft = parsed.data;
           return stagePreview({
             store: pending,
             userId,
             summary:
-              draft.kind === 'investment'
+              validDraft.kind === 'investment'
                 ? 'Inversión registrada'
                 : 'Ahorro registrado',
-            preview: await contributions.previewSaving(userId, draft),
+            preview: await contributions.previewSaving(
+              userId,
+              validDraft as SavingContributionDraftWire,
+            ),
             present: ({ preview }) => preview,
             confirm: (previewToken) =>
-              contributions.confirmSaving(userId, { draft, previewToken }),
+              contributions.confirmSaving(userId, {
+                draft: validDraft,
+                previewToken,
+              }),
           });
         }),
     }),

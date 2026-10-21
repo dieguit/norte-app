@@ -136,25 +136,33 @@ var IncomeMutationResponseSchema = z4.object({
 
 // src/expense.schema.ts
 import { z as z5 } from "zod";
-var fixedExpenseSources = [
-  "housing",
-  "school",
-  "health",
-  "loans",
-  "utilities",
-  "insurance",
-  "family_support",
-  "subscriptions",
-  "uncategorized",
-  "clothing",
-  "gift",
-  "family_help",
-  "occasional_health",
-  "maintenance",
-  "travel_leisure",
-  "technology",
-  "taxes_fees"
-];
+var RECURRING_EXPENSE_SOURCES = {
+  housing: "Alquiler / vivienda",
+  school: "Colegio",
+  health: "Prepaga / salud",
+  loans: "Pr\xE9stamos",
+  utilities: "Servicios",
+  insurance: "Seguros",
+  family_support: "Ayuda a familiares",
+  subscriptions: "Suscripciones",
+  uncategorized: "Sin categor\xEDa"
+};
+var ONE_TIME_EXPENSE_SOURCES = {
+  clothing: "Compra de ropa",
+  gift: "Regalo",
+  family_help: "Ayuda familiar",
+  occasional_health: "Salud ocasional",
+  maintenance: "Reparaci\xF3n / mantenimiento",
+  travel_leisure: "Viaje / salida",
+  technology: "Tecnolog\xEDa / electr\xF3nica",
+  taxes_fees: "Tr\xE1mite / impuesto",
+  uncategorized: "Sin categor\xEDa"
+};
+var FIXED_EXPENSE_SOURCES = {
+  ...RECURRING_EXPENSE_SOURCES,
+  ...ONE_TIME_EXPENSE_SOURCES
+};
+var fixedExpenseSources = Object.keys(FIXED_EXPENSE_SOURCES);
 var sourceSchema2 = z5.union(
   [
     z5.object({ kind: z5.enum(fixedExpenseSources) }),
@@ -913,6 +921,7 @@ export {
   ConfirmGoalCreationWireSchema,
   ConfirmGoalLifecycleWireSchema,
   ConfirmSavingContributionWireSchema,
+  ContributionDraftWireBaseSchema,
   ContributionIdPathWireSchema,
   ContributionSummarySchema,
   CreatePlaceholderItemSchema,
@@ -920,6 +929,7 @@ export {
   DeletePlaceholderItemResponseSchema,
   ExpenseDraftSchema,
   ExpenseMutationResponseSchema,
+  FIXED_EXPENSE_SOURCES,
   FIXED_INCOME_SOURCES,
   FinancesWorkspaceSchema,
   FinancialOnboardingResponseSchema,
@@ -969,10 +979,12 @@ export {
   IncomeDraftSchema,
   IncomeMutationResponseSchema,
   InitialHomeStateSchema,
+  ONE_TIME_EXPENSE_SOURCES,
   PlaceholderItemListSchema,
   PlaceholderItemSchema,
   PlaceholderStatusSchema,
   ProfileResponseSchema,
+  RECURRING_EXPENSE_SOURCES,
   RenameSavingsPlaceSchema,
   RoadmapDataSchema,
   RoadmapExpenseSchema,
@@ -993,6 +1005,7 @@ export {
   SavingContributionUpdatedSchema,
   SavingsPlaceIdParamsSchema,
   SavingsPlaceMutationResponseSchema,
+  SavingsPlaceSelectionWireSchema,
   SavingsTransferResponseSchema,
   SavingsTransferSchema,
   UpdatePlaceholderItemSchema,

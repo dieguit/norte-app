@@ -6,25 +6,39 @@ import {
   entryResponseFields,
 } from "./finance-entry.schema";
 
-const fixedExpenseSources = [
-  "housing",
-  "school",
-  "health",
-  "loans",
-  "utilities",
-  "insurance",
-  "family_support",
-  "subscriptions",
-  "uncategorized",
-  "clothing",
-  "gift",
-  "family_help",
-  "occasional_health",
-  "maintenance",
-  "travel_leisure",
-  "technology",
-  "taxes_fees",
-] as const;
+export const RECURRING_EXPENSE_SOURCES = {
+  housing: 'Alquiler / vivienda',
+  school: 'Colegio',
+  health: 'Prepaga / salud',
+  loans: 'Préstamos',
+  utilities: 'Servicios',
+  insurance: 'Seguros',
+  family_support: 'Ayuda a familiares',
+  subscriptions: 'Suscripciones',
+  uncategorized: 'Sin categoría',
+} as const;
+
+export const ONE_TIME_EXPENSE_SOURCES = {
+  clothing: 'Compra de ropa',
+  gift: 'Regalo',
+  family_help: 'Ayuda familiar',
+  occasional_health: 'Salud ocasional',
+  maintenance: 'Reparación / mantenimiento',
+  travel_leisure: 'Viaje / salida',
+  technology: 'Tecnología / electrónica',
+  taxes_fees: 'Trámite / impuesto',
+  uncategorized: 'Sin categoría',
+} as const;
+
+export const FIXED_EXPENSE_SOURCES = {
+  ...RECURRING_EXPENSE_SOURCES,
+  ...ONE_TIME_EXPENSE_SOURCES,
+} as const;
+
+const fixedExpenseSources = Object.keys(FIXED_EXPENSE_SOURCES) as [
+  keyof typeof FIXED_EXPENSE_SOURCES,
+  ...(keyof typeof FIXED_EXPENSE_SOURCES)[],
+];
 
 const sourceSchema = z.union(
   [
