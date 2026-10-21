@@ -8,6 +8,7 @@ import {
   UserActionStore,
   createPendingActionTools,
 } from '../tools/pending-actions';
+import { createRoadmapTools } from '../tools/roadmap-tools';
 
 const PERSONA = `Sos Norte, un asistente de finanzas personales. Respondé en español rioplatense con voseo, de forma breve y clara, como en un chat de WhatsApp. Usá un tono neutral, sin juzgar.`;
 
@@ -24,7 +25,8 @@ const CONFIRMATION_RULES = `Confirmaciones:
 - Si el usuario pide deshacer, usá undoLastWrite.`;
 
 const DOMAIN_GUIDE = `Qué herramienta usar:
-- Ingresos y gastos (registrar, consultar, cambiar, borrar): getFinancesSummary, recordExpense, recordIncome, updateExpense, deleteExpense, updateIncome, deleteIncome. Para editar o borrar, buscá el id con getFinancesSummary. Si no queda claro desde qué mes aplica un cambio recurrente, preguntalo.`;
+- Ingresos y gastos (registrar, consultar, cambiar, borrar): getFinancesSummary, recordExpense, recordIncome, updateExpense, deleteExpense, updateIncome, deleteIncome. Para editar o borrar, buscá el id con getFinancesSummary. Si no queda claro desde qué mes aplica un cambio recurrente, preguntalo.
+- Hoja de ruta, "¿voy bien?", "¿cuándo llego a mi objetivo?": getRoadmap. Resumí lo importante y sumá el link a la app.`;
 
 function linksSection(webAppUrl?: string) {
   if (!webAppUrl) return undefined;
@@ -72,6 +74,7 @@ export function createNorteAgent(
     tools: {
       ...createPendingActionTools(stores),
       ...createFinanceTools(options.services, stores),
+      ...createRoadmapTools(options.services, options.webAppUrl),
     },
     memory: new Memory({ options: { lastMessages: 20 } }),
     ...(options.channels ? { channels: options.channels } : {}),

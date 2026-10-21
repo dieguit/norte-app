@@ -17,6 +17,7 @@ describe('norte agent', () => {
         'undoLastWrite',
         'recordExpense',
         'getFinancesSummary',
+        'getRoadmap',
       ]),
     );
   });
