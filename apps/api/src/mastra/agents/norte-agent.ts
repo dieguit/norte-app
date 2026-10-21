@@ -4,10 +4,7 @@ import { Memory } from '@mastra/memory';
 import type { Env } from '../../config/env';
 import type { NorteServices } from '../services';
 import { createFinanceTools } from '../tools/finance-tools';
-import {
-  createContributionTools,
-  createGoalTools,
-} from '../tools/goal-tools';
+import { createContributionTools, createGoalTools } from '../tools/goal-tools';
 import {
   UserActionStore,
   createPendingActionTools,

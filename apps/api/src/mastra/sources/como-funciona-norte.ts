@@ -3,7 +3,8 @@ import type { Source } from './types';
 export const comoFuncionaNorte: Source = {
   slug: 'como-funciona-norte',
   title: 'Cómo funciona Norte',
-  summary: 'Objetivos, plan, aportes reales y hoja de ruta: qué mueve el progreso y qué no.',
+  summary:
+    'Objetivos, plan, aportes reales y hoja de ruta: qué mueve el progreso y qué no.',
   tags: ['norte', 'objetivos', 'plan'],
   body: `# Cómo funciona Norte
 

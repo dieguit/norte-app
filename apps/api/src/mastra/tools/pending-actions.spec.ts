@@ -17,9 +17,15 @@ function setup() {
   const pending = new UserActionStore(1000, () => now);
   const undo = new UserActionStore(1000, () => now);
   const tools = createPendingActionTools({ pending, undo });
-  const confirm = () => tools.confirmPendingAction.execute!({} as never, ctx('u1'));
-  const undoLast = () => tools.undoLastWrite.execute!({} as never, ctx('u1'));
-  return { pending, undo, confirm, undoLast, advance: (ms: number) => (now += ms) };
+  const confirm = () => tools.confirmPendingAction.execute!({}, ctx('u1'));
+  const undoLast = () => tools.undoLastWrite.execute!({}, ctx('u1'));
+  return {
+    pending,
+    undo,
+    confirm,
+    undoLast,
+    advance: (ms: number) => (now += ms),
+  };
 }
 
 describe('UserActionStore', () => {
@@ -44,7 +50,8 @@ describe('confirmPendingAction', () => {
       result: { status: 'created' },
     });
     await expect(confirm()).resolves.toEqual({
-      error: 'No hay ninguna propuesta pendiente o ya venció. Pedímela de nuevo.',
+      error:
+        'No hay ninguna propuesta pendiente o ya venció. Pedímela de nuevo.',
     });
     expect(run).toHaveBeenCalledTimes(1);
   });
@@ -81,9 +88,12 @@ describe('confirmPendingAction', () => {
     const { pending } = setup();
     const run = vi.fn();
     pending.set('u1', { summary: 'A', run });
-    const tools = createPendingActionTools({ pending, undo: new UserActionStore() });
+    const tools = createPendingActionTools({
+      pending,
+      undo: new UserActionStore(),
+    });
     await expect(
-      tools.confirmPendingAction.execute!({} as never, ctx()),
+      tools.confirmPendingAction.execute!({}, ctx()),
     ).resolves.toHaveProperty('error');
     expect(run).not.toHaveBeenCalled();
   });
@@ -106,7 +116,9 @@ describe('undoLastWrite', () => {
     const run = vi.fn();
     undo.set('u1', { summary: 'x', run });
     advance(1001);
-    await expect(undoLast()).resolves.toEqual({ error: 'No hay nada para deshacer.' });
+    await expect(undoLast()).resolves.toEqual({
+      error: 'No hay nada para deshacer.',
+    });
     expect(run).not.toHaveBeenCalled();
   });
 });
@@ -176,7 +188,10 @@ describe('stagePreview', () => {
     const store = new UserActionStore();
     const confirmFn = vi
       .fn()
-      .mockResolvedValueOnce({ status: 'stale', preview: { previewToken: 'b', n: 2 } })
+      .mockResolvedValueOnce({
+        status: 'stale',
+        preview: { previewToken: 'b', n: 2 },
+      })
       .mockResolvedValueOnce({ status: 'created' });
     const staged = stagePreview({
       store,
@@ -190,10 +205,13 @@ describe('stagePreview', () => {
 
     await expect(store.take('u1')!.run()).resolves.toEqual({
       status: 'stale',
-      message: 'Los datos cambiaron. Mostrá esta nueva vista previa y pedí confirmación otra vez.',
+      message:
+        'Los datos cambiaron. Mostrá esta nueva vista previa y pedí confirmación otra vez.',
       preview: { n: 2 },
     });
-    await expect(store.take('u1')!.run()).resolves.toEqual({ status: 'created' });
+    await expect(store.take('u1')!.run()).resolves.toEqual({
+      status: 'created',
+    });
     expect(confirmFn.mock.calls).toEqual([['a'], ['b']]);
   });
 });

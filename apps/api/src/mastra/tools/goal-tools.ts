@@ -254,7 +254,10 @@ export function createContributionTools(
           return stagePreview({
             store: pending,
             userId,
-            summary: draft.kind === 'investment' ? 'Inversión registrada' : 'Ahorro registrado',
+            summary:
+              draft.kind === 'investment'
+                ? 'Inversión registrada'
+                : 'Ahorro registrado',
             preview: await contributions.previewSaving(userId, draft),
             present: ({ preview }) => preview,
             confirm: (previewToken) =>
@@ -265,7 +268,8 @@ export function createContributionTools(
 
     previewSavingEdit: createTool({
       id: 'preview-saving-edit',
-      description: 'Previews correcting a recorded saving or investment. Needs confirmation.',
+      description:
+        'Previews correcting a recorded saving or investment. Needs confirmation.',
       inputSchema: z.object({
         contributionId: ContributionIdSchema,
         draft: SavingContributionDraftWireSchema,
@@ -280,7 +284,8 @@ export function createContributionTools(
           );
           pending.set(userId, {
             summary: 'Aporte corregido',
-            run: () => contributions.updateSaving(userId, contributionId, { draft }),
+            run: () =>
+              contributions.updateSaving(userId, contributionId, { draft }),
           });
           return { needsConfirmation: true, preview };
         }),
@@ -288,18 +293,21 @@ export function createContributionTools(
 
     previewSavingDelete: createTool({
       id: 'preview-saving-delete',
-      description: 'Stages deleting a recorded saving or investment. Needs confirmation.',
+      description:
+        'Stages deleting a recorded saving or investment. Needs confirmation.',
       inputSchema: z.object({ contributionId: ContributionIdSchema }),
       execute: ({ contributionId }, context) =>
-        toolResult(async () => {
+        toolResult(() => {
           const userId = requireUserId(context?.requestContext);
           pending.set(userId, {
             summary: 'Aporte eliminado',
             run: () => contributions.deleteSaving(userId, contributionId),
           });
-          return { needsConfirmation: true, preview: { delete: contributionId } };
+          return {
+            needsConfirmation: true,
+            preview: { delete: contributionId },
+          };
         }),
     }),
   };
 }
-

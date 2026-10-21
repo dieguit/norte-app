@@ -10,7 +10,10 @@ const MonthSchema = z
   .string()
   .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Ingresá un mes válido.')
   .describe('Month as YYYY-MM');
-const IdSchema = z.string().uuid().describe('Record id from getFinancesSummary');
+const IdSchema = z
+  .string()
+  .uuid()
+  .describe('Record id from getFinancesSummary');
 
 type FinanceServices = Pick<NorteServices, 'expenses' | 'incomes' | 'finances'>;
 
@@ -57,13 +60,17 @@ export function createFinanceTools(
           const userId = requireUserId(context?.requestContext);
           const write = () => expenses.create(userId, input);
           if (input.draft.recurring) {
-            pending.set(userId, { summary: 'Gasto mensual registrado', run: write });
+            pending.set(userId, {
+              summary: 'Gasto mensual registrado',
+              run: write,
+            });
             return staged({ type: 'expense', ...input });
           }
           const created = await write();
           undo.set(userId, {
             summary: 'Gasto eliminado',
-            run: () => expenses.delete(userId, created.id, input.effectiveMonth),
+            run: () =>
+              expenses.delete(userId, created.id, input.effectiveMonth),
           });
           return { created, undoAvailable: true };
         }),
@@ -79,7 +86,10 @@ export function createFinanceTools(
           const userId = requireUserId(context?.requestContext);
           const write = () => incomes.create(userId, input);
           if (input.draft.recurring) {
-            pending.set(userId, { summary: 'Ingreso mensual registrado', run: write });
+            pending.set(userId, {
+              summary: 'Ingreso mensual registrado',
+              run: write,
+            });
             return staged({ type: 'income', ...input });
           }
           const created = await write();
@@ -101,7 +111,7 @@ export function createFinanceTools(
         effectiveMonth: MonthSchema,
       }),
       execute: ({ id, ...body }, context) =>
-        toolResult(async () => {
+        toolResult(() => {
           const userId = requireUserId(context?.requestContext);
           pending.set(userId, {
             summary: 'Gasto actualizado',
@@ -117,7 +127,7 @@ export function createFinanceTools(
         'Previews deleting an expense. For recurring expenses it stops from effectiveMonth (past months are kept). Needs confirmation.',
       inputSchema: z.object({ id: IdSchema, effectiveMonth: MonthSchema }),
       execute: ({ id, effectiveMonth }, context) =>
-        toolResult(async () => {
+        toolResult(() => {
           const userId = requireUserId(context?.requestContext);
           pending.set(userId, {
             summary: 'Gasto eliminado',
@@ -132,7 +142,7 @@ export function createFinanceTools(
       description: 'Previews replacing an income record. Needs confirmation.',
       inputSchema: z.object({ id: IdSchema, draft: IncomeDraftSchema }),
       execute: ({ id, draft }, context) =>
-        toolResult(async () => {
+        toolResult(() => {
           const userId = requireUserId(context?.requestContext);
           pending.set(userId, {
             summary: 'Ingreso actualizado',
@@ -147,7 +157,7 @@ export function createFinanceTools(
       description: 'Previews deleting an income record. Needs confirmation.',
       inputSchema: z.object({ id: IdSchema }),
       execute: ({ id }, context) =>
-        toolResult(async () => {
+        toolResult(() => {
           const userId = requireUserId(context?.requestContext);
           pending.set(userId, {
             summary: 'Ingreso eliminado',

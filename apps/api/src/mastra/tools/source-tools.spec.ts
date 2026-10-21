@@ -15,14 +15,20 @@ describe('sources', () => {
 
   it('reads a source by slug', async () => {
     const { readSource } = createSourceTools();
-    const result = await readSource.execute!({ slug: 'fondo-de-emergencia' } as never, {} as never);
-    expect(result).toMatchObject({ title: expect.any(String), body: expect.any(String) });
+    const result = await readSource.execute!(
+      { slug: 'fondo-de-emergencia' },
+      {} as never,
+    );
+    expect(result).toMatchObject({
+      title: expect.any(String) as unknown,
+      body: expect.any(String) as unknown,
+    });
   });
 
   it('lists valid slugs for unknown ones', async () => {
     const { readSource } = createSourceTools();
     await expect(
-      readSource.execute!({ slug: 'nope' } as never, {} as never),
+      readSource.execute!({ slug: 'nope' }, {} as never),
     ).resolves.toEqual({
       error: 'Fuente inexistente.',
       validSlugs: sources.map((source) => source.slug),

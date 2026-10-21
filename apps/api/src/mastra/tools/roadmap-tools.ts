@@ -12,7 +12,7 @@ export function createRoadmapTools(
     getRoadmap: createTool({
       id: 'get-roadmap',
       description:
-        "The user's financial roadmap: timeline of months, upcoming milestones, goal completion projections and goals ready to complete. Use for \"¿voy bien?\", \"¿cuándo llego?\", or roadmap questions.",
+        'The user\'s financial roadmap: timeline of months, upcoming milestones, goal completion projections and goals ready to complete. Use for "¿voy bien?", "¿cuándo llego?", or roadmap questions.',
       inputSchema: z.object({}),
       execute: (_input, context) =>
         toolResult(async () => {
@@ -20,7 +20,10 @@ export function createRoadmapTools(
             requireUserId(context?.requestContext),
           );
           if ('profile' in result)
-            return { ...result, appUrl: webAppUrl && `${webAppUrl}/onboarding` };
+            return {
+              ...result,
+              appUrl: webAppUrl && `${webAppUrl}/onboarding`,
+            };
           return { ...result, appUrl: webAppUrl && `${webAppUrl}/app` };
         }),
     }),

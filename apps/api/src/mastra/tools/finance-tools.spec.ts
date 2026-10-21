@@ -32,7 +32,10 @@ function setup() {
     },
     finances: { getWorkspace: vi.fn().mockResolvedValue(null) },
   };
-  const stores = { pending: new UserActionStore(), undo: new UserActionStore() };
+  const stores = {
+    pending: new UserActionStore(),
+    undo: new UserActionStore(),
+  };
   const tools = createFinanceTools(services as never, stores);
   return { services, stores, tools };
 }
@@ -41,10 +44,16 @@ describe('finance tools', () => {
   it('records one-time expenses immediately and stages an undo', async () => {
     const { services, stores, tools } = setup();
     const input = { draft: expenseDraft, effectiveMonth: '2026-10' };
-    const result = await tools.recordExpense.execute!(input as never, ctx('u1'));
+    const result = await tools.recordExpense.execute!(
+      input as never,
+      ctx('u1'),
+    );
     expect(result).toMatchObject({ created: { id: ID }, undoAvailable: true });
     expect(services.expenses.create).toHaveBeenCalledWith('u1', {
-      draft: expect.objectContaining({ amount: '5000', recurring: false }),
+      draft: expect.objectContaining({
+        amount: '5000',
+        recurring: false,
+      }) as unknown,
       effectiveMonth: '2026-10',
     });
     await stores.undo.take('u1')!.run();
@@ -57,12 +66,18 @@ describe('finance tools', () => {
       draft: { ...expenseDraft, concept: 'Alquiler', recurring: true },
       effectiveMonth: '2026-11',
     };
-    const result = await tools.recordExpense.execute!(input as never, ctx('u1'));
+    const result = await tools.recordExpense.execute!(
+      input as never,
+      ctx('u1'),
+    );
     expect(result).toMatchObject({ needsConfirmation: true });
     expect(services.expenses.create).not.toHaveBeenCalled();
     await stores.pending.take('u1')!.run();
     expect(services.expenses.create).toHaveBeenCalledWith('u1', {
-      draft: expect.objectContaining({ concept: 'Alquiler', recurring: true }),
+      draft: expect.objectContaining({
+        concept: 'Alquiler',
+        recurring: true,
+      }) as unknown,
       effectiveMonth: '2026-11',
     });
   });
@@ -92,7 +107,7 @@ describe('finance tools', () => {
       ctx('u1'),
     );
     await tools.deleteExpense.execute!(
-      { id: ID, effectiveMonth: '2026-12' } as never,
+      { id: ID, effectiveMonth: '2026-12' },
       ctx('u1'),
     );
     expect(services.expenses.update).not.toHaveBeenCalled();
@@ -100,7 +115,7 @@ describe('finance tools', () => {
     await stores.pending.take('u1')!.run();
     expect(services.expenses.delete).toHaveBeenCalledWith('u1', ID, '2026-12');
 
-    await tools.deleteIncome.execute!({ id: ID } as never, ctx('u1'));
+    await tools.deleteIncome.execute!({ id: ID }, ctx('u1'));
     expect(services.incomes.delete).not.toHaveBeenCalled();
     await stores.pending.take('u1')!.run();
     expect(services.incomes.delete).toHaveBeenCalledWith('u1', ID);
@@ -109,7 +124,10 @@ describe('finance tools', () => {
   it('rejects invalid drafts before touching services', async () => {
     const { services, tools } = setup();
     const result = await tools.recordExpense.execute!(
-      { draft: { ...expenseDraft, amount: '0' }, effectiveMonth: '2026-10' } as never,
+      {
+        draft: { ...expenseDraft, amount: '0' },
+        effectiveMonth: '2026-10',
+      } as never,
       ctx('u1'),
     );
     expect(result).toMatchObject({ error: true });
@@ -120,7 +138,7 @@ describe('finance tools', () => {
   it('reports a missing profile in the summary', async () => {
     const { tools } = setup();
     await expect(
-      tools.getFinancesSummary.execute!({} as never, ctx('u1')),
+      tools.getFinancesSummary.execute!({}, ctx('u1')),
     ).resolves.toEqual({ profile: 'missing' });
   });
 

@@ -11,7 +11,7 @@ function clientErrorMessage(error: unknown): string | undefined {
 }
 
 export async function toolResult<T>(
-  fn: () => Promise<T>,
+  fn: () => T | Promise<T>,
 ): Promise<T | { error: string }> {
   try {
     return await fn();

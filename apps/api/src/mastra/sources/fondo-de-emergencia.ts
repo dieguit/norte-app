@@ -3,7 +3,8 @@ import type { Source } from './types';
 export const fondoDeEmergencia: Source = {
   slug: 'fondo-de-emergencia',
   title: 'Colchón financiero',
-  summary: 'Qué es el colchón financiero en Norte y por qué se planifica en dólares y en meses de gastos.',
+  summary:
+    'Qué es el colchón financiero en Norte y por qué se planifica en dólares y en meses de gastos.',
   tags: ['ahorro', 'colchón', 'emergencia'],
   body: `# Colchón financiero
 

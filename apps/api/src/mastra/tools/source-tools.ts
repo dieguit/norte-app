@@ -9,14 +9,18 @@ export function createSourceTools(list: Source[] = sources) {
       description:
         "Reads one of Norte's curated sources by slug (see 'Fuentes disponibles'). Use before answering tips, education or how-it-works questions.",
       inputSchema: z.object({ slug: z.string() }),
-      execute: async ({ slug }) => {
+      execute: ({ slug }) => {
         const source = list.find((candidate) => candidate.slug === slug);
         if (!source)
-          return {
+          return Promise.resolve({
             error: 'Fuente inexistente.',
             validSlugs: list.map((candidate) => candidate.slug),
-          };
-        return { title: source.title, url: source.url, body: source.body };
+          });
+        return Promise.resolve({
+          title: source.title,
+          url: source.url,
+          body: source.body,
+        });
       },
     }),
   };
