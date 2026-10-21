@@ -1,0 +1,97 @@
+import { createTool } from '@mastra/core/tools';
+import { z } from 'zod';
+import { toolResult } from './tool-result';
+import { requireUserId } from './user-context';
+
+export type UserAction = { summary: string; run: () => Promise<unknown> };
+export type ActionStores = { pending: UserActionStore; undo: UserActionStore };
+
+const TEN_MINUTES = 10 * 60_000;
+
+// ponytail: in-memory, lost on restart and single-instance only; move to a Postgres table if the API scales out.
+export class UserActionStore {
+  private readonly entries = new Map<
+    string,
+    UserAction & { expiresAt: number }
+  >();
+
+  constructor(
+    private readonly ttlMs = TEN_MINUTES,
+    private readonly now: () => number = Date.now,
+  ) {}
+
+  set(userId: string, action: UserAction) {
+    this.entries.set(userId, { ...action, expiresAt: this.now() + this.ttlMs });
+  }
+
+  take(userId: string): UserAction | undefined {
+    const entry = this.entries.get(userId);
+    this.entries.delete(userId);
+    return entry && entry.expiresAt > this.now() ? entry : undefined;
+  }
+}
+
+// The stored closure captures the previewed input, so what runs on "sí" is exactly what the user saw.
+export function stagePreview<P extends { previewToken: string }>(args: {
+  store: UserActionStore;
+  userId: string;
+  summary: string;
+  preview: P;
+  present: (preview: P) => unknown;
+  confirm: (
+    previewToken: string,
+  ) => Promise<{ status: string; preview?: P } | undefined>;
+}) {
+  const { store, userId, summary, preview, present, confirm } = args;
+  store.set(userId, {
+    summary,
+    run: async () => {
+      const result = await confirm(preview.previewToken);
+      if (result?.status === 'stale' && result.preview) {
+        stagePreview({ ...args, preview: result.preview });
+        return {
+          status: 'stale',
+          message:
+            'Los datos cambiaron. Mostrá esta nueva vista previa y pedí confirmación otra vez.',
+          preview: present(result.preview),
+        };
+      }
+      return result;
+    },
+  });
+  return { needsConfirmation: true as const, preview: present(preview) };
+}
+
+export function createPendingActionTools({ pending, undo }: ActionStores) {
+  return {
+    confirmPendingAction: createTool({
+      id: 'confirm-pending-action',
+      description:
+        'Executes the latest preview. Call ONLY right after the user explicitly accepts the latest preview ("sí", "dale", "confirmo"). Never call it on your own initiative.',
+      inputSchema: z.object({}),
+      execute: (_input, context) =>
+        toolResult(async () => {
+          const action = pending.take(requireUserId(context?.requestContext));
+          if (!action)
+            return {
+              error:
+                'No hay ninguna propuesta pendiente o ya venció. Pedímela de nuevo.',
+            };
+          return { done: action.summary, result: await action.run() };
+        }),
+    }),
+    undoLastWrite: createTool({
+      id: 'undo-last-write',
+      description:
+        'Undoes the last one-time income or expense recorded in this chat (within 10 minutes). Use when the user asks to undo ("deshacer", "borralo", "me equivoqué").',
+      inputSchema: z.object({}),
+      execute: (_input, context) =>
+        toolResult(async () => {
+          const action = undo.take(requireUserId(context?.requestContext));
+          if (!action) return { error: 'No hay nada para deshacer.' };
+          await action.run();
+          return { done: action.summary };
+        }),
+    }),
+  };
+}
