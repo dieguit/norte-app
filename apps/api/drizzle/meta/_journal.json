@@ -155,6 +155,13 @@
       "when": 1792541454735,
       "tag": "0021_wandering_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792617711082,
+      "tag": "0022_notifications",
+      "breakpoints": true
     }
   ]
 }

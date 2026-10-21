@@ -1,20 +1,8 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { todayInArgentina } from '../../argentina-time';
 
-const formatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Argentina/Buenos_Aires',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-
-export function todayInArgentina(now = new Date()): {
-  today: string;
-  month: string;
-} {
-  const today = formatter.format(now);
-  return { today, month: today.slice(0, 7) };
-}
+export { todayInArgentina };
 
 export function createDateTools() {
   return {

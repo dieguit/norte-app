@@ -220,4 +220,16 @@ export {
   type SavingPreviewResult,
 } from './saving-contribution.types';
 
+export {
+  NOTIFICATION_TYPES,
+  NotificationTypeSchema,
+  NotificationTimeSchema,
+  NotificationSettingSchema,
+  NotificationSettingsResponseSchema,
+  UpdateNotificationSettingSchema,
+  type NotificationType,
+  type NotificationSetting,
+  type UpdateNotificationSetting,
+} from "./notification.schema";
+
 

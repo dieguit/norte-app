@@ -23,6 +23,10 @@ import {
   whatsappLinks,
   whatsappLinkTokens,
 } from '../whatsapp/whatsapp.schema';
+import {
+  notificationSettings,
+  notifications,
+} from '../notifications/notifications.schema';
 
 export const schema = {
   onboardingDrafts,
@@ -46,6 +50,8 @@ export const schema = {
   whatsappAuthState,
   whatsappLinks,
   whatsappLinkTokens,
+  notificationSettings,
+  notifications,
 };
 
 export type Schema = typeof schema;
@@ -71,4 +77,6 @@ export {
   whatsappAuthState,
   whatsappLinks,
   whatsappLinkTokens,
+  notificationSettings,
+  notifications,
 };

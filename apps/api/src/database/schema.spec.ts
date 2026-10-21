@@ -17,6 +17,8 @@ const expectedTables = [
   'incomes',
   'investment_contribution_allocations',
   'investment_contributions',
+  'notification_settings',
+  'notifications',
   'onboarding_drafts',
   'saving_contribution_allocations',
   'saving_contributions',
@@ -35,8 +37,8 @@ describe('canonical schema registry', () => {
     expect(tables.map((table) => getTableConfig(table).name).sort()).toEqual(
       expectedTables,
     );
-    expect(new Set(tables).size).toBe(21);
-    expect(Object.values(registry.schema)).toHaveLength(21);
+    expect(new Set(tables).size).toBe(23);
+    expect(Object.values(registry.schema)).toHaveLength(23);
   });
 
   it('retains application-side timestamp updates', () => {
@@ -44,6 +46,8 @@ describe('canonical schema registry', () => {
       registry.schema.savingsPlaces,
       registry.schema.savingContributions,
       registry.schema.investmentContributions,
+      registry.schema.notificationSettings,
+      registry.schema.notifications,
     ]) {
       expect(table.updatedAt.onUpdateFn).toBeTypeOf('function');
     }
