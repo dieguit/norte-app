@@ -4,6 +4,8 @@ import {
   createMemoryHistory,
   createRoute,
   createRouter,
+  isRedirect,
+  redirect,
   RouterProvider,
 } from '@tanstack/react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -196,6 +198,22 @@ describe('App route layout', () => {
 
     await waitFor(() => {
       expect(analytics.identify).toHaveBeenCalledWith('user_456', {})
+    })
+  })
+
+  it('sends signed-out users back to the requested page after sign-in', async () => {
+    vi.mocked(getFinancialAppState).mockRejectedValue(
+      redirect({ to: '/sign-in/$', params: { _splat: '' } }),
+    )
+    const beforeLoad = AppRoute.options.beforeLoad as (ctx: unknown) => Promise<unknown>
+
+    const error = await beforeLoad({ location: { href: '/app/finances?month=2026-09' } }).catch(
+      (e: unknown) => e,
+    )
+
+    expect(isRedirect(error)).toBe(true)
+    expect((error as { options: { search: unknown } }).options.search).toEqual({
+      redirect_url: '/app/finances?month=2026-09',
     })
   })
 })

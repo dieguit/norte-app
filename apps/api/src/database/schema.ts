@@ -18,6 +18,11 @@ import {
   savingsPlaceTransfers,
   savingsPlaces,
 } from '../profile/profile.schema';
+import {
+  whatsappAuthState,
+  whatsappLinks,
+  whatsappLinkTokens,
+} from '../whatsapp/whatsapp.schema';
 
 export const schema = {
   onboardingDrafts,
@@ -38,6 +43,9 @@ export const schema = {
   goalCompletionWithdrawals,
   investmentContributions,
   investmentContributionAllocations,
+  whatsappAuthState,
+  whatsappLinks,
+  whatsappLinkTokens,
 };
 
 export type Schema = typeof schema;
@@ -60,4 +68,7 @@ export {
   savingsPlaceTransfers,
   savingsPlaces,
   onboardingDrafts,
+  whatsappAuthState,
+  whatsappLinks,
+  whatsappLinkTokens,
 };

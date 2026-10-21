@@ -16,6 +16,7 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppFinancesRouteRouteImport } from './routes/app/finances/route'
 import { Route as AppGoalsRouteRouteImport } from './routes/app/goals/route'
 import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$deviceId/route'
+import { Route as LinkWhatsappRouteImport } from './routes/link/whatsapp'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as AppFinancesIndexRouteImport } from './routes/app/finances/index'
 import { Route as AppGoalsIndexRouteImport } from './routes/app/goals/index'
@@ -55,6 +56,11 @@ const InformeDeviceIdRouteRoute = InformeDeviceIdRouteRouteImport.update({
   path: '/informe/$deviceId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LinkWhatsappRoute = LinkWhatsappRouteImport.update({
+  id: '/link/whatsapp',
+  path: '/link/whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignInSplatRoute = SignInSplatRouteImport.update({
   id: '/sign-in/$',
   path: '/sign-in/$',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/app/finances': typeof AppFinancesRouteRouteWithChildren
   '/app/goals': typeof AppGoalsRouteRouteWithChildren
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
+  '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
   '/app/finances/': typeof AppFinancesIndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
+  '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app': typeof AppIndexRoute
   '/app/finances': typeof AppFinancesIndexRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/app/finances': typeof AppFinancesRouteRouteWithChildren
   '/app/goals': typeof AppGoalsRouteRouteWithChildren
   '/informe/$deviceId': typeof InformeDeviceIdRouteRoute
+  '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
   '/app/finances/': typeof AppFinancesIndexRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/app/finances'
     | '/app/goals'
     | '/informe/$deviceId'
+    | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
     | '/app/finances/'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/'
     | '/onboarding'
     | '/informe/$deviceId'
+    | '/link/whatsapp'
     | '/sign-in/$'
     | '/app'
     | '/app/finances'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/app/finances'
     | '/app/goals'
     | '/informe/$deviceId'
+    | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
     | '/app/finances/'
@@ -146,6 +158,7 @@ export interface RootRouteChildren {
   AppRouteRoute: typeof AppRouteRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   InformeDeviceIdRouteRoute: typeof InformeDeviceIdRouteRoute
+  LinkWhatsappRoute: typeof LinkWhatsappRoute
   SignInSplatRoute: typeof SignInSplatRoute
 }
 
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       path: '/informe/$deviceId'
       fullPath: '/informe/$deviceId'
       preLoaderRoute: typeof InformeDeviceIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/link/whatsapp': {
+      id: '/link/whatsapp'
+      path: '/link/whatsapp'
+      fullPath: '/link/whatsapp'
+      preLoaderRoute: typeof LinkWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in/$': {
@@ -268,6 +288,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   InformeDeviceIdRouteRoute: InformeDeviceIdRouteRoute,
+  LinkWhatsappRoute: LinkWhatsappRoute,
   SignInSplatRoute: SignInSplatRoute,
 }
 export const routeTree = rootRouteImport
