@@ -2,10 +2,14 @@ import {
   Inject,
   Injectable,
   Logger,
+  type MiddlewareConsumer,
   Module,
+  type NestModule,
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
+  RequestMethod,
 } from '@nestjs/common';
+import type { NextFunction, Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { MASTRA, MastraModule } from '@mastra/nestjs';
 import type { Mastra } from '@mastra/core/mastra';
@@ -125,9 +129,44 @@ const mastraModule = MastraModule.registerAsync({
   },
 });
 
+// Only the chat channel handler may set userId; client-supplied requestContext must never reach tools.
+export function stripClientRequestContext(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  if (
+    req.body &&
+    typeof req.body === 'object' &&
+    'requestContext' in req.body
+  ) {
+    delete (req.body as Record<string, unknown>).requestContext;
+  }
+  if (
+    req.query &&
+    typeof req.query === 'object' &&
+    'requestContext' in req.query
+  ) {
+    const rest = { ...(req.query as Record<string, unknown>) };
+    delete rest.requestContext;
+    Object.defineProperty(req, 'query', {
+      value: rest,
+      writable: true,
+      configurable: true,
+    });
+  }
+  next();
+}
+
 @Module({
   imports: [mastraModule, WhatsappModule],
   providers: [MastraLifecycle],
   exports: [mastraModule],
 })
-export class MastraIntegrationModule {}
+export class MastraIntegrationModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(stripClientRequestContext)
+      .forRoutes({ path: 'agents/*path', method: RequestMethod.ALL });
+  }
+}

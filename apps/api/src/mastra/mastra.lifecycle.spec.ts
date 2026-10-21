@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MastraLifecycle } from './mastra.module';
+import { MastraLifecycle, stripClientRequestContext } from './mastra.module';
 import type { ChatChannel } from '../whatsapp/whatsapp.adapter.provider';
 
 function fakes(channelKey: ChatChannel['key'] = 'whatsapp') {
@@ -80,5 +80,26 @@ describe('MastraLifecycle', () => {
     );
     await new MastraLifecycle(mastra as never, channel).onApplicationShutdown();
     expect(order).toEqual(['disconnect', 'shutdown']);
+  });
+});
+
+describe('stripClientRequestContext', () => {
+  it('strips requestContext from body and query', () => {
+    const req = {
+      body: { data: {}, requestContext: { userId: 'victim' } },
+      query: { requestContext: 'encoded', other: 'kept' },
+    };
+    const next = vi.fn();
+    stripClientRequestContext(req as never, {} as never, next);
+    expect(req.body).toEqual({ data: {} });
+    expect(req.query).toEqual({ other: 'kept' });
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles requests without body or query gracefully', () => {
+    const req = {};
+    const next = vi.fn();
+    stripClientRequestContext(req as never, {} as never, next);
+    expect(next).toHaveBeenCalledTimes(1);
   });
 });

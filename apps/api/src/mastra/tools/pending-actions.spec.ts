@@ -56,6 +56,19 @@ describe('confirmPendingAction', () => {
     expect(run).toHaveBeenCalledTimes(1);
   });
 
+  it('returns non-done outcomes directly without done flag', async () => {
+    const { pending, confirm } = setup();
+    const staleResult = {
+      status: 'stale',
+      message: 'Los datos cambiaron.',
+    };
+    pending.set('u1', {
+      summary: 'Gasto mensual',
+      run: vi.fn().mockResolvedValue(staleResult),
+    });
+    await expect(confirm()).resolves.toEqual(staleResult);
+  });
+
   it('only runs the latest preview', async () => {
     const { pending, confirm } = setup();
     const first = vi.fn();
@@ -176,10 +189,8 @@ describe('stagePreview', () => {
     const resA = await runPromiseA;
 
     expect(resA).toEqual({
-      status: 'stale',
-      message:
-        'Los datos cambiaron. Mostrá esta nueva vista previa y pedí confirmación otra vez.',
-      preview: { previewToken: 'token-b', n: 2 },
+      status: 'superseded',
+      message: 'Hay una propuesta más nueva pendiente; esta quedó descartada.',
     });
     expect(store.take('u1')?.summary).toBe('Proposal B');
   });

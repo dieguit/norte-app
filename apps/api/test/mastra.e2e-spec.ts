@@ -91,4 +91,16 @@ describe('Mastra routes (e2e)', () => {
     request(app.getHttpServer())
       .post(`/whatsapp/links/${'a'.repeat(43)}/claim`)
       .expect(401));
+
+  it('blocks client-supplied userId in requestContext on tool execution', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/agents/agents/norte-agent/tools/get-finances-summary/execute')
+      .set('Authorization', 'Bearer test-mastra-key')
+      .send({ data: {}, requestContext: { userId: 'victim' } })
+      .expect(200);
+
+    expect(res.body).toEqual({
+      error: 'No pude hacerlo ahora, probá de nuevo en un rato.',
+    });
+  });
 });

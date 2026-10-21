@@ -54,9 +54,14 @@ export function stagePreview<P extends { previewToken: string }>(args: {
     run: async () => {
       const result = await confirm(previewToken);
       if (result?.status === 'stale' && result.preview) {
-        if (!store.has(userId)) {
-          stagePreview({ ...args, preview: result.preview });
+        if (store.has(userId)) {
+          return {
+            status: 'superseded',
+            message:
+              'Hay una propuesta más nueva pendiente; esta quedó descartada.',
+          };
         }
+        stagePreview({ ...args, preview: result.preview });
         return {
           status: 'stale',
           message:
@@ -85,7 +90,17 @@ export function createPendingActionTools({ pending, undo }: ActionStores) {
               error:
                 'No hay ninguna propuesta pendiente o ya venció. Pedímela de nuevo.',
             };
-          return { done: action.summary, result: await action.run() };
+          const result = await action.run();
+          const status = (result as { status?: unknown } | null | undefined)
+            ?.status;
+          if (
+            status === 'stale' ||
+            status === 'superseded' ||
+            status === 'invalid'
+          ) {
+            return result;
+          }
+          return { done: action.summary, result };
         }),
     }),
     undoLastWrite: createTool({
