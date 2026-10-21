@@ -7,5 +7,6 @@ import { ContributionsService } from './contributions.service';
   imports: [DatabaseModule],
   controllers: [ContributionsController],
   providers: [ContributionsService],
+  exports: [ContributionsService],
 })
 export class ContributionsModule {}

@@ -19,22 +19,30 @@ function setup(
     links,
     webAppUrl: 'https://app.norte.test',
   });
-  const thread = { post: vi.fn().mockResolvedValue(undefined) };
+  const adapter = {
+    addReaction: vi.fn().mockResolvedValue(undefined),
+    removeReaction: vi.fn().mockResolvedValue(undefined),
+  };
+  const thread = {
+    id: 'thread-1',
+    adapter,
+    post: vi.fn().mockResolvedValue(undefined),
+  };
   const defaultHandler = vi.fn().mockResolvedValue(undefined);
   const ctx = {
     requestContext: new RequestContext(),
     signalMetadata: {},
-    skipped: [],
+    skipped: [] as HandlerArgs[1][],
   };
   const dm = channel.handlers!.onDirectMessage as ChannelHandler;
   const send = (author: { userId: string; isMe: boolean }) =>
     dm(
       thread as unknown as HandlerArgs[0],
-      { author } as unknown as HandlerArgs[1],
+      { id: 'm1', author } as unknown as HandlerArgs[1],
       defaultHandler,
       ctx,
     );
-  return { channel, links, thread, defaultHandler, ctx, send, dm };
+  return { channel, links, thread, adapter, defaultHandler, ctx, send, dm };
 }
 
 describe('createWhatsappChannel', () => {
@@ -42,6 +50,12 @@ describe('createWhatsappChannel', () => {
     const { channel } = setup(null);
     expect(channel.handlers?.onMention).toBe(false);
     expect(channel.handlers?.onSubscribedMessage).toBe(false);
+  });
+
+  it('queues messages that arrive while the agent is busy', () => {
+    expect(setup(null).channel.chatOptions).toMatchObject({
+      concurrency: 'queue',
+    });
   });
 
   describe.each([
@@ -100,6 +114,91 @@ describe('createWhatsappChannel', () => {
       expect(config.formatError(new Error('db exploded'))).toBe(
         'Ups, algo salió mal. Probá de nuevo en un rato.',
       );
+    });
+
+    it('never posts tool calls or tool errors to the chat', () => {
+      const { channel } = setup(null, key);
+      expect(channel.adapters[key]).toMatchObject({ toolDisplay: 'hidden' });
+    });
+
+    it('acks the turn with 👀 and clears it after the reply', async () => {
+      const { send, adapter, defaultHandler } = setup('user_1', key);
+      await send({ userId: 'a@lid', isMe: false });
+      expect(adapter.addReaction).toHaveBeenCalledWith('thread-1', 'm1', '👀');
+      expect(adapter.removeReaction).toHaveBeenCalledWith(
+        'thread-1',
+        'm1',
+        '👀',
+      );
+      expect(adapter.addReaction).not.toHaveBeenCalledWith(
+        'thread-1',
+        'm1',
+        '😢',
+      );
+      expect(adapter.addReaction.mock.invocationCallOrder[0]).toBeLessThan(
+        defaultHandler.mock.invocationCallOrder[0],
+      );
+      expect(defaultHandler.mock.invocationCallOrder[0]).toBeLessThan(
+        adapter.removeReaction.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('marks failed turns with 😢', async () => {
+      const { send, adapter, defaultHandler, channel } = setup('user_1', key);
+      const config = channel.adapters[key] as {
+        formatError: (e: Error) => unknown;
+      };
+      defaultHandler.mockImplementation(async () => {
+        await Promise.resolve();
+        config.formatError(new Error('boom'));
+      });
+      await send({ userId: 'a@lid', isMe: false });
+      expect(adapter.removeReaction).toHaveBeenCalledWith(
+        'thread-1',
+        'm1',
+        '👀',
+      );
+      expect(adapter.addReaction).toHaveBeenLastCalledWith(
+        'thread-1',
+        'm1',
+        '😢',
+      );
+      // Telegram's removeReaction clears all reactions, so 😢 must come after it.
+      expect(adapter.removeReaction.mock.invocationCallOrder[0]).toBeLessThan(
+        adapter.addReaction.mock.invocationCallOrder[1],
+      );
+    });
+
+    it('reacts on every queued message of the batch', async () => {
+      const { send, adapter, ctx } = setup('user_1', key);
+      ctx.skipped.push(
+        ...([{ id: 's1' }, { id: 's2' }] as unknown as HandlerArgs[1][]),
+      );
+      await send({ userId: 'a@lid', isMe: false });
+      for (const id of ['s1', 's2', 'm1']) {
+        expect(adapter.addReaction).toHaveBeenCalledWith('thread-1', id, '👀');
+        expect(adapter.removeReaction).toHaveBeenCalledWith(
+          'thread-1',
+          id,
+          '👀',
+        );
+      }
+    });
+
+    it('does not react for unlinked senders', async () => {
+      const { send, adapter } = setup(null, key);
+      await send({ userId: 'a@lid', isMe: false });
+      expect(adapter.addReaction).not.toHaveBeenCalled();
+    });
+
+    it('still runs the agent when reactions fail', async () => {
+      const { send, adapter, defaultHandler } = setup('user_1', key);
+      adapter.addReaction.mockRejectedValue(new Error('nope'));
+      adapter.removeReaction.mockRejectedValue(new Error('nope'));
+      await expect(
+        send({ userId: 'a@lid', isMe: false }),
+      ).resolves.toBeUndefined();
+      expect(defaultHandler).toHaveBeenCalledOnce();
     });
   });
 

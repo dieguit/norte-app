@@ -11,7 +11,7 @@ const SavingsPlaceSelectionWireSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('new'), name: z.string().trim().min(1, 'Escribí un nombre para el lugar.').max(120) }).strict(),
 ]);
 
-const ContributionDraftWireBaseSchema = z.object({
+export const ContributionDraftWireBaseSchema = z.object({
   kind: z.enum(['saving', 'investment']).optional().default('saving'),
   currency: z.enum(['ARS', 'USD']),
   amount: z.string(),
