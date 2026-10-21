@@ -55,8 +55,10 @@ export function createFinanceTools(
       >,
     ) => T,
   ) => {
+    const month = todayInArgentina().month;
     const workspace = await finances.getWorkspace(
       requireUserId(context?.requestContext as never),
+      month,
     );
     if (!workspace) return { profile: 'missing' as const };
     return fn(workspace);

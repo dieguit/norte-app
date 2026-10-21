@@ -43,7 +43,6 @@ export {
 export { deriveUsdPurchase, type UsdPurchaseDerivation, type UsdPurchaseInput } from './usd-purchase';
 export {
   ContributionDraftWireBaseSchema,
-  SavingsPlaceSelectionWireSchema,
   SavingContributionDraftWireSchema,
   ConfirmSavingContributionWireSchema,
   UpdateSavingContributionWireSchema,

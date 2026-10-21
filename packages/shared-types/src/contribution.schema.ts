@@ -6,7 +6,7 @@ const PreviewTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, 'Token de vista pr
 const ContributionIdSchema = z.string().uuid('ID de aporte inválido.');
 const CatchUpMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mes de regularización inválido.');
 
-export const SavingsPlaceSelectionWireSchema = z.discriminatedUnion('kind', [
+const SavingsPlaceSelectionWireSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('existing'), placeId: z.string().uuid('Elegí un lugar válido.') }).strict(),
   z.object({ kind: z.literal('new'), name: z.string().trim().min(1, 'Escribí un nombre para el lugar.').max(120) }).strict(),
 ]);

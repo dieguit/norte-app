@@ -267,4 +267,29 @@ describe('finance tools', () => {
       currentMonth,
     );
   });
+
+  it('aligns workspace queries and default expense writes to Argentina month near UTC midnight boundary', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-11-01T02:00:00Z'));
+      const { services, tools } = setup();
+
+      await tools.getFinancesSummary.execute!({}, ctx('u1'));
+      expect(services.finances.getWorkspace).toHaveBeenCalledWith(
+        'u1',
+        '2026-10',
+      );
+
+      await tools.recordExpense.execute!(
+        { draft: expenseDraft } as never,
+        ctx('u1'),
+      );
+      expect(services.expenses.create).toHaveBeenCalledWith(
+        'u1',
+        expect.objectContaining({ effectiveMonth: '2026-10' }) as unknown,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

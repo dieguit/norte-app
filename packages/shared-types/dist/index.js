@@ -1005,7 +1005,6 @@ export {
   SavingContributionUpdatedSchema,
   SavingsPlaceIdParamsSchema,
   SavingsPlaceMutationResponseSchema,
-  SavingsPlaceSelectionWireSchema,
   SavingsTransferResponseSchema,
   SavingsTransferSchema,
   UpdatePlaceholderItemSchema,

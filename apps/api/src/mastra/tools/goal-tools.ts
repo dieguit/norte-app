@@ -6,7 +6,6 @@ import {
   GoalCreationDraftWireSchema,
   GoalLifecycleActionSchema,
   SavingContributionDraftWireSchema,
-  type SavingContributionDraftWire,
 } from '@repo/shared-types';
 import { z } from 'zod';
 import type { NorteServices } from '../services';
@@ -252,13 +251,9 @@ async function resolveSavingsPlace(
   place: unknown,
 ) {
   if (kind !== 'investment' && !place) {
-    try {
-      const res = await contributions.getContext(userId);
-      if (res?.profile === 'present' && res.context.places.length === 1) {
-        return { kind: 'existing' as const, placeId: res.context.places[0].id };
-      }
-    } catch {
-      // Ignore context lookup errors; schema validation handles missing place.
+    const res = await contributions.getContext(userId);
+    if (res?.profile === 'present' && res.context.places.length === 1) {
+      return { kind: 'existing' as const, placeId: res.context.places[0].id };
     }
   }
   return place;
@@ -296,8 +291,6 @@ export function createContributionTools(
           );
           const preparedDraft = {
             ...draft,
-            kind: draft.kind ?? 'saving',
-            currency: draft.currency ?? 'ARS',
             ...(place ? { place } : {}),
           };
           const parsed =
@@ -316,10 +309,7 @@ export function createContributionTools(
               validDraft.kind === 'investment'
                 ? 'Inversión registrada'
                 : 'Ahorro registrado',
-            preview: await contributions.previewSaving(
-              userId,
-              validDraft as SavingContributionDraftWire,
-            ),
+            preview: await contributions.previewSaving(userId, validDraft),
             present: ({ preview }) => preview,
             confirm: (previewToken) =>
               contributions.confirmSaving(userId, {

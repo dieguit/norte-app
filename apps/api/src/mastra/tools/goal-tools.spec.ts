@@ -205,7 +205,7 @@ describe('contribution tools', () => {
 
   function setupContributions() {
     const contributions = {
-      getContext: vi.fn(),
+      getContext: vi.fn().mockResolvedValue({ profile: 'missing' }),
       previewSaving: vi.fn().mockResolvedValue({
         preview: { allocations: [] },
         previewToken: TOKEN_A,
@@ -330,5 +330,19 @@ describe('contribution tools', () => {
       amount: '15000',
       place: { kind: 'existing', placeId: PLACE_ID },
     });
+  });
+
+  it('propagates errors from contributions.getContext when resolving savings place', async () => {
+    const { contributions, tools } = setupContributions();
+    const { BadRequestException } = await import('@nestjs/common');
+    contributions.getContext.mockRejectedValue(
+      new BadRequestException('Context error'),
+    );
+
+    const result = await tools.previewSaving.execute!(
+      { draft: { amount: '1000' } } as never,
+      ctx('u1'),
+    );
+    expect(result).toEqual({ error: 'Context error' });
   });
 });
