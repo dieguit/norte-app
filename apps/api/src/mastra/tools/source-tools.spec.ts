@@ -11,6 +11,7 @@ describe('sources', () => {
   it('renders one index line per source', () => {
     expect(sourcesIndex().split('\n')).toHaveLength(sources.length);
     expect(sourcesIndex()).toContain('fondo-de-emergencia: ');
+    expect(sourcesIndex()).toContain('que-hace-norte: ');
   });
 
   it('reads a source by slug', async () => {
