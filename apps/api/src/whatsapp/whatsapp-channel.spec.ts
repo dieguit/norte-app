@@ -33,16 +33,24 @@ function setup(
     post: vi.fn().mockResolvedValue(undefined),
   };
   const defaultHandler = vi.fn().mockResolvedValue(undefined);
+  const memory = {
+    listThreads: vi
+      .fn()
+      .mockResolvedValue({ threads: [{ id: 't1' }, { id: 't2' }] }),
+    deleteThread: vi.fn().mockResolvedValue(undefined),
+  };
+  const getAgent = vi.fn().mockReturnValue({ getMemory: () => memory });
   const ctx = {
+    mastra: { getAgent } as unknown as HandlerArgs[3]['mastra'],
     requestContext: new RequestContext(),
     signalMetadata: {},
     skipped: [] as HandlerArgs[1][],
   };
   const dm = channel.handlers!.onDirectMessage as ChannelHandler;
-  const send = (author: { userId: string; isMe: boolean }) =>
+  const send = (author: { userId: string; isMe: boolean }, text = 'hola') =>
     dm(
       thread as unknown as HandlerArgs[0],
-      { id: 'm1', author } as unknown as HandlerArgs[1],
+      { id: 'm1', author, text } as unknown as HandlerArgs[1],
       defaultHandler,
       ctx,
     );
@@ -54,6 +62,7 @@ function setup(
     adapter,
     defaultHandler,
     ctx,
+    memory,
     send,
     dm,
   };
@@ -136,6 +145,28 @@ describe('createWhatsappChannel', () => {
       );
       await send({ userId: 'a@lid', isMe: false });
       expect(thread.post).toHaveBeenCalledWith('🫡');
+    });
+
+    it('/reset deletes the user chat threads and skips the agent', async () => {
+      const { send, memory, thread, defaultHandler } = setup('user_1', key);
+      await send({ userId: 'a@lid', isMe: false }, ' /Reset ');
+      expect(memory.listThreads).toHaveBeenCalledWith({
+        filter: {
+          resourceId: 'user:user_1',
+          metadata: { channel_platform: key },
+        },
+        perPage: false,
+      });
+      expect(memory.deleteThread).toHaveBeenCalledWith('t1');
+      expect(memory.deleteThread).toHaveBeenCalledWith('t2');
+      expect(thread.post).toHaveBeenCalledWith('Listo, empezamos de cero 🧭');
+      expect(defaultHandler).not.toHaveBeenCalled();
+    });
+
+    it('/reset from unlinked senders only gets the link message', async () => {
+      const { send, memory } = setup(null, key);
+      await send({ userId: 'a@lid', isMe: false }, '/reset');
+      expect(memory.deleteThread).not.toHaveBeenCalled();
     });
 
     it('marks the open check-in answered for linked senders', async () => {

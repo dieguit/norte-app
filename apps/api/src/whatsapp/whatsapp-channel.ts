@@ -95,6 +95,21 @@ export function createWhatsappChannel({
           );
           return;
         }
+        if (message.text.trim().toLowerCase() === '/reset') {
+          const memory = await ctx.mastra?.getAgent('norteAgent').getMemory();
+          if (memory) {
+            const { threads } = await memory.listThreads({
+              filter: {
+                resourceId: `user:${userId}`,
+                metadata: { channel_platform: channel.key },
+              },
+              perPage: false,
+            });
+            await Promise.all(threads.map((t) => memory.deleteThread(t.id)));
+          }
+          await thread.post('Listo, empezamos de cero 🧭');
+          return;
+        }
         ctx.requestContext.set('userId', userId);
         // Any reply closes the day-close check-in window, so no timeout message follows.
         // ponytail: markAnswered runs here in onDirectMessage (after queue drain) because neither
