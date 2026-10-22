@@ -1,5 +1,8 @@
 import { RequestContext } from '@mastra/core/request-context';
-import type { ChannelHandler } from '@mastra/core/channels';
+import type {
+  ChannelHandler,
+  SlashCommandChannelHandler,
+} from '@mastra/core/channels';
 import { describe, expect, it, vi } from 'vitest';
 import { createWhatsappChannel } from './whatsapp-channel';
 import type { ChatChannel } from './whatsapp.adapter.provider';
@@ -54,8 +57,24 @@ function setup(
       defaultHandler,
       ctx,
     );
+  const channelPost = vi.fn().mockResolvedValue(undefined);
+  const slash = (command: string, isDM = true) =>
+    (channel.handlers!.onSlashCommand as SlashCommandChannelHandler)(
+      {
+        command,
+        text: '',
+        // Chat SDK builds the slash channel without isDM; only the adapter knows.
+        adapter: { isDM: (id: string) => id === 'telegram:42' && isDM },
+        channel: { id: 'telegram:42', isDM: false, post: channelPost },
+        user: { userId: 'tg-1', isMe: false },
+      } as unknown as Parameters<SlashCommandChannelHandler>[0],
+      defaultHandler,
+      ctx,
+    );
   return {
     channel,
+    channelPost,
+    slash,
     links,
     notifications,
     thread,
@@ -167,6 +186,44 @@ describe('createWhatsappChannel', () => {
       const { send, memory } = setup(null, key);
       await send({ userId: 'a@lid', isMe: false }, '/reset');
       expect(memory.deleteThread).not.toHaveBeenCalled();
+    });
+
+    describe('slash commands (Telegram)', () => {
+      it('/reset clears memory without running the agent', async () => {
+        const { slash, memory, channelPost, defaultHandler } = setup(
+          'user_1',
+          key,
+        );
+        await slash('/reset');
+        expect(memory.deleteThread).toHaveBeenCalledWith('t1');
+        expect(channelPost).toHaveBeenCalledWith('Listo, empezamos de cero 🧭');
+        expect(defaultHandler).not.toHaveBeenCalled();
+      });
+
+      it('other commands get help, never the agent', async () => {
+        const { slash, memory, channelPost, defaultHandler } = setup(
+          'user_1',
+          key,
+        );
+        await slash('/start');
+        expect(channelPost.mock.calls[0][0]).toContain('/reset');
+        expect(memory.deleteThread).not.toHaveBeenCalled();
+        expect(defaultHandler).not.toHaveBeenCalled();
+      });
+
+      it('unlinked senders get the link message', async () => {
+        const { slash, channelPost, links } = setup(null, key);
+        await slash('/start');
+        expect(links.issueToken).toHaveBeenCalledWith('tg-1');
+        expect(channelPost.mock.calls[0][0]).toContain('vinculá tu cuenta');
+      });
+
+      it('ignores commands outside DMs', async () => {
+        const { slash, channelPost, links } = setup('user_1', key);
+        await slash('/reset', false);
+        expect(links.findUserByJid).not.toHaveBeenCalled();
+        expect(channelPost).not.toHaveBeenCalled();
+      });
     });
 
     it('marks the open check-in answered for linked senders', async () => {

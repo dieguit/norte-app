@@ -1,6 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Logger } from '@nestjs/common';
-import type { ChannelConfig } from '@mastra/core/channels';
+import type {
+  ChannelConfig,
+  ChannelHandlerContext,
+} from '@mastra/core/channels';
 import type { ChatChannel } from './whatsapp.adapter.provider';
 import type { WhatsappLinksService } from './whatsapp-links.service';
 import type { NotificationsService } from '../notifications/notifications.service';
@@ -59,6 +62,35 @@ export function createWhatsappChannel({
   notifications: Pick<NotificationsService, 'markAnswered'>;
   webAppUrl: string;
 }): ChannelConfig {
+  type Post = (text: string) => Promise<unknown>;
+  const linkedUser = async (jid: string, post: Post) => {
+    const userId = await links.findUserByJid(jid);
+    if (!userId) {
+      const token = await links.issueToken(jid);
+      await post(
+        `Para usar Norte por ${channel.key === 'telegram' ? 'Telegram' : 'WhatsApp'}, vinculá tu cuenta: ${webAppUrl}/link/whatsapp?token=${token}`,
+      );
+    }
+    return userId;
+  };
+  const reset = async (
+    mastra: ChannelHandlerContext['mastra'],
+    userId: string,
+    post: Post,
+  ) => {
+    const memory = await mastra?.getAgent('norteAgent').getMemory();
+    if (memory) {
+      const { threads } = await memory.listThreads({
+        filter: {
+          resourceId: `user:${userId}`,
+          metadata: { channel_platform: channel.key },
+        },
+        perPage: false,
+      });
+      await Promise.all(threads.map((t) => memory.deleteThread(t.id)));
+    }
+    await post('Listo, empezamos de cero 🧭');
+  };
   return {
     // Mastra defaults to 'concurrent': messages sent mid-reply would start overlapping agent runs on the same chat.
     chatOptions: { concurrency: 'queue' },
@@ -79,6 +111,19 @@ export function createWhatsappChannel({
     handlers: {
       onMention: false,
       onSubscribedMessage: false,
+      // Telegram routes "/..." here instead of onDirectMessage; Mastra's default would run the agent without the link gate.
+      onSlashCommand: async (event, _defaultHandler, ctx) => {
+        // event.channel.isDM is always false for slash commands; ask the adapter.
+        if (!event.adapter.isDM?.(event.channel.id) || event.user.isMe) return;
+        const post = (text: string) => event.channel.post(text);
+        const userId = await linkedUser(event.user.userId, post);
+        if (!userId) return;
+        if (event.command.toLowerCase() === '/reset')
+          return reset(ctx.mastra, userId, post);
+        await post(
+          'Hola 👋 Escribime lo que necesites, por ejemplo "gasté 5 lucas en el súper". Con /reset empezamos la charla de cero.',
+        );
+      },
       onDirectMessage: async (thread, message, defaultHandler, ctx) => {
         if (
           message.author.isMe ||
@@ -86,30 +131,11 @@ export function createWhatsappChannel({
             ?.fromMe
         )
           return;
-        const jid = message.author.userId;
-        const userId = await links.findUserByJid(jid);
-        if (!userId) {
-          const token = await links.issueToken(jid);
-          await thread.post(
-            `Para usar Norte por ${channel.key === 'telegram' ? 'Telegram' : 'WhatsApp'}, vinculá tu cuenta: ${webAppUrl}/link/whatsapp?token=${token}`,
-          );
-          return;
-        }
-        if (message.text.trim().toLowerCase() === '/reset') {
-          const memory = await ctx.mastra?.getAgent('norteAgent').getMemory();
-          if (memory) {
-            const { threads } = await memory.listThreads({
-              filter: {
-                resourceId: `user:${userId}`,
-                metadata: { channel_platform: channel.key },
-              },
-              perPage: false,
-            });
-            await Promise.all(threads.map((t) => memory.deleteThread(t.id)));
-          }
-          await thread.post('Listo, empezamos de cero 🧭');
-          return;
-        }
+        const post = (text: string) => thread.post(text);
+        const userId = await linkedUser(message.author.userId, post);
+        if (!userId) return;
+        if (message.text.trim().toLowerCase() === '/reset')
+          return reset(ctx.mastra, userId, post);
         ctx.requestContext.set('userId', userId);
         // Any reply closes the day-close check-in window, so no timeout message follows.
         // ponytail: markAnswered runs here in onDirectMessage (after queue drain) because neither
