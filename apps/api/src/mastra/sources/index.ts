@@ -1,11 +1,16 @@
 import { comoFuncionaNorte } from './como-funciona-norte';
 import { fondoDeEmergencia } from './fondo-de-emergencia';
+import { queHaceNorte } from './que-hace-norte';
 import type { Source } from './types';
 
 export type { Source } from './types';
 
 // ponytail: index in prompt + readSource tool; switch to @mastra/rag + pgvector past ~100 docs or long PDFs.
-export const sources: Source[] = [comoFuncionaNorte, fondoDeEmergencia];
+export const sources: Source[] = [
+  queHaceNorte,
+  comoFuncionaNorte,
+  fondoDeEmergencia,
+];
 
 export function sourcesIndex(list: Source[] = sources): string {
   return list

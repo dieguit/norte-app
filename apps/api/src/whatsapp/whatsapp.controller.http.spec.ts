@@ -100,7 +100,7 @@ describe('WhatsappController', () => {
     expect(getUser).toHaveBeenCalledWith('user_1');
     expect(adapter.postMessage).toHaveBeenCalledWith(
       'whatsapp:thread-123',
-      'Hola Ana! Ya asociamos este número a tu usuario.',
+      'Hola Ana! Ya asociamos este número a tu usuario de Norte. Te cuento qué podés hacer en este asistente?',
     );
   });
 
@@ -120,7 +120,7 @@ describe('WhatsappController', () => {
       .expect(200, { linked: true });
     expect(adapter.postMessage).toHaveBeenCalledWith(
       'whatsapp:thread-123',
-      'Hola! Ya asociamos este número a tu usuario.',
+      'Hola! Ya asociamos este número a tu usuario de Norte. Te cuento qué podés hacer en este asistente?',
     );
   });
 

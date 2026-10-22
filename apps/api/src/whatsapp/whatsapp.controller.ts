@@ -84,7 +84,7 @@ export class WhatsappController {
           const { firstName } = await this.clerk.users.getUser(userId);
           await this.channel.adapter.postMessage(
             await this.channel.adapter.openDM(jid),
-            `Hola${firstName ? ` ${firstName}` : ''}! Ya asociamos este número a tu usuario.`,
+            `Hola${firstName ? ` ${firstName}` : ''}! Ya asociamos este número a tu usuario de Norte. Te cuento qué podés hacer en este asistente?`,
           );
         }
       } catch (error) {
