@@ -12,6 +12,7 @@ describe('validateEnv', () => {
     LLM_BASE_URL: 'http://localhost:20128/v1',
     LLM_API_KEY: 'llm-key',
     LLM_MODEL: 'cx/gpt-5.5',
+    LLM_GUARD_MODEL: 'kr/claude-haiku-4.5',
     MASTRA_API_KEY: 'mastra-key',
   };
 
@@ -57,12 +58,15 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...validEnv, PORT: '99999' })).toThrow();
   });
 
-  it.each(['LLM_BASE_URL', 'LLM_API_KEY', 'LLM_MODEL', 'MASTRA_API_KEY'])(
-    'throws when %s is missing',
-    (key) => {
-      expect(() => validateEnv({ ...validEnv, [key]: undefined })).toThrow(key);
-    },
-  );
+  it.each([
+    'LLM_BASE_URL',
+    'LLM_API_KEY',
+    'LLM_MODEL',
+    'LLM_GUARD_MODEL',
+    'MASTRA_API_KEY',
+  ])('throws when %s is missing', (key) => {
+    expect(() => validateEnv({ ...validEnv, [key]: undefined })).toThrow(key);
+  });
 
   it('throws when LLM_BASE_URL is not a valid URL', () => {
     expect(() =>

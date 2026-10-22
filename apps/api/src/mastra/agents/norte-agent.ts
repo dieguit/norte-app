@@ -1,5 +1,13 @@
 import { Agent } from '@mastra/core/agent';
 import type { ChannelConfig } from '@mastra/core/channels';
+import {
+  type InputProcessorOrWorkflow,
+  ModerationProcessor,
+  ProcessorStepSchema,
+  PromptInjectionDetector,
+  UnicodeNormalizer,
+} from '@mastra/core/processors';
+import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { Memory } from '@mastra/memory';
 import type { Env } from '../../config/env';
 import type { NorteServices } from '../services';
@@ -15,7 +23,8 @@ import { createNotificationTools } from '../tools/notification-tools';
 import { createSourceTools } from '../tools/source-tools';
 import { sourcesIndex } from '../sources';
 
-const PERSONA = `Sos Norte, un asistente de finanzas personales. Respondé en español rioplatense con voseo, de forma muy breve y clara, como en un chat de WhatsApp. Usá un tono neutral, sin juzgar. Ante un éxito confirmado, preferí responder simplemente 🫡 o "Listo" (no ambos), sin resúmenes repetitivos. Los errores, ejecuciones parciales o preguntas deben ser explícitos. Nunca señales éxito en base a una vista previa o acción pendiente.`;
+const PERSONA = `Sos Norte, un asistente de finanzas personales. Respondé en español rioplatense con voseo, de forma muy breve y clara, como en un chat de WhatsApp. Usá un tono neutral, sin juzgar. Ante un éxito confirmado, preferí responder simplemente 🫡 o "Listo" (no ambos), sin resúmenes repetitivos. Los errores, ejecuciones parciales o preguntas deben ser explícitos. Nunca señales éxito en base a una vista previa o acción pendiente.
+Alcance: sólo hablás de finanzas personales del usuario y de cómo usar Norte. Saludos, agradecimientos y respuestas a los chequeos están bien. Si te preguntan algo ajeno (famosos, deportes, cultura general, tareas, etc.), no lo respondas: decí en una línea que sólo podés ayudar con sus finanzas y sugerí algo concreto (registrar un gasto, ver sus objetivos o su plan).`;
 
 const DATA_RULES = `Datos del usuario:
 - Usá siempre las herramientas para datos del usuario; nunca inventes cifras.
@@ -79,8 +88,62 @@ export function buildInstructions(webAppUrl?: string): string {
     .join('\n\n');
 }
 
+function createInputGuardrails(
+  env: Pick<Env, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_GUARD_MODEL'>,
+) {
+  const model = {
+    providerId: 'omniroute',
+    modelId: env.LLM_GUARD_MODEL,
+    url: env.LLM_BASE_URL,
+    apiKey: env.LLM_API_KEY,
+  };
+  return (
+    createWorkflow({
+      id: 'norte-input-guardrails',
+      inputSchema: ProcessorStepSchema,
+      outputSchema: ProcessorStepSchema,
+    })
+      .parallel([
+        createStep(
+          new PromptInjectionDetector({
+            model,
+            strategy: 'block',
+            detectionTypes: ['injection', 'jailbreak', 'system-override'],
+            threshold: 0.8,
+            lastMessageOnly: true,
+            errorStrategy: 'warn',
+          }),
+        ),
+        createStep(
+          new ModerationProcessor({
+            model,
+            strategy: 'block',
+            categories: [
+              'hate',
+              'harassment',
+              'violence',
+              'self-harm',
+              'sexual',
+            ],
+            threshold: 0.7,
+            lastMessageOnly: true,
+            errorStrategy: 'warn',
+          }),
+        ),
+      ])
+      .map(({ inputData }) =>
+        Promise.resolve(inputData['processor:prompt-injection-detector']),
+      )
+      // Mastra types ProcessorWorkflow input as ProcessorStepOutput; its documented example needs this cast too.
+      .commit() as unknown as InputProcessorOrWorkflow
+  );
+}
+
 export function createNorteAgent(
-  env: Pick<Env, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_MODEL'>,
+  env: Pick<
+    Env,
+    'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_MODEL' | 'LLM_GUARD_MODEL'
+  >,
   options: {
     services: NorteServices;
     webAppUrl?: string;
@@ -102,6 +165,13 @@ export function createNorteAgent(
       url: env.LLM_BASE_URL,
       apiKey: env.LLM_API_KEY,
     },
+    inputProcessors: [
+      new UnicodeNormalizer({
+        stripControlChars: true,
+        collapseWhitespace: true,
+      }),
+      createInputGuardrails(env),
+    ],
     tools: {
       ...createDateTools(),
       ...createPendingActionTools(stores),

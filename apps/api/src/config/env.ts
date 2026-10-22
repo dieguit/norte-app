@@ -23,6 +23,7 @@ const envSchema = z
     LLM_BASE_URL: z.url(),
     LLM_API_KEY: z.string().min(1),
     LLM_MODEL: z.string().min(1),
+    LLM_GUARD_MODEL: z.string().min(1),
     MASTRA_API_KEY: z.string().min(1),
     CHAT_CHANNEL: z.enum(['whatsapp', 'telegram']).optional(),
     TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),

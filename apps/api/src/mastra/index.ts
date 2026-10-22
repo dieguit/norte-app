@@ -14,6 +14,7 @@ export function createMastra(
     | 'LLM_BASE_URL'
     | 'LLM_API_KEY'
     | 'LLM_MODEL'
+    | 'LLM_GUARD_MODEL'
   >,
   options: {
     services: NorteServices;

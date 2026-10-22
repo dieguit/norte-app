@@ -1,5 +1,8 @@
 import { RequestContext } from '@mastra/core/request-context';
-import type { ChannelHandler } from '@mastra/core/channels';
+import type {
+  ChannelHandler,
+  SlashCommandChannelHandler,
+} from '@mastra/core/channels';
 import { describe, expect, it, vi } from 'vitest';
 import { createWhatsappChannel } from './whatsapp-channel';
 import type { ChatChannel } from './whatsapp.adapter.provider';
@@ -33,27 +36,52 @@ function setup(
     post: vi.fn().mockResolvedValue(undefined),
   };
   const defaultHandler = vi.fn().mockResolvedValue(undefined);
+  const memory = {
+    listThreads: vi
+      .fn()
+      .mockResolvedValue({ threads: [{ id: 't1' }, { id: 't2' }] }),
+    deleteThread: vi.fn().mockResolvedValue(undefined),
+  };
+  const getAgent = vi.fn().mockReturnValue({ getMemory: () => memory });
   const ctx = {
+    mastra: { getAgent } as unknown as HandlerArgs[3]['mastra'],
     requestContext: new RequestContext(),
     signalMetadata: {},
     skipped: [] as HandlerArgs[1][],
   };
   const dm = channel.handlers!.onDirectMessage as ChannelHandler;
-  const send = (author: { userId: string; isMe: boolean }) =>
+  const send = (author: { userId: string; isMe: boolean }, text = 'hola') =>
     dm(
       thread as unknown as HandlerArgs[0],
-      { id: 'm1', author } as unknown as HandlerArgs[1],
+      { id: 'm1', author, text } as unknown as HandlerArgs[1],
+      defaultHandler,
+      ctx,
+    );
+  const channelPost = vi.fn().mockResolvedValue(undefined);
+  const slash = (command: string, isDM = true) =>
+    (channel.handlers!.onSlashCommand as SlashCommandChannelHandler)(
+      {
+        command,
+        text: '',
+        // Chat SDK builds the slash channel without isDM; only the adapter knows.
+        adapter: { isDM: (id: string) => id === 'telegram:42' && isDM },
+        channel: { id: 'telegram:42', isDM: false, post: channelPost },
+        user: { userId: 'tg-1', isMe: false },
+      } as unknown as Parameters<SlashCommandChannelHandler>[0],
       defaultHandler,
       ctx,
     );
   return {
     channel,
+    channelPost,
+    slash,
     links,
     notifications,
     thread,
     adapter,
     defaultHandler,
     ctx,
+    memory,
     send,
     dm,
   };
@@ -98,6 +126,104 @@ describe('createWhatsappChannel', () => {
       expect(ctx.requestContext.get('userId')).toBe('user_1');
       expect(defaultHandler).toHaveBeenCalledOnce();
       expect(thread.post).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        '🛡️ Blocked by prompt-injection-detector: Prompt injection detected. Types: jailbreak',
+        'No puedo cambiar cómo funciono',
+      ],
+      [
+        '🛡️ Blocked by moderation: Content flagged for moderation. Categories: self-harm',
+        '0800 345 1435',
+      ],
+      [
+        '🛡️ Blocked by moderation: Content flagged for moderation. Categories: hate, harassment',
+        'Prefiero que mantengamos la charla respetuosa',
+      ],
+      ['🛡️ Blocked by token-limiter: too long', 'No pude procesar ese mensaje'],
+    ])(
+      'replaces guardrail block %s with a Spanish reply',
+      async (blocked, expected) => {
+        const { send, defaultHandler, thread } = setup('user_1', key);
+        defaultHandler.mockImplementation(
+          (t: { post: (m: string) => unknown }) => t.post(blocked),
+        );
+        await send({ userId: 'a@lid', isMe: false });
+        expect(thread.post).toHaveBeenCalledOnce();
+        const posted = thread.post.mock.calls[0][0] as string;
+        expect(posted).toContain(expected);
+        expect(posted).not.toContain('Blocked by');
+      },
+    );
+
+    it('posts normal agent replies unchanged', async () => {
+      const { send, defaultHandler, thread } = setup('user_1', key);
+      defaultHandler.mockImplementation((t: { post: (m: string) => unknown }) =>
+        t.post('🫡'),
+      );
+      await send({ userId: 'a@lid', isMe: false });
+      expect(thread.post).toHaveBeenCalledWith('🫡');
+    });
+
+    it('/reset deletes the user chat threads and skips the agent', async () => {
+      const { send, memory, thread, defaultHandler } = setup('user_1', key);
+      await send({ userId: 'a@lid', isMe: false }, ' /Reset ');
+      expect(memory.listThreads).toHaveBeenCalledWith({
+        filter: {
+          resourceId: 'user:user_1',
+          metadata: { channel_platform: key },
+        },
+        perPage: false,
+      });
+      expect(memory.deleteThread).toHaveBeenCalledWith('t1');
+      expect(memory.deleteThread).toHaveBeenCalledWith('t2');
+      expect(thread.post).toHaveBeenCalledWith('Listo, empezamos de cero 🧭');
+      expect(defaultHandler).not.toHaveBeenCalled();
+    });
+
+    it('/reset from unlinked senders only gets the link message', async () => {
+      const { send, memory } = setup(null, key);
+      await send({ userId: 'a@lid', isMe: false }, '/reset');
+      expect(memory.deleteThread).not.toHaveBeenCalled();
+    });
+
+    describe('slash commands (Telegram)', () => {
+      it('/reset clears memory without running the agent', async () => {
+        const { slash, memory, channelPost, defaultHandler } = setup(
+          'user_1',
+          key,
+        );
+        await slash('/reset');
+        expect(memory.deleteThread).toHaveBeenCalledWith('t1');
+        expect(channelPost).toHaveBeenCalledWith('Listo, empezamos de cero 🧭');
+        expect(defaultHandler).not.toHaveBeenCalled();
+      });
+
+      it('other commands get help, never the agent', async () => {
+        const { slash, memory, channelPost, defaultHandler } = setup(
+          'user_1',
+          key,
+        );
+        await slash('/start');
+        expect(channelPost.mock.calls[0][0]).toContain('/reset');
+        expect(memory.deleteThread).not.toHaveBeenCalled();
+        expect(defaultHandler).not.toHaveBeenCalled();
+      });
+
+      it('unlinked senders get the link message', async () => {
+        const { slash, channelPost, links } = setup(null, key);
+        await slash('/start');
+        expect(links.issueToken).toHaveBeenCalledWith('tg-1');
+        expect(channelPost.mock.calls[0][0]).toContain('vinculá tu cuenta');
+      });
+
+      it('ignores commands outside DMs', async () => {
+        const { slash, channelPost, links } = setup('user_1', key);
+        await slash('/reset', false);
+        expect(links.findUserByJid).not.toHaveBeenCalled();
+        expect(channelPost).not.toHaveBeenCalled();
+      });
     });
 
     it('marks the open check-in answered for linked senders', async () => {
