@@ -114,6 +114,7 @@ const mastraModule = MastraModule.registerAsync({
           LLM_BASE_URL: config.get('LLM_BASE_URL'),
           LLM_API_KEY: config.get('LLM_API_KEY'),
           LLM_MODEL: config.get('LLM_MODEL'),
+          LLM_GUARD_MODEL: config.get('LLM_GUARD_MODEL'),
           MASTRA_API_KEY: config.get('MASTRA_API_KEY'),
         },
         {

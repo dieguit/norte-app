@@ -8,6 +8,46 @@ import type { NotificationsService } from '../notifications/notifications.servic
 const logger = new Logger('ChatChannel');
 const turn = new AsyncLocalStorage<{ failed: boolean }>();
 
+const BLOCKED_REPLIES = {
+  injection:
+    'No puedo cambiar cómo funciono ni compartir mis instrucciones internas 🙂 Sí te ayudo con tus finanzas: registrar gastos o ingresos, ver tus objetivos o cómo venís con tu plan. ¿Qué necesitás?',
+  selfHarm:
+    'Lamento mucho que estés pasando por esto. No estás solo/a: podés hablar gratis con el Centro de Asistencia al Suicida al 135 (CABA y GBA) o al 0800 345 1435 desde todo el país. Si estás en peligro ahora, llamá al 911. 💙',
+  moderation:
+    'Prefiero que mantengamos la charla respetuosa. Estoy para ayudarte con tus finanzas: registrar gastos o ingresos, revisar tus objetivos o tu plan. ¿En qué te doy una mano?',
+  fallback:
+    'No pude procesar ese mensaje. Probá escribirlo de otra forma, por ejemplo: "gasté 5 lucas en el súper".',
+};
+
+// ponytail: matches Mastra's postTripwire text ("🛡️ Blocked by <processorId>: <reason>"); no hook exists to format it. Replace if Mastra adds a tripwire formatter to channel config.
+function blockedReply(text: string): string {
+  if (text.includes('prompt-injection-detector'))
+    return BLOCKED_REPLIES.injection;
+  if (text.includes('self-harm')) return BLOCKED_REPLIES.selfHarm;
+  if (text.includes('Blocked by moderation')) return BLOCKED_REPLIES.moderation;
+  return BLOCKED_REPLIES.fallback;
+}
+
+function withSpanishBlocks<T extends { post: (message: never) => unknown }>(
+  thread: T,
+): T {
+  return new Proxy(thread, {
+    get(target, prop) {
+      if (prop === 'post')
+        return (message: unknown) =>
+          target.post(
+            (typeof message === 'string' && message.startsWith('🛡️')
+              ? blockedReply(message)
+              : message) as never,
+          );
+      const value: unknown = Reflect.get(target, prop, target);
+      return typeof value === 'function'
+        ? (value.bind(target) as unknown)
+        : value;
+    },
+  });
+}
+
 export function createWhatsappChannel({
   channel,
   links,
@@ -82,7 +122,9 @@ export function createWhatsappChannel({
           );
         await react('👀');
         const state = { failed: false };
-        await turn.run(state, () => defaultHandler(thread, message));
+        await turn.run(state, () =>
+          defaultHandler(withSpanishBlocks(thread), message),
+        );
         await react('👀', true);
         if (state.failed) await react('😢');
       },

@@ -1,5 +1,13 @@
 import { Agent } from '@mastra/core/agent';
 import type { ChannelConfig } from '@mastra/core/channels';
+import {
+  type InputProcessorOrWorkflow,
+  ModerationProcessor,
+  ProcessorStepSchema,
+  PromptInjectionDetector,
+  UnicodeNormalizer,
+} from '@mastra/core/processors';
+import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { Memory } from '@mastra/memory';
 import type { Env } from '../../config/env';
 import type { NorteServices } from '../services';
@@ -79,8 +87,62 @@ export function buildInstructions(webAppUrl?: string): string {
     .join('\n\n');
 }
 
+function createInputGuardrails(
+  env: Pick<Env, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_GUARD_MODEL'>,
+) {
+  const model = {
+    providerId: 'omniroute',
+    modelId: env.LLM_GUARD_MODEL,
+    url: env.LLM_BASE_URL,
+    apiKey: env.LLM_API_KEY,
+  };
+  return (
+    createWorkflow({
+      id: 'norte-input-guardrails',
+      inputSchema: ProcessorStepSchema,
+      outputSchema: ProcessorStepSchema,
+    })
+      .parallel([
+        createStep(
+          new PromptInjectionDetector({
+            model,
+            strategy: 'block',
+            detectionTypes: ['injection', 'jailbreak', 'system-override'],
+            threshold: 0.8,
+            lastMessageOnly: true,
+            errorStrategy: 'warn',
+          }),
+        ),
+        createStep(
+          new ModerationProcessor({
+            model,
+            strategy: 'block',
+            categories: [
+              'hate',
+              'harassment',
+              'violence',
+              'self-harm',
+              'sexual',
+            ],
+            threshold: 0.7,
+            lastMessageOnly: true,
+            errorStrategy: 'warn',
+          }),
+        ),
+      ])
+      .map(({ inputData }) =>
+        Promise.resolve(inputData['processor:prompt-injection-detector']),
+      )
+      // Mastra types ProcessorWorkflow input as ProcessorStepOutput; its documented example needs this cast too.
+      .commit() as unknown as InputProcessorOrWorkflow
+  );
+}
+
 export function createNorteAgent(
-  env: Pick<Env, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_MODEL'>,
+  env: Pick<
+    Env,
+    'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_MODEL' | 'LLM_GUARD_MODEL'
+  >,
   options: {
     services: NorteServices;
     webAppUrl?: string;
@@ -102,6 +164,13 @@ export function createNorteAgent(
       url: env.LLM_BASE_URL,
       apiKey: env.LLM_API_KEY,
     },
+    inputProcessors: [
+      new UnicodeNormalizer({
+        stripControlChars: true,
+        collapseWhitespace: true,
+      }),
+      createInputGuardrails(env),
+    ],
     tools: {
       ...createDateTools(),
       ...createPendingActionTools(stores),

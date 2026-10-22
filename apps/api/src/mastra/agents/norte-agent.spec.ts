@@ -4,7 +4,8 @@ import { buildInstructions, createNorteAgent } from './norte-agent';
 const env = {
   LLM_BASE_URL: 'http://127.0.0.1:4999/v1',
   LLM_API_KEY: 'k',
-  LLM_MODEL: 'cx/gpt-5.5',
+  LLM_MODEL: 'agy/gemini-3.8-flash-low',
+  LLM_GUARD_MODEL: 'agy/gemini-3.5-flash-lite',
 };
 
 describe('norte agent', () => {
@@ -26,6 +27,15 @@ describe('norte agent', () => {
         'getDailySummary',
       ]),
     );
+  });
+
+  it('runs unicode normalization and guardrails on input', async () => {
+    const agent = createNorteAgent(env, { services: {} as never });
+    const processors = await agent.listConfiguredInputProcessors();
+    expect(processors.map((p) => p.id)).toEqual([
+      'unicode-normalizer',
+      'norte-input-guardrails',
+    ]);
   });
 
   it('includes confirmation rules and app links', () => {

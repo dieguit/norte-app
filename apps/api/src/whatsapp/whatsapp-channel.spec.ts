@@ -100,6 +100,44 @@ describe('createWhatsappChannel', () => {
       expect(thread.post).not.toHaveBeenCalled();
     });
 
+    it.each([
+      [
+        '🛡️ Blocked by prompt-injection-detector: Prompt injection detected. Types: jailbreak',
+        'No puedo cambiar cómo funciono',
+      ],
+      [
+        '🛡️ Blocked by moderation: Content flagged for moderation. Categories: self-harm',
+        '0800 345 1435',
+      ],
+      [
+        '🛡️ Blocked by moderation: Content flagged for moderation. Categories: hate, harassment',
+        'Prefiero que mantengamos la charla respetuosa',
+      ],
+      ['🛡️ Blocked by token-limiter: too long', 'No pude procesar ese mensaje'],
+    ])(
+      'replaces guardrail block %s with a Spanish reply',
+      async (blocked, expected) => {
+        const { send, defaultHandler, thread } = setup('user_1', key);
+        defaultHandler.mockImplementation(
+          (t: { post: (m: string) => unknown }) => t.post(blocked),
+        );
+        await send({ userId: 'a@lid', isMe: false });
+        expect(thread.post).toHaveBeenCalledOnce();
+        const posted = thread.post.mock.calls[0][0] as string;
+        expect(posted).toContain(expected);
+        expect(posted).not.toContain('Blocked by');
+      },
+    );
+
+    it('posts normal agent replies unchanged', async () => {
+      const { send, defaultHandler, thread } = setup('user_1', key);
+      defaultHandler.mockImplementation((t: { post: (m: string) => unknown }) =>
+        t.post('🫡'),
+      );
+      await send({ userId: 'a@lid', isMe: false });
+      expect(thread.post).toHaveBeenCalledWith('🫡');
+    });
+
     it('marks the open check-in answered for linked senders', async () => {
       const { send, notifications } = setup('user_1', key);
       await send({ userId: 'jid-1', isMe: false });

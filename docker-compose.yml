@@ -59,7 +59,7 @@ services:
       target: api
     environment:
       NODE_ENV: test
-      PORT: '3001'
+      PORT: "3001"
       DATABASE_URL: postgres://norte:norte@postgres-e2e:5432/norte_test
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
       CLERK_ISSUER_URL: ${CLERK_ISSUER_URL:-}
@@ -67,6 +67,7 @@ services:
       LLM_BASE_URL: http://127.0.0.1:4999/v1
       LLM_API_KEY: test-llm-key
       LLM_MODEL: cx/gpt-5.5
+      LLM_GUARD_MODEL: "agy/gemini-3.5-flash-lite"
       MASTRA_API_KEY: test-mastra-key
     depends_on:
       postgres-e2e:
@@ -98,7 +99,7 @@ services:
       NODE_ENV: test
       HOST: 0.0.0.0
       NITRO_HOST: 0.0.0.0
-      PORT: '3100'
+      PORT: "3100"
       API_BASE_URL: http://api-e2e:3001
       VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
