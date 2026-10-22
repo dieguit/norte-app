@@ -24,7 +24,11 @@ export function createNotificationTools({
         "User's proactive notification settings. day_close_checkin is the daily check-in asking for the day's missing movements. time is HH:mm in Argentina time.",
       inputSchema: z.object({}),
       execute: (_input, context) =>
-        toolResult(() => notifications.listSettings(userIdFrom(context))),
+        toolResult(
+          'get-notification-settings',
+          context?.requestContext as never,
+          () => notifications.listSettings(userIdFrom(context)),
+        ),
     }),
 
     updateNotificationSetting: createTool({
@@ -37,8 +41,10 @@ export function createNotificationTools({
         time: NotificationTimeSchema.optional(),
       }),
       execute: ({ type, ...patch }, context) =>
-        toolResult(() =>
-          notifications.updateSetting(userIdFrom(context), type, patch),
+        toolResult(
+          'update-notification-setting',
+          context?.requestContext as never,
+          () => notifications.updateSetting(userIdFrom(context), type, patch),
         ),
     }),
 
@@ -48,7 +54,9 @@ export function createNotificationTools({
         "Today's (Argentina) incomes, expenses and contributions registered today, with totals per currency.",
       inputSchema: z.object({}),
       execute: (_input, context) =>
-        toolResult(() => finances.getDailySummary(userIdFrom(context))),
+        toolResult('get-daily-summary', context?.requestContext as never, () =>
+          finances.getDailySummary(userIdFrom(context)),
+        ),
     }),
   };
 }

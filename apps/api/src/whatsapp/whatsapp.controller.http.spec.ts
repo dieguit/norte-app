@@ -1,14 +1,24 @@
 import { verifyToken } from '@clerk/backend';
-import { ConflictException, type INestApplication } from '@nestjs/common';
+import {
+  ConflictException,
+  GoneException,
+  type INestApplication,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { ZodValidationPipe } from 'nestjs-zod';
+import type { PostHog } from 'posthog-node';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { linkDistinctId, setPostHog } from '../analytics/posthog';
 import { ClerkAuthGuard } from '../profile/clerk-auth.guard';
 import { WHATSAPP_ADAPTER } from './whatsapp.adapter.provider';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappLinksService } from './whatsapp-links.service';
+
+const capture = vi.fn();
+const alias = vi.fn();
 
 const getUser = vi.hoisted(() => vi.fn());
 vi.mock('@clerk/backend', () => ({
@@ -48,6 +58,9 @@ async function makeApp(adapter: unknown, claim = vi.fn()) {
 describe('WhatsappController', () => {
   let app: INestApplication;
   beforeEach(() => {
+    capture.mockReset();
+    alias.mockReset();
+    setPostHog({ capture, alias } as unknown as PostHog);
     vi.mocked(verifyToken).mockResolvedValue({
       sub: 'user_1',
       iss: 'https://clerk.example.test',
@@ -164,5 +177,61 @@ describe('WhatsappController', () => {
       .post(path)
       .set('Authorization', 'Bearer t')
       .expect(409);
+  });
+
+  it('aliases the link id and tracks a new link', async () => {
+    const claim = vi
+      .fn()
+      .mockResolvedValue({ jid: '1@lid', alreadyClaimed: false });
+    app = await makeApp(
+      { key: 'whatsapp', adapter: { openDM: vi.fn(), postMessage: vi.fn() } },
+      claim,
+    );
+    await request(app.getHttpServer())
+      .post(path)
+      .set('Authorization', 'Bearer t')
+      .expect(200);
+    expect(alias).toHaveBeenCalledWith({
+      distinctId: 'user_1',
+      alias: linkDistinctId(token),
+    });
+    expect(capture).toHaveBeenCalledWith({
+      distinctId: 'user_1',
+      event: 'bot_account_linked',
+      properties: { channel: 'whatsapp' },
+    });
+  });
+
+  it('does not track already-claimed links', async () => {
+    const claim = vi
+      .fn()
+      .mockResolvedValue({ jid: '1@lid', alreadyClaimed: true });
+    app = await makeApp(null, claim);
+    await request(app.getHttpServer())
+      .post(path)
+      .set('Authorization', 'Bearer t')
+      .expect(200);
+    expect(alias).not.toHaveBeenCalled();
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [new NotFoundException('Link inválido'), 404, 'not_found'],
+    [new GoneException('Link vencido'), 410, 'expired'],
+    [new ConflictException('x'), 409, 'conflict'],
+  ])('tracks failed claims (%s)', async (error, status, reason) => {
+    app = await makeApp(
+      { key: 'telegram', adapter: {} },
+      vi.fn().mockRejectedValue(error),
+    );
+    await request(app.getHttpServer())
+      .post(path)
+      .set('Authorization', 'Bearer t')
+      .expect(status);
+    expect(capture).toHaveBeenCalledWith({
+      distinctId: 'user_1',
+      event: 'bot_link_failed',
+      properties: { channel: 'telegram', reason },
+    });
   });
 });

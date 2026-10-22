@@ -151,7 +151,7 @@ export function createNorteAgent(
   },
 ): Agent {
   const stores = {
-    pending: new UserActionStore(),
+    pending: new UserActionStore(undefined, undefined, true),
     undo: new UserActionStore(),
   };
   return new Agent({

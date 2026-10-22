@@ -205,12 +205,14 @@ export class NotificationsService {
       .where(eq(notifications.id, id));
   }
 
-  async markAnswered(userId: string): Promise<void> {
-    await this.db
+  async markAnswered(userId: string): Promise<boolean> {
+    const answered = await this.db
       .update(notifications)
       .set({ status: 'answered' })
       .where(
         and(eq(notifications.userId, userId), eq(notifications.status, 'open')),
-      );
+      )
+      .returning({ id: notifications.id });
+    return answered.length > 0;
   }
 }

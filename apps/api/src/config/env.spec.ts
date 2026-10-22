@@ -131,4 +131,26 @@ describe('validateEnv', () => {
       }),
     ).toThrow(/CHAT_CHANNEL/);
   });
+
+  it('defaults PostHog to disabled with the US host', () => {
+    const result = validateEnv(validEnv);
+    expect(result.POSTHOG_TOKEN).toBeUndefined();
+    expect(result.POSTHOG_HOST).toBe('https://us.i.posthog.com');
+  });
+
+  it('accepts a PostHog token and host', () => {
+    const result = validateEnv({
+      ...validEnv,
+      POSTHOG_TOKEN: 'phc_test',
+      POSTHOG_HOST: 'https://eu.i.posthog.com',
+    });
+    expect(result.POSTHOG_TOKEN).toBe('phc_test');
+    expect(result.POSTHOG_HOST).toBe('https://eu.i.posthog.com');
+  });
+
+  it('rejects an invalid PostHog host', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, POSTHOG_HOST: 'not-a-url' }),
+    ).toThrow();
+  });
 });

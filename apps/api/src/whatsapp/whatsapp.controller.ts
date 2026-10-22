@@ -1,8 +1,11 @@
 import {
+  ConflictException,
   Controller,
+  GoneException,
   HttpCode,
   Inject,
   Logger,
+  NotFoundException,
   Param,
   Post,
   Req,
@@ -13,6 +16,7 @@ import { ApiParam } from '@nestjs/swagger';
 import { createClerkClient } from '@clerk/backend';
 import { ZodValidationPipe } from 'nestjs-zod';
 import type { Request } from 'express';
+import { getPostHog, linkDistinctId } from '../analytics/posthog';
 import type { Env } from '../config/env';
 import { ClerkAuthGuard } from '../profile/clerk-auth.guard';
 import {
@@ -21,6 +25,13 @@ import {
 } from './whatsapp.adapter.provider';
 import { WhatsappLinkTokenPathDto } from './whatsapp.dto';
 import { WhatsappLinksService } from './whatsapp-links.service';
+
+function linkFailureReason(error: unknown) {
+  if (error instanceof NotFoundException) return 'not_found';
+  if (error instanceof GoneException) return 'expired';
+  if (error instanceof ConflictException) return 'conflict';
+  return 'error';
+}
 
 type AuthenticatedRequest = Request & { user: { id: string } };
 
@@ -48,14 +59,29 @@ export class WhatsappController {
     { token }: WhatsappLinkTokenPathDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    const { jid, alreadyClaimed } = await this.links.claim(
-      token,
-      request.user.id,
-    );
+    const userId = request.user.id;
+    const posthog = getPostHog();
+    const channel = this.channel?.key;
+    const { jid, alreadyClaimed } = await this.links
+      .claim(token, userId)
+      .catch((error: unknown) => {
+        posthog.capture({
+          distinctId: userId,
+          event: 'bot_link_failed',
+          properties: { channel, reason: linkFailureReason(error) },
+        });
+        throw error;
+      });
     if (!alreadyClaimed) {
+      posthog.alias({ distinctId: userId, alias: linkDistinctId(token) });
+      posthog.capture({
+        distinctId: userId,
+        event: 'bot_account_linked',
+        properties: { channel },
+      });
       try {
         if (this.channel) {
-          const { firstName } = await this.clerk.users.getUser(request.user.id);
+          const { firstName } = await this.clerk.users.getUser(userId);
           await this.channel.adapter.postMessage(
             await this.channel.adapter.openDM(jid),
             `Hola${firstName ? ` ${firstName}` : ''}! Ya asociamos este número a tu usuario.`,

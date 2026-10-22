@@ -15,7 +15,7 @@ export function createRoadmapTools(
         'The user\'s financial roadmap: timeline of months, upcoming milestones, goal completion projections and goals ready to complete. Use for "¿voy bien?", "¿cuándo llego?", or roadmap questions.',
       inputSchema: z.object({}),
       execute: (_input, context) =>
-        toolResult(async () => {
+        toolResult('get-roadmap', context?.requestContext, async () => {
           const result = await home.getHome(
             requireUserId(context?.requestContext),
           );

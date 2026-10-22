@@ -3,7 +3,9 @@ import type {
   ChannelHandler,
   SlashCommandChannelHandler,
 } from '@mastra/core/channels';
+import type { PostHog } from 'posthog-node';
 import { describe, expect, it, vi } from 'vitest';
+import { linkDistinctId, setPostHog } from '../analytics/posthog';
 import { createWhatsappChannel } from './whatsapp-channel';
 import type { ChatChannel } from './whatsapp.adapter.provider';
 
@@ -13,12 +15,14 @@ function setup(
   linkedUser: string | null,
   channelKey: ChatChannel['key'] = 'whatsapp',
 ) {
+  const capture = vi.fn();
+  setPostHog({ capture } as unknown as PostHog);
   const links = {
     findUserByJid: vi.fn().mockResolvedValue(linkedUser),
     issueToken: vi.fn().mockResolvedValue('tok123'),
   };
   const notifications = {
-    markAnswered: vi.fn().mockResolvedValue(undefined),
+    markAnswered: vi.fn().mockResolvedValue(true),
   };
   const channel = createWhatsappChannel({
     channel: { key: channelKey, adapter: {} as never },
@@ -84,6 +88,7 @@ function setup(
     memory,
     send,
     dm,
+    capture,
   };
 }
 
@@ -108,6 +113,100 @@ describe('createWhatsappChannel', () => {
       const { channel } = setup(null, key);
       expect(channel.adapters).toHaveProperty(key);
       expect(Object.keys(channel.adapters)).toEqual([key]);
+    });
+
+    describe('analytics', () => {
+      const props = (capture: ReturnType<typeof vi.fn>, event: string) =>
+        capture.mock.calls
+          .map(
+            ([e]) =>
+              e as { event: string; distinctId: string; properties: unknown },
+          )
+          .filter((e) => e.event === event);
+
+      it('tracks received messages', async () => {
+        const { send, capture } = setup('user_1', key);
+        await send({ userId: 'a@lid', isMe: false });
+        expect(props(capture, 'bot_message_received')).toEqual([
+          {
+            distinctId: 'user_1',
+            event: 'bot_message_received',
+            properties: {
+              channel: key,
+              batched_count: 1,
+              is_checkin_reply: true,
+            },
+          },
+        ]);
+      });
+
+      it('still runs the agent when markAnswered fails', async () => {
+        const { send, capture, notifications, defaultHandler } = setup(
+          'user_1',
+          key,
+        );
+        notifications.markAnswered.mockRejectedValue(new Error('db'));
+        await send({ userId: 'a@lid', isMe: false });
+        expect(defaultHandler).toHaveBeenCalledOnce();
+        expect(
+          props(capture, 'bot_message_received')[0].properties,
+        ).toMatchObject({
+          is_checkin_reply: false,
+        });
+      });
+
+      it('tracks token issuance by hashed token only', async () => {
+        const { send, capture } = setup(null, key);
+        await send({ userId: '549111@s.whatsapp.net', isMe: false });
+        expect(capture).toHaveBeenCalledWith({
+          distinctId: linkDistinctId('tok123'),
+          event: 'bot_link_token_issued',
+          properties: { channel: key },
+        });
+        const payload = JSON.stringify(capture.mock.calls);
+        expect(payload).not.toContain('tok123');
+        expect(payload).not.toContain('549111');
+      });
+
+      it('tracks guardrail blocks', async () => {
+        const { send, capture, defaultHandler } = setup('user_1', key);
+        defaultHandler.mockImplementation(
+          (t: { post: (m: string) => unknown }) =>
+            t.post(
+              '🛡️ Blocked by moderation: Content flagged for moderation. Categories: self-harm',
+            ),
+        );
+        await send({ userId: 'a@lid', isMe: false });
+        expect(props(capture, 'bot_message_blocked')[0].properties).toEqual({
+          channel: key,
+          reason: 'self_harm',
+        });
+      });
+
+      it('tracks failed replies', async () => {
+        const { send, capture, defaultHandler, channel } = setup('user_1', key);
+        const config = channel.adapters[key] as {
+          formatError: (e: Error) => unknown;
+        };
+        defaultHandler.mockImplementation(() =>
+          config.formatError(new Error('boom')),
+        );
+        await send({ userId: 'a@lid', isMe: false });
+        expect(props(capture, 'bot_reply_failed')).toHaveLength(1);
+      });
+
+      it('tracks commands', async () => {
+        const { send, slash, capture } = setup('user_1', key);
+        await send({ userId: 'a@lid', isMe: false }, '/reset');
+        await slash('/start');
+        expect(
+          props(capture, 'bot_command_used').map((e) => e.properties),
+        ).toEqual([
+          { channel: key, command: 'reset' },
+          { channel: key, command: 'help' },
+        ]);
+        expect(props(capture, 'bot_message_received')).toEqual([]);
+      });
     });
 
     it('replies with a link and skips the agent for unlinked senders', async () => {
