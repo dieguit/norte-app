@@ -12,10 +12,11 @@
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "test": "vitest run",
+    "paraglide": "node --experimental-strip-types -e \"const {compile}=await import('@inlang/paraglide-js');const {paraglideOptions}=await import('./paraglide.options.ts');await compile(paraglideOptions)\"",
     "fallow": "fallow",
     "fallow:audit": "fallow audit --format json --quiet --explain",
-    "lint": "tsc --noEmit",
-    "check-types": "tsc --noEmit"
+    "lint": "pnpm paraglide && tsc --noEmit",
+    "check-types": "pnpm paraglide && tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1087.0",
@@ -52,6 +53,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@inlang/paraglide-js": "^2.29.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.1.18",
