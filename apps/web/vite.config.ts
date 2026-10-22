@@ -1,6 +1,8 @@
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 import { devtools } from '@tanstack/devtools-vite'
+import { paraglideVitePlugin } from '@inlang/paraglide-js'
+import { paraglideOptions } from './paraglide.options'
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { nitro } from 'nitro/vite'
@@ -17,6 +19,7 @@ if (process.env.VITEST) {
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
+    paraglideVitePlugin(paraglideOptions),
     devtools(),
     tailwindcss(),
     ...(process.env.VITEST ? [] : [tanstackStart(), nitro({ routeRules: posthogProxyRules })]),

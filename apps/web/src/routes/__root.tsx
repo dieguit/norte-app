@@ -1,7 +1,8 @@
 import { ClerkProvider } from "@clerk/tanstack-react-start";
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import { HeadContent, Scripts, createRootRoute, useLocation } from "@tanstack/react-router";
 import { esES } from "@clerk/localizations";
 import { Toaster } from "sonner";
+import { getLocale } from "#/paraglide/runtime";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -19,9 +20,13 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const pathname = useLocation({ select: (location) => location.pathname });
+  // Only the landing is translated; the app UI is Spanish regardless of the visitor's locale.
+  const lang = pathname === "/" ? getLocale() : "es";
+
   return (
     <ClerkProvider localization={esES}>
-      <html lang="en">
+      <html lang={lang}>
         <head>
           <HeadContent />
         </head>

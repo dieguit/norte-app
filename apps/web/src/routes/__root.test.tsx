@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { overwriteGetLocale } from '#/paraglide/runtime'
 
 const mocks = vi.hoisted(() => ({
+  pathname: '/',
   toaster: vi.fn(() => null),
   rootOptions: undefined as
     | undefined
@@ -21,6 +23,8 @@ vi.mock('@clerk/localizations', () => ({ esES: {} }))
 vi.mock('@tanstack/react-router', () => ({
   HeadContent: () => null,
   Scripts: () => null,
+  useLocation: ({ select }: { select: (l: { pathname: string }) => string }) =>
+    select({ pathname: mocks.pathname }),
   createRootRoute: (options: NonNullable<typeof mocks.rootOptions>) => {
     mocks.rootOptions = options
     return options
@@ -56,5 +60,21 @@ describe('root document configuration', () => {
       name: 'viewport',
       content: 'width=device-width, initial-scale=1, viewport-fit=cover',
     })
+  })
+
+  it('sets html lang from the locale on the landing', () => {
+    overwriteGetLocale(() => 'en')
+    mocks.pathname = '/'
+    const RootDocument = mocks.rootOptions!.shellComponent
+    render(<RootDocument>Content</RootDocument>, { container: document.documentElement })
+    expect(document.documentElement.getAttribute('lang')).toBe('en')
+  })
+
+  it('keeps html lang es on untranslated app routes', () => {
+    overwriteGetLocale(() => 'en')
+    mocks.pathname = '/app'
+    const RootDocument = mocks.rootOptions!.shellComponent
+    render(<RootDocument>Content</RootDocument>, { container: document.documentElement })
+    expect(document.documentElement.getAttribute('lang')).toBe('es')
   })
 })
