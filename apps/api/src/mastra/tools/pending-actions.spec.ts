@@ -1,5 +1,7 @@
 import { RequestContext } from '@mastra/core/request-context';
-import { describe, expect, it, vi } from 'vitest';
+import type { PostHog } from 'posthog-node';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setPostHog } from '../../analytics/posthog';
 import {
   UserActionStore,
   createPendingActionTools,
@@ -33,7 +35,7 @@ describe('UserActionStore', () => {
     let now = 0;
     const store = new UserActionStore(1000, () => now);
     expect(store.has('u1')).toBe(false);
-    store.set('u1', { summary: 'A', run: vi.fn() });
+    store.set('u1', { actionType: 'test-action', summary: 'A', run: vi.fn() });
     expect(store.has('u1')).toBe(true);
     now += 1001;
     expect(store.has('u1')).toBe(false);
@@ -44,7 +46,11 @@ describe('confirmPendingAction', () => {
   it('runs the stored action once', async () => {
     const { pending, confirm } = setup();
     const run = vi.fn().mockResolvedValue({ status: 'created' });
-    pending.set('u1', { summary: 'Gasto mensual', run });
+    pending.set('u1', {
+      actionType: 'test-action',
+      summary: 'Gasto mensual',
+      run,
+    });
     await expect(confirm()).resolves.toEqual({
       done: 'Gasto mensual',
       result: { status: 'created' },
@@ -63,6 +69,7 @@ describe('confirmPendingAction', () => {
       message: 'Los datos cambiaron.',
     };
     pending.set('u1', {
+      actionType: 'test-action',
       summary: 'Gasto mensual',
       run: vi.fn().mockResolvedValue(staleResult),
     });
@@ -73,8 +80,8 @@ describe('confirmPendingAction', () => {
     const { pending, confirm } = setup();
     const first = vi.fn();
     const second = vi.fn().mockResolvedValue('b');
-    pending.set('u1', { summary: 'A', run: first });
-    pending.set('u1', { summary: 'B', run: second });
+    pending.set('u1', { actionType: 'test-action', summary: 'A', run: first });
+    pending.set('u1', { actionType: 'test-action', summary: 'B', run: second });
     await confirm();
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
@@ -83,7 +90,7 @@ describe('confirmPendingAction', () => {
   it('expires after the TTL', async () => {
     const { pending, confirm, advance } = setup();
     const run = vi.fn();
-    pending.set('u1', { summary: 'A', run });
+    pending.set('u1', { actionType: 'test-action', summary: 'A', run });
     advance(1001);
     await expect(confirm()).resolves.toHaveProperty('error');
     expect(run).not.toHaveBeenCalled();
@@ -92,7 +99,7 @@ describe('confirmPendingAction', () => {
   it('never runs another user action', async () => {
     const { pending, confirm } = setup();
     const run = vi.fn();
-    pending.set('u2', { summary: 'A', run });
+    pending.set('u2', { actionType: 'test-action', summary: 'A', run });
     await expect(confirm()).resolves.toHaveProperty('error');
     expect(run).not.toHaveBeenCalled();
   });
@@ -100,7 +107,7 @@ describe('confirmPendingAction', () => {
   it('refuses without a userId', async () => {
     const { pending } = setup();
     const run = vi.fn();
-    pending.set('u1', { summary: 'A', run });
+    pending.set('u1', { actionType: 'test-action', summary: 'A', run });
     const tools = createPendingActionTools({
       pending,
       undo: new UserActionStore(),
@@ -116,7 +123,11 @@ describe('undoLastWrite', () => {
   it('runs the stored undo once', async () => {
     const { undo, undoLast } = setup();
     const run = vi.fn().mockResolvedValue(undefined);
-    undo.set('u1', { summary: 'Borré el gasto', run });
+    undo.set('u1', {
+      actionType: 'test-action',
+      summary: 'Borré el gasto',
+      run,
+    });
     await expect(undoLast()).resolves.toEqual({ done: 'Borré el gasto' });
     await expect(undoLast()).resolves.toEqual({
       error: 'No hay nada para deshacer.',
@@ -127,7 +138,7 @@ describe('undoLastWrite', () => {
   it('does nothing after the TTL', async () => {
     const { undo, undoLast, advance } = setup();
     const run = vi.fn();
-    undo.set('u1', { summary: 'x', run });
+    undo.set('u1', { actionType: 'test-action', summary: 'x', run });
     advance(1001);
     await expect(undoLast()).resolves.toEqual({
       error: 'No hay nada para deshacer.',
@@ -144,6 +155,7 @@ describe('stagePreview', () => {
     stagePreview({
       store,
       userId: 'u1',
+      actionType: 'test-action',
       summary: 'Crear objetivo',
       preview,
       present: (p) => p,
@@ -171,6 +183,7 @@ describe('stagePreview', () => {
     stagePreview({
       store,
       userId: 'u1',
+      actionType: 'test-action',
       summary: 'Proposal A',
       preview: { previewToken: 'token-a', n: 1 },
       present: (p) => p,
@@ -180,7 +193,11 @@ describe('stagePreview', () => {
     const actionA = store.take('u1')!;
     const runPromiseA = actionA.run();
 
-    store.set('u1', { summary: 'Proposal B', run: vi.fn() });
+    store.set('u1', {
+      actionType: 'test-action',
+      summary: 'Proposal B',
+      run: vi.fn(),
+    });
 
     resolveConfirm({
       status: 'stale',
@@ -207,6 +224,7 @@ describe('stagePreview', () => {
     const staged = stagePreview({
       store,
       userId: 'u1',
+      actionType: 'test-action',
       summary: 'Crear objetivo',
       preview: { previewToken: 'a', n: 1 },
       present: (p) => ({ n: p.n }),
@@ -224,5 +242,74 @@ describe('stagePreview', () => {
       status: 'created',
     });
     expect(confirmFn.mock.calls).toEqual([['a'], ['b']]);
+  });
+});
+
+describe('action analytics', () => {
+  const capture = vi.fn();
+  beforeEach(() => {
+    capture.mockReset();
+    setPostHog({ capture } as unknown as PostHog);
+  });
+  const events = (name: string) =>
+    capture.mock.calls
+      .map(([e]) => e as { event: string; properties: unknown })
+      .filter((e) => e.event === name)
+      .map((e) => e.properties);
+
+  it('tracks previews only on a tracking store', () => {
+    new UserActionStore(1000, Date.now, true).set('u1', {
+      actionType: 'record-expense',
+      summary: 'A',
+      run: vi.fn(),
+    });
+    new UserActionStore().set('u1', {
+      actionType: 'record-expense',
+      summary: 'A',
+      run: vi.fn(),
+    });
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture).toHaveBeenCalledWith({
+      distinctId: 'u1',
+      event: 'bot_action_previewed',
+      properties: { action_type: 'record-expense' },
+    });
+  });
+
+  it('tracks confirm outcomes', async () => {
+    const { pending, confirm } = setup();
+    pending.set('u1', {
+      actionType: 'update-expense',
+      summary: 'A',
+      run: vi.fn().mockResolvedValue({ status: 'created' }),
+    });
+    await confirm();
+    pending.set('u1', {
+      actionType: 'preview-goal-edit',
+      summary: 'B',
+      run: vi.fn().mockResolvedValue({ status: 'stale' }),
+    });
+    await confirm();
+    await confirm();
+    expect(events('bot_action_confirmed')).toEqual([
+      { action_type: 'update-expense', outcome: 'done' },
+      { action_type: 'preview-goal-edit', outcome: 'stale' },
+      { action_type: undefined, outcome: 'expired' },
+    ]);
+  });
+
+  it('tracks undo outcomes', async () => {
+    const { undo, undoLast } = setup();
+    undo.set('u1', {
+      actionType: 'record-income',
+      summary: 'x',
+      run: vi.fn().mockResolvedValue(undefined),
+    });
+    await undoLast();
+    await undoLast();
+    expect(events('bot_action_undone')).toEqual([
+      { action_type: 'record-income', outcome: 'done' },
+      { action_type: undefined, outcome: 'expired' },
+    ]);
   });
 });

@@ -64,7 +64,7 @@ export function createGoalTools(
         "The user's goals (active, paused, completed) with ids, target, progress, projection and the month's financial summary.",
       inputSchema: z.object({}),
       execute: (_input, context) =>
-        toolResult(async () => {
+        toolResult('list-goals', context?.requestContext, async () => {
           const state = await goals.getWorkspace(
             requireUserId(context?.requestContext),
           );
@@ -87,7 +87,7 @@ export function createGoalTools(
         action: GoalLifecycleActionSchema.optional(),
       }),
       execute: ({ goalId, action }, context) =>
-        toolResult(async () => {
+        toolResult('get-goal-plan', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
           return goalId && action
             ? goals.getLifecyclePlanContext(userId, goalId, action)
@@ -101,7 +101,7 @@ export function createGoalTools(
         'Savings places with balances and allocation context needed before previewing a goal completion.',
       inputSchema: z.object({ goalId: GoalIdSchema }),
       execute: ({ goalId }, context) =>
-        toolResult(() =>
+        toolResult('get-goal-completion-context', context?.requestContext, () =>
           goals.getCompletionContext(
             requireUserId(context?.requestContext),
             goalId,
@@ -115,18 +115,23 @@ export function createGoalTools(
         'Stages creating a goal (Antes → Con este cambio; execute via confirmPendingAction). Call getGoalPlan first. Defaults: currency ARS, priority medium, strategy save, availability available_now. allocations must include every active goal plus { goalId: "pending-goal" } for the new one, summing 100.',
       inputSchema: z.object({ draft: ToolGoalCreationDraftSchema }),
       execute: ({ draft }, context) =>
-        toolResult(async () => {
-          const userId = requireUserId(context?.requestContext);
-          return stagePreview({
-            store: pending,
-            userId,
-            summary: 'Objetivo creado',
-            preview: await goals.previewCreation(userId, draft),
-            present,
-            confirm: (previewToken) =>
-              goals.confirmCreation(userId, { draft, previewToken }),
-          });
-        }),
+        toolResult(
+          'preview-goal-creation',
+          context?.requestContext,
+          async () => {
+            const userId = requireUserId(context?.requestContext);
+            return stagePreview({
+              store: pending,
+              userId,
+              actionType: 'preview-goal-creation',
+              summary: 'Objetivo creado',
+              preview: await goals.previewCreation(userId, draft),
+              present,
+              confirm: (previewToken) =>
+                goals.confirmCreation(userId, { draft, previewToken }),
+            });
+          },
+        ),
     }),
 
     previewGoalEdit: createTool({
@@ -138,11 +143,12 @@ export function createGoalTools(
         draft: GoalCreationDraftWireSchema,
       }),
       execute: ({ goalId, draft }, context) =>
-        toolResult(async () => {
+        toolResult('preview-goal-edit', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
           return stagePreview({
             store: pending,
             userId,
+            actionType: 'preview-goal-edit',
             summary: 'Objetivo actualizado',
             preview: await goals.previewEdit(userId, goalId, draft),
             present,
@@ -158,18 +164,23 @@ export function createGoalTools(
         'Stages changing the share of income dedicated to goals (dedicationPercentage, integer 0-100) and/or the split between active goals (execute via confirmPendingAction).',
       inputSchema: z.object({ draft: AllocationChangeDraftWireSchema }),
       execute: ({ draft }, context) =>
-        toolResult(async () => {
-          const userId = requireUserId(context?.requestContext);
-          return stagePreview({
-            store: pending,
-            userId,
-            summary: 'Distribución actualizada',
-            preview: await goals.previewAllocationChange(userId, draft),
-            present,
-            confirm: (previewToken) =>
-              goals.confirmAllocationChange(userId, { draft, previewToken }),
-          });
-        }),
+        toolResult(
+          'preview-allocation-change',
+          context?.requestContext,
+          async () => {
+            const userId = requireUserId(context?.requestContext);
+            return stagePreview({
+              store: pending,
+              userId,
+              actionType: 'preview-allocation-change',
+              summary: 'Distribución actualizada',
+              preview: await goals.previewAllocationChange(userId, draft),
+              present,
+              confirm: (previewToken) =>
+                goals.confirmAllocationChange(userId, { draft, previewToken }),
+            });
+          },
+        ),
     }),
 
     previewGoalLifecycle: createTool({
@@ -182,28 +193,33 @@ export function createGoalTools(
         allocations: AllocationsSchema,
       }),
       execute: ({ goalId, lifecycle, allocations }, context) =>
-        toolResult(async () => {
-          const userId = requireUserId(context?.requestContext);
-          return stagePreview({
-            store: pending,
-            userId,
-            summary:
-              lifecycle === 'pause'
-                ? 'Objetivo pausado'
-                : 'Objetivo reactivado',
-            preview: await goals.previewLifecycle(userId, goalId, {
-              lifecycle,
-              allocations,
-            }),
-            present,
-            confirm: (previewToken) =>
-              goals.confirmLifecycle(userId, goalId, {
+        toolResult(
+          'preview-goal-lifecycle',
+          context?.requestContext,
+          async () => {
+            const userId = requireUserId(context?.requestContext);
+            return stagePreview({
+              store: pending,
+              userId,
+              actionType: 'preview-goal-lifecycle',
+              summary:
+                lifecycle === 'pause'
+                  ? 'Objetivo pausado'
+                  : 'Objetivo reactivado',
+              preview: await goals.previewLifecycle(userId, goalId, {
                 lifecycle,
                 allocations,
-                previewToken,
               }),
-          });
-        }),
+              present,
+              confirm: (previewToken) =>
+                goals.confirmLifecycle(userId, goalId, {
+                  lifecycle,
+                  allocations,
+                  previewToken,
+                }),
+            });
+          },
+        ),
     }),
 
     previewGoalCompletion: createTool({
@@ -215,21 +231,26 @@ export function createGoalTools(
         ...GoalCompletionPreviewWireSchema.shape,
       }),
       execute: ({ goalId, ...body }, context) =>
-        toolResult(async () => {
-          const userId = requireUserId(context?.requestContext);
-          return stagePreview({
-            store: pending,
-            userId,
-            summary: 'Objetivo completado',
-            preview: await goals.previewCompletion(userId, goalId, body),
-            present,
-            confirm: (previewToken) =>
-              goals.confirmCompletion(userId, goalId, {
-                ...body,
-                previewToken,
-              }),
-          });
-        }),
+        toolResult(
+          'preview-goal-completion',
+          context?.requestContext,
+          async () => {
+            const userId = requireUserId(context?.requestContext);
+            return stagePreview({
+              store: pending,
+              userId,
+              actionType: 'preview-goal-completion',
+              summary: 'Objetivo completado',
+              preview: await goals.previewCompletion(userId, goalId, body),
+              present,
+              confirm: (previewToken) =>
+                goals.confirmCompletion(userId, goalId, {
+                  ...body,
+                  previewToken,
+                }),
+            });
+          },
+        ),
     }),
   };
 }
@@ -270,7 +291,7 @@ export function createContributionTools(
         'Context needed before recording a saving or investment: eligible goals, monthly targets, and existing savings places with ids.',
       inputSchema: z.object({}),
       execute: (_input, context) =>
-        toolResult(() =>
+        toolResult('get-contribution-context', context?.requestContext, () =>
           contributions.getContext(requireUserId(context?.requestContext)),
         ),
     }),
@@ -281,7 +302,7 @@ export function createContributionTools(
         'Stages recording money the user actually saved or invested ("ahorré", "invertí"; execute via confirmPendingAction), split across goals by the current allocation. Currency defaults to ARS. If the user has a single savings place it is used automatically. Otherwise kind "saving" requires a place (existing placeId or a new name). USD bought with pesos: send arsSpent.',
       inputSchema: z.object({ draft: ToolSavingContributionDraftSchema }),
       execute: ({ draft }, context) =>
-        toolResult(async () => {
+        toolResult('preview-saving', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
           const place = await resolveSavingsPlace(
             contributions,
@@ -305,6 +326,7 @@ export function createContributionTools(
           return stagePreview({
             store: pending,
             userId,
+            actionType: 'preview-saving',
             summary:
               validDraft.kind === 'investment'
                 ? 'Inversión registrada'
@@ -329,7 +351,7 @@ export function createContributionTools(
         draft: SavingContributionDraftWireSchema,
       }),
       execute: ({ contributionId, draft }, context) =>
-        toolResult(async () => {
+        toolResult('preview-saving-edit', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
           const { preview } = await contributions.previewSavingEdit(
             userId,
@@ -337,6 +359,7 @@ export function createContributionTools(
             draft,
           );
           pending.set(userId, {
+            actionType: 'preview-saving-edit',
             summary: 'Aporte corregido',
             run: () =>
               contributions.updateSaving(userId, contributionId, { draft }),
@@ -351,9 +374,10 @@ export function createContributionTools(
         'Stages deleting a recorded saving or investment (execute via confirmPendingAction).',
       inputSchema: z.object({ contributionId: ContributionIdSchema }),
       execute: ({ contributionId }, context) =>
-        toolResult(() => {
+        toolResult('preview-saving-delete', context?.requestContext, () => {
           const userId = requireUserId(context?.requestContext);
           pending.set(userId, {
+            actionType: 'preview-saving-delete',
             summary: 'Aporte eliminado',
             run: () => contributions.deleteSaving(userId, contributionId),
           });

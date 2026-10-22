@@ -189,12 +189,12 @@ describeWhenSafe('NotificationsService', () => {
       const [o] = mine(other, claimed);
       await service.markSent(d.id, at(SLOT));
       await service.markSent(o.id, at(SLOT));
-      await service.markAnswered(u);
+      expect(await service.markAnswered(u)).toBe(true);
       const closed = await service.closeExpired(at('2026-10-22T00:30:00Z'));
       expect(mine(u, closed)).toEqual([]);
       expect(mine(other, closed)).toHaveLength(1);
       expect((await rowsOf(u))[0].status).toBe('answered');
-      await service.markAnswered(other);
+      expect(await service.markAnswered(other)).toBe(false);
       expect((await rowsOf(other))[0].status).toBe('closed');
     });
 

@@ -28,6 +28,8 @@ const envSchema = z
     CHAT_CHANNEL: z.enum(['whatsapp', 'telegram']).optional(),
     TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
     WEB_APP_URL: z.url().optional(),
+    POSTHOG_TOKEN: z.string().min(1).optional(),
+    POSTHOG_HOST: z.url().default('https://us.i.posthog.com'),
   })
   .superRefine((env, ctx) => {
     if (env.CHAT_CHANNEL && !env.WEB_APP_URL) {

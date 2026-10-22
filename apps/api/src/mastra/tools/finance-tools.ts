@@ -87,7 +87,7 @@ export function createFinanceTools(
         "Lists available fixed and custom categories for expenses and incomes. Always use before recording or editing an income or expense to map to an existing fixed category or custom sourceId. Never choose uncategorized. If unclear or no match, ask the user before writing. Only use { kind: 'custom', name } if the user explicitly requests or approves creating a new category.",
       inputSchema: z.object({}),
       execute: (_input, context) =>
-        toolResult(() =>
+        toolResult('list-categories', context?.requestContext, () =>
           withWorkspace(context, (workspace) => ({
             expense: {
               recurring: toKindLabels(RECURRING_EXPENSE_SOURCES),
@@ -108,7 +108,7 @@ export function createFinanceTools(
         "Current month income, expenses, estimated margin and contributions, plus the user's income/expense records with ids and savings places.",
       inputSchema: z.object({}),
       execute: (_input, context) =>
-        toolResult(() =>
+        toolResult('get-finances-summary', context?.requestContext, () =>
           withWorkspace(context, (workspace) => ({
             month: workspace.month,
             goalDedicationPercentage: workspace.goalDedicationPercentage,
@@ -130,7 +130,7 @@ export function createFinanceTools(
         effectiveMonth: MonthSchema.optional(),
       }),
       execute: (input, context) =>
-        toolResult(async () => {
+        toolResult('record-expense', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
           const effectiveMonth =
             input.effectiveMonth ?? todayInArgentina().month;
@@ -141,6 +141,7 @@ export function createFinanceTools(
             });
           if (input.draft.recurring) {
             pending.set(userId, {
+              actionType: 'record-expense',
               summary: 'Gasto mensual registrado',
               run: write,
             });
@@ -152,6 +153,7 @@ export function createFinanceTools(
           }
           const created = await write();
           undo.set(userId, {
+            actionType: 'record-expense',
             summary: 'Gasto eliminado',
             run: () => expenses.delete(userId, created.id, effectiveMonth),
           });
@@ -165,7 +167,7 @@ export function createFinanceTools(
         'Records an income. Currency defaults to ARS and effectiveMonth to current month. recurring=false is one-time for draft.effectiveMonth (written immediately, undoable). recurring=true is monthly from draft.effectiveMonth (stages a preview; execute via confirmPendingAction). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
       inputSchema: z.object({ draft: ToolIncomeDraftSchema }),
       execute: (input, context) =>
-        toolResult(async () => {
+        toolResult('record-income', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
           const draft = {
             ...input.draft,
@@ -175,6 +177,7 @@ export function createFinanceTools(
           const write = () => incomes.create(userId, { draft });
           if (draft.recurring) {
             pending.set(userId, {
+              actionType: 'record-income',
               summary: 'Ingreso mensual registrado',
               run: write,
             });
@@ -182,6 +185,7 @@ export function createFinanceTools(
           }
           const created = await write();
           undo.set(userId, {
+            actionType: 'record-income',
             summary: 'Ingreso eliminado',
             run: () => incomes.delete(userId, created.id),
           });
@@ -199,10 +203,11 @@ export function createFinanceTools(
         effectiveMonth: MonthSchema.optional(),
       }),
       execute: ({ id, draft, effectiveMonth }, context) =>
-        toolResult(() => {
+        toolResult('update-expense', context?.requestContext, () => {
           const userId = requireUserId(context?.requestContext);
           const month = effectiveMonth ?? todayInArgentina().month;
           pending.set(userId, {
+            actionType: 'update-expense',
             summary: 'Gasto actualizado',
             run: () =>
               expenses.update(userId, id, {
@@ -228,10 +233,11 @@ export function createFinanceTools(
         effectiveMonth: MonthSchema.optional(),
       }),
       execute: ({ id, effectiveMonth }, context) =>
-        toolResult(() => {
+        toolResult('delete-expense', context?.requestContext, () => {
           const userId = requireUserId(context?.requestContext);
           const month = effectiveMonth ?? todayInArgentina().month;
           pending.set(userId, {
+            actionType: 'delete-expense',
             summary: 'Gasto eliminado',
             run: () => expenses.delete(userId, id, month),
           });
@@ -245,13 +251,14 @@ export function createFinanceTools(
         'Stages replacing an income record (execute via confirmPendingAction). Currency defaults to ARS and effectiveMonth to current month. Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
       inputSchema: z.object({ id: IdSchema, draft: ToolIncomeDraftSchema }),
       execute: ({ id, draft: rawDraft }, context) =>
-        toolResult(() => {
+        toolResult('update-income', context?.requestContext, () => {
           const userId = requireUserId(context?.requestContext);
           const draft = {
             ...rawDraft,
             effectiveMonth: rawDraft.effectiveMonth ?? todayInArgentina().month,
           };
           pending.set(userId, {
+            actionType: 'update-income',
             summary: 'Ingreso actualizado',
             run: () => incomes.update(userId, id, { draft }),
           });
@@ -265,9 +272,10 @@ export function createFinanceTools(
         'Stages deleting an income record (execute via confirmPendingAction).',
       inputSchema: z.object({ id: IdSchema }),
       execute: ({ id }, context) =>
-        toolResult(() => {
+        toolResult('delete-income', context?.requestContext, () => {
           const userId = requireUserId(context?.requestContext);
           pending.set(userId, {
+            actionType: 'delete-income',
             summary: 'Ingreso eliminado',
             run: () => incomes.delete(userId, id),
           });
