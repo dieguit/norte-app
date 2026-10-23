@@ -10,7 +10,10 @@ const delivery = (n: number) => ({
   type: 'day_close_checkin' as const,
   jid: `jid${n}@lid`,
 });
-const { message, timeoutMessage } = NOTIFICATION_DEFINITIONS.day_close_checkin;
+const {
+  message,
+  reply: { timeoutMessage },
+} = NOTIFICATION_DEFINITIONS.day_close_checkin;
 
 function setup({ withChannel = true } = {}) {
   const memory = {
@@ -97,6 +100,15 @@ describe('NotificationsCron', () => {
       'dm:jid2@lid',
       timeoutMessage,
     );
+  });
+
+  it('skips timeout message for expired deliveries with no reply definition', async () => {
+    const { cron, adapter, notifications } = setup();
+    notifications.closeExpired.mockResolvedValue([
+      { ...delivery(2), type: 'savings_digest' as const },
+    ]);
+    await cron.run(NOW);
+    expect(adapter.postMessage).not.toHaveBeenCalled();
   });
 
   it('closes a delivery whose send fails and keeps going', async () => {

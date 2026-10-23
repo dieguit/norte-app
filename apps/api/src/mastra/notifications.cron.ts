@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { MASTRA } from '@mastra/nestjs';
 import type { Mastra } from '@mastra/core/mastra';
-import { NOTIFICATION_DEFINITIONS } from '../notifications/notification-definitions';
+import { definitionOf } from '../notifications/notification-definitions';
 import {
   NotificationsService,
   type NotificationDelivery,
@@ -37,10 +37,12 @@ export class NotificationsCron {
     const channel = this.channel;
     if (!channel) return;
     for (const delivery of await this.notifications.closeExpired(now)) {
+      const text = definitionOf(delivery.type).reply?.timeoutMessage;
+      if (!text) continue;
       await this.send(
         channel,
         delivery,
-        NOTIFICATION_DEFINITIONS[delivery.type].timeoutMessage,
+        text,
         now,
       ).catch((error: unknown) =>
         this.logger.error(
@@ -50,10 +52,12 @@ export class NotificationsCron {
     }
     for (const delivery of await this.notifications.claimDue(now)) {
       try {
+        const message = definitionOf(delivery.type).message;
+        if (!message) continue;
         await this.send(
           channel,
           delivery,
-          NOTIFICATION_DEFINITIONS[delivery.type].message,
+          message,
           now,
         );
         await this.notifications.markSent(delivery.id, now);
