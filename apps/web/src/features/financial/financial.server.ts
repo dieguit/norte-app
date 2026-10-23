@@ -18,7 +18,7 @@ export async function callFinancialApi(path: string, init: RequestInit = {}) {
   if (!token) throw redirect({ to: '/sign-in/$', params: { _splat: '' } })
   const headers = new Headers(init.headers)
   headers.set('Authorization', `Bearer ${token}`)
-  const response = await fetch(`${process.env.API_BASE_URL ?? 'http://localhost:3001'}${path}`, {
+  const response = await fetch(`${process.env.API_BASE_URL ?? 'http://localhost:3000'}${path}`, {
     ...init,
     headers,
     cache: 'no-store',

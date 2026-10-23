@@ -24,7 +24,7 @@ describe('web API client', () => {
 
     const items = await listPlaceholderItems()
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/placeholder')
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/placeholder')
     expect(items[0]?.title).toBe('TODO: fetched placeholder')
   })
 })

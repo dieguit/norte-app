@@ -49,6 +49,7 @@ describe('norte agent', () => {
     expect(text).toContain('getNotificationSettings');
     expect(text).toContain('day_close_checkin');
     expect(text).toContain('sólo podés ayudar con sus finanzas');
+    expect(text).toContain('Aviso de espera');
   });
 
   it('omits links when no web app url is configured', () => {

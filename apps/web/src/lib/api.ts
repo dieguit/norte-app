@@ -3,7 +3,7 @@ import {
   type PlaceholderItemList,
 } from '@repo/shared-types'
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 export async function listPlaceholderItems(): Promise<PlaceholderItemList> {
   const response = await fetch(`${API_URL}/placeholder`)

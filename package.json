@@ -18,6 +18,7 @@
     "db:test:up": "docker compose up -d postgres-test",
     "db:test:down": "docker compose stop postgres-test",
     "db:test:logs": "docker compose logs -f postgres-test",
+    "mastra:studio": "npx -y mastra studio -p 3001 -s 3000 --server-api-prefix /agents",
     "lint": "turbo run lint",
     "fallow:audit": "fallow audit --base main --gate all",
     "test": "turbo run test",

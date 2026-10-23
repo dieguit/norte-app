@@ -30,6 +30,7 @@
     "@mastra/core": "^1.78.0",
     "@mastra/memory": "^1.38.0",
     "@mastra/nestjs": "^0.2.37",
+    "@mastra/observability": "^1.21.0",
     "@mastra/pg": "^1.31.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",

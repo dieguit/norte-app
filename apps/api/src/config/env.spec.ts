@@ -5,7 +5,7 @@ describe('validateEnv', () => {
   const validEnv = {
     DATABASE_URL: 'postgres://user:pass@localhost:5432/db',
     NODE_ENV: 'development',
-    PORT: '3001',
+    PORT: '3000',
     CLERK_SECRET_KEY: 'placeholder',
     CLERK_ISSUER_URL: 'https://clerk.example.test',
     CLERK_AUTHORIZED_PARTIES: 'http://localhost:3100',
@@ -20,7 +20,7 @@ describe('validateEnv', () => {
     const result = validateEnv(validEnv);
     expect(result.DATABASE_URL).toBe(validEnv.DATABASE_URL);
     expect(result.NODE_ENV).toBe('development');
-    expect(result.PORT).toBe(3001);
+    expect(result.PORT).toBe(3000);
   });
 
   it('throws when DATABASE_URL is missing', () => {
@@ -38,10 +38,10 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...validEnv, NODE_ENV: 'staging' })).toThrow();
   });
 
-  it('defaults PORT to 3001 when missing', () => {
+  it('defaults PORT to 3000 when missing', () => {
     const rest = { ...validEnv, PORT: undefined };
     const result = validateEnv(rest);
-    expect(result.PORT).toBe(3001);
+    expect(result.PORT).toBe(3000);
   });
 
   it('defaults NODE_ENV to development when missing', () => {

@@ -1,7 +1,12 @@
 import type { ChannelConfig } from '@mastra/core/channels';
 import { Mastra } from '@mastra/core/mastra';
 import { SimpleAuth } from '@mastra/core/server';
-import { PostgresStore } from '@mastra/pg';
+import {
+  MastraStorageExporter,
+  Observability,
+  SensitiveDataFilter,
+} from '@mastra/observability';
+import { PostgresStoreVNext } from '@mastra/pg';
 import type { Env } from '../config/env';
 import { createNorteAgent } from './agents/norte-agent';
 import type { NorteServices } from './services';
@@ -26,10 +31,24 @@ export function createMastra(
     agents: {
       norteAgent: createNorteAgent(env, options),
     },
-    storage: new PostgresStore({
+    // ponytail: observability shares the app DB; point at a dedicated DB or ClickHouse if span volume grows.
+    storage: new PostgresStoreVNext({
       id: 'mastra-storage',
       connectionString: env.DATABASE_URL,
       schemaName: 'mastra',
+      observability: {
+        connectionString: env.DATABASE_URL,
+        schemaName: 'mastra',
+      },
+    }),
+    observability: new Observability({
+      configs: {
+        default: {
+          serviceName: 'norte-api',
+          exporters: [new MastraStorageExporter()],
+          spanOutputProcessors: [new SensitiveDataFilter()],
+        },
+      },
     }),
     server: {
       auth: new SimpleAuth({

@@ -14,6 +14,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ZodValidationPipe());
   app.enableCors({
     origin: config.get('CLERK_AUTHORIZED_PARTIES', { infer: true }),
+    credentials: true,
   });
 
   const docConfig = new DocumentBuilder()
