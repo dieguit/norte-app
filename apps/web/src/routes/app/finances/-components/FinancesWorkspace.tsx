@@ -14,15 +14,31 @@ import { useFinancesMonth } from "./useFinancesMonth";
 
 export type FinancesWorkspaceData = FinancesWorkspace;
 
+export type FinancesTab = "incomes" | "expenses" | "savings";
+export const FINANCES_TAB_PATHS = {
+  incomes: "/app/finances/incomes",
+  expenses: "/app/finances/expenses",
+  savings: "/app/finances/savings",
+} as const satisfies Record<FinancesTab, string>;
+
 export function FinancesWorkspace({
   workspace,
   initialMonth = new Date().toISOString().slice(0, 7),
+  tab,
+  onTabChange,
 }: {
   workspace: FinancesWorkspaceData;
   initialMonth?: string;
+  tab?: FinancesTab;
+  onTabChange?: (tab: FinancesTab) => void;
 }) {
   const { selectedMonth, selectMonth, current, loadingMonth, loadError } = useFinancesMonth(workspace, initialMonth);
-  const [activeTab, setActiveTab] = useState("incomes");
+  const [localTab, setLocalTab] = useState<FinancesTab>("incomes");
+  const activeTab = tab ?? localTab;
+  const changeTab = (value: string) => {
+    setLocalTab(value as FinancesTab);
+    onTabChange?.(value as FinancesTab);
+  };
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
@@ -56,7 +72,7 @@ export function FinancesWorkspace({
       {loadingMonth && <p role="status">Cargando finanzas del mes…</p>}
       {loadError && <p role="alert">No pudimos cargar las finanzas de este mes.</p>}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={changeTab}>
         <TabsList className="h-10 p-1">
           <TabsTrigger className="px-3 py-1 text-base" value="incomes">
             Ingresos

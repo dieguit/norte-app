@@ -673,4 +673,15 @@ describe("FinancesWorkspace", () => {
       screen.getByRole("heading", { name: "Editar gasto" }),
     ).toBeInTheDocument();
   });
+
+  describe("controlled tab", () => {
+    it("shows the tab from props and reports tab changes", async () => {
+      const user = userEvent.setup();
+      const onTabChange = vi.fn();
+      render(<FinancesWorkspace workspace={sampleWorkspace as never} initialMonth="2026-08" tab="expenses" onTabChange={onTabChange} />);
+      expect(screen.getByRole("heading", { name: "Gastos de Agosto de 2026" })).toBeInTheDocument();
+      await user.click(screen.getByRole("tab", { name: "Ahorros" }));
+      expect(onTabChange).toHaveBeenCalledWith("savings");
+    });
+  });
 });

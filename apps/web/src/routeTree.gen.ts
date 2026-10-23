@@ -9,21 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as AppRouteRouteImport } from './routes/app/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AppFinancesRouteRouteImport } from './routes/app/finances/route'
-import { Route as AppGoalsRouteRouteImport } from './routes/app/goals/route'
-import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$deviceId/route'
-import { Route as LinkWhatsappRouteImport } from './routes/link/whatsapp'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
-import { Route as AppFinancesIndexRouteImport } from './routes/app/finances/index'
+import { Route as LinkWhatsappRouteImport } from './routes/link/whatsapp'
+import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$deviceId/route'
+import { Route as AppGoalsRouteRouteImport } from './routes/app/goals/route'
+import { Route as AppFinancesRouteRouteImport } from './routes/app/finances/route'
 import { Route as AppGoalsIndexRouteImport } from './routes/app/goals/index'
+import { Route as AppFinancesIndexRouteImport } from './routes/app/finances/index'
+import { Route as AppFinancesSavingsRouteImport } from './routes/app/finances/savings'
+import { Route as AppFinancesIncomesRouteImport } from './routes/app/finances/incomes'
+import { Route as AppFinancesExpensesRouteImport } from './routes/app/finances/expenses'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRouteRoute = AppRouteRouteImport.update({
@@ -31,9 +34,9 @@ const AppRouteRoute = AppRouteRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -41,19 +44,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppFinancesRouteRoute = AppFinancesRouteRouteImport.update({
-  id: '/finances',
-  path: '/finances',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppGoalsRouteRoute = AppGoalsRouteRouteImport.update({
-  id: '/goals',
-  path: '/goals',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const InformeDeviceIdRouteRoute = InformeDeviceIdRouteRouteImport.update({
-  id: '/informe/$deviceId',
-  path: '/informe/$deviceId',
+const SignInSplatRoute = SignInSplatRouteImport.update({
+  id: '/sign-in/$',
+  path: '/sign-in/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LinkWhatsappRoute = LinkWhatsappRouteImport.update({
@@ -61,20 +54,45 @@ const LinkWhatsappRoute = LinkWhatsappRouteImport.update({
   path: '/link/whatsapp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignInSplatRoute = SignInSplatRouteImport.update({
-  id: '/sign-in/$',
-  path: '/sign-in/$',
+const InformeDeviceIdRouteRoute = InformeDeviceIdRouteRouteImport.update({
+  id: '/informe/$deviceId',
+  path: '/informe/$deviceId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppGoalsRouteRoute = AppGoalsRouteRouteImport.update({
+  id: '/goals',
+  path: '/goals',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppFinancesRouteRoute = AppFinancesRouteRouteImport.update({
+  id: '/finances',
+  path: '/finances',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppGoalsIndexRoute = AppGoalsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppGoalsRouteRoute,
 } as any)
 const AppFinancesIndexRoute = AppFinancesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppFinancesRouteRoute,
 } as any)
-const AppGoalsIndexRoute = AppGoalsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppGoalsRouteRoute,
+const AppFinancesSavingsRoute = AppFinancesSavingsRouteImport.update({
+  id: '/savings',
+  path: '/savings',
+  getParentRoute: () => AppFinancesRouteRoute,
+} as any)
+const AppFinancesIncomesRoute = AppFinancesIncomesRouteImport.update({
+  id: '/incomes',
+  path: '/incomes',
+  getParentRoute: () => AppFinancesRouteRoute,
+} as any)
+const AppFinancesExpensesRoute = AppFinancesExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
+  getParentRoute: () => AppFinancesRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -87,6 +105,9 @@ export interface FileRoutesByFullPath {
   '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
+  '/app/finances/expenses': typeof AppFinancesExpensesRoute
+  '/app/finances/incomes': typeof AppFinancesIncomesRoute
+  '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances/': typeof AppFinancesIndexRoute
   '/app/goals/': typeof AppGoalsIndexRoute
 }
@@ -97,6 +118,9 @@ export interface FileRoutesByTo {
   '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app': typeof AppIndexRoute
+  '/app/finances/expenses': typeof AppFinancesExpensesRoute
+  '/app/finances/incomes': typeof AppFinancesIncomesRoute
+  '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances': typeof AppFinancesIndexRoute
   '/app/goals': typeof AppGoalsIndexRoute
 }
@@ -111,6 +135,9 @@ export interface FileRoutesById {
   '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
+  '/app/finances/expenses': typeof AppFinancesExpensesRoute
+  '/app/finances/incomes': typeof AppFinancesIncomesRoute
+  '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances/': typeof AppFinancesIndexRoute
   '/app/goals/': typeof AppGoalsIndexRoute
 }
@@ -126,6 +153,9 @@ export interface FileRouteTypes {
     | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
+    | '/app/finances/expenses'
+    | '/app/finances/incomes'
+    | '/app/finances/savings'
     | '/app/finances/'
     | '/app/goals/'
   fileRoutesByTo: FileRoutesByTo
@@ -136,6 +166,9 @@ export interface FileRouteTypes {
     | '/link/whatsapp'
     | '/sign-in/$'
     | '/app'
+    | '/app/finances/expenses'
+    | '/app/finances/incomes'
+    | '/app/finances/savings'
     | '/app/finances'
     | '/app/goals'
   id:
@@ -149,6 +182,9 @@ export interface FileRouteTypes {
     | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
+    | '/app/finances/expenses'
+    | '/app/finances/incomes'
+    | '/app/finances/savings'
     | '/app/finances/'
     | '/app/goals/'
   fileRoutesById: FileRoutesById
@@ -164,11 +200,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -178,11 +214,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -192,25 +228,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/app/finances': {
-      id: '/app/finances'
-      path: '/finances'
-      fullPath: '/app/finances'
-      preLoaderRoute: typeof AppFinancesRouteRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/app/goals': {
-      id: '/app/goals'
-      path: '/goals'
-      fullPath: '/app/goals'
-      preLoaderRoute: typeof AppGoalsRouteRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/informe/$deviceId': {
-      id: '/informe/$deviceId'
-      path: '/informe/$deviceId'
-      fullPath: '/informe/$deviceId'
-      preLoaderRoute: typeof InformeDeviceIdRouteRouteImport
+    '/sign-in/$': {
+      id: '/sign-in/$'
+      path: '/sign-in/$'
+      fullPath: '/sign-in/$'
+      preLoaderRoute: typeof SignInSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/link/whatsapp': {
@@ -220,19 +242,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LinkWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sign-in/$': {
-      id: '/sign-in/$'
-      path: '/sign-in/$'
-      fullPath: '/sign-in/$'
-      preLoaderRoute: typeof SignInSplatRouteImport
+    '/informe/$deviceId': {
+      id: '/informe/$deviceId'
+      path: '/informe/$deviceId'
+      fullPath: '/informe/$deviceId'
+      preLoaderRoute: typeof InformeDeviceIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/finances/': {
-      id: '/app/finances/'
-      path: '/'
-      fullPath: '/app/finances/'
-      preLoaderRoute: typeof AppFinancesIndexRouteImport
-      parentRoute: typeof AppFinancesRouteRoute
+    '/app/goals': {
+      id: '/app/goals'
+      path: '/goals'
+      fullPath: '/app/goals'
+      preLoaderRoute: typeof AppGoalsRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/finances': {
+      id: '/app/finances'
+      path: '/finances'
+      fullPath: '/app/finances'
+      preLoaderRoute: typeof AppFinancesRouteRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/app/goals/': {
       id: '/app/goals/'
@@ -241,14 +270,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGoalsIndexRouteImport
       parentRoute: typeof AppGoalsRouteRoute
     }
+    '/app/finances/': {
+      id: '/app/finances/'
+      path: '/'
+      fullPath: '/app/finances/'
+      preLoaderRoute: typeof AppFinancesIndexRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
+    '/app/finances/savings': {
+      id: '/app/finances/savings'
+      path: '/savings'
+      fullPath: '/app/finances/savings'
+      preLoaderRoute: typeof AppFinancesSavingsRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
+    '/app/finances/incomes': {
+      id: '/app/finances/incomes'
+      path: '/incomes'
+      fullPath: '/app/finances/incomes'
+      preLoaderRoute: typeof AppFinancesIncomesRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
+    '/app/finances/expenses': {
+      id: '/app/finances/expenses'
+      path: '/expenses'
+      fullPath: '/app/finances/expenses'
+      preLoaderRoute: typeof AppFinancesExpensesRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
   }
 }
 
 interface AppFinancesRouteRouteChildren {
+  AppFinancesExpensesRoute: typeof AppFinancesExpensesRoute
+  AppFinancesIncomesRoute: typeof AppFinancesIncomesRoute
+  AppFinancesSavingsRoute: typeof AppFinancesSavingsRoute
   AppFinancesIndexRoute: typeof AppFinancesIndexRoute
 }
 
 const AppFinancesRouteRouteChildren: AppFinancesRouteRouteChildren = {
+  AppFinancesExpensesRoute: AppFinancesExpensesRoute,
+  AppFinancesIncomesRoute: AppFinancesIncomesRoute,
+  AppFinancesSavingsRoute: AppFinancesSavingsRoute,
   AppFinancesIndexRoute: AppFinancesIndexRoute,
 }
 
@@ -294,13 +357,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
