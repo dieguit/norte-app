@@ -169,6 +169,13 @@
       "when": 1792798624975,
       "tag": "0023_notifications_savings_digest",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792799172853,
+      "tag": "0024_benefits",
+      "breakpoints": true
     }
   ]
 }
