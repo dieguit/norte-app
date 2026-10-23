@@ -146,4 +146,19 @@ describe('AppShell', () => {
     expect(goalsLinks[1]?.getAttribute('aria-current')).toBe('page')
     expect(screen.getAllByRole('link', { name: 'Inicio' })[0]?.getAttribute('aria-current')).toBeNull()
   })
+
+  it('shows Finanzas subitems only in the desktop navigation', () => {
+    currentPathname = '/app/finances/expenses'
+    render(
+      <AppShell>
+        <Home home={mockHome} roadmap={emptyRoadmap} />
+      </AppShell>,
+    )
+
+    for (const name of ['Ingresos', 'Gastos', 'Ahorros']) {
+      expect(screen.getAllByRole('link', { name })).toHaveLength(1)
+    }
+    expect(screen.getByRole('link', { name: 'Gastos' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Gastos' })).toHaveAttribute('href', '/app/finances/expenses')
+  })
 })
