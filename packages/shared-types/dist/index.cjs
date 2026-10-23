@@ -37,6 +37,14 @@ __export(index_exports, {
   AllocationChangePreviewSchema: () => AllocationChangePreviewSchema,
   AllocationChangeStaleSchema: () => AllocationChangeStaleSchema,
   AllocationChangeUpdatedSchema: () => AllocationChangeUpdatedSchema,
+  BENEFIT_CAP_PERIODS: () => BENEFIT_CAP_PERIODS,
+  BENEFIT_CATEGORIES: () => BENEFIT_CATEGORIES,
+  BENEFIT_CATEGORY_LABELS: () => BENEFIT_CATEGORY_LABELS,
+  BENEFIT_KINDS: () => BENEFIT_KINDS,
+  BenefitCatalogResponseSchema: () => BenefitCatalogResponseSchema,
+  BenefitCategorySchema: () => BenefitCategorySchema,
+  BenefitPreferencesSchema: () => BenefitPreferencesSchema,
+  CARD_NETWORKS: () => CARD_NETWORKS,
   ConfirmAllocationChangeWireSchema: () => ConfirmAllocationChangeWireSchema,
   ConfirmGoalCompletionWireSchema: () => ConfirmGoalCompletionWireSchema,
   ConfirmGoalCreationWireSchema: () => ConfirmGoalCreationWireSchema,
@@ -97,6 +105,7 @@ __export(index_exports, {
   HomeRoadmapMissingSchema: () => HomeRoadmapMissingSchema,
   HomeRoadmapPresentSchema: () => HomeRoadmapPresentSchema,
   HomeRoadmapResponseSchema: () => HomeRoadmapResponseSchema,
+  INSTRUMENT_TYPES: () => INSTRUMENT_TYPES,
   IncomeDraftSchema: () => IncomeDraftSchema,
   IncomeMutationResponseSchema: () => IncomeMutationResponseSchema,
   InitialHomeStateSchema: () => InitialHomeStateSchema,
@@ -106,6 +115,7 @@ __export(index_exports, {
   NotificationTimeSchema: () => NotificationTimeSchema,
   NotificationTypeSchema: () => NotificationTypeSchema,
   ONE_TIME_EXPENSE_SOURCES: () => ONE_TIME_EXPENSE_SOURCES,
+  PROVIDER_KINDS: () => PROVIDER_KINDS,
   PlaceholderItemListSchema: () => PlaceholderItemListSchema,
   PlaceholderItemSchema: () => PlaceholderItemSchema,
   PlaceholderStatusSchema: () => PlaceholderStatusSchema,
@@ -133,6 +143,7 @@ __export(index_exports, {
   SavingsPlaceMutationResponseSchema: () => SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema: () => SavingsTransferResponseSchema,
   SavingsTransferSchema: () => SavingsTransferSchema,
+  UpdateBenefitPreferencesSchema: () => UpdateBenefitPreferencesSchema,
   UpdateNotificationSettingSchema: () => UpdateNotificationSettingSchema,
   UpdatePlaceholderItemSchema: () => UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema: () => UpdateSavingContributionWireSchema,
@@ -1069,7 +1080,10 @@ function parseGoalCreationSubmission(input, currentMonth) {
 
 // src/notification.schema.ts
 var import_zod13 = require("zod");
-var NOTIFICATION_TYPES = ["day_close_checkin"];
+var NOTIFICATION_TYPES = [
+  "day_close_checkin",
+  "savings_digest"
+];
 var NotificationTypeSchema = import_zod13.z.enum(NOTIFICATION_TYPES);
 var NotificationTimeSchema = import_zod13.z.string().regex(
   /^([01]\d|2[0-3]):(00|30)$/,
@@ -1090,6 +1104,87 @@ var UpdateNotificationSettingSchema = import_zod13.z.object({
 }).refine((v) => v.enabled !== void 0 || v.time !== void 0, {
   message: "Indic\xE1 si activar/desactivar o el horario."
 });
+
+// src/benefits.schema.ts
+var import_zod14 = require("zod");
+var BENEFIT_CATEGORIES = [
+  "supermercado",
+  "combustible",
+  "gastronomia",
+  "cine",
+  "farmacia",
+  "indumentaria",
+  "viajes",
+  "tecnologia",
+  "otros"
+];
+var BenefitCategorySchema = import_zod14.z.enum(BENEFIT_CATEGORIES);
+var BENEFIT_CATEGORY_LABELS = {
+  supermercado: "Supermercado",
+  combustible: "Combustible",
+  gastronomia: "Gastronom\xEDa",
+  cine: "Cine",
+  farmacia: "Farmacia",
+  indumentaria: "Indumentaria",
+  viajes: "Viajes",
+  tecnologia: "Tecnolog\xEDa",
+  otros: "Otros"
+};
+var BENEFIT_KINDS = [
+  "discount",
+  "cashback",
+  "installments",
+  "nxm"
+];
+var BENEFIT_CAP_PERIODS = [
+  "transaction",
+  "day",
+  "week",
+  "month"
+];
+var PROVIDER_KINDS = [
+  "bank",
+  "network",
+  "wallet",
+  "membership"
+];
+var INSTRUMENT_TYPES = [
+  "credit",
+  "debit",
+  "prepaid",
+  "membership"
+];
+var CARD_NETWORKS = ["visa", "mastercard", "amex", "cabal"];
+var BenefitCatalogResponseSchema = import_zod14.z.object({
+  providers: import_zod14.z.array(
+    import_zod14.z.object({
+      slug: import_zod14.z.string(),
+      name: import_zod14.z.string(),
+      kind: import_zod14.z.enum(PROVIDER_KINDS),
+      instruments: import_zod14.z.array(
+        import_zod14.z.object({
+          slug: import_zod14.z.string(),
+          label: import_zod14.z.string(),
+          network: import_zod14.z.enum(CARD_NETWORKS).nullable(),
+          type: import_zod14.z.enum(INSTRUMENT_TYPES),
+          tier: import_zod14.z.string().nullable()
+        })
+      )
+    })
+  ),
+  categories: import_zod14.z.array(
+    import_zod14.z.object({ slug: BenefitCategorySchema, label: import_zod14.z.string() })
+  )
+});
+var UpdateBenefitPreferencesSchema = import_zod14.z.object({
+  instrumentSlugs: import_zod14.z.array(import_zod14.z.string().min(1)).min(1, "Eleg\xED al menos una tarjeta, cuenta o membres\xEDa.").max(100),
+  categories: import_zod14.z.array(BenefitCategorySchema).min(1, "Eleg\xED al menos una categor\xEDa.")
+});
+var BenefitPreferencesSchema = import_zod14.z.object({
+  instrumentSlugs: import_zod14.z.array(import_zod14.z.string()),
+  categories: import_zod14.z.array(BenefitCategorySchema),
+  enabled: import_zod14.z.boolean()
+});
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AllocationChangeConfirmationSchema,
@@ -1099,6 +1194,14 @@ var UpdateNotificationSettingSchema = import_zod13.z.object({
   AllocationChangePreviewSchema,
   AllocationChangeStaleSchema,
   AllocationChangeUpdatedSchema,
+  BENEFIT_CAP_PERIODS,
+  BENEFIT_CATEGORIES,
+  BENEFIT_CATEGORY_LABELS,
+  BENEFIT_KINDS,
+  BenefitCatalogResponseSchema,
+  BenefitCategorySchema,
+  BenefitPreferencesSchema,
+  CARD_NETWORKS,
   ConfirmAllocationChangeWireSchema,
   ConfirmGoalCompletionWireSchema,
   ConfirmGoalCreationWireSchema,
@@ -1159,6 +1262,7 @@ var UpdateNotificationSettingSchema = import_zod13.z.object({
   HomeRoadmapMissingSchema,
   HomeRoadmapPresentSchema,
   HomeRoadmapResponseSchema,
+  INSTRUMENT_TYPES,
   IncomeDraftSchema,
   IncomeMutationResponseSchema,
   InitialHomeStateSchema,
@@ -1168,6 +1272,7 @@ var UpdateNotificationSettingSchema = import_zod13.z.object({
   NotificationTimeSchema,
   NotificationTypeSchema,
   ONE_TIME_EXPENSE_SOURCES,
+  PROVIDER_KINDS,
   PlaceholderItemListSchema,
   PlaceholderItemSchema,
   PlaceholderStatusSchema,
@@ -1195,6 +1300,7 @@ var UpdateNotificationSettingSchema = import_zod13.z.object({
   SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema,
   SavingsTransferSchema,
+  UpdateBenefitPreferencesSchema,
   UpdateNotificationSettingSchema,
   UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema,

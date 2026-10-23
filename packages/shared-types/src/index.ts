@@ -232,4 +232,23 @@ export {
   type UpdateNotificationSetting,
 } from "./notification.schema";
 
+export {
+  BENEFIT_CATEGORIES,
+  BenefitCategorySchema,
+  type BenefitCategory,
+  BENEFIT_CATEGORY_LABELS,
+  BENEFIT_KINDS,
+  type BenefitKind,
+  BENEFIT_CAP_PERIODS,
+  type BenefitCapPeriod,
+  PROVIDER_KINDS,
+  INSTRUMENT_TYPES,
+  CARD_NETWORKS,
+  BenefitCatalogResponseSchema,
+  type BenefitCatalogResponse,
+  UpdateBenefitPreferencesSchema,
+  type UpdateBenefitPreferences,
+  BenefitPreferencesSchema,
+  type BenefitPreferences,
+} from "./benefits.schema";
 

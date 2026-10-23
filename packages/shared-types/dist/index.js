@@ -911,7 +911,10 @@ function parseGoalCreationSubmission(input, currentMonth) {
 
 // src/notification.schema.ts
 import { z as z13 } from "zod";
-var NOTIFICATION_TYPES = ["day_close_checkin"];
+var NOTIFICATION_TYPES = [
+  "day_close_checkin",
+  "savings_digest"
+];
 var NotificationTypeSchema = z13.enum(NOTIFICATION_TYPES);
 var NotificationTimeSchema = z13.string().regex(
   /^([01]\d|2[0-3]):(00|30)$/,
@@ -932,6 +935,87 @@ var UpdateNotificationSettingSchema = z13.object({
 }).refine((v) => v.enabled !== void 0 || v.time !== void 0, {
   message: "Indic\xE1 si activar/desactivar o el horario."
 });
+
+// src/benefits.schema.ts
+import { z as z14 } from "zod";
+var BENEFIT_CATEGORIES = [
+  "supermercado",
+  "combustible",
+  "gastronomia",
+  "cine",
+  "farmacia",
+  "indumentaria",
+  "viajes",
+  "tecnologia",
+  "otros"
+];
+var BenefitCategorySchema = z14.enum(BENEFIT_CATEGORIES);
+var BENEFIT_CATEGORY_LABELS = {
+  supermercado: "Supermercado",
+  combustible: "Combustible",
+  gastronomia: "Gastronom\xEDa",
+  cine: "Cine",
+  farmacia: "Farmacia",
+  indumentaria: "Indumentaria",
+  viajes: "Viajes",
+  tecnologia: "Tecnolog\xEDa",
+  otros: "Otros"
+};
+var BENEFIT_KINDS = [
+  "discount",
+  "cashback",
+  "installments",
+  "nxm"
+];
+var BENEFIT_CAP_PERIODS = [
+  "transaction",
+  "day",
+  "week",
+  "month"
+];
+var PROVIDER_KINDS = [
+  "bank",
+  "network",
+  "wallet",
+  "membership"
+];
+var INSTRUMENT_TYPES = [
+  "credit",
+  "debit",
+  "prepaid",
+  "membership"
+];
+var CARD_NETWORKS = ["visa", "mastercard", "amex", "cabal"];
+var BenefitCatalogResponseSchema = z14.object({
+  providers: z14.array(
+    z14.object({
+      slug: z14.string(),
+      name: z14.string(),
+      kind: z14.enum(PROVIDER_KINDS),
+      instruments: z14.array(
+        z14.object({
+          slug: z14.string(),
+          label: z14.string(),
+          network: z14.enum(CARD_NETWORKS).nullable(),
+          type: z14.enum(INSTRUMENT_TYPES),
+          tier: z14.string().nullable()
+        })
+      )
+    })
+  ),
+  categories: z14.array(
+    z14.object({ slug: BenefitCategorySchema, label: z14.string() })
+  )
+});
+var UpdateBenefitPreferencesSchema = z14.object({
+  instrumentSlugs: z14.array(z14.string().min(1)).min(1, "Eleg\xED al menos una tarjeta, cuenta o membres\xEDa.").max(100),
+  categories: z14.array(BenefitCategorySchema).min(1, "Eleg\xED al menos una categor\xEDa.")
+});
+var BenefitPreferencesSchema = z14.object({
+  instrumentSlugs: z14.array(z14.string()),
+  categories: z14.array(BenefitCategorySchema),
+  enabled: z14.boolean()
+});
 export {
   AllocationChangeConfirmationSchema,
   AllocationChangeContextSchema,
@@ -940,6 +1024,14 @@ export {
   AllocationChangePreviewSchema,
   AllocationChangeStaleSchema,
   AllocationChangeUpdatedSchema,
+  BENEFIT_CAP_PERIODS,
+  BENEFIT_CATEGORIES,
+  BENEFIT_CATEGORY_LABELS,
+  BENEFIT_KINDS,
+  BenefitCatalogResponseSchema,
+  BenefitCategorySchema,
+  BenefitPreferencesSchema,
+  CARD_NETWORKS,
   ConfirmAllocationChangeWireSchema,
   ConfirmGoalCompletionWireSchema,
   ConfirmGoalCreationWireSchema,
@@ -1000,6 +1092,7 @@ export {
   HomeRoadmapMissingSchema,
   HomeRoadmapPresentSchema,
   HomeRoadmapResponseSchema,
+  INSTRUMENT_TYPES,
   IncomeDraftSchema,
   IncomeMutationResponseSchema,
   InitialHomeStateSchema,
@@ -1009,6 +1102,7 @@ export {
   NotificationTimeSchema,
   NotificationTypeSchema,
   ONE_TIME_EXPENSE_SOURCES,
+  PROVIDER_KINDS,
   PlaceholderItemListSchema,
   PlaceholderItemSchema,
   PlaceholderStatusSchema,
@@ -1036,6 +1130,7 @@ export {
   SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema,
   SavingsTransferSchema,
+  UpdateBenefitPreferencesSchema,
   UpdateNotificationSettingSchema,
   UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema,

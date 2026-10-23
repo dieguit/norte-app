@@ -10629,15 +10629,17 @@ interface PreviousMonthShortfall {
     amount: Money;
 }
 
-declare const NOTIFICATION_TYPES: readonly ["day_close_checkin"];
+declare const NOTIFICATION_TYPES: readonly ["day_close_checkin", "savings_digest"];
 declare const NotificationTypeSchema: z.ZodEnum<{
     day_close_checkin: "day_close_checkin";
+    savings_digest: "savings_digest";
 }>;
 type NotificationType = z.infer<typeof NotificationTypeSchema>;
 declare const NotificationTimeSchema: z.ZodString;
 declare const NotificationSettingSchema: z.ZodObject<{
     type: z.ZodEnum<{
         day_close_checkin: "day_close_checkin";
+        savings_digest: "savings_digest";
     }>;
     enabled: z.ZodBoolean;
     frequency: z.ZodLiteral<"daily">;
@@ -10648,6 +10650,7 @@ declare const NotificationSettingsResponseSchema: z.ZodObject<{
     settings: z.ZodArray<z.ZodObject<{
         type: z.ZodEnum<{
             day_close_checkin: "day_close_checkin";
+            savings_digest: "savings_digest";
         }>;
         enabled: z.ZodBoolean;
         frequency: z.ZodLiteral<"daily">;
@@ -10660,4 +10663,101 @@ declare const UpdateNotificationSettingSchema: z.ZodObject<{
 }, z.core.$strip>;
 type UpdateNotificationSetting = z.infer<typeof UpdateNotificationSettingSchema>;
 
-export { type AllocationChangeConfirmation, AllocationChangeConfirmationSchema, type AllocationChangeContext, AllocationChangeContextSchema, type AllocationChangeContextState, AllocationChangeContextStateSchema, type AllocationChangeDraftWire, AllocationChangeDraftWireSchema, type AllocationChangePreview, type AllocationChangePreviewResult, AllocationChangePreviewSchema, AllocationChangeStaleSchema, AllocationChangeUpdatedSchema, ConfirmAllocationChangeWireSchema, ConfirmGoalCompletionWireSchema, type ConfirmGoalCreationInput, ConfirmGoalCreationWireSchema, type ConfirmGoalEditInput, ConfirmGoalLifecycleWireSchema, type ConfirmSavingContributionWire, ConfirmSavingContributionWireSchema, type ContributionAllocationSummary, ContributionDraftWireBaseSchema, ContributionIdPathWireSchema, type ContributionKind, type ContributionSummary, ContributionSummarySchema, type CreatePlaceholderItem, CreatePlaceholderItemSchema, CreateSavingsPlaceSchema, type DeletePlaceholderItemResponse, DeletePlaceholderItemResponseSchema, type EligibleGoal, type ExpenseDraft, ExpenseDraftSchema, ExpenseMutationResponseSchema, FIXED_EXPENSE_SOURCES, FIXED_INCOME_SOURCES, type FinancesWorkspace, FinancesWorkspaceSchema, type FinancialOnboardingInput, FinancialOnboardingResponseSchema, FinancialOnboardingSchema, GoalCompletionCompletedSchema, type GoalCompletionConfirmation, GoalCompletionConfirmationSchema, type GoalCompletionContext, GoalCompletionContextPresentSchema, GoalCompletionContextSchema, type GoalCompletionContextState, GoalCompletionContextStateSchema, GoalCompletionInvalidSchema, type GoalCompletionPreview, type GoalCompletionPreviewResult, GoalCompletionPreviewSchema, GoalCompletionPreviewWireSchema, GoalCompletionStaleSchema, type GoalCompletionWithdrawalSummary, type GoalCreationConfirmation, GoalCreationConfirmationSchema, type GoalCreationContext, GoalCreationContextMissingSchema, GoalCreationContextPresentSchema, type GoalCreationContextState, GoalCreationContextStateSchema, GoalCreationContextWireSchema, GoalCreationCreatedSchema, type GoalCreationDraft, type GoalCreationDraftWire, GoalCreationDraftWireSchema, type GoalCreationPreview, type GoalCreationPreviewResult, GoalCreationPreviewSchema, GoalCreationStaleSchema, GoalEditConfirmWireSchema, GoalEditConfirmationSchema, type GoalEditRequestInput, GoalEditStaleSchema, GoalEditUpdatedSchema, type GoalFundingRow, GoalIdPathWireSchema, GoalLifecycleActionSchema, type GoalLifecycleConfirmation, GoalLifecycleConfirmationSchema, type GoalLifecycleContext, GoalLifecycleContextSchema, type GoalLifecyclePreview, type GoalLifecyclePreviewResult, GoalLifecyclePreviewSchema, GoalLifecyclePreviewWireSchema, GoalLifecycleStaleSchema, GoalLifecycleUpdatedSchema, GoalPlanContextPresentSchema, GoalPlanContextStateSchema, GoalPlanEditContextWireSchema, GoalPlanQueryWireSchema, type GoalPriority, type GoalProjection, type GoalStatus, type GoalStrategy, type GoalWorkspaceItem, GoalWorkspaceItemSchema, type GoalsAppState, type GoalsFinancialSummary, type GoalsWorkspace, type GoalsWorkspaceData, GoalsWorkspaceMissingSchema, GoalsWorkspacePresentSchema, GoalsWorkspaceSchema, type HomeQuery, HomeQuerySchema, type HomeRoadmapMissing, HomeRoadmapMissingSchema, type HomeRoadmapPresent, HomeRoadmapPresentSchema, type HomeRoadmapResponse, HomeRoadmapResponseSchema, type IncomeDraft, IncomeDraftSchema, IncomeMutationResponseSchema, type InitialHomeState, InitialHomeStateSchema, type InvestmentAvailability, type InvestmentContributionCurrencyState, type InvestmentContributionDataState, NOTIFICATION_TYPES, type NotificationSetting, NotificationSettingSchema, NotificationSettingsResponseSchema, NotificationTimeSchema, type NotificationType, NotificationTypeSchema, ONE_TIME_EXPENSE_SOURCES, type PlaceholderItem, type PlaceholderItemList, PlaceholderItemListSchema, PlaceholderItemSchema, type PlaceholderStatus, PlaceholderStatusSchema, type PreviewGoalEditInput, type PreviousMonthShortfall, type ProfileResponse, ProfileResponseSchema, RECURRING_EXPENSE_SOURCES, RenameSavingsPlaceSchema, type RoadmapData, RoadmapDataSchema, type RoadmapExpense, RoadmapExpenseSchema, type RoadmapFinances, RoadmapFinancesSchema, type RoadmapIncome, RoadmapIncomeSchema, type RoadmapMonth, RoadmapMonthSchema, type SavingAllocationPreview, type SavingContributionConfirmation, SavingContributionConfirmationSchema, type SavingContributionContext, SavingContributionContextMissingSchema, SavingContributionContextPresentSchema, SavingContributionContextSchema, type SavingContributionContextState, SavingContributionContextStateSchema, SavingContributionCreatedSchema, SavingContributionDeletedSchema, type SavingContributionDraftWire, SavingContributionDraftWireSchema, type SavingContributionEditPreview, SavingContributionEditPreviewSchema, type SavingContributionPreview, type SavingContributionPreviewResult, SavingContributionPreviewSchema, SavingContributionStaleSchema, type SavingContributionSummary, SavingContributionUpdatedSchema, type SavingDraft, type SavingDraftInput, type SavingPreviewResult, SavingsPlaceIdParamsSchema, SavingsPlaceMutationResponseSchema, SavingsTransferResponseSchema, SavingsTransferSchema, type UpdateNotificationSetting, UpdateNotificationSettingSchema, type UpdatePlaceholderItem, UpdatePlaceholderItemSchema, type UpdateSavingContributionWire, UpdateSavingContributionWireSchema, type UsdPurchaseDerivation, type UsdPurchaseInput, allocationEntrySchema, confirmGoalCreationSchema, confirmGoalEditSchema, createObjectiveSchema, deriveUsdPurchase, goalCreationDraftSchema, goalEditRequestSchema, goalImpactSchema, goalPlanSchema, goalPrioritySchema, goalStrategySchema, goalTypeSchema, investmentAvailabilitySchema, isExpenseIncludedInMonth, isIncomeIncludedInMonth, parseGoalCreationSubmission, previewGoalEditSchema };
+declare const BENEFIT_CATEGORIES: readonly ["supermercado", "combustible", "gastronomia", "cine", "farmacia", "indumentaria", "viajes", "tecnologia", "otros"];
+declare const BenefitCategorySchema: z.ZodEnum<{
+    supermercado: "supermercado";
+    combustible: "combustible";
+    gastronomia: "gastronomia";
+    cine: "cine";
+    farmacia: "farmacia";
+    indumentaria: "indumentaria";
+    viajes: "viajes";
+    tecnologia: "tecnologia";
+    otros: "otros";
+}>;
+type BenefitCategory = z.infer<typeof BenefitCategorySchema>;
+declare const BENEFIT_CATEGORY_LABELS: Record<BenefitCategory, string>;
+declare const BENEFIT_KINDS: readonly ["discount", "cashback", "installments", "nxm"];
+type BenefitKind = (typeof BENEFIT_KINDS)[number];
+declare const BENEFIT_CAP_PERIODS: readonly ["transaction", "day", "week", "month"];
+type BenefitCapPeriod = (typeof BENEFIT_CAP_PERIODS)[number];
+declare const PROVIDER_KINDS: readonly ["bank", "network", "wallet", "membership"];
+declare const INSTRUMENT_TYPES: readonly ["credit", "debit", "prepaid", "membership"];
+declare const CARD_NETWORKS: readonly ["visa", "mastercard", "amex", "cabal"];
+declare const BenefitCatalogResponseSchema: z.ZodObject<{
+    providers: z.ZodArray<z.ZodObject<{
+        slug: z.ZodString;
+        name: z.ZodString;
+        kind: z.ZodEnum<{
+            bank: "bank";
+            network: "network";
+            wallet: "wallet";
+            membership: "membership";
+        }>;
+        instruments: z.ZodArray<z.ZodObject<{
+            slug: z.ZodString;
+            label: z.ZodString;
+            network: z.ZodNullable<z.ZodEnum<{
+                visa: "visa";
+                mastercard: "mastercard";
+                amex: "amex";
+                cabal: "cabal";
+            }>>;
+            type: z.ZodEnum<{
+                membership: "membership";
+                credit: "credit";
+                debit: "debit";
+                prepaid: "prepaid";
+            }>;
+            tier: z.ZodNullable<z.ZodString>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    categories: z.ZodArray<z.ZodObject<{
+        slug: z.ZodEnum<{
+            supermercado: "supermercado";
+            combustible: "combustible";
+            gastronomia: "gastronomia";
+            cine: "cine";
+            farmacia: "farmacia";
+            indumentaria: "indumentaria";
+            viajes: "viajes";
+            tecnologia: "tecnologia";
+            otros: "otros";
+        }>;
+        label: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+type BenefitCatalogResponse = z.infer<typeof BenefitCatalogResponseSchema>;
+declare const UpdateBenefitPreferencesSchema: z.ZodObject<{
+    instrumentSlugs: z.ZodArray<z.ZodString>;
+    categories: z.ZodArray<z.ZodEnum<{
+        supermercado: "supermercado";
+        combustible: "combustible";
+        gastronomia: "gastronomia";
+        cine: "cine";
+        farmacia: "farmacia";
+        indumentaria: "indumentaria";
+        viajes: "viajes";
+        tecnologia: "tecnologia";
+        otros: "otros";
+    }>>;
+}, z.core.$strip>;
+type UpdateBenefitPreferences = z.infer<typeof UpdateBenefitPreferencesSchema>;
+declare const BenefitPreferencesSchema: z.ZodObject<{
+    instrumentSlugs: z.ZodArray<z.ZodString>;
+    categories: z.ZodArray<z.ZodEnum<{
+        supermercado: "supermercado";
+        combustible: "combustible";
+        gastronomia: "gastronomia";
+        cine: "cine";
+        farmacia: "farmacia";
+        indumentaria: "indumentaria";
+        viajes: "viajes";
+        tecnologia: "tecnologia";
+        otros: "otros";
+    }>>;
+    enabled: z.ZodBoolean;
+}, z.core.$strip>;
+type BenefitPreferences = z.infer<typeof BenefitPreferencesSchema>;
+
+export { type AllocationChangeConfirmation, AllocationChangeConfirmationSchema, type AllocationChangeContext, AllocationChangeContextSchema, type AllocationChangeContextState, AllocationChangeContextStateSchema, type AllocationChangeDraftWire, AllocationChangeDraftWireSchema, type AllocationChangePreview, type AllocationChangePreviewResult, AllocationChangePreviewSchema, AllocationChangeStaleSchema, AllocationChangeUpdatedSchema, BENEFIT_CAP_PERIODS, BENEFIT_CATEGORIES, BENEFIT_CATEGORY_LABELS, BENEFIT_KINDS, type BenefitCapPeriod, type BenefitCatalogResponse, BenefitCatalogResponseSchema, type BenefitCategory, BenefitCategorySchema, type BenefitKind, type BenefitPreferences, BenefitPreferencesSchema, CARD_NETWORKS, ConfirmAllocationChangeWireSchema, ConfirmGoalCompletionWireSchema, type ConfirmGoalCreationInput, ConfirmGoalCreationWireSchema, type ConfirmGoalEditInput, ConfirmGoalLifecycleWireSchema, type ConfirmSavingContributionWire, ConfirmSavingContributionWireSchema, type ContributionAllocationSummary, ContributionDraftWireBaseSchema, ContributionIdPathWireSchema, type ContributionKind, type ContributionSummary, ContributionSummarySchema, type CreatePlaceholderItem, CreatePlaceholderItemSchema, CreateSavingsPlaceSchema, type DeletePlaceholderItemResponse, DeletePlaceholderItemResponseSchema, type EligibleGoal, type ExpenseDraft, ExpenseDraftSchema, ExpenseMutationResponseSchema, FIXED_EXPENSE_SOURCES, FIXED_INCOME_SOURCES, type FinancesWorkspace, FinancesWorkspaceSchema, type FinancialOnboardingInput, FinancialOnboardingResponseSchema, FinancialOnboardingSchema, GoalCompletionCompletedSchema, type GoalCompletionConfirmation, GoalCompletionConfirmationSchema, type GoalCompletionContext, GoalCompletionContextPresentSchema, GoalCompletionContextSchema, type GoalCompletionContextState, GoalCompletionContextStateSchema, GoalCompletionInvalidSchema, type GoalCompletionPreview, type GoalCompletionPreviewResult, GoalCompletionPreviewSchema, GoalCompletionPreviewWireSchema, GoalCompletionStaleSchema, type GoalCompletionWithdrawalSummary, type GoalCreationConfirmation, GoalCreationConfirmationSchema, type GoalCreationContext, GoalCreationContextMissingSchema, GoalCreationContextPresentSchema, type GoalCreationContextState, GoalCreationContextStateSchema, GoalCreationContextWireSchema, GoalCreationCreatedSchema, type GoalCreationDraft, type GoalCreationDraftWire, GoalCreationDraftWireSchema, type GoalCreationPreview, type GoalCreationPreviewResult, GoalCreationPreviewSchema, GoalCreationStaleSchema, GoalEditConfirmWireSchema, GoalEditConfirmationSchema, type GoalEditRequestInput, GoalEditStaleSchema, GoalEditUpdatedSchema, type GoalFundingRow, GoalIdPathWireSchema, GoalLifecycleActionSchema, type GoalLifecycleConfirmation, GoalLifecycleConfirmationSchema, type GoalLifecycleContext, GoalLifecycleContextSchema, type GoalLifecyclePreview, type GoalLifecyclePreviewResult, GoalLifecyclePreviewSchema, GoalLifecyclePreviewWireSchema, GoalLifecycleStaleSchema, GoalLifecycleUpdatedSchema, GoalPlanContextPresentSchema, GoalPlanContextStateSchema, GoalPlanEditContextWireSchema, GoalPlanQueryWireSchema, type GoalPriority, type GoalProjection, type GoalStatus, type GoalStrategy, type GoalWorkspaceItem, GoalWorkspaceItemSchema, type GoalsAppState, type GoalsFinancialSummary, type GoalsWorkspace, type GoalsWorkspaceData, GoalsWorkspaceMissingSchema, GoalsWorkspacePresentSchema, GoalsWorkspaceSchema, type HomeQuery, HomeQuerySchema, type HomeRoadmapMissing, HomeRoadmapMissingSchema, type HomeRoadmapPresent, HomeRoadmapPresentSchema, type HomeRoadmapResponse, HomeRoadmapResponseSchema, INSTRUMENT_TYPES, type IncomeDraft, IncomeDraftSchema, IncomeMutationResponseSchema, type InitialHomeState, InitialHomeStateSchema, type InvestmentAvailability, type InvestmentContributionCurrencyState, type InvestmentContributionDataState, NOTIFICATION_TYPES, type NotificationSetting, NotificationSettingSchema, NotificationSettingsResponseSchema, NotificationTimeSchema, type NotificationType, NotificationTypeSchema, ONE_TIME_EXPENSE_SOURCES, PROVIDER_KINDS, type PlaceholderItem, type PlaceholderItemList, PlaceholderItemListSchema, PlaceholderItemSchema, type PlaceholderStatus, PlaceholderStatusSchema, type PreviewGoalEditInput, type PreviousMonthShortfall, type ProfileResponse, ProfileResponseSchema, RECURRING_EXPENSE_SOURCES, RenameSavingsPlaceSchema, type RoadmapData, RoadmapDataSchema, type RoadmapExpense, RoadmapExpenseSchema, type RoadmapFinances, RoadmapFinancesSchema, type RoadmapIncome, RoadmapIncomeSchema, type RoadmapMonth, RoadmapMonthSchema, type SavingAllocationPreview, type SavingContributionConfirmation, SavingContributionConfirmationSchema, type SavingContributionContext, SavingContributionContextMissingSchema, SavingContributionContextPresentSchema, SavingContributionContextSchema, type SavingContributionContextState, SavingContributionContextStateSchema, SavingContributionCreatedSchema, SavingContributionDeletedSchema, type SavingContributionDraftWire, SavingContributionDraftWireSchema, type SavingContributionEditPreview, SavingContributionEditPreviewSchema, type SavingContributionPreview, type SavingContributionPreviewResult, SavingContributionPreviewSchema, SavingContributionStaleSchema, type SavingContributionSummary, SavingContributionUpdatedSchema, type SavingDraft, type SavingDraftInput, type SavingPreviewResult, SavingsPlaceIdParamsSchema, SavingsPlaceMutationResponseSchema, SavingsTransferResponseSchema, SavingsTransferSchema, type UpdateBenefitPreferences, UpdateBenefitPreferencesSchema, type UpdateNotificationSetting, UpdateNotificationSettingSchema, type UpdatePlaceholderItem, UpdatePlaceholderItemSchema, type UpdateSavingContributionWire, UpdateSavingContributionWireSchema, type UsdPurchaseDerivation, type UsdPurchaseInput, allocationEntrySchema, confirmGoalCreationSchema, confirmGoalEditSchema, createObjectiveSchema, deriveUsdPurchase, goalCreationDraftSchema, goalEditRequestSchema, goalImpactSchema, goalPlanSchema, goalPrioritySchema, goalStrategySchema, goalTypeSchema, investmentAvailabilitySchema, isExpenseIncludedInMonth, isIncomeIncludedInMonth, parseGoalCreationSubmission, previewGoalEditSchema };
