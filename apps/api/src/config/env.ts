@@ -8,7 +8,7 @@ const envSchema = z
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),
-    PORT: z.coerce.number().int().min(0).max(65535).default(3001),
+    PORT: z.coerce.number().int().min(0).max(65535).default(3000),
     CLERK_SECRET_KEY: z.string().min(1),
     CLERK_ISSUER_URL: z.url(),
     CLERK_AUTHORIZED_PARTIES: z

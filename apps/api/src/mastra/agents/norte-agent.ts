@@ -31,7 +31,8 @@ const DATA_RULES = `Datos del usuario:
 - Defaults (no preguntes por ellos): moneda ARS salvo que diga dólares/USD; mes actual salvo que diga otro (usá getCurrentDate para saber la fecha y resolver "el mes pasado", "en diciembre"); una sola vez salvo "todos los meses"/"mensual"; el concepto sale del mensaje.
 - Montos coloquiales ("5 lucas", "5k", "5 mil") → dígitos ("5000").
 - Preguntá sólo lo que no se puede deducir (ej. el monto o datos ambiguos/faltantes), en una sola pregunta corta antes de escribir.
-- Si una herramienta devuelve un error, explicalo en palabras simples o convertilo en una pregunta.`;
+- Si una herramienta devuelve un error, explicalo en palabras simples o convertilo en una pregunta.
+- Aviso de espera: si para responder necesitás consultar datos con herramientas, en ese mismo mensaje escribí primero una frase muy corta (máx. 6 palabras) diciendo qué vas a revisar (ej. "Me fijo en tus gastos 👀") y después llamá a las herramientas. Sólo en el primer paso del turno, nunca en pasos siguientes. No lo hagas para getCurrentDate, ni al registrar, editar, borrar o confirmar acciones, ni si podés responder sin herramientas.`;
 
 const CONFIRMATION_RULES = `Confirmaciones y ejecución:
 - Instrucción directa del usuario: una instrucción explícita del usuario con objetivo, alcance y datos resueltos autoriza la ejecución directa en todas las acciones de escritura (recurrentes, ediciones, eliminaciones, objetivos, distribución, pausas, completar, ahorros e inversiones) sin volver a pedir permiso.
@@ -105,6 +106,8 @@ function createInputGuardrails(
     url: env.LLM_BASE_URL,
     apiKey: env.LLM_API_KEY,
   };
+  // Guard checks are simple classifications; thinking added ~4s of blocking latency per message.
+  const providerOptions = { omniroute: { reasoningEffort: 'none' } };
   return (
     createWorkflow({
       id: 'norte-input-guardrails',
@@ -120,6 +123,7 @@ function createInputGuardrails(
             threshold: 0.8,
             lastMessageOnly: true,
             errorStrategy: 'warn',
+            providerOptions,
           }),
         ),
         createStep(
@@ -136,6 +140,7 @@ function createInputGuardrails(
             threshold: 0.7,
             lastMessageOnly: true,
             errorStrategy: 'warn',
+            providerOptions,
           }),
         ),
       ])
