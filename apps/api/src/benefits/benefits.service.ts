@@ -1,8 +1,13 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type {
-  BenefitCapPeriod,
-  BenefitCategory,
-  BenefitKind,
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  BENEFIT_CATEGORIES,
+  BENEFIT_CATEGORY_LABELS,
+  type BenefitCapPeriod,
+  type BenefitCatalogResponse,
+  type BenefitCategory,
+  type BenefitKind,
+  type BenefitPreferences,
+  type UpdateBenefitPreferences,
 } from '@repo/shared-types';
 import {
   and,
@@ -20,7 +25,7 @@ import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { benefits, benefitUserPreferences } from './benefits.schema';
-import { INSTRUMENTS } from './catalog';
+import { CATALOG, INSTRUMENTS } from './catalog';
 import { formatDigest, rankBenefits, type MatchedBenefit } from './digest';
 import { runHarvest, type Extract, type SourceResult } from './harvest';
 
@@ -87,5 +92,76 @@ export class BenefitsService {
 
   async buildDigest(userId: string, now = new Date()): Promise<string | null> {
     return formatDigest(await this.findMatching(userId, now));
+  }
+
+  catalog(): BenefitCatalogResponse {
+    return {
+      providers: CATALOG.filter((p) => p.instruments.length).map(
+        ({ slug, name, kind, instruments }) => ({
+          slug,
+          name,
+          kind,
+          instruments: instruments.map((i) => ({
+            slug: i.slug,
+            label: i.label,
+            network: i.network ?? null,
+            type: i.type,
+            tier: i.tier ?? null,
+          })),
+        }),
+      ),
+      categories: BENEFIT_CATEGORIES.map((slug) => ({
+        slug,
+        label: BENEFIT_CATEGORY_LABELS[slug],
+      })),
+    };
+  }
+
+  async getPreferences(userId: string): Promise<BenefitPreferences> {
+    const [row] = await this.db
+      .select()
+      .from(benefitUserPreferences)
+      .where(eq(benefitUserPreferences.userId, userId));
+    const settings = await this.notifications.listSettings(userId);
+    return {
+      instrumentSlugs: row?.instrumentSlugs ?? [],
+      categories: (row?.categories ?? []) as BenefitPreferences['categories'],
+      enabled:
+        settings.find((s) => s.type === 'savings_digest')?.enabled ?? false,
+    };
+  }
+
+  // Saving the page is the opt-in: preferences and the digest setting are written together.
+  async savePreferences(
+    userId: string,
+    input: UpdateBenefitPreferences,
+  ): Promise<BenefitPreferences> {
+    const unknown = input.instrumentSlugs.filter(
+      (slug) => !INSTRUMENTS.has(slug),
+    );
+    if (unknown.length)
+      throw new BadRequestException(
+        `Instrumentos desconocidos: ${unknown.join(', ')}`,
+      );
+    const values = {
+      instrumentSlugs: [...new Set(input.instrumentSlugs)],
+      categories: [...new Set(input.categories)],
+    };
+    await this.db.transaction(async (tx) => {
+      await tx
+        .insert(benefitUserPreferences)
+        .values({ userId, ...values })
+        .onConflictDoUpdate({
+          target: benefitUserPreferences.userId,
+          set: values,
+        });
+      await this.notifications.updateSetting(
+        userId,
+        'savings_digest',
+        { enabled: true },
+        tx,
+      );
+    });
+    return this.getPreferences(userId);
   }
 }

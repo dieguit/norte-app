@@ -19,6 +19,7 @@ import { HomeModule } from './home/home.module';
 import { MastraIntegrationModule } from './mastra/mastra.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { BenefitsModule } from './benefits/benefits.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     HomeModule,
     WhatsappModule,
     NotificationsModule,
+    BenefitsModule,
     // Mastra registers a catch-all controller; must stay last so it doesn't shadow app routes.
     MastraIntegrationModule,
   ],

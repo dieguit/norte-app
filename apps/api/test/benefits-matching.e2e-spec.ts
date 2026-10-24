@@ -85,4 +85,29 @@ describeWhenSafe('BenefitsService matching', () => {
       service.buildDigest(`user_${randomUUID()}`, NOW),
     ).resolves.toBeNull();
   });
+
+  it('savePreferences stores and enables the digest atomically; rejects unknown slugs', async () => {
+    const u = `user_${randomUUID()}`;
+    await expect(
+      service.savePreferences(u, {
+        instrumentSlugs: ['nope'],
+        categories: ['cine'],
+      }),
+    ).rejects.toThrow('nope');
+    await expect(service.getPreferences(u)).resolves.toEqual({
+      instrumentSlugs: [],
+      categories: [],
+      enabled: false,
+    });
+    await expect(
+      service.savePreferences(u, {
+        instrumentSlugs: ['modo', 'modo'],
+        categories: ['cine'],
+      }),
+    ).resolves.toEqual({
+      instrumentSlugs: ['modo'],
+      categories: ['cine'],
+      enabled: true,
+    });
+  });
 });
