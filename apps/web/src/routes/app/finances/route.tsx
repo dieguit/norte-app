@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { getFinancesWorkspace } from '../../../features/financial/financial.functions'
 import { FinancialOnboarding } from '../-components/FinancialOnboarding'
 import { FINANCES_TAB_PATHS, FinancesWorkspace, type FinancesTab } from './-components/FinancesWorkspace'
@@ -35,5 +35,5 @@ function FinancesRoute() {
   const navigate = useNavigate()
   if (!data) return <FinancialOnboarding />
   const tab = (Object.keys(FINANCES_TAB_PATHS) as FinancesTab[]).find((key) => pathname === FINANCES_TAB_PATHS[key]) ?? 'incomes'
-  return <FinancesWorkspace workspace={data} tab={tab} onTabChange={(next) => void navigate({ to: FINANCES_TAB_PATHS[next] })} />
+  return <FinancesWorkspace workspace={data} tab={tab} onTabChange={(next) => void navigate({ to: FINANCES_TAB_PATHS[next] })} benefits={<Outlet />} />
 }

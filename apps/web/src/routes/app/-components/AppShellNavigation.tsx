@@ -13,6 +13,7 @@ const NAV_ITEMS = [
       { to: "/app/finances/incomes", label: "Ingresos" },
       { to: "/app/finances/expenses", label: "Gastos" },
       { to: "/app/finances/savings", label: "Ahorros" },
+      { to: "/app/finances/benefits", label: "Beneficios" },
     ],
   },
 ] as const;

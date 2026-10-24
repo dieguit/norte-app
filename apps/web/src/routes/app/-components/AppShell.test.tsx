@@ -155,7 +155,7 @@ describe('AppShell', () => {
       </AppShell>,
     )
 
-    for (const name of ['Ingresos', 'Gastos', 'Ahorros']) {
+    for (const name of ['Ingresos', 'Gastos', 'Ahorros', 'Beneficios']) {
       expect(screen.getAllByRole('link', { name })).toHaveLength(1)
     }
     expect(screen.getByRole('link', { name: 'Gastos' })).toHaveAttribute('aria-current', 'page')

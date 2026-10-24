@@ -683,5 +683,11 @@ describe("FinancesWorkspace", () => {
       await user.click(screen.getByRole("tab", { name: "Ahorros" }));
       expect(onTabChange).toHaveBeenCalledWith("savings");
     });
+
+    it("hides month controls on the benefits tab and renders the benefits slot", () => {
+      render(<FinancesWorkspace workspace={sampleWorkspace as never} initialMonth="2026-08" tab="benefits" benefits={<p>slot</p>} />);
+      expect(screen.getByText("slot")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Mes de finanzas")).not.toBeInTheDocument();
+    });
   });
 });
