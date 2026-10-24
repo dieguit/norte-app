@@ -17245,6 +17245,3558 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "uId3F",
+      "x": 880,
+      "y": 2326,
+      "name": "Inicio · Ruta (compartida)",
+      "width": 390,
+      "fill": "$background",
+      "layout": "vertical",
+      "gap": 4,
+      "padding": [
+        24,
+        20,
+        32,
+        20
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Hm7iq",
+          "name": "Route Header",
+          "width": "fill_container",
+          "padding": [
+            0,
+            0,
+            12,
+            0
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "uEKjn",
+              "name": "Titles",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QFWvq",
+                  "name": "Title",
+                  "fill": "$foreground",
+                  "content": "Tu hoja de ruta",
+                  "fontFamily": "$font-display",
+                  "fontSize": 22,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "ENslD",
+                  "name": "Sub",
+                  "fill": "$muted-foreground",
+                  "content": "Aportes y objetivos proyectados",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Wh8a5",
+          "name": "Load History",
+          "width": "fill_container",
+          "gap": 14,
+          "padding": [
+            4,
+            0,
+            8,
+            0
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Lg9xt",
+              "name": "Icon Slot",
+              "width": 22,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "FZKjB",
+                  "name": "Icon",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "chevron-up",
+                  "library": "lucide",
+                  "fill": "$accent-brand"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "GBEGU",
+              "name": "Label",
+              "fill": "$accent-brand",
+              "content": "Ver meses anteriores",
+              "fontFamily": "$font-sans",
+              "fontSize": 13,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "H6xEXn",
+          "name": "Agosto 2026",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "RmWxM",
+              "name": "Rail",
+              "width": 22,
+              "height": 66,
+              "layout": "vertical",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "eLNdk",
+                  "name": "Line In",
+                  "fill": "#14202D40",
+                  "width": 2,
+                  "height": 8
+                },
+                {
+                  "type": "ellipse",
+                  "id": "PsUiV",
+                  "name": "Dot",
+                  "fill": "$foreground",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "rectangle",
+                  "id": "ZuwTu",
+                  "name": "Line Out",
+                  "fill": "#14202D40",
+                  "width": 2,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n4D3W",
+              "name": "Content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                4,
+                0,
+                22,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "qQ9SX",
+                  "name": "Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "W71sfG",
+                      "name": "Month",
+                      "fill": "$foreground",
+                      "content": "Agosto 2026",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "F8rNYs",
+                      "name": "Done",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "g1Tga6",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$positive"
+                        },
+                        {
+                          "type": "text",
+                          "id": "iCfyW",
+                          "name": "L",
+                          "fill": "$positive",
+                          "content": "Cumplido",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "SXdvc",
+                  "name": "Meta",
+                  "fill": "$muted-foreground",
+                  "content": "Aportaste $ 230.000 · US$ 600",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "G944dd",
+          "name": "Septiembre 2026",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "CMdMy",
+              "name": "Rail",
+              "width": 22,
+              "height": 66,
+              "layout": "vertical",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "s35kjx",
+                  "name": "Line In",
+                  "fill": "#14202D40",
+                  "width": 2,
+                  "height": 8
+                },
+                {
+                  "type": "ellipse",
+                  "id": "Su9YM",
+                  "name": "Dot",
+                  "fill": "$foreground",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "rectangle",
+                  "id": "U0bdZ",
+                  "name": "Line Out",
+                  "fill": "#14202D40",
+                  "width": 2,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VP1N7",
+              "name": "Content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                4,
+                0,
+                22,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Etubd",
+                  "name": "Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "cLg7P",
+                      "name": "Month",
+                      "fill": "$foreground",
+                      "content": "Septiembre 2026",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "v9s62U",
+                      "name": "Done",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "fwLJM",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$positive"
+                        },
+                        {
+                          "type": "text",
+                          "id": "HnanX",
+                          "name": "L",
+                          "fill": "$positive",
+                          "content": "Cumplido",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "hJIzk",
+                  "name": "Meta",
+                  "fill": "$muted-foreground",
+                  "content": "Aportaste $ 250.000 · US$ 628",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FRCyS",
+          "name": "Estás acá",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "hrQ8m",
+              "name": "Rail",
+              "width": 22,
+              "height": 95,
+              "layout": "vertical",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "DGYWE",
+                  "name": "Line In",
+                  "fill": "#14202D40",
+                  "width": 2,
+                  "height": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "kOJxE",
+                  "name": "Dot",
+                  "fill": "$background",
+                  "width": 16,
+                  "height": 16,
+                  "stroke": "$accent-brand",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "rectangle",
+                  "id": "Wbb0w",
+                  "name": "Line Out",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Lrpf9",
+              "name": "Content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                4,
+                0,
+                22,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Irna7",
+                  "name": "Overline",
+                  "fill": "$accent-brand",
+                  "content": "ESTÁS ACÁ · OCTUBRE 2026",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 11,
+                  "fontWeight": "600",
+                  "letterSpacing": 1.4
+                },
+                {
+                  "type": "text",
+                  "id": "t1O1s",
+                  "name": "Caption",
+                  "fill": "$muted-foreground",
+                  "content": "Llevás ahorrado para tus objetivos",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "r5dte",
+                  "name": "Totals",
+                  "gap": 10,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "E8dX5y",
+                      "name": "ARS",
+                      "fill": "$foreground",
+                      "content": "$ 1.820.000",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 20,
+                      "fontWeight": "600",
+                      "letterSpacing": -0.3
+                    },
+                    {
+                      "type": "text",
+                      "id": "BGcqU",
+                      "name": "Sep",
+                      "fill": "$subtle-foreground",
+                      "content": "·",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 18,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "wlxhV",
+                      "name": "USD",
+                      "fill": "$foreground",
+                      "content": "US$ 2.350",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 20,
+                      "fontWeight": "600",
+                      "letterSpacing": -0.3
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Dx9Vg",
+          "name": "Zapas",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "BAaaI",
+              "name": "Rail",
+              "width": 22,
+              "height": 127,
+              "layout": "vertical",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "k70Cp",
+                  "name": "Line In",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": 8
+                },
+                {
+                  "type": "ellipse",
+                  "id": "k38qvt",
+                  "name": "Dot",
+                  "fill": "$background",
+                  "width": 12,
+                  "height": 12,
+                  "stroke": "$foreground",
+                  "strokeWidth": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "cCNw9",
+                  "name": "Line Out",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "f11nDZ",
+              "name": "Content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                4,
+                0,
+                22,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XWddp",
+                  "name": "When",
+                  "fill": "$subtle-foreground",
+                  "content": "DIC 2026 · EN 2 MESES",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 11,
+                  "fontWeight": "600",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "frame",
+                  "id": "QfdsJ",
+                  "name": "Goal Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zXGok",
+                      "name": "Goal",
+                      "fill": "$foreground",
+                      "content": "Zapas",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "S7zH7F",
+                      "name": "Pct",
+                      "fill": "$muted-foreground",
+                      "content": "72%",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "I9i4G6",
+                  "name": "Progress",
+                  "width": "fill_container",
+                  "height": 6,
+                  "fill": "$muted",
+                  "cornerRadius": 3,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 3,
+                      "id": "nMeXR",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Fill",
+                      "fill": "$accent-brand",
+                      "width": 226,
+                      "height": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pQ7Ma",
+                  "name": "Meta Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "jgMlJ",
+                      "name": "Today Progress",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "mI1qL",
+                          "name": "Hoy",
+                          "fill": "$foreground",
+                          "content": "Hoy",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "xzMLB",
+                          "name": "Amounts",
+                          "fill": "$muted-foreground",
+                          "content": "$ 180.000 de $ 250.000",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dnagy",
+                  "name": "Realloc Note",
+                  "gap": 6,
+                  "padding": [
+                    2,
+                    0,
+                    0,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "bGrbB",
+                      "name": "I",
+                      "width": 13,
+                      "height": 13,
+                      "icon": "split",
+                      "library": "lucide",
+                      "fill": "$subtle-foreground"
+                    },
+                    {
+                      "type": "text",
+                      "id": "v839RH",
+                      "name": "T",
+                      "fill": "$subtle-foreground",
+                      "content": "Después, su 40% se reparte entre los demás",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "OR8uk",
+          "name": "Colchón financiero",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "kYrUg",
+              "name": "Rail",
+              "width": 22,
+              "height": 103,
+              "layout": "vertical",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "uCmkH",
+                  "name": "Line In",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": 8
+                },
+                {
+                  "type": "ellipse",
+                  "id": "XoEj3",
+                  "name": "Dot",
+                  "fill": "$background",
+                  "width": 12,
+                  "height": 12,
+                  "stroke": "$foreground",
+                  "strokeWidth": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "IWBp4",
+                  "name": "Line Out",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LAgFy",
+              "name": "Content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                4,
+                0,
+                22,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XjHPL",
+                  "name": "When",
+                  "fill": "$subtle-foreground",
+                  "content": "ENE 2027",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 11,
+                  "fontWeight": "600",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "frame",
+                  "id": "Z7I1Fb",
+                  "name": "Goal Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "saCjN",
+                      "name": "Goal",
+                      "fill": "$foreground",
+                      "content": "Colchón financiero",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "XENiZ",
+                      "name": "Pct",
+                      "fill": "$muted-foreground",
+                      "content": "47%",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wP0Wo",
+                  "name": "Progress",
+                  "width": "fill_container",
+                  "height": 6,
+                  "fill": "$muted",
+                  "cornerRadius": 3,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 3,
+                      "id": "keuGP",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Fill",
+                      "fill": "$accent-brand",
+                      "width": 148,
+                      "height": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TX4uC",
+                  "name": "Meta Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "C3MDjh",
+                      "name": "Today Progress",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "I2oUjd",
+                          "name": "Hoy",
+                          "fill": "$foreground",
+                          "content": "Hoy",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "mNpeV",
+                          "name": "Amounts",
+                          "fill": "$muted-foreground",
+                          "content": "US$ 1.400 de US$ 3.000",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "H5Jjub",
+          "name": "Casa propia",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ugF0T",
+              "name": "Rail",
+              "width": 22,
+              "height": 103,
+              "layout": "vertical",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "b3HXO",
+                  "name": "Line In",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": 8
+                },
+                {
+                  "type": "ellipse",
+                  "id": "mkQlW",
+                  "name": "Dot",
+                  "fill": "$background",
+                  "width": 12,
+                  "height": 12,
+                  "stroke": "$foreground",
+                  "strokeWidth": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "Yo3Ik",
+                  "name": "Line Out",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LO6BZ",
+              "name": "Content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                4,
+                0,
+                22,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "FYnZl",
+                  "name": "When",
+                  "fill": "$subtle-foreground",
+                  "content": "MAR 2030",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 11,
+                  "fontWeight": "600",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "frame",
+                  "id": "ttlJm",
+                  "name": "Goal Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "iO2Sm",
+                      "name": "Goal",
+                      "fill": "$foreground",
+                      "content": "Casa propia",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "QOjIt",
+                      "name": "Pct",
+                      "fill": "$muted-foreground",
+                      "content": "18%",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mni8s",
+                  "name": "Progress",
+                  "width": "fill_container",
+                  "height": 6,
+                  "fill": "$muted",
+                  "cornerRadius": 3,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 3,
+                      "id": "PobT5",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Fill",
+                      "fill": "$accent-brand",
+                      "width": 57,
+                      "height": 6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Z0ewWv",
+                  "name": "Meta Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Y5qeq",
+                      "name": "Today Progress",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "qhzwv",
+                          "name": "Hoy",
+                          "fill": "$foreground",
+                          "content": "Hoy",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "yq7b8",
+                          "name": "Amounts",
+                          "fill": "$muted-foreground",
+                          "content": "US$ 9.000 de US$ 50.000",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "F1cWt",
+          "name": "Sin fecha",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "rQPAs",
+              "name": "Rail",
+              "width": 22,
+              "height": 83,
+              "layout": "vertical",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "ezxB9",
+                  "name": "Line In",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": 8
+                },
+                {
+                  "type": "ellipse",
+                  "id": "JPa3M",
+                  "name": "Dot",
+                  "fill": "$background",
+                  "width": 10,
+                  "height": 10,
+                  "stroke": "$subtle-foreground",
+                  "strokeWidth": 1.5
+                },
+                {
+                  "type": "rectangle",
+                  "id": "sDOOF",
+                  "name": "Line Out",
+                  "fill": "$border",
+                  "width": 2,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d4RqO",
+              "name": "Content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                4,
+                0,
+                22,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "T5GyLx",
+                  "name": "Month",
+                  "fill": "$subtle-foreground",
+                  "content": "SIN FECHA PROYECTADA",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 11,
+                  "fontWeight": "600",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "frame",
+                  "id": "ctgws",
+                  "name": "Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "I0g5EP",
+                      "name": "Text",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "PaxPs",
+                          "name": "Goal",
+                          "fill": "$foreground",
+                          "content": "Viaje a Japón",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "K9iy7",
+                          "name": "Why",
+                          "fill": "$muted-foreground",
+                          "content": "No recibe aportes todavía",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "b6Uj0",
+                      "name": "Link",
+                      "gap": 4,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "I9WtDP",
+                          "name": "L",
+                          "fill": "$accent-brand",
+                          "content": "Planificar",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "YP2Tz",
+                          "name": "A",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "arrow-up-right",
+                          "library": "lucide",
+                          "fill": "$accent-brand"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "QRsvW",
+      "x": 1341,
+      "y": 2326,
+      "name": "Inicio",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$background",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "path",
+          "id": "uKKHl",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 56,
+          "name": "Map Grid",
+          "geometry": "M0 0v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m24-320v320m-384-320h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390m-390 24h390",
+          "viewBox": [
+            0,
+            0,
+            390,
+            320
+          ],
+          "width": 390,
+          "height": 260,
+          "stroke": "#3A6E540F",
+          "strokeWidth": 1
+        },
+        {
+          "type": "rectangle",
+          "id": "mhEWK",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 56,
+          "name": "Grid Fade",
+          "fill": {
+            "type": "gradient",
+            "gradientType": "linear",
+            "enabled": true,
+            "rotation": 180,
+            "size": {
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#FFFFFF00",
+                "position": 0.35
+              },
+              {
+                "color": "#FFFFFFFF",
+                "position": 1
+              }
+            ]
+          },
+          "width": 390,
+          "height": 260
+        },
+        {
+          "id": "B9U2Wj",
+          "type": "ref",
+          "ref": "lpuCm",
+          "name": "App Header",
+          "width": "fill_container"
+        },
+        {
+          "type": "frame",
+          "id": "Wdc0F",
+          "name": "Body",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": [
+            20,
+            20,
+            0,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "q83Dh5",
+              "name": "Title",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "P5GUXb",
+                  "name": "Title",
+                  "fill": "$foreground",
+                  "content": "Octubre 2026",
+                  "fontFamily": "$font-display",
+                  "fontSize": 26,
+                  "fontWeight": "600",
+                  "letterSpacing": -0.4
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DAATH",
+              "name": "Status",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "Osq5R",
+                  "type": "ref",
+                  "ref": "ti8Bt",
+                  "name": "Septiembre: faltó ahorrar US$ 120",
+                  "width": "fill_container",
+                  "descendants": {
+                    "jBCBA": {
+                      "content": "Septiembre: faltó ahorrar US$ 120"
+                    },
+                    "NmGAT": {
+                      "content": "Ponerse al día"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "yHPGC",
+              "name": "Targets",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "t3BEs",
+                  "name": "Targets Header",
+                  "width": "fill_container",
+                  "padding": [
+                    0,
+                    0,
+                    4,
+                    0
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Eilgx",
+                      "name": "Title",
+                      "fill": "$foreground",
+                      "content": "Metas de octubre",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "id": "NBPwB",
+                      "type": "ref",
+                      "ref": "QVAEi",
+                      "name": "Registrar",
+                      "height": 36,
+                      "padding": [
+                        0,
+                        14
+                      ],
+                      "gap": 6,
+                      "descendants": {
+                        "zUAr0": {
+                          "enabled": true,
+                          "width": 16,
+                          "height": 16
+                        },
+                        "VrWH5": {
+                          "content": "Registrar",
+                          "fontSize": 14
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qh1QH",
+                  "name": "Ahorro en pesos",
+                  "width": "fill_container",
+                  "stroke": "$border",
+                  "strokeWidth": {
+                    "top": 1
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "m54Lx",
+                      "name": "Icon Wrap",
+                      "width": 36,
+                      "height": 36,
+                      "fill": "$muted",
+                      "cornerRadius": 18,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "WOaWW",
+                          "name": "Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "piggy-bank",
+                          "library": "lucide",
+                          "fill": "$foreground"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DWFX6",
+                      "name": "Text",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "PgwFR",
+                          "name": "Label",
+                          "fill": "$foreground",
+                          "content": "Ahorro en pesos",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "yYJ8x",
+                          "name": "Progress",
+                          "width": "fill_container",
+                          "height": 4,
+                          "fill": "$muted",
+                          "cornerRadius": 2,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 2,
+                              "id": "FyooM",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Fill",
+                              "fill": "$foreground",
+                              "width": 161,
+                              "height": 4
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "wrUt6",
+                          "name": "Meta",
+                          "fill": "$muted-foreground",
+                          "content": "$ 180.000 de $ 250.000",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n0Sl3",
+                      "name": "Right",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "C0EvZn",
+                          "name": "Cap",
+                          "fill": "$subtle-foreground",
+                          "content": "Falta",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "qXt8J",
+                          "name": "Left",
+                          "fill": "$foreground",
+                          "content": "$ 70.000",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "c18OIA",
+                  "name": "Ahorro en dólares",
+                  "width": "fill_container",
+                  "stroke": "$border",
+                  "strokeWidth": {
+                    "top": 1
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "O87Z7O",
+                      "name": "Icon Wrap",
+                      "width": 36,
+                      "height": 36,
+                      "fill": "$muted",
+                      "cornerRadius": 18,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "S8LqC",
+                          "name": "Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "piggy-bank",
+                          "library": "lucide",
+                          "fill": "$foreground"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MdLRY",
+                      "name": "Text",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "MBjv6",
+                          "name": "Label",
+                          "fill": "$foreground",
+                          "content": "Ahorro en dólares",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "PdGwp",
+                          "name": "Progress",
+                          "width": "fill_container",
+                          "height": 4,
+                          "fill": "$muted",
+                          "cornerRadius": 2,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 2,
+                              "id": "c1l9p",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Fill",
+                              "fill": "$foreground",
+                              "width": 73,
+                              "height": 4
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "x7Hyi",
+                          "name": "Meta",
+                          "fill": "$muted-foreground",
+                          "content": "US$ 200 de US$ 628",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SOavY",
+                      "name": "Right",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "BDKgY",
+                          "name": "Cap",
+                          "fill": "$subtle-foreground",
+                          "content": "Falta",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Cb8bM",
+                          "name": "Left",
+                          "fill": "$foreground",
+                          "content": "US$ 428",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hCYfS",
+                  "name": "Inversión en pesos",
+                  "width": "fill_container",
+                  "stroke": "$border",
+                  "strokeWidth": {
+                    "top": 1
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "rBe0D",
+                      "name": "Icon Wrap",
+                      "width": 36,
+                      "height": 36,
+                      "fill": "$accent-brand-soft",
+                      "cornerRadius": 18,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "yRBM6",
+                          "name": "Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "trending-up",
+                          "library": "lucide",
+                          "fill": "$accent-brand"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "NGnBD",
+                      "name": "Text",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "S9E7Da",
+                          "name": "Label",
+                          "fill": "$foreground",
+                          "content": "Inversión en pesos",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "vpSqg",
+                          "name": "Progress",
+                          "width": "fill_container",
+                          "height": 4,
+                          "fill": "$muted",
+                          "cornerRadius": 2,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 2,
+                              "id": "R2vOs2",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Fill",
+                              "fill": "$positive",
+                              "width": 212,
+                              "height": 4
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "r1g7XU",
+                          "name": "Meta",
+                          "fill": "$muted-foreground",
+                          "content": "$ 100.000 de $ 100.000",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aHf2U",
+                      "name": "Right",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ZABfy",
+                          "name": "Done",
+                          "gap": 4,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "yioAs",
+                              "name": "I",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "$positive"
+                            },
+                            {
+                              "type": "text",
+                              "id": "aB0dj",
+                              "name": "L",
+                              "fill": "$positive",
+                              "content": "Cumplido",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "MszW7",
+              "name": "Route",
+              "width": "fill_container",
+              "fill": "$background",
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                16,
+                0,
+                32,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oufJ0",
+                  "name": "Route Header",
+                  "width": "fill_container",
+                  "padding": [
+                    0,
+                    0,
+                    12,
+                    0
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h0RNe",
+                      "name": "Titles",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "qDx2T",
+                          "name": "Title",
+                          "fill": "$foreground",
+                          "content": "Tu hoja de ruta",
+                          "fontFamily": "$font-display",
+                          "fontSize": 22,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "b8Zm5",
+                          "name": "Sub",
+                          "fill": "$muted-foreground",
+                          "content": "Aportes y objetivos proyectados",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pf7vX",
+                  "name": "Load History",
+                  "width": "fill_container",
+                  "gap": 14,
+                  "padding": [
+                    4,
+                    0,
+                    8,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "jcVjW",
+                      "name": "Icon Slot",
+                      "width": 22,
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "lc2tJ",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "chevron-up",
+                          "library": "lucide",
+                          "fill": "$accent-brand"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "TYJVy",
+                      "name": "Label",
+                      "fill": "$accent-brand",
+                      "content": "Ver meses anteriores",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "yD3v1",
+                  "name": "Agosto 2026",
+                  "width": "fill_container",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "KPwZh",
+                      "name": "Rail",
+                      "width": 22,
+                      "height": 66,
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "OzWXp",
+                          "name": "Line In",
+                          "fill": "#14202D40",
+                          "width": 2,
+                          "height": 8
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "vvOIg",
+                          "name": "Dot",
+                          "fill": "$foreground",
+                          "width": 10,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "P36OWj",
+                          "name": "Line Out",
+                          "fill": "#14202D40",
+                          "width": 2,
+                          "height": "fill_container"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Ss4b4",
+                      "name": "Content",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": [
+                        4,
+                        0,
+                        22,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "PU95j",
+                          "name": "Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "a48z7f",
+                              "name": "Month",
+                              "fill": "$foreground",
+                              "content": "Agosto 2026",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "JPoZb",
+                              "name": "Done",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "nt9d4",
+                                  "name": "Icon",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "check",
+                                  "library": "lucide",
+                                  "fill": "$positive"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "t1GkO",
+                                  "name": "L",
+                                  "fill": "$positive",
+                                  "content": "Cumplido",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "H4ou3p",
+                          "name": "Meta",
+                          "fill": "$muted-foreground",
+                          "content": "Aportaste $ 230.000 · US$ 600",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "p8XtoX",
+                  "name": "Septiembre 2026",
+                  "width": "fill_container",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "yUxHF",
+                      "name": "Rail",
+                      "width": 22,
+                      "height": 66,
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "FEXub",
+                          "name": "Line In",
+                          "fill": "#14202D40",
+                          "width": 2,
+                          "height": 8
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "gloLf",
+                          "name": "Dot",
+                          "fill": "$foreground",
+                          "width": 10,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "dT1MR",
+                          "name": "Line Out",
+                          "fill": "#14202D40",
+                          "width": 2,
+                          "height": "fill_container"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "j1GZNn",
+                      "name": "Content",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": [
+                        4,
+                        0,
+                        22,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "GkBjN",
+                          "name": "Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "L1QqXH",
+                              "name": "Month",
+                              "fill": "$foreground",
+                              "content": "Septiembre 2026",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "puuv5",
+                              "name": "Done",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "x6ycNI",
+                                  "name": "Icon",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "circle-alert",
+                                  "library": "lucide",
+                                  "fill": "$negative"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Aynfk",
+                                  "name": "L",
+                                  "fill": "$negative",
+                                  "content": "Faltó US$ 120",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "G2EdS",
+                          "name": "Meta",
+                          "fill": "$muted-foreground",
+                          "content": "Aportaste $ 250.000 · US$ 508",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Fm03t",
+                  "name": "Estás acá",
+                  "width": "fill_container",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "YvWqt",
+                      "name": "Rail",
+                      "width": 22,
+                      "height": 95,
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "H1A5Z",
+                          "name": "Line In",
+                          "fill": "#14202D40",
+                          "width": 2,
+                          "height": 4
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "ySs7n",
+                          "name": "Dot",
+                          "fill": "$background",
+                          "width": 16,
+                          "height": 16,
+                          "stroke": "$accent-brand",
+                          "strokeWidth": 4
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "fgead",
+                          "name": "Line Out",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": "fill_container"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "THaUY",
+                      "name": "Content",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": [
+                        4,
+                        0,
+                        22,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "P2T7d2",
+                          "name": "Overline",
+                          "fill": "$accent-brand",
+                          "content": "ESTÁS ACÁ · OCTUBRE 2026",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "600",
+                          "letterSpacing": 1.4
+                        },
+                        {
+                          "type": "text",
+                          "id": "qDRmM",
+                          "name": "Caption",
+                          "fill": "$muted-foreground",
+                          "content": "Llevás ahorrado para tus objetivos",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "mFwqZ",
+                          "name": "Totals",
+                          "gap": 10,
+                          "alignItems": "end",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "vZmMv",
+                              "name": "ARS",
+                              "fill": "$foreground",
+                              "content": "$ 1.820.000",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 20,
+                              "fontWeight": "600",
+                              "letterSpacing": -0.3
+                            },
+                            {
+                              "type": "text",
+                              "id": "A5cg6",
+                              "name": "Sep",
+                              "fill": "$subtle-foreground",
+                              "content": "·",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 18,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "aWyy6",
+                              "name": "USD",
+                              "fill": "$foreground",
+                              "content": "US$ 2.350",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 20,
+                              "fontWeight": "600",
+                              "letterSpacing": -0.3
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "UUGHO",
+                  "name": "Zapas",
+                  "width": "fill_container",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "VaKmS",
+                      "name": "Rail",
+                      "width": 22,
+                      "height": 127,
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "vXE2o",
+                          "name": "Line In",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": 8
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "jq6kt",
+                          "name": "Dot",
+                          "fill": "$background",
+                          "width": 12,
+                          "height": 12,
+                          "stroke": "$foreground",
+                          "strokeWidth": 2
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "sQcsI",
+                          "name": "Line Out",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": "fill_container"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Oh5Id",
+                      "name": "Content",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": [
+                        4,
+                        0,
+                        22,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "XSpH5",
+                          "name": "When",
+                          "fill": "$subtle-foreground",
+                          "content": "ALCANZADO · OCTUBRE 2026",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "600",
+                          "letterSpacing": 1.2
+                        },
+                        {
+                          "type": "frame",
+                          "id": "v2662z",
+                          "name": "Goal Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "RywRf",
+                              "name": "Goal",
+                              "fill": "$foreground",
+                              "content": "Zapas",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "in6T9",
+                              "name": "Pct",
+                              "fill": "$muted-foreground",
+                              "content": "100%",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "VwqWI",
+                          "name": "Progress",
+                          "width": "fill_container",
+                          "height": 6,
+                          "fill": "$muted",
+                          "cornerRadius": 3,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 3,
+                              "id": "I2f5b",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Fill",
+                              "fill": "$accent-brand",
+                              "width": 314,
+                              "height": 6
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "GwqTp",
+                          "name": "Meta Row",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jxzPA",
+                              "name": "Amounts",
+                              "fill": "$muted-foreground",
+                              "content": "$ 250.000 de $ 250.000",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "id": "KGQMx",
+                              "type": "ref",
+                              "ref": "WDehy",
+                              "name": "Completar",
+                              "height": 32,
+                              "padding": [
+                                0,
+                                12
+                              ],
+                              "descendants": {
+                                "FLkqv": {
+                                  "content": "Completar",
+                                  "fontSize": 13
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "rUFFX",
+                          "name": "Realloc Note",
+                          "gap": 6,
+                          "padding": [
+                            2,
+                            0,
+                            0,
+                            0
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "FYjTT",
+                              "name": "I",
+                              "width": 13,
+                              "height": 13,
+                              "icon": "split",
+                              "library": "lucide",
+                              "fill": "$subtle-foreground"
+                            },
+                            {
+                              "type": "text",
+                              "id": "K8vrRU",
+                              "name": "T",
+                              "fill": "$subtle-foreground",
+                              "content": "Al completarlo, su 40% se reparte entre los demás",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kndzy",
+                  "name": "Colchón financiero",
+                  "width": "fill_container",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "DrUc1",
+                      "name": "Rail",
+                      "width": 22,
+                      "height": 103,
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "vU4R8",
+                          "name": "Line In",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": 8
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "L4eY6",
+                          "name": "Dot",
+                          "fill": "$background",
+                          "width": 12,
+                          "height": 12,
+                          "stroke": "$foreground",
+                          "strokeWidth": 2
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "a1EXSe",
+                          "name": "Line Out",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": "fill_container"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "spbCI",
+                      "name": "Content",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": [
+                        4,
+                        0,
+                        22,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "lQVdS",
+                          "name": "When",
+                          "fill": "$subtle-foreground",
+                          "content": "ENE 2027 · EN 3 MESES",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "600",
+                          "letterSpacing": 1.2
+                        },
+                        {
+                          "type": "frame",
+                          "id": "dwhIw",
+                          "name": "Goal Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "m9fQez",
+                              "name": "Goal",
+                              "fill": "$foreground",
+                              "content": "Colchón financiero",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "mkPq0",
+                              "name": "Pct",
+                              "fill": "$muted-foreground",
+                              "content": "47%",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "VcrY7",
+                          "name": "Progress",
+                          "width": "fill_container",
+                          "height": 6,
+                          "fill": "$muted",
+                          "cornerRadius": 3,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 3,
+                              "id": "InPYD",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Fill",
+                              "fill": "$accent-brand",
+                              "width": 148,
+                              "height": 6
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "O75Vg1",
+                          "name": "Meta Row",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "PIv7J",
+                              "name": "Today Progress",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "vrSVw",
+                                  "name": "Hoy",
+                                  "fill": "$foreground",
+                                  "content": "Hoy",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "uiKqP",
+                                  "name": "Amounts",
+                                  "fill": "$muted-foreground",
+                                  "content": "US$ 1.400 de US$ 3.000",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nDwAQ",
+                  "name": "Casa propia",
+                  "width": "fill_container",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZVjCe",
+                      "name": "Rail",
+                      "width": 22,
+                      "height": 103,
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "q0Ort",
+                          "name": "Line In",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": 8
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "lrUrK",
+                          "name": "Dot",
+                          "fill": "$background",
+                          "width": 12,
+                          "height": 12,
+                          "stroke": "$foreground",
+                          "strokeWidth": 2
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "JpzMZ",
+                          "name": "Line Out",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": "fill_container"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "yoVyU",
+                      "name": "Content",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": [
+                        4,
+                        0,
+                        22,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Q2NATu",
+                          "name": "When",
+                          "fill": "$subtle-foreground",
+                          "content": "MAR 2030 · EN 4 AÑOS Y 5 MESES",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "600",
+                          "letterSpacing": 1.2
+                        },
+                        {
+                          "type": "frame",
+                          "id": "JP9ey",
+                          "name": "Goal Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "KbIcu",
+                              "name": "Goal",
+                              "fill": "$foreground",
+                              "content": "Casa propia",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "YzFsW",
+                              "name": "Pct",
+                              "fill": "$muted-foreground",
+                              "content": "18%",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "fDEES",
+                          "name": "Progress",
+                          "width": "fill_container",
+                          "height": 6,
+                          "fill": "$muted",
+                          "cornerRadius": 3,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 3,
+                              "id": "g3NI3",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Fill",
+                              "fill": "$accent-brand",
+                              "width": 57,
+                              "height": 6
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "GetGl",
+                          "name": "Meta Row",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "B6Iwuk",
+                              "name": "Today Progress",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "DriQR",
+                                  "name": "Hoy",
+                                  "fill": "$foreground",
+                                  "content": "Hoy",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "j8ENI",
+                                  "name": "Amounts",
+                                  "fill": "$muted-foreground",
+                                  "content": "US$ 9.000 de US$ 50.000",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "AwM1E",
+                              "name": "Badge",
+                              "fill": "$accent-brand-soft",
+                              "cornerRadius": 999,
+                              "padding": [
+                                2,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "Pqwaj",
+                                  "name": "L",
+                                  "fill": "$accent-brand",
+                                  "content": "A tiempo",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oCoGF",
+                  "name": "Sin fecha",
+                  "width": "fill_container",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "xkAe3",
+                      "name": "Rail",
+                      "width": 22,
+                      "height": 83,
+                      "layout": "vertical",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "HEZX1",
+                          "name": "Line In",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": 8
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "R8moX0",
+                          "name": "Dot",
+                          "fill": "$background",
+                          "width": 10,
+                          "height": 10,
+                          "stroke": "$subtle-foreground",
+                          "strokeWidth": 1.5
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "HhNVe",
+                          "name": "Line Out",
+                          "fill": "$border",
+                          "width": 2,
+                          "height": "fill_container"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "JuQHO",
+                      "name": "Content",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": [
+                        4,
+                        0,
+                        22,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "gqrcX",
+                          "name": "Month",
+                          "fill": "$subtle-foreground",
+                          "content": "SIN FECHA PROYECTADA",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "600",
+                          "letterSpacing": 1.2
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Din1L",
+                          "name": "Row",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Z9j2am",
+                              "name": "Text",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "w8Rkg",
+                                  "name": "Goal",
+                                  "fill": "$foreground",
+                                  "content": "Viaje a Japón",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "P3a8Z",
+                                  "name": "Why",
+                                  "fill": "$muted-foreground",
+                                  "content": "No recibe aportes todavía",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "GdLve",
+                              "name": "Link",
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "FYeF7",
+                                  "name": "L",
+                                  "fill": "$accent-brand",
+                                  "content": "Planificar",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "icon",
+                                  "id": "BOyGd",
+                                  "name": "A",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "arrow-up-right",
+                                  "library": "lucide",
+                                  "fill": "$accent-brand"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "MyoIh",
+          "type": "ref",
+          "ref": "eynGK",
+          "name": "Bottom Nav",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 768,
+          "descendants": {
+            "U2BEez": {
+              "fill": "$foreground"
+            },
+            "Z0EEN": {
+              "fill": "$foreground",
+              "fontWeight": "600"
+            },
+            "rqa5Y": {
+              "fill": "$subtle-foreground"
+            },
+            "JEGql": {
+              "fill": "$subtle-foreground",
+              "fontWeight": "500"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "u8TDA0",
+      "x": 1811,
+      "y": 2326,
+      "name": "Inicio · Alertas (tipos)",
+      "width": 430,
+      "fill": "$background",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": 20,
+      "children": [
+        {
+          "type": "frame",
+          "id": "n0qDg",
+          "name": "Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "id": "j7h1y",
+              "name": "Title",
+              "fill": "$foreground",
+              "content": "Alertas de Inicio",
+              "fontFamily": "$font-display",
+              "fontSize": 22,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "wbHEC",
+              "name": "Desc",
+              "fill": "$muted-foreground",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Solo aparecen si hay algo para hacer. Una franja por alerta, máximo 3; las de dinero primero.",
+              "lineHeight": 1.5,
+              "fontFamily": "$font-sans",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uBJQ2",
+          "name": "Componentes",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "text",
+              "id": "XYrri",
+              "name": "T",
+              "fill": "$subtle-foreground",
+              "content": "Componentes",
+              "fontFamily": "$font-sans",
+              "fontSize": 12,
+              "fontWeight": "600",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "ti8Bt",
+              "name": "Alert/Negative",
+              "reusable": true,
+              "width": 390,
+              "fill": "$negative-soft",
+              "cornerRadius": "$radius-md",
+              "gap": 10,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Q2z54N",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "circle-alert",
+                  "library": "lucide",
+                  "fill": "$negative"
+                },
+                {
+                  "type": "text",
+                  "id": "jBCBA",
+                  "name": "Text",
+                  "fill": "$foreground",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Alerta de dinero: acción requerida",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "mfqSq",
+                  "name": "Action",
+                  "height": 32,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NmGAT",
+                      "name": "Label",
+                      "fill": "$negative",
+                      "content": "Resolver",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jtFac",
+              "name": "Alert/Info",
+              "reusable": true,
+              "width": 390,
+              "fill": "$muted",
+              "cornerRadius": "$radius-md",
+              "gap": 10,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "frjUr",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "info",
+                  "library": "lucide",
+                  "fill": "$muted-foreground"
+                },
+                {
+                  "type": "text",
+                  "id": "Dc4mg",
+                  "name": "Text",
+                  "fill": "$foreground",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Alerta informativa: revisar el plan",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "Jnyr4",
+                  "name": "Action",
+                  "height": 32,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fITAU",
+                      "name": "Label",
+                      "fill": "$accent-brand",
+                      "content": "Revisar",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "q7oQo",
+          "name": "1 · Aporte faltante del mes anterior",
+          "width": "fill_container",
+          "stroke": "$border",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            16,
+            0,
+            0,
+            0
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "wy7X6",
+              "name": "Head",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "nAga6",
+                  "name": "T",
+                  "fill": "$foreground",
+                  "content": "1 · Aporte faltante del mes anterior",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "vaFy4",
+                  "name": "Tag",
+                  "fill": "$accent-brand-soft",
+                  "cornerRadius": 999,
+                  "padding": [
+                    2,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Br2Tw",
+                      "name": "L",
+                      "fill": "$accent-brand",
+                      "content": "Existe hoy",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "HjeMu",
+              "type": "ref",
+              "ref": "ti8Bt",
+              "name": "Septiembre: faltó ahorrar US$ 120",
+              "width": "fill_container",
+              "descendants": {
+                "jBCBA": {
+                  "content": "Septiembre: faltó ahorrar US$ 120"
+                },
+                "NmGAT": {
+                  "content": "Ponerse al día"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "eshTM",
+              "name": "Note",
+              "fill": "$subtle-foreground",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "previousMonthShortfalls. Abre el registro precargado con tipo, moneda, monto y mes.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-sans",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ehoR5",
+          "name": "2 · Varios faltantes",
+          "width": "fill_container",
+          "stroke": "$border",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            16,
+            0,
+            0,
+            0
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "ntLh9",
+              "name": "Head",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "IpAIa",
+                  "name": "T",
+                  "fill": "$foreground",
+                  "content": "2 · Varios faltantes",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "opXZp",
+                  "name": "Tag",
+                  "fill": "$accent-brand-soft",
+                  "cornerRadius": 999,
+                  "padding": [
+                    2,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "X25Qc",
+                      "name": "L",
+                      "fill": "$accent-brand",
+                      "content": "Existe hoy",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "v9hna2",
+              "type": "ref",
+              "ref": "ti8Bt",
+              "name": "Septiembre: faltó ahorrar US$ 120",
+              "width": "fill_container",
+              "descendants": {
+                "jBCBA": {
+                  "content": "Septiembre: faltó ahorrar US$ 120"
+                },
+                "NmGAT": {
+                  "content": "Ponerse al día"
+                }
+              }
+            },
+            {
+              "id": "d3Veb",
+              "type": "ref",
+              "ref": "ti8Bt",
+              "name": "Septiembre: faltó invertir $ 40.000",
+              "width": "fill_container",
+              "descendants": {
+                "jBCBA": {
+                  "content": "Septiembre: faltó invertir $ 40.000"
+                },
+                "NmGAT": {
+                  "content": "Ponerse al día"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "PPLFw",
+              "name": "Note",
+              "fill": "$subtle-foreground",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Una franja por faltante, ordenadas por monto. Más de 3 → la última dice “y 2 más”.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-sans",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "sB4ZD",
+          "name": "3 · Mes excedido",
+          "width": "fill_container",
+          "stroke": "$border",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            16,
+            0,
+            0,
+            0
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "baiym",
+              "name": "Head",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "y6aTwJ",
+                  "name": "T",
+                  "fill": "$foreground",
+                  "content": "3 · Mes excedido",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "JO9pi",
+                  "name": "Tag",
+                  "fill": "$muted",
+                  "cornerRadius": 999,
+                  "padding": [
+                    2,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HYrAu",
+                      "name": "L",
+                      "fill": "$muted-foreground",
+                      "content": "Propuesta",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "pq2rw",
+              "type": "ref",
+              "ref": "ti8Bt",
+              "name": "Octubre excedido",
+              "width": "fill_container",
+              "descendants": {
+                "jBCBA": {
+                  "content": "Octubre excedido · −$ 7.334"
+                },
+                "NmGAT": {
+                  "content": "Ver finanzas"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "mzSif",
+              "name": "Note",
+              "fill": "$subtle-foreground",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Gastos del mes superan ingresos. Lleva a Finanzas; reemplaza el resumen mensual que sacamos de Inicio.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-sans",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "B2ETD",
+          "name": "4 · Objetivo atrasado",
+          "width": "fill_container",
+          "stroke": "$border",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            16,
+            0,
+            0,
+            0
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Yeofj",
+              "name": "Head",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QFe69",
+                  "name": "T",
+                  "fill": "$foreground",
+                  "content": "4 · Objetivo atrasado",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "P1HIY",
+                  "name": "Tag",
+                  "fill": "$muted",
+                  "cornerRadius": 999,
+                  "padding": [
+                    2,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "J1UymR",
+                      "name": "L",
+                      "fill": "$muted-foreground",
+                      "content": "Propuesta",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "E7oFi",
+              "type": "ref",
+              "ref": "jtFac",
+              "name": "Colchón financiero se atrasó 1 mes",
+              "width": "fill_container",
+              "descendants": {
+                "Dc4mg": {
+                  "content": "Colchón financiero se atrasó 1 mes"
+                },
+                "fITAU": {
+                  "content": "Revisar"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "d0VHSu",
+              "name": "Note",
+              "fill": "$subtle-foreground",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "La proyección pasó la fecha deseada desde el mes pasado. Informativa: no hay deuda, hay que revisar el plan.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-sans",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "d74e8W",
+          "name": "5 · Objetivo sin aportes",
+          "width": "fill_container",
+          "stroke": "$border",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            16,
+            0,
+            0,
+            0
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "x6xe3w",
+              "name": "Head",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "vPvbJ",
+                  "name": "T",
+                  "fill": "$foreground",
+                  "content": "5 · Objetivo sin aportes",
+                  "fontFamily": "$font-sans",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "Gcen9",
+                  "name": "Tag",
+                  "fill": "$muted",
+                  "cornerRadius": 999,
+                  "padding": [
+                    2,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p8GKU",
+                      "name": "L",
+                      "fill": "$muted-foreground",
+                      "content": "Propuesta",
+                      "fontFamily": "$font-sans",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "P5IEv",
+              "type": "ref",
+              "ref": "jtFac",
+              "name": "Viaje a Japón no recibe aportes",
+              "width": "fill_container",
+              "descendants": {
+                "Dc4mg": {
+                  "content": "Viaje a Japón no recibe aportes"
+                },
+                "fITAU": {
+                  "content": "Planificar"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "tiTt3",
+              "name": "Note",
+              "fill": "$subtle-foreground",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Objetivo activo sin porcentaje asignado. Hoy solo se ve al final de la ruta.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-sans",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
