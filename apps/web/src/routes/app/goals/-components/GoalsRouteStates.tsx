@@ -1,22 +1,25 @@
+import { Target } from 'lucide-react'
+import { MapGrid } from '../../../../components/norte/MapGrid'
 import { Button } from '../../../../components/ui/button'
+
+const PULSE = 'animate-pulse bg-muted motion-reduce:animate-none'
 
 export function GoalsLoading() {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
-      <div>
-        <div className="h-9 w-48 animate-pulse motion-reduce:animate-none rounded-lg bg-[var(--surface-strong)]" aria-hidden="true" />
-        <div className="mt-2 h-5 w-80 animate-pulse motion-reduce:animate-none rounded-lg bg-[var(--surface-strong)]" aria-hidden="true" />
+    <div className="flex flex-col gap-6 px-5 pt-5">
+      <div className="flex items-center justify-between">
+        <div aria-hidden="true" className={`h-8 w-36 rounded-md ${PULSE}`} />
+        <div aria-hidden="true" className={`h-9 w-24 rounded-md ${PULSE}`} />
       </div>
-      <p role="status" className="text-sm text-[var(--sea-ink-soft)]">
-        Cargando objetivos…
-      </p>
-      <div className="flex flex-col gap-4">
+      <div aria-hidden="true" className="h-44 animate-pulse rounded-lg bg-secondary motion-reduce:animate-none" />
+      <p role="status" className="m-0 text-body-sm text-muted-foreground">Cargando objetivos…</p>
+      <div className="flex flex-col">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            aria-hidden="true"
-            className="h-32 w-full animate-pulse motion-reduce:animate-none rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4"
-          />
+          <div key={i} aria-hidden="true" data-skeleton-row className="flex flex-col gap-2 border-t border-border py-3.5">
+            <div className={`h-5 w-2/3 rounded-sm ${PULSE}`} />
+            <div className={`h-1 w-full rounded-xs ${PULSE}`} />
+            <div className={`h-4 w-1/2 rounded-sm ${PULSE}`} />
+          </div>
         ))}
       </div>
     </div>
@@ -29,20 +32,11 @@ export interface GoalsErrorProps {
 
 export function GoalsError({ onRetry }: GoalsErrorProps) {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-4 px-5 py-16 text-center">
-      <div
-        role="alert"
-        className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/10 p-6 text-center text-destructive"
-      >
-        <h2 className="font-serif text-xl font-bold">No pudimos cargar tus objetivos</h2>
-        <p className="text-sm text-[var(--sea-ink-soft)]">
-          Ocurrió un error al intentar obtener la información. Por favor, volvé a intentarlo.
-        </p>
-        {onRetry && (
-          <Button variant="default" onClick={onRetry} className="mt-2">
-            Reintentar
-          </Button>
-        )}
+    <div className="flex flex-col px-5 pt-5">
+      <div role="alert" className="flex flex-col items-start gap-3 rounded-md bg-negative-soft p-4">
+        <h2 className="m-0 text-heading text-negative">No pudimos cargar tus objetivos</h2>
+        <p className="m-0 text-body-sm text-foreground">Ocurrió un error al intentar obtener la información. Por favor, volvé a intentarlo.</p>
+        {onRetry && <Button variant="default" onClick={onRetry}>Reintentar</Button>}
       </div>
     </div>
   )
@@ -54,30 +48,14 @@ export interface GoalsEmptyProps {
 
 export function GoalsEmpty({ onNewGoal }: GoalsEmptyProps) {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
-      <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-4xl">
-          Objetivos
-        </h1>
-        <p className="mt-2 text-base leading-relaxed text-[var(--sea-ink-soft)]">
-          Administrá tus metas financieras y su asignación mensual.
-        </p>
-      </div>
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-12 text-center shadow-sm">
-        <h2 className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-          No tenés objetivos registrados
-        </h2>
-        <p className="mt-2 max-w-md text-sm text-[var(--sea-ink-soft)]">
-          Acá vas a ver tus objetivos una vez que los crees y comiences a planificar tu patrimonio.
-        </p>
-        <Button
-          type="button"
-          id="new-goal-trigger"
-          onClick={onNewGoal}
-          className="mt-6"
-        >
-          Nuevo objetivo
-        </Button>
+    <div className="relative isolate flex flex-col gap-6 px-5 pt-5">
+      <MapGrid className="h-65" />
+      <h1 className="m-0 text-display text-foreground">Objetivos</h1>
+      <div className="flex flex-col items-center gap-1 border-t border-border py-10 text-center">
+        <Target className="mb-2 size-6 text-accent-brand" aria-hidden="true" />
+        <h2 className="m-0 text-heading text-foreground">No tenés objetivos registrados</h2>
+        <p className="m-0 max-w-sm text-body-sm text-muted-foreground">Acá vas a ver tus objetivos una vez que los crees y comiences a planificar tu patrimonio.</p>
+        <Button type="button" id="new-goal-trigger" onClick={onNewGoal} className="mt-4 h-11 rounded-md">Nuevo objetivo</Button>
       </div>
     </div>
   )

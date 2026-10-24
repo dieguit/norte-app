@@ -19,7 +19,7 @@ function UsdAmount({ entry }: { entry: GoalCreationAllocationEntry }) {
 }
 
 function AllocationEntryAmounts({ entry }: { entry: GoalCreationAllocationEntry }) {
-  return <div className="flex flex-wrap items-center gap-x-2 text-xs font-normal text-[var(--sea-ink-soft)]"><BaseAmount entry={entry} /><UsdAmount entry={entry} /></div>
+  return <div className="flex flex-wrap items-center gap-x-2 text-xs font-normal text-muted-foreground"><BaseAmount entry={entry} /><UsdAmount entry={entry} /></div>
 }
 
 function formatSliderPercentage(value: number | number[]) {
@@ -52,7 +52,7 @@ function PlanAllocationEntry({
     <Field key={entry.goalId} data-invalid={!isValid} data-testid="allocation-row">
       <div className="flex items-center justify-between gap-4">
         <FieldLabel id={labelId} htmlFor={inputId} className="flex cursor-pointer flex-col items-start gap-0.5">
-          <span className="text-sm font-medium text-[var(--sea-ink)]">{entry.goalName}</span>
+          <span className="text-sm font-medium text-foreground">{entry.goalName}</span>
           <AllocationEntryAmounts entry={entry} />
         </FieldLabel>
         <div className="flex items-center gap-1.5">
@@ -68,7 +68,7 @@ function PlanAllocationEntry({
             onChange={(event) => onPercentageChange(entry.goalId, event.target.value)}
             className="w-20! text-right font-mono text-sm"
           />
-          <span aria-hidden="true" className="text-sm font-medium text-[var(--sea-ink-soft)]">%</span>
+          <span aria-hidden="true" className="text-sm font-medium text-muted-foreground">%</span>
         </div>
       </div>
       <Slider
@@ -103,7 +103,7 @@ export function PlanAllocationGroup({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--sea-ink-soft)]">{title}</h4>
+      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h4>
       <div className="flex flex-col gap-4">
         {entries.map((entry) => <PlanAllocationEntry key={entry.goalId} entry={entry} {...props} />)}
       </div>

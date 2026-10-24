@@ -267,9 +267,9 @@ function useGoalCreationActions({
 
 function GoalCreationHeader({ stage }: { stage: GoalCreationStage }) {
   return (
-    <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
-      <h3 className="text-base font-semibold text-[var(--sea-ink)]">{stage === 'objective' ? '1. Objetivo' : '2. Distribución e impacto'}</h3>
-      <span className="text-xs font-semibold text-[var(--sea-ink-soft)] uppercase tracking-wider">Paso {stage === 'objective' ? '1' : '2'} de 2</span>
+    <div className="flex items-center justify-between border-b border-border pb-3">
+      <h3 className="text-base font-semibold text-foreground">{stage === 'objective' ? '1. Objetivo' : '2. Distribución e impacto'}</h3>
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paso {stage === 'objective' ? '1' : '2'} de 2</span>
     </div>
   )
 }
@@ -277,7 +277,7 @@ function GoalCreationHeader({ stage }: { stage: GoalCreationStage }) {
 function GoalCreationError({ state }: { state: GoalCreationState }) {
   if (!state.serverError) return null
   return (
-    <div ref={state.serverErrorRef} tabIndex={-1} role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive outline-none focus:ring-2 focus:ring-destructive">
+    <div ref={state.serverErrorRef} tabIndex={-1} role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive outline-none focus:ring-2 focus:ring-destructive">
       {state.serverError}
     </div>
   )
@@ -398,7 +398,7 @@ function GoalCreationFooter({
   onConfirm: () => void
 }) {
   return (
-    <div className="sticky bottom-0 border-t border-[var(--line)] bg-popover px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between">
+    <div className="sticky bottom-0 border-t border-border bg-popover px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between">
       <GoalCreationBackButton stage={state.stage} onCancel={onCancel} onBack={onBack} />
       {state.stage === 'objective' && (
         <GoalCreationContinueButton

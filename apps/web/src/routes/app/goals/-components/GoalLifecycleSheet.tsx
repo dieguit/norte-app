@@ -48,11 +48,11 @@ function GoalLifecycleSheetBody({
       side="right"
       className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
     >
-      <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
-        <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
+      <SheetHeader className="border-b border-border px-6 py-5">
+        <SheetTitle className="text-title text-foreground">
           {copy.title}
         </SheetTitle>
-        <SheetDescription className="text-sm text-[var(--sea-ink-soft)]">
+        <SheetDescription className="text-sm text-muted-foreground">
           {copy.description}
         </SheetDescription>
       </SheetHeader>

@@ -1,10 +1,10 @@
 export function GoalCompletionLoading() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-6" role="status">
-      <div className="h-6 w-40 animate-pulse rounded bg-[var(--surface-strong)]" />
-      <div className="h-12 w-full animate-pulse rounded-xl bg-[var(--surface-strong)]" />
-      <div className="h-12 w-full animate-pulse rounded-xl bg-[var(--surface-strong)]" />
-      <div className="h-28 w-full animate-pulse rounded-xl bg-[var(--surface-strong)]" />
+      <div className="h-6 w-40 animate-pulse rounded bg-muted" />
+      <div className="h-12 w-full animate-pulse rounded-lg bg-muted" />
+      <div className="h-12 w-full animate-pulse rounded-lg bg-muted" />
+      <div className="h-28 w-full animate-pulse rounded-lg bg-muted" />
       <p className="sr-only">Cargando...</p>
     </div>
   )

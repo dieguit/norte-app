@@ -225,10 +225,10 @@ function AllocationChangeDedicationSection({
     <section aria-labelledby="dedication-heading" className="flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h3 id="dedication-heading" className="text-base font-semibold text-[var(--sea-ink)]">Aporte mensual a objetivos</h3>
-          <p className="text-sm text-[var(--sea-ink-soft)]">Elegí qué porcentaje de tu saldo mensual querés destinar a tus objetivos.</p>
+          <h3 id="dedication-heading" className="text-base font-semibold text-foreground">Aporte mensual a objetivos</h3>
+          <p className="text-sm text-muted-foreground">Elegí qué porcentaje de tu saldo mensual querés destinar a tus objetivos.</p>
         </div>
-        <strong className="tabular-nums text-[var(--sea-ink)]">{state.dedicationPercentage}%</strong>
+        <strong className="tabular-nums text-foreground">{state.dedicationPercentage}%</strong>
       </div>
       <Slider
         aria-label="Porcentaje del saldo para objetivos"
@@ -246,8 +246,8 @@ function AllocationChangeDedicationSection({
         }}
         disabled={state.isPreviewPending || state.isSubmitting || !display.hasPositiveBalance}
       />
-      <p className="text-sm text-[var(--sea-ink-soft)]">Aproximadamente <strong>{formatMoney(display.monthlyContribution)}</strong> por mes</p>
-      {!display.hasPositiveBalance && <p className="text-sm text-[var(--sea-ink-soft)]">No tenés saldo disponible este mes para asignar a objetivos.</p>}
+      <p className="text-sm text-muted-foreground">Aproximadamente <strong>{formatMoney(display.monthlyContribution)}</strong> por mes</p>
+      {!display.hasPositiveBalance && <p className="text-sm text-muted-foreground">No tenés saldo disponible este mes para asignar a objetivos.</p>}
     </section>
   );
 }

@@ -69,6 +69,11 @@ vi.mock('../../../features/financial/financial.functions', () => ({
   getFinancialAppState: vi.fn().mockResolvedValue({ profile: 'present' }),
 }))
 
+async function chooseGoalAction(goalName: string, action: string) {
+  fireEvent.click(await screen.findByRole('button', { name: `Más acciones de ${goalName}` }))
+  fireEvent.click(await screen.findByRole('button', { name: action }))
+}
+
 const sampleGoal: GoalWorkspaceItem = {
   id: 'goal-1',
   name: 'Colchón financiero',
@@ -207,11 +212,9 @@ describe('Goals routes and workspace', () => {
       render(<RouterProvider router={router} />)
 
       expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos' })).toBeDefined()
-      expect(screen.queryByRole('heading', { level: 2, name: 'Activos' })).not.toBeInTheDocument()
-      expect(screen.queryByText('Activos')).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Activos' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Cambiar planificación de objetivos' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Ver detalle de Colchón financiero' })).toBeDefined()
-      expect(screen.queryByRole('link', { name: /Colchón financiero/i })).toBeNull()
+      expect(screen.getByRole('button', { name: 'Más acciones de Colchón financiero' })).toBeDefined()
     })
 
     it('renders empty state when no goals exist', async () => {
@@ -261,7 +264,7 @@ describe('Goals routes and workspace', () => {
       fireEvent.click(retryButton)
 
       expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos' })).toBeDefined()
-      expect(screen.queryByRole('heading', { level: 2, name: 'Activos' })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Activos' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Cambiar planificación de objetivos' })).toBeInTheDocument()
     })
 
@@ -301,8 +304,7 @@ describe('Goals routes and workspace', () => {
       const router = createTestRouter()
       render(<RouterProvider router={router} />)
 
-      const editBtn = await screen.findByRole('button', { name: 'Editar objetivo Colchón financiero' })
-      fireEvent.click(editBtn)
+      await chooseGoalAction('Colchón financiero', 'Editar')
 
       expect(await screen.findByRole('heading', { level: 2, name: 'Editar objetivo' })).toBeInTheDocument()
       expect(await screen.findByLabelText('Tipo de objetivo')).toBeInTheDocument()
@@ -361,8 +363,7 @@ describe('Goals routes and workspace', () => {
       const router = createTestRouter()
       render(<RouterProvider router={router} />)
 
-      const pauseBtn = await screen.findByRole('button', { name: 'Pausar objetivo Colchón financiero' })
-      fireEvent.click(pauseBtn)
+      await chooseGoalAction('Colchón financiero', 'Pausar')
 
       expect(await screen.findByRole('heading', { level: 2, name: 'Pausar objetivo' })).toBeInTheDocument()
       expect(getGoalLifecycleContext).toHaveBeenCalledWith({
@@ -440,8 +441,7 @@ describe('Goals routes and workspace', () => {
       const pausedGroupBtn = await screen.findByRole('button', { name: /Pausados/i })
       fireEvent.click(pausedGroupBtn)
 
-      const resumeBtn = await screen.findByRole('button', { name: 'Reanudar objetivo Viaje' })
-      fireEvent.click(resumeBtn)
+      await chooseGoalAction('Viaje', 'Reanudar')
 
       expect(await screen.findByRole('heading', { level: 2, name: 'Reanudar objetivo' })).toBeInTheDocument()
       expect(getGoalLifecycleContext).toHaveBeenCalledWith({
@@ -472,8 +472,7 @@ describe('Goals routes and workspace', () => {
       const router = createTestRouter()
       render(<RouterProvider router={router} />)
 
-      const pauseBtn = await screen.findByRole('button', { name: 'Pausar objetivo Colchón financiero' })
-      fireEvent.click(pauseBtn)
+      await chooseGoalAction('Colchón financiero', 'Pausar')
 
       expect(await screen.findByRole('heading', { level: 2, name: 'Pausar objetivo' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { level: 2, name: 'Editar objetivo' })).not.toBeInTheDocument()
@@ -504,7 +503,7 @@ describe('Goals routes and workspace', () => {
     const router = createTestRouter()
     render(<RouterProvider router={router} />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como cumplido Colchón financiero' }))
+    await chooseGoalAction('Colchón financiero', 'Marcar como cumplido')
     expect(await screen.findByRole('heading', { name: 'Completar objetivo' })).toBeInTheDocument()
     expect(getGoalCompletionContext).toHaveBeenCalledWith({ data: { goalId: 'goal-1' } })
   })

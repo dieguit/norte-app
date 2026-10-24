@@ -7,11 +7,11 @@ export function PausedGoalAllocation({ name, label }: { name: string; label?: st
   return (
     <div
       data-testid="allocation-row"
-      className="flex items-center justify-between gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5"
+      className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/40 p-4 sm:p-5"
     >
       <div className="flex flex-col items-start gap-0.5">
-        <span className="text-sm font-medium text-[var(--sea-ink)]">{name}</span>
-        <span className="text-xs font-normal text-[var(--sea-ink-soft)]">
+        <span className="text-sm font-medium text-foreground">{name}</span>
+        <span className="text-xs font-normal text-muted-foreground">
           Sin asignación de aporte mensual
         </span>
       </div>
@@ -34,9 +34,9 @@ export function GoalImpactComparison({
   return (
     <section aria-label="Impacto en objetivos" className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-[var(--sea-ink)]">Impacto en las fechas</h3>
+        <h3 className="text-base font-semibold text-foreground">Impacto en las fechas</h3>
         {(isPreviewPending || isPreviewOutdated) && (
-          <span className="animate-pulse text-xs text-[var(--sea-ink-soft)]">
+          <span className="animate-pulse text-xs text-muted-foreground">
             {isPreviewPending
               ? 'Actualizando impacto...'
               : 'Proyección pendiente de actualización'}
@@ -45,8 +45,8 @@ export function GoalImpactComparison({
       </div>
 
       {!isAllocationsValid && (
-        <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-4 text-center">
-          <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
+        <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+          <p className="text-sm font-medium text-muted-foreground">
             {INVALID_ALLOCATION_MESSAGE}
           </p>
         </div>
