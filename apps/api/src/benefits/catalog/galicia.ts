@@ -12,9 +12,9 @@ export const galicia: Provider = {
   ],
   sources: [
     {
-      url: 'https://www.galicia.ar/personas/beneficios',
-      strategy: 'fetch',
-      instructions: 'Página de promociones de Banco Galicia. Cada promo indica comercio, % de descuento o reintegro, días, tope y medios de pago. "Éminent" aplica sólo a clientes Éminent.',
+      url: 'https://www.galicia.ar/personas/promociones/_jcr_content/root/responsivegrid.model.json',
+      strategy: 'json',
+      instructions: 'Página de promociones de Banco Galicia en formato JSON (AEM). Cada promoción incluye comercio, % de ahorro o cuotas sin interés, días y medios de pago. "Éminent" aplica sólo a galicia-eminent-visa-credito.',
     },
   ],
 };
