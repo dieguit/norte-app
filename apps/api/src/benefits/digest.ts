@@ -57,11 +57,17 @@ function capLabel({ maxAmount, maxAmountPeriod }: MatchedBenefit): string {
   return ` (tope $${ars.format(maxAmount)}${maxAmountPeriod ? PERIOD_SUFFIX[maxAmountPeriod] : ''})`;
 }
 
+function conditionsSuffix({ conditions }: MatchedBenefit): string {
+  if (!conditions) return '';
+  const trimmed = conditions.trim();
+  return trimmed ? ` · ${trimmed}` : '';
+}
+
 export function formatDigest(items: MatchedBenefit[]): string | null {
   if (!items.length) return null;
   const lines = rankBenefits(items).map(
     (b) =>
-      `• ${valueLabel(b)} en ${b.merchant ?? BENEFIT_CATEGORY_LABELS[b.category]} con ${b.instrumentLabel}${capLabel(b)}`,
+      `• ${valueLabel(b)} en ${b.merchant ?? BENEFIT_CATEGORY_LABELS[b.category]} con ${b.instrumentLabel}${capLabel(b)}${conditionsSuffix(b)}`,
   );
   return ['Beneficios de hoy 🧭', ...lines].join('\n');
 }

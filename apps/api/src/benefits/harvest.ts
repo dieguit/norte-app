@@ -54,6 +54,25 @@ export const ExtractionSchema = z.object({
   benefits: z.array(ExtractedBenefitSchema),
 });
 
+export const ExtractionOutputSchema = z.object({
+  benefits: z.array(
+    z.object({
+      title: z.string(),
+      merchant: z.string().nullable(),
+      category: z.string(),
+      kind: z.string(),
+      value: z.number(),
+      maxAmount: z.number().nullable(),
+      maxAmountPeriod: z.string().nullable(),
+      weekdays: z.array(z.number()).nullable(),
+      validFrom: z.string().nullable(),
+      validTo: z.string().nullable(),
+      instrumentSlugs: z.array(z.string()),
+      conditions: z.string().nullable(),
+    }),
+  ),
+});
+
 export type Extract = (prompt: string) => Promise<unknown>;
 
 export type SourceResult = {
@@ -123,8 +142,9 @@ Reglas:
 - maxAmount: tope en ARS como número, o null. maxAmountPeriod: transaction | day | week | month, o null.
 - weekdays: 0=domingo … 6=sábado; null si aplica todos los días.
 - validFrom / validTo: YYYY-MM-DD o null. Resolvé expresiones como "todos los miércoles de octubre" con la fecha de hoy.
+- Promociones válidas sólo en días específicos del mes (ej. "los días 10 de cada mes"): generá un item con validFrom = validTo = la próxima fecha en que ocurre (YYYY-MM-DD) a partir de hoy; nunca uses weekdays: null cuando la promo esté restringida a ciertos días.
 - instrumentSlugs: sólo los instrumentos que cumplen las condiciones (si dice "sólo crédito", no incluyas débito).
-- conditions: resumen corto de otras condiciones (mínimo de compra, pagando con MODO, online), o null.
+- conditions: resumen corto de otras condiciones (máx. 60 caracteres; ej. mínimo de compra, pagando con MODO, online), o null.
 - Nunca inventes datos. Si no hay beneficios, devolvé benefits: [].
 
 Contenido:
@@ -197,6 +217,7 @@ async function upsert(
           conditions: b.conditions,
           maxAmount: b.maxAmount,
           maxAmountPeriod: b.maxAmountPeriod,
+          validFrom: b.validFrom,
         },
       })
       .returning({ inserted: sql<boolean>`(xmax = 0)` });

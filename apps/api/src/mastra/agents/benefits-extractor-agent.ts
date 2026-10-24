@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core/agent';
 import type { Env } from '../../config/env';
-import { ExtractionSchema, type Extract } from '../../benefits/harvest';
+import { ExtractionOutputSchema, type Extract } from '../../benefits/harvest';
 
 export function createBenefitsExtractorAgent(
   env: Pick<Env, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_MODEL'>,
@@ -24,6 +24,6 @@ export const extractWith =
   async (prompt) =>
     (
       await agent.generate(prompt, {
-        structuredOutput: { schema: ExtractionSchema },
+        structuredOutput: { schema: ExtractionOutputSchema },
       })
     ).object;

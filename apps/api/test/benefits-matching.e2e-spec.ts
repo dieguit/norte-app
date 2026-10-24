@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { arrayOverlaps, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   benefits,
   benefitUserPreferences,
@@ -24,7 +25,27 @@ describeWhenSafe('BenefitsService matching', () => {
   const notifications = new NotificationsService(db);
   const service = new BenefitsService(db, notifications);
 
-  afterAll(async () => pool.end());
+  const TEST_SLUGS = ['galicia-visa-credito', 'modo'];
+  let testUserIds: string[] = [];
+
+  const cleanup = async () => {
+    await db
+      .delete(benefits)
+      .where(arrayOverlaps(benefits.instrumentSlugs, TEST_SLUGS));
+    if (testUserIds.length > 0) {
+      await db
+        .delete(benefitUserPreferences)
+        .where(inArray(benefitUserPreferences.userId, testUserIds));
+      testUserIds = [];
+    }
+  };
+
+  beforeEach(cleanup);
+
+  afterAll(async () => {
+    await cleanup();
+    await pool.end();
+  });
 
   const NOW = new Date('2026-10-22T02:00:00Z'); // 2026-10-21 23:00 in AR, a Wednesday (3); UTC date is already Thursday
   const row = (
@@ -46,8 +67,9 @@ describeWhenSafe('BenefitsService matching', () => {
   });
 
   it('matches by instrument, category, AR weekday, validity and freshness', async () => {
-    const slug = `i-${randomUUID()}`;
+    const slug = 'galicia-visa-credito';
     const u = `user_${randomUUID()}`;
+    testUserIds.push(u);
     await db.insert(benefitUserPreferences).values({
       userId: u,
       instrumentSlugs: [slug, 'removed-from-catalog'],
@@ -64,7 +86,7 @@ describeWhenSafe('BenefitsService matching', () => {
       }),
       row(slug, { merchant: 'Thursday', weekdays: [4] }),
       row(slug, { merchant: 'OtherCategory', category: 'viajes' }),
-      row(`other-${randomUUID()}`, { merchant: 'OtherInstrument' }),
+      row('modo', { merchant: 'OtherInstrument' }),
       row(slug, { merchant: 'Expired', validTo: '2026-10-20' }),
       row(slug, { merchant: 'NotYet', validFrom: '2026-10-22' }),
       row(slug, {
@@ -74,20 +96,42 @@ describeWhenSafe('BenefitsService matching', () => {
     ]);
     const matched = await service.findMatching(u, NOW);
     expect(matched.map((m) => m.merchant)).toEqual(['Everyday', 'Wednesday']);
-    expect(matched[0].instrumentLabel).toBe(slug); // not in catalog → falls back to slug
+    expect(matched[0].instrumentLabel).toBe('Galicia Visa crédito');
+  });
+
+  it('does not match when user holds a removed slug (not in catalog) even if benefit is tagged with it', async () => {
+    const removedSlug = 'removed-slug';
+    const u = `user_${randomUUID()}`;
+    testUserIds.push(u);
+    await db.insert(benefitUserPreferences).values({
+      userId: u,
+      instrumentSlugs: [removedSlug],
+      categories: ['supermercado'],
+    });
+    await db.insert(benefits).values([
+      row(removedSlug, {
+        merchant: 'RemovedInstrumentPromo',
+        category: 'supermercado',
+        weekdays: null,
+      }),
+    ]);
+    const matched = await service.findMatching(u, NOW);
+    expect(matched).toEqual([]);
+    await db
+      .delete(benefits)
+      .where(arrayOverlaps(benefits.instrumentSlugs, [removedSlug]));
   });
 
   it('returns nothing without preferences and buildDigest returns null', async () => {
-    await expect(
-      service.findMatching(`user_${randomUUID()}`, NOW),
-    ).resolves.toEqual([]);
-    await expect(
-      service.buildDigest(`user_${randomUUID()}`, NOW),
-    ).resolves.toBeNull();
+    const u = `user_${randomUUID()}`;
+    testUserIds.push(u);
+    await expect(service.findMatching(u, NOW)).resolves.toEqual([]);
+    await expect(service.buildDigest(u, NOW)).resolves.toBeNull();
   });
 
   it('savePreferences stores and enables the digest atomically; rejects unknown slugs', async () => {
     const u = `user_${randomUUID()}`;
+    testUserIds.push(u);
     await expect(
       service.savePreferences(u, {
         instrumentSlugs: ['nope'],

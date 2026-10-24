@@ -68,6 +68,36 @@ describe('formatDigest', () => {
       ].join('\n'),
     );
   });
+
+  it('appends conditions at the end of the line when present', () => {
+    const text = formatDigest([
+      item({
+        value: 20,
+        merchant: 'Coto',
+        conditions: 'mínimo $20.000, pagando con MODO',
+      }),
+      item({
+        value: 10,
+        merchant: 'Farmacity',
+        maxAmount: 5000,
+        maxAmountPeriod: 'month',
+        conditions: 'online',
+      }),
+      item({
+        value: 5,
+        merchant: 'Jumbo',
+        conditions: '   ',
+      }),
+    ]);
+    expect(text).toBe(
+      [
+        'Beneficios de hoy 🧭',
+        '• 20% en Coto con Galicia Visa crédito · mínimo $20.000, pagando con MODO',
+        '• 10% en Farmacity con Galicia Visa crédito (tope $5.000/mes) · online',
+        '• 5% en Jumbo con Galicia Visa crédito',
+      ].join('\n'),
+    );
+  });
 });
 
 describe('rankBenefits', () => {

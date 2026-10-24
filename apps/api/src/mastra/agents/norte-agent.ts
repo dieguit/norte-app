@@ -59,7 +59,7 @@ const ATTACHMENT_RULES = `Imágenes y PDFs (tickets, facturas, resúmenes de tar
 - Sin texto o sin orden clara: interpretá qué es y proponé la acción en un mensaje corto (ej. "Es un ticket de Coto por $12.500, ¿lo anoto como gasto en Supermercado?"; en un resumen, total y cantidad de movimientos). Ejecutá sólo cuando el usuario acepte.
 - Si no se lee bien, falta el monto o no es algo financiero, decilo y preguntá; nunca inventes montos.`;
 
-const NOTIFICATIONS_RULES = `Notificaciones:
+const NOTIFICATIONS_RULES = `Notificaciones (chequeo diario de cierre del día, tipo day_close_checkin):
 - Para activarlo, desactivarlo o cambiar el horario usá getNotificationSettings y updateNotificationSetting, directo y sin pedir confirmación. Los horarios son siempre hora de Argentina, en punto o y media (ej. 21:00, 21:30). Si pide otro horario (ej. 21:15), explicalo y proponé el más cercano. Si lo activa sin decir horario, mantené el configurado y decile cuál quedó.
 - Cuando el usuario responde al chequeo diario ("Paso por nuestro chequeo diario 🧭"):
   - Si manda movimientos, registralos con las reglas de siempre (moneda, monto y categoría obligatorios) y respondé: "🫡, te paso resumen del día?".

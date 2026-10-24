@@ -1,5 +1,6 @@
 import {
   ExtractedBenefitSchema,
+  ExtractionOutputSchema,
   ExtractionSchema,
   buildPrompt,
   fetchSource,
@@ -62,9 +63,9 @@ describe('postProcess', () => {
       )[0].maxAmountPeriod,
     ).toBeNull();
   });
-  it('drops items with impossible calendar dates like 2026-02-31 between valid siblings', () => {
+  it('drops items with impossible calendar dates like 2027-02-31 between valid siblings', () => {
     const b1 = benefit({ title: 'Beneficio 1' });
-    const bInvalid = benefit({ title: 'Inválido', validTo: '2026-02-31' });
+    const bInvalid = benefit({ title: 'Inválido', validTo: '2027-02-31' });
     const b2 = benefit({ title: 'Beneficio 2' });
     expect(
       postProcess({ benefits: [b1, bInvalid, b2] }, candidates, '2026-10-21'),
@@ -110,6 +111,11 @@ describe('buildPrompt', () => {
     expect(prompt).toContain('galicia-visa-credito: Galicia Visa crédito');
     expect(prompt).toContain('supermercado');
     expect(prompt).toContain('2026-10-21');
+    expect(prompt).toContain(
+      'validFrom = validTo = la próxima fecha en que ocurre (YYYY-MM-DD) a partir de hoy',
+    );
+    expect(prompt).toContain('nunca uses weekdays: null');
+    expect(prompt).toContain('máx. 60 caracteres');
   });
 });
 
@@ -140,5 +146,32 @@ describe('ExtractionSchema and ExtractedBenefitSchema', () => {
     expect(valid.success).toBe(true);
     const item = ExtractedBenefitSchema.safeParse(benefit());
     expect(item.success).toBe(true);
+  });
+
+  it('allows loose items through ExtractionOutputSchema so postProcess can reject per-item', () => {
+    const raw = {
+      benefits: [
+        benefit(),
+        {
+          title: 'Inválido pero con campos estructurados',
+          merchant: null,
+          category: 'unknown_category',
+          kind: 'unknown_kind',
+          value: -5,
+          maxAmount: null,
+          maxAmountPeriod: null,
+          weekdays: [7],
+          validFrom: null,
+          validTo: '2027-02-31',
+          instrumentSlugs: ['galicia-visa-credito'],
+          conditions: null,
+        },
+      ],
+    };
+    const parsed = ExtractionOutputSchema.safeParse(raw);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    const items = postProcess(parsed.data, candidates, '2026-10-21');
+    expect(items).toEqual([benefit()]);
   });
 });

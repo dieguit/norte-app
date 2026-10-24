@@ -53,6 +53,7 @@ describeWhenSafe('runHarvest', () => {
       'https://a.test/2',
       'https://broken.test',
     ]);
+    let currentValidFrom: string | null = '2026-10-10';
     const extract = (prompt: string) => {
       expect(prompt).toContain('20% en Coto & $& promo');
       return Promise.resolve({
@@ -66,7 +67,7 @@ describeWhenSafe('runHarvest', () => {
             maxAmount: null,
             maxAmountPeriod: null,
             weekdays: [3],
-            validFrom: null,
+            validFrom: currentValidFrom,
             validTo: null,
             instrumentSlugs: [`${slug}-visa-credito`],
             conditions: null,
@@ -88,6 +89,7 @@ describeWhenSafe('runHarvest', () => {
       ['failed', 0],
     ]);
 
+    currentValidFrom = '2026-10-20';
     const second = await runHarvest(
       db,
       extract,
@@ -104,6 +106,7 @@ describeWhenSafe('runHarvest', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].lastSeenAt.toISOString()).toBe('2026-10-22T06:00:00.000Z');
     expect(rows[0].firstSeenAt.toISOString()).toBe('2026-10-21T06:00:00.000Z');
+    expect(rows[0].validFrom).toBe('2026-10-20');
   });
 
   it('dry run writes nothing', async () => {

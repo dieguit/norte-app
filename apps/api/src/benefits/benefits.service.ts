@@ -51,6 +51,10 @@ export class BenefitsService {
       .from(benefitUserPreferences)
       .where(eq(benefitUserPreferences.userId, userId));
     if (!prefs?.instrumentSlugs.length || !prefs.categories.length) return [];
+    const validInstrumentSlugs = prefs.instrumentSlugs.filter((slug) =>
+      INSTRUMENTS.has(slug),
+    );
+    if (!validInstrumentSlugs.length) return [];
     const today = todayInArgentina(now).today;
     const weekday = argentinaInstant(today, '12:00').getUTCDay();
     const rows = await this.db
@@ -58,7 +62,7 @@ export class BenefitsService {
       .from(benefits)
       .where(
         and(
-          arrayOverlaps(benefits.instrumentSlugs, prefs.instrumentSlugs),
+          arrayOverlaps(benefits.instrumentSlugs, validInstrumentSlugs),
           inArray(benefits.category, prefs.categories),
           or(
             isNull(benefits.weekdays),
@@ -69,7 +73,7 @@ export class BenefitsService {
           gte(benefits.lastSeenAt, new Date(now.getTime() - FRESH_MS)),
         ),
       );
-    const held = new Set(prefs.instrumentSlugs);
+    const held = new Set(validInstrumentSlugs);
     return rankBenefits(
       rows.map((row) => {
         const slug =
