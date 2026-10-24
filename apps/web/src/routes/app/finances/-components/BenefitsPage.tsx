@@ -14,7 +14,7 @@ export function BenefitsPage({ catalog, preferences }: { catalog: BenefitCatalog
   const [instruments, setInstruments] = useState(preferences.instrumentSlugs)
   const [categories, setCategories] = useState<string[]>(preferences.categories)
   const [enabled, setEnabled] = useState(preferences.enabled)
-  const [saving, setSaving] = useState(false)
+  const [pending, setPending] = useState(false)
   const configured = preferences.instrumentSlugs.length > 0
   const groups = [
     { title: 'Tus tarjetas y cuentas', kinds: ['bank', 'network'] },
@@ -22,7 +22,7 @@ export function BenefitsPage({ catalog, preferences }: { catalog: BenefitCatalog
   ].map((g) => ({ ...g, providers: catalog.providers.filter((p) => g.kinds.includes(p.kind)) }))
 
   const save = async () => {
-    setSaving(true)
+    setPending(true)
     try {
       await saveBenefitPreferences({ data: { instrumentSlugs: instruments, categories: categories as BenefitPreferences['categories'] } })
       setEnabled(true)
@@ -31,17 +31,20 @@ export function BenefitsPage({ catalog, preferences }: { catalog: BenefitCatalog
     } catch (error) {
       toast.error(errorText(error, 'No pudimos guardar tus beneficios.'))
     } finally {
-      setSaving(false)
+      setPending(false)
     }
   }
 
   const changeEnabled = async (next: boolean) => {
     setEnabled(next)
+    setPending(true)
     try {
       await setBenefitDigestEnabled({ data: { enabled: next } })
     } catch (error) {
       setEnabled(!next)
       toast.error(errorText(error, 'No pudimos cambiar los avisos.'))
+    } finally {
+      setPending(false)
     }
   }
 
@@ -53,7 +56,7 @@ export function BenefitsPage({ catalog, preferences }: { catalog: BenefitCatalog
       </div>
       {configured && (
         <label className="flex items-center gap-3 text-sm font-medium">
-          <Switch aria-label="Avisos diarios" checked={enabled} onCheckedChange={(next) => void changeEnabled(next)} />
+          <Switch aria-label="Avisos diarios" checked={enabled} disabled={pending} onCheckedChange={(next) => void changeEnabled(next)} />
           Avisos diarios
         </label>
       )}
@@ -86,7 +89,7 @@ export function BenefitsPage({ catalog, preferences }: { catalog: BenefitCatalog
           })}
         </div>
       </fieldset>
-      <Button type="button" className="self-start" disabled={saving || !instruments.length || !categories.length} onClick={() => void save()}>
+      <Button type="button" className="self-start" disabled={pending || !instruments.length || !categories.length} onClick={() => void save()}>
         Guardar y activar
       </Button>
     </div>

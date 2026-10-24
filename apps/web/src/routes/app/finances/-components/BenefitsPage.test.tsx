@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { saveBenefitPreferences, setBenefitDigestEnabled } from '../../../../features/benefits/benefits.functions'
 import { BenefitsPage } from './BenefitsPage'
@@ -89,5 +90,39 @@ describe('BenefitsPage', () => {
     )
     await user.click(screen.getByRole('switch', { name: /Avisos diarios/ }))
     expect(setBenefitDigestEnabled).toHaveBeenCalledWith({ data: { enabled: false } })
+  })
+
+  it('rolls back switch state and reports error when toggle fails, keeping switch disabled while pending', async () => {
+    const user = userEvent.setup()
+    let rejectPromise!: (err: unknown) => void
+    vi.mocked(setBenefitDigestEnabled).mockImplementationOnce(
+      () =>
+        new Promise<void>((_, reject) => {
+          rejectPromise = reject
+        }),
+    )
+
+    render(
+      <BenefitsPage
+        catalog={catalog as never}
+        preferences={{ instrumentSlugs: ['modo'], categories: ['cine'], enabled: true }}
+      />,
+    )
+
+    const switchElement = screen.getByRole('switch', { name: /Avisos diarios/ })
+    expect(switchElement).toBeChecked()
+
+    await user.click(switchElement)
+
+    expect(switchElement).not.toBeChecked()
+    expect(switchElement).toHaveAttribute('aria-disabled', 'true')
+
+    rejectPromise(new Error('Network error'))
+
+    await waitFor(() => {
+      expect(switchElement).toBeChecked()
+    })
+    expect(switchElement).not.toHaveAttribute('aria-disabled')
+    expect(toast.error).toHaveBeenCalledWith('Network error')
   })
 })
