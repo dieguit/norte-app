@@ -82,9 +82,10 @@ export function FinancesWorkspace({
   const hasMonthStepper = view === "incomes" || view === "expenses";
 
   return (
-    <div className={hasMonthStepper ? "flex flex-col pb-24" : "flex flex-col pb-8"}>
+    <div className={view === "benefits" ? "flex flex-col pb-8" : "flex flex-col pb-24"}>
       <ScreenHeader
         title={TITLES[view]}
+        subtitle={view === "savings" ? "Acumulado" : undefined}
         backTo="/app/finances"
         trailing={hasMonthStepper ? <MonthStepper value={selectedMonth} onValueChange={selectMonth} aria-label="Mes de finanzas" /> : undefined}
       />

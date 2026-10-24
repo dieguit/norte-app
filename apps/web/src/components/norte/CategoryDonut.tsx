@@ -2,7 +2,7 @@ import type { Money as MoneyValue } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { Money } from "./Money";
 
-export type ChartFamily = "expense" | "income";
+export type ChartFamily = "expense" | "income" | "savings";
 
 export const chartColor = (family: ChartFamily, rank: number) => `var(--chart-${family}-${Math.min(rank, 8) + 1})`;
 
@@ -25,6 +25,7 @@ export function ChartRing({
   const circumference = 2 * Math.PI * radius;
   const total = values.reduce((sum, value) => sum + value, 0);
   const circle = { cx: size / 2, cy: size / 2, r: radius, fill: "none", strokeWidth: thickness };
+  const slices = values.filter((value) => value > 0).length;
   let start = 0;
   return (
     <svg viewBox={`0 0 ${size} ${size}`} className={cn("shrink-0 -rotate-90", className)} aria-hidden="true">
@@ -38,7 +39,7 @@ export function ChartRing({
               key={index}
               {...circle}
               style={{ stroke: chartColor(family, index) }}
-              strokeDasharray={`${values.length > 1 ? Math.max(length - gap, 0) : length} ${circumference}`}
+              strokeDasharray={`${slices > 1 ? Math.max(length - gap, 0) : length} ${circumference}`}
               strokeDashoffset={-offset}
             />
           );

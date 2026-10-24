@@ -259,7 +259,11 @@ describe("FinancesWorkspace", () => {
       expect(screen.getByRole("heading", { level: 1, name: "Julio 2026" })).toBeInTheDocument();
 
       rerender(ui("savings"));
-      expect(await screen.findByText("$ 125.000,00 · US$ 2.345,67")).toBeInTheDocument();
+      const bank = await screen.findByRole("region", { name: "Banco Nación" });
+      expect(bank).toHaveTextContent("$ 125.000,00");
+      expect(bank).toHaveTextContent("US$ 2.345,67");
+      expect(screen.getByRole("heading", { level: 1, name: "Ahorros" })).toBeInTheDocument();
+      expect(screen.getByText("Acumulado")).toBeInTheDocument();
       expect(screen.queryByRole("group", { name: "Mes de finanzas" })).not.toBeInTheDocument();
 
       rerender(ui("expenses"));

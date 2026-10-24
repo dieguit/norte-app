@@ -80,7 +80,7 @@ describe('SavingsPlaceSheet', () => {
     expect(screen.getByRole('heading', { name: 'Nuevo lugar' })).toHaveClass(
       'font-serif',
       'text-2xl',
-      'text-[var(--sea-ink)]',
+      'text-foreground',
     )
     expect(document.querySelector('form')).toHaveClass(
       'flex',

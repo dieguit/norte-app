@@ -188,7 +188,7 @@ function SavingsPlaceSheetView({
 }
 
 function SavingsPlaceSheetHeader({ isEdit }: { isEdit: boolean }) {
-  return <SheetHeader className="border-b border-[var(--line)] px-6 py-5"><SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">{isEdit ? 'Editar lugar' : 'Nuevo lugar'}</SheetTitle><SheetDescription>{isEdit ? 'Modificá el nombre del lugar de ahorro.' : 'Creá un lugar para empezar a registrar dónde guardás tu dinero.'}</SheetDescription></SheetHeader>
+  return <SheetHeader className="border-b border-border px-6 py-5"><SheetTitle className="font-serif text-2xl font-bold text-foreground">{isEdit ? 'Editar lugar' : 'Nuevo lugar'}</SheetTitle><SheetDescription>{isEdit ? 'Modificá el nombre del lugar de ahorro.' : 'Creá un lugar para empezar a registrar dónde guardás tu dinero.'}</SheetDescription></SheetHeader>
 }
 
 function SavingsPlaceSheetFields({ name, error, isPending, onNameChange }: { name: string; error: string | null; isPending: boolean; onNameChange: (name: string) => void }) {

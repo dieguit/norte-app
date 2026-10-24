@@ -131,7 +131,7 @@ function AmountField({
         onChange={(event) => onAmountChange(event.target.value)}
         disabled={isPending}
       />
-      <p className="text-xs text-[var(--sea-ink-soft)]">Disponible: {formatMoney(availableBalance)}</p>
+      <p className="text-xs text-muted-foreground">Disponible: {formatMoney(availableBalance)}</p>
       {amountError && <FieldError id="savings-transfer-amount-error">{amountError}</FieldError>}
     </Field>
   )

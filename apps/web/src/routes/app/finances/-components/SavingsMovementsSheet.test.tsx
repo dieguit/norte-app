@@ -55,7 +55,7 @@ describe('SavingsMovementsSheet', () => {
     expect(screen.getByText('Consultá los aportes, transferencias recibidas y objetivos completados en este lugar.')).toBeInTheDocument()
     const section = screen.getByRole('region', { name: 'Movimientos de Banco Nación' })
     const list = within(section).getByRole('list')
-    expect(list).toHaveClass('divide-y', 'divide-[var(--line)]')
+    expect(list).toHaveClass('divide-y', 'divide-border')
     expect(within(list).getAllByRole('listitem')).toHaveLength(3)
     expect(within(section).getByText('Ahorro registrado')).toBeInTheDocument()
     expect(within(section).getByText('Objetivo completado: Vacaciones')).toBeInTheDocument()
