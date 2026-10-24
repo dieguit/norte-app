@@ -92,7 +92,7 @@ describe('AppShell', () => {
     expect(financesLinks[0]?.getAttribute('href')).toBe('/app/finances')
     expect(financesLinks[1]?.getAttribute('href')).toBe('/app/finances')
     expect(screen.getAllByRole('button', { name: 'Cuenta' })).toHaveLength(2)
-    expect(screen.getByRole('heading', { name: 'Inicio' })).toBeDefined()
+    expect(screen.getByRole('heading', { name: /Inicio/ })).toBeDefined()
 
     expect(container.firstElementChild).toHaveClass('h-dvh', 'overflow-hidden')
     expect(screen.getAllByRole('banner')[0]).toHaveClass('shrink-0')

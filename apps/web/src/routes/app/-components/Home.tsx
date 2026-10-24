@@ -1,16 +1,13 @@
 import { useState } from "react";
-import { Button } from "../../../components/ui/button";
-import { formatMonthName } from "../../../lib/format";
-import {
-  getPreviousCalendarMonth,
-  type InitialHomeState,
-} from "../../../features/financial/financial";
 import type { RoadmapData } from "@repo/shared-types";
+import { MapGrid } from "../../../components/norte/MapGrid";
+import { getPreviousCalendarMonth, type InitialHomeState } from "../../../features/financial/financial";
 import type { GoalWorkspaceItem } from "../../../features/goals/goals";
-import { GoalCompletionBanner } from "./GoalCompletionBanner";
 import type { CatchUpContribution } from "./ContributionActionSheet";
 import { HomeDialogs } from "./HomeDialogs";
-import { PreviousMonthStatus } from "./HomeStatus";
+import { PreviousMonthAlerts } from "./HomeStatus";
+import { HomeTargets } from "./HomeTargets";
+import { activeGoals, monthTargets, monthTitle } from "./home-view";
 import { Roadmap } from "./Roadmap";
 
 export interface HomeProps {
@@ -26,25 +23,16 @@ export function Home({ home, roadmap, completionGoals = [], now }: HomeProps) {
   const [completionGoalId, setCompletionGoalId] = useState<string | null>(null);
   const closedMonth = getPreviousCalendarMonth(now);
   const shortfalls = home.previousMonthShortfalls ?? [];
+  const month = roadmap.currentMonth.month;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-3 py-8 sm:px-8 sm:py-12">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-4xl">
-          Inicio
-        </h1>
-        <Button
-          type="button"
-          onClick={() => {
-            setCatchUpContribution(null);
-            setIsContributionOpen(true);
-          }}
-        >
-          + Registrar
-        </Button>
-      </header>
-      <PreviousMonthStatus
-        month={formatMonthName(closedMonth)}
+    <div className="relative isolate flex flex-col gap-5 px-5 pt-5">
+      <MapGrid className="h-65" />
+      <h1 className="m-0 text-display text-foreground">
+        <span className="sr-only">Inicio · </span>{" "}
+        {monthTitle(month)}
+      </h1>
+      <PreviousMonthAlerts
         closedMonth={closedMonth}
         shortfalls={shortfalls}
         onCatchUp={(contribution) => {
@@ -52,14 +40,21 @@ export function Home({ home, roadmap, completionGoals = [], now }: HomeProps) {
           setIsContributionOpen(true);
         }}
       />
-      {completionGoals.map((goal) => (
-        <GoalCompletionBanner
-          key={goal.id}
-          goal={goal}
-          onComplete={setCompletionGoalId}
-        />
-      ))}
-      <Roadmap roadmap={roadmap} />
+      <HomeTargets
+        month={month}
+        targets={monthTargets(activeGoals(roadmap), roadmap.currentMonth.contributions, month)}
+        onRegister={() => {
+          setCatchUpContribution(null);
+          setIsContributionOpen(true);
+        }}
+      />
+      <Roadmap
+        roadmap={roadmap}
+        completionGoals={completionGoals}
+        closedMonth={closedMonth}
+        shortfalls={shortfalls}
+        onComplete={setCompletionGoalId}
+      />
       <HomeDialogs
         isContributionOpen={isContributionOpen}
         setIsContributionOpen={setIsContributionOpen}
