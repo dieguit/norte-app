@@ -107,6 +107,7 @@ describe('AppShell', () => {
       'data-scroll-restoration-id',
       'app-scroll-area',
     )
+    expect(screen.getByRole('main').firstElementChild).toHaveClass('mx-auto', 'max-w-2xl')
 
     const mobileNavigation = screen.getAllByRole('navigation', {
       name: 'Navegación principal',
@@ -114,8 +115,8 @@ describe('AppShell', () => {
     expect(mobileNavigation).toHaveClass('shrink-0')
     expect(mobileNavigation).not.toHaveClass('fixed')
     expect(mobileNavigation).toHaveClass(
-      'h-[calc(4rem+env(safe-area-inset-bottom))]',
-      'pb-[env(safe-area-inset-bottom)]',
+      'h-[calc(4.75rem+env(safe-area-inset-bottom))]',
+      'pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
     )
   })
 
