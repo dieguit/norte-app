@@ -8,6 +8,7 @@ import {
 } from '@mastra/observability';
 import { PostgresStoreVNext } from '@mastra/pg';
 import type { Env } from '../config/env';
+import { createBenefitsExtractorAgent } from './agents/benefits-extractor-agent';
 import { createNorteAgent } from './agents/norte-agent';
 import type { NorteServices } from './services';
 
@@ -30,6 +31,7 @@ export function createMastra(
   return new Mastra({
     agents: {
       norteAgent: createNorteAgent(env, options),
+      benefitsExtractor: createBenefitsExtractorAgent(env),
     },
     // ponytail: observability shares the app DB; point at a dedicated DB or ClickHouse if span volume grows.
     storage: new PostgresStoreVNext({

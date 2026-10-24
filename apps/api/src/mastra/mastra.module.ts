@@ -35,7 +35,9 @@ import { ContributionsModule } from '../contributions/contributions.module';
 import { ContributionsService } from '../contributions/contributions.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BenefitsModule } from '../benefits/benefits.module';
 import { NotificationsCron } from './notifications.cron';
+import { BenefitsHarvestCron } from './benefits-harvest.cron';
 import { createMastra } from './index';
 
 @Injectable()
@@ -175,8 +177,8 @@ export function stripClientRequestContext(
 }
 
 @Module({
-  imports: [mastraModule, WhatsappModule, NotificationsModule],
-  providers: [MastraLifecycle, NotificationsCron],
+  imports: [mastraModule, WhatsappModule, NotificationsModule, BenefitsModule],
+  providers: [MastraLifecycle, NotificationsCron, BenefitsHarvestCron],
   exports: [mastraModule],
 })
 export class MastraIntegrationModule implements NestModule {
