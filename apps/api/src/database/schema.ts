@@ -27,6 +27,7 @@ import {
   notificationSettings,
   notifications,
 } from '../notifications/notifications.schema';
+import { benefitUserPreferences, benefits } from '../benefits/benefits.schema';
 
 export const schema = {
   onboardingDrafts,
@@ -52,6 +53,8 @@ export const schema = {
   whatsappLinkTokens,
   notificationSettings,
   notifications,
+  benefitUserPreferences,
+  benefits,
 };
 
 export type Schema = typeof schema;
@@ -79,4 +82,6 @@ export {
   whatsappLinkTokens,
   notificationSettings,
   notifications,
+  benefitUserPreferences,
+  benefits,
 };

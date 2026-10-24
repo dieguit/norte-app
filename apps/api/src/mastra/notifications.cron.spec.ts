@@ -10,7 +10,10 @@ const delivery = (n: number) => ({
   type: 'day_close_checkin' as const,
   jid: `jid${n}@lid`,
 });
-const { message, timeoutMessage } = NOTIFICATION_DEFINITIONS.day_close_checkin;
+const {
+  message,
+  reply: { timeoutMessage },
+} = NOTIFICATION_DEFINITIONS.day_close_checkin;
 
 function setup({ withChannel = true } = {}) {
   const memory = {
@@ -41,12 +44,14 @@ function setup({ withChannel = true } = {}) {
     markSent: vi.fn().mockResolvedValue(undefined),
     markClosed: vi.fn().mockResolvedValue(undefined),
   };
+  const benefits = { buildDigest: vi.fn() };
   const cron = new NotificationsCron(
     mastra as never,
     withChannel ? ({ key: 'whatsapp', adapter } as never) : null,
     notifications as never,
+    benefits as never,
   );
-  return { cron, memory, adapter, notifications, calls };
+  return { cron, memory, adapter, notifications, benefits, calls };
 }
 
 describe('NotificationsCron', () => {
@@ -99,6 +104,15 @@ describe('NotificationsCron', () => {
     );
   });
 
+  it('skips timeout message for expired deliveries with no reply definition', async () => {
+    const { cron, adapter, notifications } = setup();
+    notifications.closeExpired.mockResolvedValue([
+      { ...delivery(2), type: 'savings_digest' as const },
+    ]);
+    await cron.run(NOW);
+    expect(adapter.postMessage).not.toHaveBeenCalled();
+  });
+
   it('closes a delivery whose send fails and keeps going', async () => {
     const { cron, adapter, notifications } = setup();
     notifications.claimDue.mockResolvedValue([delivery(1), delivery(2)]);
@@ -136,5 +150,41 @@ describe('NotificationsCron', () => {
     await cron.run(NOW);
     expect(memory.saveMessages).not.toHaveBeenCalled();
     expect(notifications.markSent).toHaveBeenCalledWith('n1', NOW);
+  });
+
+  it('sends the digest built for the user and skips users with nothing today', async () => {
+    const { cron, adapter, notifications, benefits } = setup();
+    const digest = (n: number) => ({
+      ...delivery(n),
+      type: 'savings_digest' as const,
+    });
+    notifications.claimDue.mockResolvedValue([digest(1), digest(2)]);
+    benefits.buildDigest
+      .mockResolvedValueOnce(
+        'Beneficios de hoy 🧭\n• 2x1 en Cinemark con Clarín 365',
+      )
+      .mockResolvedValueOnce(null);
+    await cron.run(NOW);
+    expect(benefits.buildDigest).toHaveBeenCalledWith('u1', NOW);
+    expect(adapter.postMessage).toHaveBeenCalledTimes(1);
+    expect(adapter.postMessage).toHaveBeenCalledWith(
+      'dm:jid1@lid',
+      'Beneficios de hoy 🧭\n• 2x1 en Cinemark con Clarín 365',
+    );
+    expect(notifications.markSent).toHaveBeenCalledWith('n1', NOW);
+    expect(notifications.markSent).not.toHaveBeenCalledWith('n2', NOW);
+  });
+
+  it('a failing digest build closes that delivery and keeps going', async () => {
+    const { cron, notifications, benefits } = setup();
+    const digest = (n: number) => ({
+      ...delivery(n),
+      type: 'savings_digest' as const,
+    });
+    notifications.claimDue.mockResolvedValue([digest(1), delivery(2)]);
+    benefits.buildDigest.mockRejectedValueOnce(new Error('db down'));
+    await cron.run(NOW);
+    expect(notifications.markClosed).toHaveBeenCalledWith('n1');
+    expect(notifications.markSent).toHaveBeenCalledWith('n2', NOW);
   });
 });

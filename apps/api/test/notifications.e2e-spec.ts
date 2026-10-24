@@ -33,6 +33,12 @@ describeWhenSafe('NotificationsService', () => {
           frequency: 'daily',
           time: '21:00',
         },
+        {
+          type: 'savings_digest',
+          enabled: false,
+          frequency: 'daily',
+          time: '09:00',
+        },
       ]);
     });
 
@@ -53,6 +59,12 @@ describeWhenSafe('NotificationsService', () => {
           enabled: false,
           frequency: 'daily',
           time: '22:30',
+        },
+        {
+          type: 'savings_digest',
+          enabled: false,
+          frequency: 'daily',
+          time: '09:00',
         },
       ]);
     });
@@ -207,6 +219,47 @@ describeWhenSafe('NotificationsService', () => {
         .from(notifications)
         .where(and(eq(notifications.id, d.id), eq(notifications.userId, u)));
       expect(row.status).toBe('closed');
+    });
+
+    // 2026-10-22 09:00 BA = 2026-10-22T12:00Z
+    const DIGEST_SLOT = '2026-10-22T12:00:00Z';
+    const digestUser = async () => {
+      const u = await enabledLinkedUser();
+      await service.updateSetting(u, 'savings_digest', { enabled: true });
+      return u;
+    };
+
+    it('claims digests as closed so they never time out or get answered', async () => {
+      const u = await digestUser();
+      const [d] = mine(u, await service.claimDue(at(DIGEST_SLOT)));
+      expect(d.type).toBe('savings_digest');
+      await service.markSent(d.id, at(DIGEST_SLOT));
+      expect(await service.markAnswered(u)).toBe(false);
+      expect(
+        mine(u, await service.closeExpired(at('2026-10-22T13:00:00Z'))),
+      ).toEqual([]);
+      const [row] = await rowsOf(u);
+      expect(row.status).toBe('closed');
+    });
+
+    it('a reply after both notifications answers only the check-in', async () => {
+      const u = await digestUser();
+      const [digest] = mine(u, await service.claimDue(at(DIGEST_SLOT)));
+      await service.markSent(digest.id, at(DIGEST_SLOT));
+      // check-in 2026-10-22 21:00 BA
+      const [checkin] = mine(
+        u,
+        await service.claimDue(at('2026-10-23T00:00:00Z')),
+      );
+      await service.markSent(checkin.id, at('2026-10-23T00:00:00Z'));
+      expect(await service.markAnswered(u)).toBe(true);
+      const rows = await rowsOf(u);
+      expect(rows.find((r) => r.type === 'savings_digest')?.status).toBe(
+        'closed',
+      );
+      expect(rows.find((r) => r.type === 'day_close_checkin')?.status).toBe(
+        'answered',
+      );
     });
   });
 });

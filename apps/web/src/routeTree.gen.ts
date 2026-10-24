@@ -19,6 +19,10 @@ import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$devi
 import { Route as LinkWhatsappRouteImport } from './routes/link/whatsapp'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as AppFinancesIndexRouteImport } from './routes/app/finances/index'
+import { Route as AppFinancesBenefitsRouteImport } from './routes/app/finances/benefits'
+import { Route as AppFinancesExpensesRouteImport } from './routes/app/finances/expenses'
+import { Route as AppFinancesIncomesRouteImport } from './routes/app/finances/incomes'
+import { Route as AppFinancesSavingsRouteImport } from './routes/app/finances/savings'
 import { Route as AppGoalsIndexRouteImport } from './routes/app/goals/index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +75,26 @@ const AppFinancesIndexRoute = AppFinancesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppFinancesRouteRoute,
 } as any)
+const AppFinancesBenefitsRoute = AppFinancesBenefitsRouteImport.update({
+  id: '/benefits',
+  path: '/benefits',
+  getParentRoute: () => AppFinancesRouteRoute,
+} as any)
+const AppFinancesExpensesRoute = AppFinancesExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
+  getParentRoute: () => AppFinancesRouteRoute,
+} as any)
+const AppFinancesIncomesRoute = AppFinancesIncomesRouteImport.update({
+  id: '/incomes',
+  path: '/incomes',
+  getParentRoute: () => AppFinancesRouteRoute,
+} as any)
+const AppFinancesSavingsRoute = AppFinancesSavingsRouteImport.update({
+  id: '/savings',
+  path: '/savings',
+  getParentRoute: () => AppFinancesRouteRoute,
+} as any)
 const AppGoalsIndexRoute = AppGoalsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -87,6 +111,10 @@ export interface FileRoutesByFullPath {
   '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
+  '/app/finances/benefits': typeof AppFinancesBenefitsRoute
+  '/app/finances/expenses': typeof AppFinancesExpensesRoute
+  '/app/finances/incomes': typeof AppFinancesIncomesRoute
+  '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances/': typeof AppFinancesIndexRoute
   '/app/goals/': typeof AppGoalsIndexRoute
 }
@@ -97,6 +125,10 @@ export interface FileRoutesByTo {
   '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app': typeof AppIndexRoute
+  '/app/finances/benefits': typeof AppFinancesBenefitsRoute
+  '/app/finances/expenses': typeof AppFinancesExpensesRoute
+  '/app/finances/incomes': typeof AppFinancesIncomesRoute
+  '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances': typeof AppFinancesIndexRoute
   '/app/goals': typeof AppGoalsIndexRoute
 }
@@ -111,6 +143,10 @@ export interface FileRoutesById {
   '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
+  '/app/finances/benefits': typeof AppFinancesBenefitsRoute
+  '/app/finances/expenses': typeof AppFinancesExpensesRoute
+  '/app/finances/incomes': typeof AppFinancesIncomesRoute
+  '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances/': typeof AppFinancesIndexRoute
   '/app/goals/': typeof AppGoalsIndexRoute
 }
@@ -126,6 +162,10 @@ export interface FileRouteTypes {
     | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
+    | '/app/finances/benefits'
+    | '/app/finances/expenses'
+    | '/app/finances/incomes'
+    | '/app/finances/savings'
     | '/app/finances/'
     | '/app/goals/'
   fileRoutesByTo: FileRoutesByTo
@@ -136,6 +176,10 @@ export interface FileRouteTypes {
     | '/link/whatsapp'
     | '/sign-in/$'
     | '/app'
+    | '/app/finances/benefits'
+    | '/app/finances/expenses'
+    | '/app/finances/incomes'
+    | '/app/finances/savings'
     | '/app/finances'
     | '/app/goals'
   id:
@@ -149,6 +193,10 @@ export interface FileRouteTypes {
     | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
+    | '/app/finances/benefits'
+    | '/app/finances/expenses'
+    | '/app/finances/incomes'
+    | '/app/finances/savings'
     | '/app/finances/'
     | '/app/goals/'
   fileRoutesById: FileRoutesById
@@ -234,6 +282,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancesIndexRouteImport
       parentRoute: typeof AppFinancesRouteRoute
     }
+    '/app/finances/benefits': {
+      id: '/app/finances/benefits'
+      path: '/benefits'
+      fullPath: '/app/finances/benefits'
+      preLoaderRoute: typeof AppFinancesBenefitsRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
+    '/app/finances/expenses': {
+      id: '/app/finances/expenses'
+      path: '/expenses'
+      fullPath: '/app/finances/expenses'
+      preLoaderRoute: typeof AppFinancesExpensesRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
+    '/app/finances/incomes': {
+      id: '/app/finances/incomes'
+      path: '/incomes'
+      fullPath: '/app/finances/incomes'
+      preLoaderRoute: typeof AppFinancesIncomesRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
+    '/app/finances/savings': {
+      id: '/app/finances/savings'
+      path: '/savings'
+      fullPath: '/app/finances/savings'
+      preLoaderRoute: typeof AppFinancesSavingsRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
     '/app/goals/': {
       id: '/app/goals/'
       path: '/'
@@ -245,10 +321,18 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppFinancesRouteRouteChildren {
+  AppFinancesBenefitsRoute: typeof AppFinancesBenefitsRoute
+  AppFinancesExpensesRoute: typeof AppFinancesExpensesRoute
+  AppFinancesIncomesRoute: typeof AppFinancesIncomesRoute
+  AppFinancesSavingsRoute: typeof AppFinancesSavingsRoute
   AppFinancesIndexRoute: typeof AppFinancesIndexRoute
 }
 
 const AppFinancesRouteRouteChildren: AppFinancesRouteRouteChildren = {
+  AppFinancesBenefitsRoute: AppFinancesBenefitsRoute,
+  AppFinancesExpensesRoute: AppFinancesExpensesRoute,
+  AppFinancesIncomesRoute: AppFinancesIncomesRoute,
+  AppFinancesSavingsRoute: AppFinancesSavingsRoute,
   AppFinancesIndexRoute: AppFinancesIndexRoute,
 }
 

@@ -14,15 +14,34 @@ import { useFinancesMonth } from "./useFinancesMonth";
 
 export type FinancesWorkspaceData = FinancesWorkspace;
 
+export type FinancesTab = "incomes" | "expenses" | "savings" | "benefits";
+export const FINANCES_TAB_PATHS = {
+  incomes: "/app/finances/incomes",
+  expenses: "/app/finances/expenses",
+  savings: "/app/finances/savings",
+  benefits: "/app/finances/benefits",
+} as const satisfies Record<FinancesTab, string>;
+
 export function FinancesWorkspace({
   workspace,
   initialMonth = new Date().toISOString().slice(0, 7),
+  tab,
+  onTabChange,
+  benefits,
 }: {
   workspace: FinancesWorkspaceData;
   initialMonth?: string;
+  tab?: FinancesTab;
+  onTabChange?: (tab: FinancesTab) => void;
+  benefits?: React.ReactNode;
 }) {
   const { selectedMonth, selectMonth, current, loadingMonth, loadError } = useFinancesMonth(workspace, initialMonth);
-  const [activeTab, setActiveTab] = useState("incomes");
+  const [localTab, setLocalTab] = useState<FinancesTab>("incomes");
+  const activeTab = tab ?? localTab;
+  const changeTab = (value: string) => {
+    setLocalTab(value as FinancesTab);
+    onTabChange?.(value as FinancesTab);
+  };
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
@@ -33,15 +52,17 @@ export function FinancesWorkspace({
         <h1 className="font-serif text-3xl font-bold tracking-tight whitespace-nowrap text-[var(--sea-ink)] sm:text-4xl">
           Tus Finanzas
         </h1>
-        <MonthPickerInput
-          className="w-full sm:w-auto"
-          aria-label="Mes de finanzas"
-          value={selectedMonth}
-          onValueChange={selectMonth}
-        />
+        {activeTab !== "benefits" && (
+          <MonthPickerInput
+            className="w-full sm:w-auto"
+            aria-label="Mes de finanzas"
+            value={selectedMonth}
+            onValueChange={selectMonth}
+          />
+        )}
       </header>
 
-      {current && <FinancialSummaryCards
+      {activeTab !== "benefits" && current && <FinancialSummaryCards
         mode="finances"
         summary={{
           month: selectedMonth,
@@ -53,10 +74,10 @@ export function FinancesWorkspace({
         }}
       />}
 
-      {loadingMonth && <p role="status">Cargando finanzas del mes…</p>}
-      {loadError && <p role="alert">No pudimos cargar las finanzas de este mes.</p>}
+      {activeTab !== "benefits" && loadingMonth && <p role="status">Cargando finanzas del mes…</p>}
+      {activeTab !== "benefits" && loadError && <p role="alert">No pudimos cargar las finanzas de este mes.</p>}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={changeTab}>
         <TabsList className="h-10 p-1">
           <TabsTrigger className="px-3 py-1 text-base" value="incomes">
             Ingresos
@@ -67,10 +88,14 @@ export function FinancesWorkspace({
           <TabsTrigger className="px-3 py-1 text-base" value="savings">
             Ahorros
           </TabsTrigger>
+          <TabsTrigger className="px-3 py-1 text-base" value="benefits">
+            Beneficios
+          </TabsTrigger>
         </TabsList>
         {current && <TabsContent value="incomes"><IncomeWorkspaceTab month={selectedMonth} incomes={current.incomes} createOpen={isCreateOpen} editingId={editingIncomeId} onCreateOpenChange={setIsCreateOpen} onEditingIdChange={setEditingIncomeId} /></TabsContent>}
         {current && <TabsContent value="expenses"><ExpenseWorkspaceTab month={selectedMonth} expenses={current.expenses} createOpen={isCreateExpenseOpen} editingId={editingExpenseId} onCreateOpenChange={setIsCreateExpenseOpen} onEditingIdChange={setEditingExpenseId} /></TabsContent>}
         {current && <TabsContent value="savings"><SavingsPlacesTab workspace={current.savings} /></TabsContent>}
+        <TabsContent value="benefits">{benefits}</TabsContent>
       </Tabs>
     </div>
   );

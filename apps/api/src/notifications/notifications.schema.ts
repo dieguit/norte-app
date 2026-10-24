@@ -15,7 +15,7 @@ import {
 import { timestamps } from '../database/columns';
 
 const typeIn = (column: AnyPgColumn): SQL =>
-  sql`${column} in ('day_close_checkin')`;
+  sql`${column} in ('day_close_checkin', 'savings_digest')`;
 
 export const notificationSettings = pgTable(
   'notification_settings',
