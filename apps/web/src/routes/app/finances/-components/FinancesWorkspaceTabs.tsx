@@ -1,10 +1,14 @@
 import { Button } from "../../../../components/ui/button";
 import { formatCalendarMonth } from "../../../../lib/format";
 import { isIncomeIncludedInMonth, type IncomesWorkspace } from "../../../../features/financial/incomes";
-import { isExpenseIncludedInMonth, type ExpensesWorkspace } from "../../../../features/financial/expenses";
+import { FIXED_EXPENSE_SOURCES, isExpenseIncludedInMonth } from "../../../../features/financial/expenses";
+import type { FinancesWorkspace } from "@repo/shared-types";
+import { FloatingAdd } from "../../../../components/norte/FloatingAdd";
+import type { GroupByValue } from "../../../../components/norte/GroupBy";
+import { EntryBreakdown } from "./EntryBreakdown";
 import { IncomeSheet } from "./IncomeSheet";
 import { ExpenseSheet } from "./ExpenseSheet";
-import { ExpenseItem, IncomeItem } from "./FinanceListItems";
+import { IncomeItem } from "./FinanceListItems";
 
 export function IncomeWorkspaceTab({
   month,
@@ -44,32 +48,40 @@ export function ExpenseWorkspaceTab({
   expenses,
   createOpen,
   editingId,
+  groupBy,
   onCreateOpenChange,
   onEditingIdChange,
+  onGroupByChange,
 }: {
   month: string;
-  expenses: ExpensesWorkspace;
+  expenses: FinancesWorkspace["expenses"];
   createOpen: boolean;
   editingId: string | null;
+  groupBy: GroupByValue;
   onCreateOpenChange: (open: boolean) => void;
   onEditingIdChange: (id: string | null) => void;
+  onGroupByChange: (value: GroupByValue) => void;
 }) {
-  const displayed = expenses.expenses.filter((expense) => isExpenseIncludedInMonth(expense, month));
-  const oneOff = displayed.filter((expense) => !expense.recurring);
-  const recurring = displayed.filter((expense) => expense.recurring);
   return (
-    <div className="flex flex-col gap-8">
-      <TabHeader title={`Gastos de ${formatCalendarMonth(month)}`} onAdd={() => onCreateOpenChange(true)} />
-      <ExpenseSection title="Únicos" label="Gastos únicos" items={oneOff} month={month} onEdit={onEditingIdChange} empty="No tenés gastos únicos para este mes." />
-      <ExpenseSection title="Recurrentes" label="Gastos recurrentes" items={recurring} month={month} onEdit={onEditingIdChange} empty="No tenés gastos recurrentes para este mes." />
+    <>
+      <EntryBreakdown
+        month={month}
+        entries={expenses.expenses.filter((expense) => isExpenseIncludedInMonth(expense, month))}
+        family="expense"
+        labels={FIXED_EXPENSE_SOURCES}
+        groupNoun={["categoría", "categorías"]}
+        entryNoun={["movimiento", "movimientos"]}
+        empty="No tenés gastos este mes."
+        editPrefix="Editar gasto"
+        groupBy={groupBy}
+        onGroupByChange={onGroupByChange}
+        onEdit={onEditingIdChange}
+      />
+      <FloatingAdd aria-label="Agregar gasto" onClick={() => onCreateOpenChange(true)} />
       <ExpenseSheet open={createOpen} onOpenChange={onCreateOpenChange} month={month} sources={expenses.sources} />
       <ExpenseSheet open={editingId !== null} onOpenChange={(open) => { if (!open) onEditingIdChange(null) }} month={month} sources={expenses.sources} expense={expenses.expenses.find((expense) => expense.id === editingId)} />
-    </div>
+    </>
   );
-}
-
-function ExpenseSection({ title, label, items, month, onEdit, empty }: { title: string; label: string; items: ExpensesWorkspace["expenses"]; month: string; onEdit: (id: string | null) => void; empty: string }) {
-  return <EntrySection title={title} label={label}>{items.length ? <ul className="divide-y divide-[var(--line)]">{items.map((expense) => <ExpenseItem key={expense.id} item={expense} selectedMonth={month} onEdit={onEdit} />)}</ul> : <EmptyEntry text={empty} />}</EntrySection>;
 }
 
 function TabHeader({ title, onAdd }: { title: string; onAdd: () => void }) {

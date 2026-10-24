@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ExpenseItem, IncomeItem } from './FinanceListItems'
+import { IncomeItem } from './FinanceListItems'
 
 vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({ invalidate: vi.fn() }),
@@ -37,32 +37,6 @@ describe('finance list items', () => {
     expect(screen.getByRole('button', { name: 'Editar ingreso Sueldo mensual' })).toBeInTheDocument()
   })
 
-  it('renders a one-time USD expense and its ARS equivalent', () => {
-    render(
-      <ExpenseItem
-        item={{
-          id: 'expense-1',
-          sourceKind: 'custom',
-          sourceId: 'flight',
-          sourceName: 'Vuelo',
-          concept: 'Pasaje aéreo',
-          amount: '200.00',
-          currency: 'USD',
-          recurring: false,
-          effectiveMonth: '2026-08-01',
-          endMonth: null,
-          arsEquivalent: '300000.00',
-        }}
-        selectedMonth="2026-08"
-        onEdit={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('Pasaje aéreo')).toBeInTheDocument()
-    expect(screen.getByText('Vuelo')).toBeInTheDocument()
-    expect(screen.getByText('Equivale a ARS 300.000')).toBeInTheDocument()
-  })
-
   it('renders income fallback when concept is null and sourceKind is uncategorized', () => {
     render(
       <IncomeItem
@@ -85,30 +59,5 @@ describe('finance list items', () => {
     expect(screen.getByText('Sin categoría')).toBeInTheDocument()
     expect(screen.queryAllByText('Sin categoría')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Editar ingreso Sin categoría' })).toBeVisible()
-  })
-
-  it('renders expense fallback when concept is null and sourceKind is uncategorized', () => {
-    render(
-      <ExpenseItem
-        item={{
-          id: 'expense-fallback-1',
-          sourceKind: 'uncategorized',
-          sourceId: null,
-          sourceName: 'uncategorized',
-          concept: null,
-          amount: '150.00',
-          currency: 'ARS',
-          recurring: false,
-          effectiveMonth: '2026-08-01',
-          endMonth: null,
-        }}
-        selectedMonth="2026-08"
-        onEdit={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('Sin categoría')).toBeInTheDocument()
-    expect(screen.queryAllByText('Sin categoría')).toHaveLength(1)
-    expect(screen.getByRole('button', { name: 'Editar gasto Sin categoría' })).toBeVisible()
   })
 })

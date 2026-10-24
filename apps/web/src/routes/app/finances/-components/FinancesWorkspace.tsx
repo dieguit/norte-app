@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FinancesWorkspace } from "@repo/shared-types";
+import type { GroupByValue } from "../../../../components/norte/GroupBy";
 import { MonthStepper } from "../../../../components/norte/MonthStepper";
 import { ScreenHeader } from "../../../../components/norte/ScreenHeader";
 import { SavingsPlacesTab } from "./SavingsPlacesTab";
@@ -12,6 +13,38 @@ export type FinancesWorkspaceData = FinancesWorkspace;
 export type FinancesView = "summary" | "incomes" | "expenses" | "savings";
 
 const TITLES = { incomes: "Ingresos", expenses: "Gastos", savings: "Ahorros" } as const;
+
+function MonthStatus({ view, loading, error }: { view: FinancesView; loading: boolean; error: boolean }) {
+  if (loading) return <p role="status" className="m-0 text-body-sm text-muted-foreground">Cargando finanzas del mes…</p>;
+  if (error) return <p role="alert" className="m-0 text-body-sm text-negative">No pudimos cargar las finanzas de este mes.</p>;
+  return null;
+}
+
+function SubPageContent({
+  view,
+  current,
+  month,
+  incomeProps,
+  expenseProps,
+}: {
+  view: FinancesView;
+  current: FinancesWorkspaceData | null;
+  month: string;
+  incomeProps: { createOpen: boolean; editingId: string | null; onCreateOpenChange: (open: boolean) => void; onEditingIdChange: (id: string | null) => void };
+  expenseProps: { createOpen: boolean; editingId: string | null; groupBy: GroupByValue; onCreateOpenChange: (open: boolean) => void; onEditingIdChange: (id: string | null) => void; onGroupByChange: (v: GroupByValue) => void };
+}) {
+  if (!current) return null;
+  switch (view) {
+    case "incomes":
+      return <IncomeWorkspaceTab month={month} incomes={current.incomes} {...incomeProps} />;
+    case "expenses":
+      return <ExpenseWorkspaceTab month={month} expenses={current.expenses} {...expenseProps} />;
+    case "savings":
+      return <SavingsPlacesTab workspace={current.savings} />;
+    default:
+      return null;
+  }
+}
 
 export function FinancesWorkspace({
   workspace,
@@ -27,13 +60,9 @@ export function FinancesWorkspace({
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [expenseGroupBy, setExpenseGroupBy] = useState<GroupByValue>("category");
 
-  const monthStatus = (
-    <>
-      {loadingMonth && <p role="status" className="m-0 text-body-sm text-muted-foreground">Cargando finanzas del mes…</p>}
-      {loadError && <p role="alert" className="m-0 text-body-sm text-negative">No pudimos cargar las finanzas de este mes.</p>}
-    </>
-  );
+  const status = <MonthStatus view={view} loading={loadingMonth} error={loadError} />;
 
   if (view === "summary") {
     return (
@@ -43,26 +72,31 @@ export function FinancesWorkspace({
           className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[linear-gradient(var(--map-grid)_1px,transparent_1px),linear-gradient(90deg,var(--map-grid)_1px,transparent_1px)] bg-size-[24px_24px] [mask-image:linear-gradient(to_bottom,black_35%,transparent)]"
         />
         <FinancesSummaryHeader month={selectedMonth} onMonthChange={selectMonth} />
-        {monthStatus}
+        {status}
         {current && <FinancesSummary workspace={current} />}
       </div>
     );
   }
 
+  const isExpenses = view === "expenses";
+  const hasMonthStepper = view === "incomes" || isExpenses;
+
   return (
-    <div className="flex flex-col pb-8">
+    <div className={isExpenses ? "flex flex-col pb-24" : "flex flex-col pb-8"}>
       <ScreenHeader
         title={TITLES[view]}
         backTo="/app/finances"
-        trailing={(view === "incomes" || view === "expenses") && (
-          <MonthStepper value={selectedMonth} onValueChange={selectMonth} aria-label="Mes de finanzas" />
-        )}
+        trailing={hasMonthStepper ? <MonthStepper value={selectedMonth} onValueChange={selectMonth} aria-label="Mes de finanzas" /> : undefined}
       />
-      <div className="flex flex-col gap-8 px-5 pt-4">
-        {monthStatus}
-        {view === "incomes" && current && <IncomeWorkspaceTab month={selectedMonth} incomes={current.incomes} createOpen={isCreateOpen} editingId={editingIncomeId} onCreateOpenChange={setIsCreateOpen} onEditingIdChange={setEditingIncomeId} />}
-        {view === "expenses" && current && <ExpenseWorkspaceTab month={selectedMonth} expenses={current.expenses} createOpen={isCreateExpenseOpen} editingId={editingExpenseId} onCreateOpenChange={setIsCreateExpenseOpen} onEditingIdChange={setEditingExpenseId} />}
-        {view === "savings" && current && <SavingsPlacesTab workspace={current.savings} />}
+      <div className={isExpenses ? "flex flex-col gap-8 px-5 pt-3" : "flex flex-col gap-8 px-5 pt-4"}>
+        {status}
+        <SubPageContent
+          view={view}
+          current={current}
+          month={selectedMonth}
+          incomeProps={{ createOpen: isCreateOpen, editingId: editingIncomeId, onCreateOpenChange: setIsCreateOpen, onEditingIdChange: setEditingIncomeId }}
+          expenseProps={{ createOpen: isCreateExpenseOpen, editingId: editingExpenseId, groupBy: expenseGroupBy, onCreateOpenChange: setIsCreateExpenseOpen, onEditingIdChange: setEditingExpenseId, onGroupByChange: setExpenseGroupBy }}
+        />
       </div>
     </div>
   );

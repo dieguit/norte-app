@@ -1,46 +1,10 @@
 import type { ReactNode } from "react";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import { ChartRing, type ChartFamily } from "./CategoryDonut";
 
-const RING = {
-  income: [
-    "stroke-chart-income-1", "stroke-chart-income-2", "stroke-chart-income-3",
-    "stroke-chart-income-4", "stroke-chart-income-5", "stroke-chart-income-6",
-    "stroke-chart-income-7", "stroke-chart-income-8", "stroke-chart-income-9",
-  ],
-  expense: [
-    "stroke-chart-expense-1", "stroke-chart-expense-2", "stroke-chart-expense-3",
-    "stroke-chart-expense-4", "stroke-chart-expense-5", "stroke-chart-expense-6",
-    "stroke-chart-expense-7", "stroke-chart-expense-8", "stroke-chart-expense-9",
-  ],
-} as const;
-
-const RADIUS = 15.12;
-const STROKE = 5.76;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
-export function MiniRing({ values, family }: { values: number[]; family: keyof typeof RING }) {
-  const total = values.reduce((sum, value) => sum + value, 0);
-  const starts = values.map((_, index) => values.slice(0, index).reduce((sum, value) => sum + value, 0));
-  return (
-    <svg viewBox="0 0 36 36" className="size-9 shrink-0 -rotate-90" aria-hidden="true">
-      <circle cx="18" cy="18" r={RADIUS} fill="none" strokeWidth={STROKE} className="stroke-muted" />
-      {total > 0 &&
-        values.map((value, index) => (
-          <circle
-            key={index}
-            cx="18"
-            cy="18"
-            r={RADIUS}
-            fill="none"
-            strokeWidth={STROKE}
-            className={RING[family][Math.min(index, 8)]}
-            strokeDasharray={`${(value / total) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-            strokeDashoffset={(-starts[index] / total) * CIRCUMFERENCE}
-          />
-        ))}
-    </svg>
-  );
+export function MiniRing({ values, family }: { values: number[]; family: ChartFamily }) {
+  return <ChartRing values={values} family={family} size={36} thickness={5.76} className="size-9" />;
 }
 
 export function SectionIcon({ icon: Icon }: { icon: LucideIcon }) {

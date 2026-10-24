@@ -245,13 +245,9 @@ describe("FinancesWorkspace", () => {
 
       rerender(ui("expenses"));
 
-      const recurringSection = screen.getByLabelText("Gastos recurrentes");
-      expect(within(recurringSection).getByText("Alquiler / vivienda")).toBeInTheDocument();
-      expect(within(recurringSection).getByText("Servicios")).toBeInTheDocument();
-      expect(within(recurringSection).getByText("$ 50.000,00")).toBeInTheDocument();
-      const oneOffSection = screen.getByLabelText("Gastos únicos");
-      expect(within(oneOffSection).getByText("No tenés gastos únicos para este mes.")).toBeInTheDocument();
-      expect(within(oneOffSection).queryByText("Vuelo")).not.toBeInTheDocument();
+      expect(within(screen.getByRole("group", { name: "Alquiler / vivienda" })).getByRole("button", { name: "Editar gasto Alquiler mensual" })).toBeInTheDocument();
+      expect(screen.getByRole("group", { name: "Servicios" })).toHaveTextContent("$ 50.000,00");
+      expect(screen.queryByText("Pasaje aéreo")).not.toBeInTheDocument();
     });
 
     it("keeps savings balances independent of the selected month and restores monthly context", async () => {
@@ -268,7 +264,7 @@ describe("FinancesWorkspace", () => {
 
       rerender(ui("expenses"));
       expect(screen.getByRole("group", { name: "Mes de finanzas" })).toHaveTextContent("Jul 2026");
-      expect(screen.getByRole("heading", { name: "Gastos de Julio de 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("$ 250.000");
     });
 
     it("shows a visible error and no stale summary when the selected month request fails", async () => {
@@ -351,7 +347,8 @@ describe("FinancesWorkspace", () => {
 
       await user.click(within(stepper).getByRole("button", { name: "Mes siguiente" }));
 
-      expect(await screen.findByRole("heading", { name: "Gastos de Septiembre de 2026" })).toBeInTheDocument();
+      expect(await screen.findByRole("figure", { name: "Total del mes" })).toHaveTextContent("$ 200.000");
+      expect(stepper).toHaveTextContent("Sep 2026");
     });
 
     it("renders one-time incomes before recurring incomes", () => {
@@ -369,8 +366,8 @@ describe("FinancesWorkspace", () => {
       );
     });
 
-    it("shows concepts first and legacy categories once in finance rows", () => {
-      const { rerender } = render(ui("incomes"));
+    it("shows concepts first and legacy categories once in income rows", () => {
+      render(ui("incomes"));
 
       const recurringIncomeSection = screen.getByLabelText("Ingresos recurrentes");
       const incomeLabel = within(recurringIncomeSection).getByText(
@@ -403,113 +400,59 @@ describe("FinancesWorkspace", () => {
           name: "Editar ingreso Bono",
         }),
       ).toBeInTheDocument();
-
-      rerender(ui("expenses"));
-
-      const recurringExpenseSection = screen.getByLabelText("Gastos recurrentes");
-      const recurringExpenseLabel = within(recurringExpenseSection).getByText(
-        "Alquiler mensual",
-      );
-      const recurringExpenseCategory = within(recurringExpenseSection).getByText(
-        "Alquiler / vivienda",
-      );
-      expect(recurringExpenseLabel).toBeInTheDocument();
-      expect(recurringExpenseCategory).toBeInTheDocument();
-      expect(
-        recurringExpenseLabel.compareDocumentPosition(recurringExpenseCategory) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      expect(recurringExpenseLabel).toHaveClass(
-        "break-words",
-        "[overflow-wrap:anywhere]",
-      );
-      expect(
-        recurringExpenseLabel.closest("li")?.firstElementChild,
-      ).toHaveClass("min-w-0");
-      expect(
-        within(recurringExpenseSection).getByRole("button", {
-          name: "Editar gasto Alquiler mensual",
-        }),
-      ).toBeInTheDocument();
-
-      const oneOffExpenseSection = screen.getByLabelText("Gastos únicos");
-      const oneOffExpenseLabel = within(oneOffExpenseSection).getByText(
-        "Pasaje aéreo",
-      );
-      const oneOffExpenseCategory = within(oneOffExpenseSection).getByText(
-        "Vuelo",
-      );
-      expect(oneOffExpenseLabel).toBeInTheDocument();
-      expect(oneOffExpenseCategory).toBeInTheDocument();
-      expect(
-        oneOffExpenseLabel.compareDocumentPosition(oneOffExpenseCategory) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      expect(oneOffExpenseLabel).toHaveClass(
-        "break-words",
-        "[overflow-wrap:anywhere]",
-      );
-      expect(oneOffExpenseLabel.closest("li")?.firstElementChild).toHaveClass(
-        "min-w-0",
-      );
-      expect(
-        within(oneOffExpenseSection).getByRole("button", {
-          name: "Editar gasto Pasaje aéreo",
-        }),
-      ).toBeInTheDocument();
     });
 
-    it("uses the category once for a legacy expense without a concept", async () => {
-      render(
-        <FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-07" view="expenses" />,
-      );
+    it("groups a legacy expense without a concept under its category", async () => {
+      render(<FinancesWorkspace workspace={sampleWorkspace} initialMonth="2026-07" view="expenses" />);
 
-      const recurringExpenseSection = await screen.findByLabelText("Gastos recurrentes");
-      expect(
-        within(recurringExpenseSection).getAllByText("Servicios"),
-      ).toHaveLength(1);
-      expect(
-        within(recurringExpenseSection).getByRole("button", {
-          name: "Editar gasto Servicios",
-        }),
-      ).toBeInTheDocument();
+      const utilities = await screen.findByRole("group", { name: "Servicios" });
+      expect(within(utilities).getByRole("button", { name: "Editar gasto Servicios" })).toBeInTheDocument();
     });
 
-    it("shows monthly-filtered expense lists, excludes closed recurrences, and calculates USD equivalents", () => {
+    it("groups the month's expenses by category, largest first, with ARS shares", () => {
       render(ui("expenses"));
 
-      const recurringSection = screen.getByLabelText("Gastos recurrentes");
-      expect(
-        within(recurringSection).getByText("Alquiler / vivienda"),
-      ).toBeInTheDocument();
-      expect(
-        within(recurringSection).getByText("$ 200.000,00"),
-      ).toBeInTheDocument();
-      expect(
-        within(recurringSection).getByText("Todos los meses desde Junio de 2026"),
-      ).toBeInTheDocument();
-      expect(
-        within(recurringSection).queryByText("Servicios"),
-      ).not.toBeInTheDocument();
+      const donut = screen.getByRole("figure", { name: "Total del mes" });
+      expect(donut).toHaveTextContent("$ 500.000");
+      expect(donut).toHaveTextContent("2 movimientos");
+      expect(screen.getByText("2 categorías")).toBeInTheDocument();
+      expect(screen.getByLabelText("Agrupar por")).toHaveValue("category");
 
-      const oneOffSection = screen.getByLabelText("Gastos únicos");
-      expect(
-        within(oneOffSection).getByText("Pasaje aéreo"),
-      ).toBeInTheDocument();
-      expect(within(oneOffSection).getByText("Vuelo")).toBeInTheDocument();
-      expect(within(oneOffSection).getByText("US$ 200,00")).toBeInTheDocument();
-      expect(
-        within(oneOffSection).getByText("Equivale a ARS 300.000"),
-      ).toBeInTheDocument();
-      expect(
-        within(oneOffSection).getByText("Agosto de 2026"),
-      ).toBeInTheDocument();
-      expect(oneOffSection.compareDocumentPosition(recurringSection)).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING,
-      );
+      const flight = screen.getByRole("group", { name: "Vuelo" });
+      const housing = screen.getByRole("group", { name: "Alquiler / vivienda" });
+      expect(flight.compareDocumentPosition(housing)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(flight).toHaveTextContent("60%");
+      expect(flight).toHaveTextContent("$ 300.000,00");
+      expect(within(flight).getByRole("button", { name: "Editar gasto Pasaje aéreo" })).toHaveTextContent("US$ 200,00");
+      expect(housing).toHaveTextContent("40%");
+      expect(within(housing).getByRole("button", { name: "Editar gasto Alquiler mensual" })).toHaveTextContent("$ 200.000,00");
+      expect(screen.queryByRole("group", { name: "Servicios" })).not.toBeInTheDocument();
     });
 
-    it("renders separate empty states when there are no recurring or one-off expenses", () => {
+    it("switches to the date log, edits from it and keeps the choice across months", async () => {
+      const user = userEvent.setup();
+      render(ui("expenses"));
+
+      await user.selectOptions(screen.getByLabelText("Agrupar por"), "date");
+
+      const august = screen.getByRole("heading", { level: 2, name: "Agosto 2026" });
+      const june = screen.getByRole("heading", { level: 2, name: "Desde Junio 2026" });
+      expect(august.compareDocumentPosition(june)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      const flightRow = screen.getByRole("button", { name: "Editar gasto Pasaje aéreo" });
+      expect(flightRow).toHaveTextContent("Vuelo");
+      expect(flightRow).toHaveTextContent("US$ 200,00");
+
+      await user.click(within(screen.getByRole("group", { name: "Mes de finanzas" })).getByRole("button", { name: "Mes anterior" }));
+
+      expect(await screen.findByRole("heading", { level: 2, name: "Desde Enero 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 2, name: "Desde Junio 2026" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Agrupar por")).toHaveValue("date");
+
+      await user.click(screen.getByRole("button", { name: "Editar gasto Servicios" }));
+      expect(screen.getByRole("heading", { name: "Editar gasto" })).toBeInTheDocument();
+    });
+
+    it("renders empty states for incomes and expenses", () => {
       const { rerender } = render(ui("incomes", emptyWorkspace));
 
       const oneOffIncomeSection = screen.getByLabelText("Ingresos únicos");
@@ -530,17 +473,11 @@ describe("FinancesWorkspace", () => {
 
       rerender(ui("expenses", emptyWorkspace));
 
-      const recurringSection = screen.getByLabelText("Gastos recurrentes");
-      expect(
-        within(recurringSection).getByText(
-          "No tenés gastos recurrentes para este mes.",
-        ),
-      ).toBeInTheDocument();
-
-      const oneOffSection = screen.getByLabelText("Gastos únicos");
-      expect(
-        within(oneOffSection).getByText("No tenés gastos únicos para este mes."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("No tenés gastos este mes.")).toBeInTheDocument();
+      expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("—");
+      expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("0 movimientos");
+      expect(screen.queryByLabelText("Agrupar por")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Agregar gasto" })).toBeInTheDocument();
     });
 
     it("preserves income tab list and item editing", async () => {
@@ -591,7 +528,7 @@ describe("FinancesWorkspace", () => {
       const user = userEvent.setup();
       render(ui("expenses"));
 
-      await user.click(screen.getByRole("button", { name: "Agregar nuevo" }));
+      await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
       expect(
         screen.getByRole("heading", { name: "Nuevo gasto" }),

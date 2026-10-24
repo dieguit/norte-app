@@ -14,6 +14,7 @@ export function formatMoneyParts(money: MoneyValue, sign: MoneySign = "auto") {
 
 const SIZES = {
   hero: ["text-[42px] tracking-[-1.2px]", "pb-1 text-[20px]"],
+  title: ["text-[26px] tracking-[-0.6px]", "pb-0.5 text-[15px]"],
   large: ["text-[18px]", "pb-px text-[13px]"],
   default: ["text-[15px]", "pb-px text-[12px]"],
   sm: ["text-[14px]", "pb-px text-[11px]"],
@@ -31,12 +32,14 @@ export function Money({
   size = "default",
   tone = "default",
   sign = "auto",
+  decimals = true,
   className,
 }: {
   value: MoneyValue;
   size?: keyof typeof SIZES;
   tone?: keyof typeof TONES;
   sign?: MoneySign;
+  decimals?: boolean;
   className?: string;
 }) {
   const parts = formatMoneyParts(value, sign);
@@ -46,7 +49,7 @@ export function Money({
       {parts ? (
         <>
           <span className={cn("font-semibold", integerSize, TONES[tone])}>{parts.integer}</span>
-          <span className={cn("font-medium text-subtle-foreground", decimalsSize)}>{parts.decimals}</span>
+          {decimals && <span className={cn("font-medium text-subtle-foreground", decimalsSize)}>{parts.decimals}</span>}
         </>
       ) : (
         <span className={cn("font-semibold text-subtle-foreground", integerSize)}>—</span>
