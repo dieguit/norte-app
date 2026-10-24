@@ -62,6 +62,14 @@ describe('postProcess', () => {
       )[0].maxAmountPeriod,
     ).toBeNull();
   });
+  it('drops items with impossible calendar dates like 2026-02-31 between valid siblings', () => {
+    const b1 = benefit({ title: 'Beneficio 1' });
+    const bInvalid = benefit({ title: 'Inválido', validTo: '2026-02-31' });
+    const b2 = benefit({ title: 'Beneficio 2' });
+    expect(
+      postProcess({ benefits: [b1, bInvalid, b2] }, candidates, '2026-10-21'),
+    ).toEqual([b1, b2]);
+  });
 });
 
 describe('fingerprint', () => {

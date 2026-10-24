@@ -21,7 +21,19 @@ import {
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_CHARS = 60_000;
 const USER_AGENT = 'Mozilla/5.0 (compatible; NorteBenefitsBot/1.0)';
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const day = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((val) => {
+    const [y, m, d] = val.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    date.setUTCFullYear(y);
+    return (
+      date.getUTCFullYear() === y &&
+      date.getUTCMonth() === m - 1 &&
+      date.getUTCDate() === d
+    );
+  });
 
 export const ExtractedBenefitSchema = z.object({
   title: z.string().min(1),
@@ -211,7 +223,7 @@ export async function runHarvest(
         const content = await fetchSource(source, options.fetchImpl);
         const prompt = buildPrompt(source, candidates, today).replace(
           '{{CONTENT}}',
-          content,
+          () => content,
         );
         const items = postProcess(await extract(prompt), slugs, today);
         const inserted = options.dryRun

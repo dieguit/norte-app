@@ -43,7 +43,7 @@ describeWhenSafe('runHarvest', () => {
     Promise.resolve(
       url.includes('broken')
         ? new Response('nope', { status: 503 })
-        : new Response('<p>20% en Coto</p>'),
+        : new Response('<p>20% en Coto &amp; $&amp; promo</p>'),
     );
 
   it('inserts once, bumps last_seen on rerun, dedupes across sources, isolates failures', async () => {
@@ -53,8 +53,9 @@ describeWhenSafe('runHarvest', () => {
       'https://a.test/2',
       'https://broken.test',
     ]);
-    const extract = () =>
-      Promise.resolve({
+    const extract = (prompt: string) => {
+      expect(prompt).toContain('20% en Coto & $& promo');
+      return Promise.resolve({
         benefits: [
           {
             title: '20% en Coto',
@@ -72,6 +73,7 @@ describeWhenSafe('runHarvest', () => {
           },
         ],
       });
+    };
 
     const first = await runHarvest(
       db,
@@ -106,7 +108,25 @@ describeWhenSafe('runHarvest', () => {
 
   it('dry run writes nothing', async () => {
     const slug = `p${randomUUID().slice(0, 8)}`;
-    const extract = () => Promise.resolve({ benefits: [] });
+    const extract = () =>
+      Promise.resolve({
+        benefits: [
+          {
+            title: '20% en Coto',
+            merchant: 'Coto',
+            category: 'supermercado',
+            kind: 'discount',
+            value: 20,
+            maxAmount: null,
+            maxAmountPeriod: null,
+            weekdays: [3],
+            validFrom: null,
+            validTo: null,
+            instrumentSlugs: [`${slug}-visa-credito`],
+            conditions: null,
+          },
+        ],
+      });
     const results = await runHarvest(
       db,
       extract,
@@ -116,8 +136,14 @@ describeWhenSafe('runHarvest', () => {
     );
     expect(results[0]).toMatchObject({
       status: 'ok',
-      extracted: 0,
+      extracted: 1,
       inserted: 0,
     });
+
+    const rows = await db
+      .select()
+      .from(benefits)
+      .where(eq(benefits.providerSlug, slug));
+    expect(rows).toHaveLength(0);
   });
 });
