@@ -218,7 +218,7 @@ export function FinancialAmountFields<TDraft extends { amount: string; currency:
         </Field>
       </div>
       {arsEquivalent !== null && (
-        <p className="text-sm text-[var(--sea-ink-soft)]">
+        <p className="text-sm text-muted-foreground">
           Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}
         </p>
       )}
@@ -273,8 +273,8 @@ export function FinancialSheetFrame({
         side="right"
         className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
       >
-        <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
-          <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">{title}</SheetTitle>
+        <SheetHeader className="border-b border-border px-6 py-5">
+          <SheetTitle className="font-serif text-2xl font-bold text-foreground">{title}</SheetTitle>
           <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
         {children}

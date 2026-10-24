@@ -6,7 +6,7 @@ import {
   SheetTitle,
 } from '../../../../components/ui/sheet'
 import type { SavingsMovement } from '../../../../features/savings-places/savings-places'
-import { formatMoney } from '../../../../lib/format'
+import { Money } from '../../../../components/norte/Money'
 import { createMoney } from '../../../../lib/money'
 
 interface SavingsMovementsSheetProps {
@@ -65,10 +65,10 @@ export function SavingsMovementsSheet({
                         {new Date(movement.createdAt).toLocaleDateString('es-AR')}
                       </span>
                     </div>
-                    <span className="shrink-0 font-medium tabular-nums text-foreground sm:text-right">
-                      {movement.kind === 'completion' ? '- ' : ''}
-                      {formatMoney(createMoney(movement.amount, movement.currency))}
-                    </span>
+                    <Money
+                      value={createMoney(movement.kind === 'completion' ? `-${movement.amount.replace(/^-/, '')}` : movement.amount, movement.currency)}
+                      className="shrink-0 sm:justify-end"
+                    />
                   </li>
                 ))}
               </ul>

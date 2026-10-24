@@ -21,13 +21,13 @@ export function ContributionActionHeader({ selectedAction, onBack }: Contributio
     <>
       <div className="flex items-center gap-3">
         {selectedAction && (
-          <Button type="button" variant="ghost" size="sm" aria-label="Volver a opciones de aporte" onClick={onBack} className="-ml-2 h-8 w-8 p-0 text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]">
+          <Button type="button" variant="ghost" size="sm" aria-label="Volver a opciones de aporte" onClick={onBack} className="-ml-2 h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-4" />
           </Button>
         )}
-        <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">{title}</SheetTitle>
+        <SheetTitle className="font-serif text-2xl font-bold text-foreground">{title}</SheetTitle>
       </div>
-      <SheetDescription className="text-sm text-[var(--sea-ink-soft)]">{description}</SheetDescription>
+      <SheetDescription className="text-sm text-muted-foreground">{description}</SheetDescription>
     </>
   )
 }
