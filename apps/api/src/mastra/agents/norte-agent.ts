@@ -20,6 +20,7 @@ import {
 } from '../tools/pending-actions';
 import { createRoadmapTools } from '../tools/roadmap-tools';
 import { createNotificationTools } from '../tools/notification-tools';
+import { createBenefitTools } from '../tools/benefit-tools';
 import { createSourceTools } from '../tools/source-tools';
 import { sourcesIndex } from '../sources';
 
@@ -58,12 +59,14 @@ const ATTACHMENT_RULES = `Imágenes y PDFs (tickets, facturas, resúmenes de tar
 - Sin texto o sin orden clara: interpretá qué es y proponé la acción en un mensaje corto (ej. "Es un ticket de Coto por $12.500, ¿lo anoto como gasto en Supermercado?"; en un resumen, total y cantidad de movimientos). Ejecutá sólo cuando el usuario acepte.
 - Si no se lee bien, falta el monto o no es algo financiero, decilo y preguntá; nunca inventes montos.`;
 
-const NOTIFICATIONS_RULES = `Notificaciones (chequeo diario de cierre del día, tipo day_close_checkin):
+const NOTIFICATIONS_RULES = `Notificaciones:
 - Para activarlo, desactivarlo o cambiar el horario usá getNotificationSettings y updateNotificationSetting, directo y sin pedir confirmación. Los horarios son siempre hora de Argentina, en punto o y media (ej. 21:00, 21:30). Si pide otro horario (ej. 21:15), explicalo y proponé el más cercano. Si lo activa sin decir horario, mantené el configurado y decile cuál quedó.
 - Cuando el usuario responde al chequeo diario ("Paso por nuestro chequeo diario 🧭"):
   - Si manda movimientos, registralos con las reglas de siempre (moneda, monto y categoría obligatorios) y respondé: "🫡, te paso resumen del día?".
   - Si responde "Listo" o que no hubo nada más, respondé: "Cerramos el día. Hasta mañana!🧭".
-- Si pide el resumen del día o acepta que se lo pases, usá getDailySummary y resumí en pocas líneas ingresos, gastos y aportes de hoy con totales por moneda.`;
+- Si pide el resumen del día o acepta que se lo pases, usá getDailySummary y resumí en pocas líneas ingresos, gastos y aportes de hoy con totales por moneda.
+- savings_digest: resumen diario de beneficios y descuentos de hoy con sus tarjetas, billeteras y membresías ("Beneficios de hoy 🧭"). Para activarlo, el usuario elige sus tarjetas y categorías en la app: mandale el link a Beneficios. Para desactivarlo o cambiar el horario usá updateNotificationSetting.
+- Si pregunta por un beneficio del resumen (condiciones, dónde, hasta cuándo) o qué beneficios tiene hoy, usá getTodayBenefits y respondé con las condiciones y el link de la fuente.`;
 
 const SOURCES_RULES = `Consejos y explicaciones:
 - Si preguntan qué podés hacer, qué hace Norte o cómo hacer algo en la app o por WhatsApp, leé que-hace-norte.
@@ -79,6 +82,7 @@ function linksSection(webAppUrl?: string) {
   return `Links a la app (usalos cuando la respuesta sea larga o el usuario quiera ver el detalle):
 - Inicio y hoja de ruta: ${webAppUrl}/app
 - Finanzas: ${webAppUrl}/app/finances
+- Beneficios (elegir tarjetas y activar el resumen diario): ${webAppUrl}/app/finances/benefits
 - Objetivos: ${webAppUrl}/app/goals`;
 }
 
@@ -193,6 +197,7 @@ export function createNorteAgent(
       ...createGoalTools(options.services, stores),
       ...createContributionTools(options.services, stores),
       ...createNotificationTools(options.services),
+      ...createBenefitTools(options.services),
       ...createSourceTools(),
     },
     memory: new Memory({ options: { lastMessages: 20 } }),

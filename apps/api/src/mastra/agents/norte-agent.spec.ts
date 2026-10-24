@@ -25,6 +25,7 @@ describe('norte agent', () => {
         'getNotificationSettings',
         'updateNotificationSetting',
         'getDailySummary',
+        'getTodayBenefits',
       ]),
     );
   });
@@ -47,7 +48,9 @@ describe('norte agent', () => {
     expect(text).toContain('getCurrentDate');
     expect(text).toContain('listCategories');
     expect(text).toContain('getNotificationSettings');
-    expect(text).toContain('day_close_checkin');
+    expect(text).toContain('savings_digest');
+    expect(text).toContain('getTodayBenefits');
+    expect(text).toContain('https://app.norte.test/app/finances/benefits');
     expect(text).toContain('sólo podés ayudar con sus finanzas');
     expect(text).toContain('Aviso de espera');
   });

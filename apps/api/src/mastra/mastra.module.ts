@@ -36,6 +36,7 @@ import { ContributionsService } from '../contributions/contributions.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BenefitsModule } from '../benefits/benefits.module';
+import { BenefitsService } from '../benefits/benefits.service';
 import { NotificationsCron } from './notifications.cron';
 import { BenefitsHarvestCron } from './benefits-harvest.cron';
 import { createMastra } from './index';
@@ -83,6 +84,7 @@ const mastraModule = MastraModule.registerAsync({
     GoalsModule,
     ContributionsModule,
     NotificationsModule,
+    BenefitsModule,
   ],
   inject: [
     ConfigService,
@@ -95,6 +97,7 @@ const mastraModule = MastraModule.registerAsync({
     GoalsService,
     ContributionsService,
     NotificationsService,
+    BenefitsService,
   ],
   useFactory: (
     config: ConfigService<Env, true>,
@@ -107,6 +110,7 @@ const mastraModule = MastraModule.registerAsync({
     goals: GoalsService,
     contributions: ContributionsService,
     notifications: NotificationsService,
+    benefits: BenefitsService,
   ) => {
     const webAppUrl = config.get('WEB_APP_URL', { infer: true });
     return {
@@ -128,6 +132,7 @@ const mastraModule = MastraModule.registerAsync({
             goals,
             contributions,
             notifications,
+            benefits,
           },
           webAppUrl,
           ...(channel

@@ -21,7 +21,7 @@ export function createNotificationTools({
     getNotificationSettings: createTool({
       id: 'get-notification-settings',
       description:
-        "User's proactive notification settings. day_close_checkin is the daily check-in asking for the day's missing movements. time is HH:mm in Argentina time.",
+        "User's proactive notification settings. day_close_checkin is the daily check-in asking for the day's missing movements; savings_digest is the daily list of today's benefits. time is HH:mm in Argentina time.",
       inputSchema: z.object({}),
       execute: (_input, context) =>
         toolResult(
