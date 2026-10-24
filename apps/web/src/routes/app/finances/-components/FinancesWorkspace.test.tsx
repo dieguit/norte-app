@@ -351,55 +351,44 @@ describe("FinancesWorkspace", () => {
       expect(stepper).toHaveTextContent("Sep 2026");
     });
 
-    it("renders one-time incomes before recurring incomes", () => {
+    it("groups the month's incomes by source, largest first", () => {
       render(ui("incomes"));
 
-      const oneOffSection = screen.getByLabelText("Ingresos únicos");
-      const recurringSection = screen.getByLabelText("Ingresos recurrentes");
+      expect(screen.getByRole("heading", { level: 1, name: "Ingresos" })).toBeInTheDocument();
+      const donut = screen.getByRole("figure", { name: "Total del mes" });
+      expect(donut).toHaveTextContent("$ 700.000");
+      expect(donut).toHaveTextContent("2 movimientos");
+      expect(screen.getByText("2 fuentes")).toBeInTheDocument();
+      expect(screen.getByLabelText("Agrupar por")).toHaveValue("category");
 
-      expect(within(oneOffSection).getByText("Bono")).toBeInTheDocument();
-      expect(
-        within(recurringSection).getByText("Sueldo mensual"),
-      ).toBeInTheDocument();
-      expect(oneOffSection.compareDocumentPosition(recurringSection)).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING,
-      );
+      const salary = screen.getByRole("group", { name: "Sueldo" });
+      const bonus = screen.getByRole("group", { name: "Bono" });
+      expect(salary.compareDocumentPosition(bonus)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(salary).toHaveTextContent("86%");
+      expect(within(salary).getByRole("button", { name: "Editar ingreso Sueldo mensual" })).toHaveTextContent("$ 600.000,00");
+      expect(bonus).toHaveTextContent("14%");
+      expect(within(bonus).getByRole("button", { name: "Editar ingreso Bono" })).toHaveTextContent("$ 100.000,00");
     });
 
-    it("shows concepts first and legacy categories once in income rows", () => {
+    it("keeps the income grouping independent from the expense grouping", async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(ui("expenses"));
+
+      await user.selectOptions(screen.getByLabelText("Agrupar por"), "date");
+      rerender(ui("incomes"));
+
+      expect(screen.getByLabelText("Agrupar por")).toHaveValue("category");
+      await user.selectOptions(screen.getByLabelText("Agrupar por"), "date");
+      expect(screen.getByRole("heading", { level: 2, name: "Desde Enero 2026" })).toBeInTheDocument();
+    });
+
+    it("opens income sheet to add a new income", async () => {
+      const user = userEvent.setup();
       render(ui("incomes"));
 
-      const recurringIncomeSection = screen.getByLabelText("Ingresos recurrentes");
-      const incomeLabel = within(recurringIncomeSection).getByText(
-        "Sueldo mensual",
-      );
-      const incomeCategory = within(recurringIncomeSection).getByText("Sueldo");
-      expect(incomeLabel).toBeInTheDocument();
-      expect(incomeCategory).toBeInTheDocument();
-      expect(
-        incomeLabel.compareDocumentPosition(incomeCategory) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      expect(incomeLabel).toHaveClass(
-        "break-words",
-        "[overflow-wrap:anywhere]",
-      );
-      expect(incomeLabel.closest("li")?.firstElementChild).toHaveClass(
-        "min-w-0",
-      );
-      expect(
-        within(recurringIncomeSection).getByRole("button", {
-          name: "Editar ingreso Sueldo mensual",
-        }),
-      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Agregar ingreso" }));
 
-      const oneOffIncomeSection = screen.getByLabelText("Ingresos únicos");
-      expect(within(oneOffIncomeSection).getAllByText("Bono")).toHaveLength(1);
-      expect(
-        within(oneOffIncomeSection).getByRole("button", {
-          name: "Editar ingreso Bono",
-        }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Nuevo ingreso" })).toBeInTheDocument();
     });
 
     it("groups a legacy expense without a concept under its category", async () => {
@@ -455,21 +444,11 @@ describe("FinancesWorkspace", () => {
     it("renders empty states for incomes and expenses", () => {
       const { rerender } = render(ui("incomes", emptyWorkspace));
 
-      const oneOffIncomeSection = screen.getByLabelText("Ingresos únicos");
-      expect(
-        within(oneOffIncomeSection).getByText(
-          "No tenés ingresos únicos para este mes.",
-        ),
-      ).toBeInTheDocument();
-
-      const recurringIncomeSection = screen.getByLabelText(
-        "Ingresos recurrentes",
-      );
-      expect(
-        within(recurringIncomeSection).getByText(
-          "No tenés ingresos recurrentes para este mes.",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText("No tenés ingresos este mes.")).toBeInTheDocument();
+      expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("—");
+      expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("0 movimientos");
+      expect(screen.queryByLabelText("Agrupar por")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Agregar ingreso" })).toBeInTheDocument();
 
       rerender(ui("expenses", emptyWorkspace));
 
@@ -512,9 +491,7 @@ describe("FinancesWorkspace", () => {
         />,
       );
 
-      expect(
-        screen.getByRole("heading", { name: "Ingresos de Agosto de 2026" }),
-      ).toBeInTheDocument();
+      expect(within(screen.getByRole("group", { name: "Sueldo" })).getByRole("button", { name: "Editar ingreso Sueldo" })).toBeInTheDocument();
       await user.click(
         screen.getByRole("button", { name: "Editar ingreso Sueldo" }),
       );

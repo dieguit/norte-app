@@ -30,7 +30,7 @@ function SubPageContent({
   view: FinancesView;
   current: FinancesWorkspaceData | null;
   month: string;
-  incomeProps: { createOpen: boolean; editingId: string | null; onCreateOpenChange: (open: boolean) => void; onEditingIdChange: (id: string | null) => void };
+  incomeProps: { createOpen: boolean; editingId: string | null; groupBy: GroupByValue; onCreateOpenChange: (open: boolean) => void; onEditingIdChange: (id: string | null) => void; onGroupByChange: (v: GroupByValue) => void };
   expenseProps: { createOpen: boolean; editingId: string | null; groupBy: GroupByValue; onCreateOpenChange: (open: boolean) => void; onEditingIdChange: (id: string | null) => void; onGroupByChange: (v: GroupByValue) => void };
 }) {
   if (!current) return null;
@@ -61,6 +61,7 @@ export function FinancesWorkspace({
   const [isCreateExpenseOpen, setIsCreateExpenseOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [expenseGroupBy, setExpenseGroupBy] = useState<GroupByValue>("category");
+  const [incomeGroupBy, setIncomeGroupBy] = useState<GroupByValue>("category");
 
   const status = <MonthStatus view={view} loading={loadingMonth} error={loadError} />;
 
@@ -78,23 +79,22 @@ export function FinancesWorkspace({
     );
   }
 
-  const isExpenses = view === "expenses";
-  const hasMonthStepper = view === "incomes" || isExpenses;
+  const hasMonthStepper = view === "incomes" || view === "expenses";
 
   return (
-    <div className={isExpenses ? "flex flex-col pb-24" : "flex flex-col pb-8"}>
+    <div className={hasMonthStepper ? "flex flex-col pb-24" : "flex flex-col pb-8"}>
       <ScreenHeader
         title={TITLES[view]}
         backTo="/app/finances"
         trailing={hasMonthStepper ? <MonthStepper value={selectedMonth} onValueChange={selectMonth} aria-label="Mes de finanzas" /> : undefined}
       />
-      <div className={isExpenses ? "flex flex-col gap-8 px-5 pt-3" : "flex flex-col gap-8 px-5 pt-4"}>
+      <div className={hasMonthStepper ? "flex flex-col gap-8 px-5 pt-3" : "flex flex-col gap-8 px-5 pt-4"}>
         {status}
         <SubPageContent
           view={view}
           current={current}
           month={selectedMonth}
-          incomeProps={{ createOpen: isCreateOpen, editingId: editingIncomeId, onCreateOpenChange: setIsCreateOpen, onEditingIdChange: setEditingIncomeId }}
+          incomeProps={{ createOpen: isCreateOpen, editingId: editingIncomeId, groupBy: incomeGroupBy, onCreateOpenChange: setIsCreateOpen, onEditingIdChange: setEditingIncomeId, onGroupByChange: setIncomeGroupBy }}
           expenseProps={{ createOpen: isCreateExpenseOpen, editingId: editingExpenseId, groupBy: expenseGroupBy, onCreateOpenChange: setIsCreateExpenseOpen, onEditingIdChange: setEditingExpenseId, onGroupByChange: setExpenseGroupBy }}
         />
       </div>

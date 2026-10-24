@@ -14,7 +14,7 @@ export function ScreenHeader({
   trailing?: ReactNode;
 }) {
   return (
-    <header className="flex items-center gap-3 px-5 pt-4 pb-2">
+    <header className="flex items-center gap-2 px-5 pt-4 pb-2">
       {backTo && (
         <Link
           to={backTo}
