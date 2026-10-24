@@ -32,7 +32,9 @@ describe('BenefitsHarvestCron', () => {
     expect(mastra.getAgent).toHaveBeenCalledWith('benefitsExtractor');
     expect(generate).toHaveBeenCalledWith(
       'prompt',
-      expect.objectContaining({ structuredOutput: expect.anything() }),
+      expect.objectContaining({
+        structuredOutput: expect.anything() as unknown,
+      }),
     );
 
     harvest.mockRejectedValueOnce(new Error('db down'));

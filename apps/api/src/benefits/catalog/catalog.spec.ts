@@ -1,5 +1,10 @@
 import { CARD_NETWORKS } from '@repo/shared-types';
-import { CATALOG, INSTRUMENTS, candidateInstruments, type Source } from './index';
+import {
+  CATALOG,
+  INSTRUMENTS,
+  candidateInstruments,
+  type Source,
+} from './index';
 
 describe('benefits catalog', () => {
   const all = CATALOG.flatMap((p) => p.instruments);
@@ -14,7 +19,7 @@ describe('benefits catalog', () => {
     for (const p of CATALOG) {
       expect(p.sources.length).toBeGreaterThan(0);
       expect(candidateInstruments(p).length).toBeGreaterThan(0);
-      const firstSource: Source = p.sources[0]!;
+      const firstSource: Source = p.sources[0];
       expect(firstSource.url).toBeDefined();
     }
   });
@@ -24,7 +29,7 @@ describe('benefits catalog', () => {
     const slugs = candidateInstruments(visa).map((i) => i.slug);
     expect(slugs).toContain('galicia-visa-credito');
     expect(slugs).not.toContain('galicia-mastercard-credito');
-    for (const i of all) if (i.network) expect(CARD_NETWORKS).toContain(i.network);
+    for (const i of all)
+      if (i.network) expect(CARD_NETWORKS).toContain(i.network);
   });
 });
-

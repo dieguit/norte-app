@@ -27,10 +27,7 @@ import {
   notificationSettings,
   notifications,
 } from '../notifications/notifications.schema';
-import {
-  benefitUserPreferences,
-  benefits,
-} from '../benefits/benefits.schema';
+import { benefitUserPreferences, benefits } from '../benefits/benefits.schema';
 
 export const schema = {
   onboardingDrafts,

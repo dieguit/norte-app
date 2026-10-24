@@ -1,4 +1,8 @@
-import type { CARD_NETWORKS, INSTRUMENT_TYPES, PROVIDER_KINDS } from '@repo/shared-types';
+import type {
+  CARD_NETWORKS,
+  INSTRUMENT_TYPES,
+  PROVIDER_KINDS,
+} from '@repo/shared-types';
 
 type Network = (typeof CARD_NETWORKS)[number];
 

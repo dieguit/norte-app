@@ -77,7 +77,8 @@ export class BenefitsService {
     return rankBenefits(
       rows.map((row) => {
         const slug =
-          row.instrumentSlugs.find((s) => held.has(s)) ?? row.instrumentSlugs[0];
+          row.instrumentSlugs.find((s) => held.has(s)) ??
+          row.instrumentSlugs[0];
         return {
           title: row.title,
           merchant: row.merchant,

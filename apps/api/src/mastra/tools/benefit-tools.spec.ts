@@ -14,9 +14,9 @@ describe('benefit tools', () => {
     const { getTodayBenefits } = createBenefitTools({
       benefits: { findMatching } as never,
     });
-    await expect(
-      getTodayBenefits.execute!({}, ctx('u1')),
-    ).resolves.toEqual([{ merchant: 'Coto' }]);
+    await expect(getTodayBenefits.execute!({}, ctx('u1'))).resolves.toEqual([
+      { merchant: 'Coto' },
+    ]);
     expect(findMatching).toHaveBeenCalledWith('u1');
   });
 

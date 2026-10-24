@@ -235,7 +235,9 @@ describeWhenSafe('NotificationsService', () => {
       expect(d.type).toBe('savings_digest');
       await service.markSent(d.id, at(DIGEST_SLOT));
       expect(await service.markAnswered(u)).toBe(false);
-      expect(mine(u, await service.closeExpired(at('2026-10-22T13:00:00Z')))).toEqual([]);
+      expect(
+        mine(u, await service.closeExpired(at('2026-10-22T13:00:00Z'))),
+      ).toEqual([]);
       const [row] = await rowsOf(u);
       expect(row.status).toBe('closed');
     });
@@ -245,12 +247,19 @@ describeWhenSafe('NotificationsService', () => {
       const [digest] = mine(u, await service.claimDue(at(DIGEST_SLOT)));
       await service.markSent(digest.id, at(DIGEST_SLOT));
       // check-in 2026-10-22 21:00 BA
-      const [checkin] = mine(u, await service.claimDue(at('2026-10-23T00:00:00Z')));
+      const [checkin] = mine(
+        u,
+        await service.claimDue(at('2026-10-23T00:00:00Z')),
+      );
       await service.markSent(checkin.id, at('2026-10-23T00:00:00Z'));
       expect(await service.markAnswered(u)).toBe(true);
       const rows = await rowsOf(u);
-      expect(rows.find((r) => r.type === 'savings_digest')?.status).toBe('closed');
-      expect(rows.find((r) => r.type === 'day_close_checkin')?.status).toBe('answered');
+      expect(rows.find((r) => r.type === 'savings_digest')?.status).toBe(
+        'closed',
+      );
+      expect(rows.find((r) => r.type === 'day_close_checkin')?.status).toBe(
+        'answered',
+      );
     });
   });
 });

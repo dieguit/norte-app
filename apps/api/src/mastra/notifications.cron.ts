@@ -44,12 +44,7 @@ export class NotificationsCron {
     for (const delivery of await this.notifications.closeExpired(now)) {
       const text = definitionOf(delivery.type).reply?.timeoutMessage;
       if (!text) continue;
-      await this.send(
-        channel,
-        delivery,
-        text,
-        now,
-      ).catch((error: unknown) =>
+      await this.send(channel, delivery, text, now).catch((error: unknown) =>
         this.logger.error(
           `Timeout message ${delivery.id} failed: ${String(error)}`,
         ),
@@ -59,12 +54,7 @@ export class NotificationsCron {
       try {
         const text = await this.messageFor(delivery, now);
         if (!text) continue; // row was claimed 'closed'; stays unsent so catch-up won't retry it
-        await this.send(
-          channel,
-          delivery,
-          text,
-          now,
-        );
+        await this.send(channel, delivery, text, now);
         await this.notifications.markSent(delivery.id, now);
       } catch (error) {
         this.logger.error(
