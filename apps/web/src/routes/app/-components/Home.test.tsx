@@ -187,7 +187,7 @@ describe("Home component", () => {
     expect(row).toHaveTextContent("$ 70.000");
   });
 
-  it("opens the four-action chooser from Registrar", async () => {
+  it.each(["Registrar", "Registrar aporte"])("opens the four-action chooser from %s", async (name) => {
     const user = userEvent.setup();
     vi.mocked(getSavingContributionContext).mockResolvedValue({
       profile: "present",
@@ -203,7 +203,7 @@ describe("Home component", () => {
     });
 
     render(<Home home={fixedSavingsHome} roadmap={emptyRoadmap} />);
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name }));
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Ahorré ARS" })).toBeVisible();

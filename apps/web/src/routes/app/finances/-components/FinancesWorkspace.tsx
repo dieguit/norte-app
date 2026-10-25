@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { FinancesWorkspace } from "@repo/shared-types";
 import type { GroupByValue } from "../../../../components/norte/GroupBy";
-import { MapGrid } from "../../../../components/norte/MapGrid";
 import { MonthStepper } from "../../../../components/norte/MonthStepper";
 import { ScreenHeader } from "../../../../components/norte/ScreenHeader";
 import { SavingsPlacesTab } from "./SavingsPlacesTab";
@@ -68,8 +67,7 @@ export function FinancesWorkspace({
 
   if (view === "summary") {
     return (
-      <div className="relative isolate flex flex-col gap-7 px-5 pt-5 pb-24">
-        <MapGrid />
+      <div className="flex flex-col gap-7 px-5 pt-5 pb-24">
         <FinancesSummaryHeader month={selectedMonth} onMonthChange={selectMonth} />
         {status}
         {current && <FinancesSummary workspace={current} />}

@@ -1,5 +1,4 @@
 import { Target } from 'lucide-react'
-import { MapGrid } from '../../../../components/norte/MapGrid'
 import { Button } from '../../../../components/ui/button'
 
 const PULSE = 'animate-pulse bg-muted motion-reduce:animate-none'
@@ -48,8 +47,7 @@ export interface GoalsEmptyProps {
 
 export function GoalsEmpty({ onNewGoal }: GoalsEmptyProps) {
   return (
-    <div className="relative isolate flex flex-col gap-6 px-5 pt-5">
-      <MapGrid className="h-65" />
+    <div className="flex flex-col gap-6 px-5 pt-5">
       <h1 className="m-0 text-display text-foreground">Objetivos</h1>
       <div className="flex flex-col items-center gap-1 border-t border-border py-10 text-center">
         <Target className="mb-2 size-6 text-accent-brand" aria-hidden="true" />

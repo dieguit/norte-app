@@ -53,7 +53,7 @@ export function HomeTargets({ month, targets, onRegister }: { month: string; tar
         <Button
           type="button"
           onClick={onRegister}
-          className="relative h-9 gap-1.5 rounded-md px-3.5 text-[14px] font-semibold after:absolute after:-inset-1"
+          className="relative h-9 gap-1.5 rounded-md px-3.5 text-[14px] font-semibold after:absolute after:-inset-1 xl:hidden"
         >
           <Plus className="size-4" aria-hidden="true" />
           Registrar

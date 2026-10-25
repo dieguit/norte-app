@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { GoalsWorkspaceData as GoalsWorkspaceType, GoalWorkspaceItem } from '@repo/shared-types'
-import { MapGrid } from '../../../../components/norte/MapGrid'
 import { Button } from '../../../../components/ui/button'
 import { goalColor, planShares, sortByProjection } from './goal-display'
 import { GoalDetailSheet } from './GoalDetailSheet'
@@ -36,8 +35,7 @@ export function GoalsWorkspace({ workspace, onNewGoal, onChangePlanning, ...acti
   )
 
   return (
-    <div className="relative isolate flex flex-col gap-6 px-5 pt-5 pb-8">
-      <MapGrid className="h-65" />
+    <div className="flex flex-col gap-6 px-5 pt-5 pb-8">
       <div className="flex items-center justify-between gap-3">
         <h1 className="m-0 text-display text-foreground">Objetivos</h1>
         <Button type="button" id="new-goal-trigger" aria-label="Nuevo objetivo" onClick={onNewGoal} className="relative h-9 gap-1.5 rounded-md px-3.5 text-[14px] font-semibold after:absolute after:-inset-1">

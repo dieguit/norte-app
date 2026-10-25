@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { UserButton } from "@clerk/tanstack-react-start";
 import { useRouterState } from "@tanstack/react-router";
-import { Compass } from "lucide-react";
+import { MapGrid } from "../../../components/norte/MapGrid";
 import { AppNavigation } from "./AppShellNavigation";
 
 function AppBrand() {
@@ -11,7 +11,13 @@ function AppBrand() {
       aria-label="Norte"
       className="flex min-h-11 items-center gap-2.5 text-foreground no-underline hover:text-foreground"
     >
-      <Compass className="size-[22px]" aria-hidden="true" />
+      <img
+        src="/images/logo.png"
+        alt=""
+        className="size-8 rounded-xl object-contain shadow-[var(--shadow-card)]"
+        width="32"
+        height="32"
+      />
       <span className="text-sm font-semibold tracking-[4px]">NORTE</span>
     </a>
   );
@@ -57,9 +63,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main
         id="app-scroll-area"
         data-scroll-restoration-id="app-scroll-area"
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        className="relative isolate flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">{children}</div>
+        <MapGrid />
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col xl:has-[[data-wide]]:max-w-none">{children}</div>
       </main>
       <AppNavigation pathname={pathname} mobile />
     </div>

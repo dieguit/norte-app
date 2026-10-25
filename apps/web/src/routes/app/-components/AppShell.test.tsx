@@ -107,7 +107,10 @@ describe('AppShell', () => {
       'data-scroll-restoration-id',
       'app-scroll-area',
     )
-    expect(screen.getByRole('main').firstElementChild).toHaveClass('mx-auto', 'max-w-2xl')
+    expect(screen.getByRole('main')).toHaveClass('relative', 'isolate')
+    const [grid, content] = screen.getByRole('main').children
+    expect(grid).toHaveAttribute('aria-hidden', 'true')
+    expect(content).toHaveClass('mx-auto', 'max-w-2xl', 'xl:has-[[data-wide]]:max-w-none')
 
     const mobileNavigation = screen.getAllByRole('navigation', {
       name: 'Navegación principal',

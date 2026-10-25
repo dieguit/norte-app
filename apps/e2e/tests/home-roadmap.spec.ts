@@ -9,7 +9,7 @@ test.beforeEach(async () => {
 test('onboarded user sees home roadmap and can navigate sections', async ({ page }) => {
   await page.goto('/app')
   await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Registrar', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Registrar( aporte)?$/ })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Tu hoja de ruta' })).toBeVisible()
   await expect(page.getByRole('heading', { name: /^Estás acá · / })).toBeVisible()
 
