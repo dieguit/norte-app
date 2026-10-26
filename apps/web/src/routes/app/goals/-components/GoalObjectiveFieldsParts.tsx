@@ -102,14 +102,14 @@ export function GoalNameField({ values, validationErrors, form }: FieldProps) {
 function EmergencyFundFields({ validationErrors, context }: { validationErrors: Record<string, string>; context: GoalCreationContext }) {
   const errorId = 'goal-currency-error'
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-4">
       <Field data-invalid={!!validationErrors.currency}>
         <FieldLabel htmlFor="currency-display">Moneda</FieldLabel>
-        <div id="currency-display" className="flex h-8 items-center rounded-lg border border-input bg-muted/40 px-3 text-sm text-[var(--sea-ink)]">Dólares (USD)</div>
+        <div id="currency-display" className="flex h-8 items-center rounded-lg border border-input bg-muted/40 px-3 text-sm text-foreground">Dólares (USD)</div>
         <FieldDescription>El colchón financiero se planifica en USD.</FieldDescription>
         {validationErrors.currency && <FieldError id={errorId}>{validationErrors.currency}</FieldError>}
       </Field>
-      <FieldDescription className="text-sm text-[var(--sea-ink-soft)]">
+      <FieldDescription className="text-sm text-muted-foreground">
         {context.expensesKnowledge === 'unknown' ? 'Vamos a calcular el monto sugerido una vez que definas tus gastos mensuales.' : 'El colchón equivale a 3 meses de gastos y se calculará automáticamente.'}
       </FieldDescription>
     </div>
@@ -223,8 +223,8 @@ function AvailableFromField({ form, values, validationErrors, context }: FieldPr
 function InvestmentAssumptions({ form, values, validationErrors, context }: FieldProps & { context: GoalCreationContext }) {
   if (values.strategy !== 'invest') return null
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5">
-      <h4 className="text-sm font-semibold text-[var(--sea-ink)]">Supuestos de inversión</h4>
+    <div className="flex flex-col gap-4 rounded-lg border border-border bg-muted/40 p-4 sm:p-5">
+      <h4 className="text-sm font-semibold text-foreground">Supuestos de inversión</h4>
       <AnnualReturnField form={form} values={values} validationErrors={validationErrors} immutableIdentity={false} />
       <AvailabilityField form={form} values={values} validationErrors={validationErrors} immutableIdentity={false} />
       <AvailableFromField form={form} values={values} validationErrors={validationErrors} immutableIdentity={false} context={context} />
@@ -239,7 +239,7 @@ export function StrategyFields({ form, values, validationErrors, immutableIdenti
       <Field data-invalid={!!validationErrors.strategy}>
         <FieldLabel>Estrategia</FieldLabel>
         <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-[var(--sea-ink)]">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
             <input
               type="radio"
               name="strategy"
@@ -250,11 +250,11 @@ export function StrategyFields({ form, values, validationErrors, immutableIdenti
               disabled={immutableIdentity}
               aria-invalid={Boolean(validationErrors.strategy)}
               aria-describedby={validationErrors.strategy ? errorId : undefined}
-              className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
+              className="size-4 text-accent-brand focus:ring-ring"
             />
             <span>Ahorrar</span>
           </label>
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-[var(--sea-ink)]">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-foreground">
             <input
               type="radio"
               name="strategy"
@@ -265,7 +265,7 @@ export function StrategyFields({ form, values, validationErrors, immutableIdenti
               disabled={immutableIdentity}
               aria-invalid={Boolean(validationErrors.strategy)}
               aria-describedby={validationErrors.strategy ? errorId : undefined}
-              className="size-4 text-[var(--palm)] focus:ring-[var(--palm)]"
+              className="size-4 text-accent-brand focus:ring-ring"
             />
             <span>Invertir</span>
           </label>

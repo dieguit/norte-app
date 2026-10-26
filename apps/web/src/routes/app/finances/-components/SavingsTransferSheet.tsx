@@ -2,7 +2,8 @@ import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction
 import BigNumber from 'bignumber.js'
 import { toast } from 'sonner'
 import { useRouter } from '@tanstack/react-router'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../../components/ui/sheet'
+import { Sheet } from '../../../../components/ui/sheet'
+import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
 import { transferSavings } from '../../../../features/savings-places/savings-places.functions'
 import type { SavingsPlaceSummary } from '../../../../features/savings-places/savings-places'
 import { createMoney, formatMoneyInput, parseMoneyInput, type CurrencyCode, type Money } from '../../../../lib/money'
@@ -274,20 +275,13 @@ export function SavingsTransferSheet(props: SavingsTransferSheetProps) {
   }
   return (
     <Sheet open={props.open} onOpenChange={handleOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
-        <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
-          <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-            Transferir desde {props.fromPlace.name}
-          </SheetTitle>
-          <SheetDescription>
-            Elegí el destino y el monto que querés mover desde este lugar.
-          </SheetDescription>
-        </SheetHeader>
+      <SidePanelContent>
+        <SidePanelHeader
+          title={`Transferir desde ${props.fromPlace.name}`}
+          description="Elegí el destino y el monto que querés mover desde este lugar."
+        />
         <SavingsTransferForm {...state} fromPlaceId={props.fromPlace.id} places={props.places} />
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }

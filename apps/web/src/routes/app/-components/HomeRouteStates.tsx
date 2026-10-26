@@ -1,26 +1,26 @@
-import { Button } from '../../../components/ui/button'
+import { Button } from "../../../components/ui/button";
 
 export function HomeLoading() {
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-8">
-      <p role="status" className="text-sm text-[var(--sea-ink-soft)]">
+    <div className="w-full px-5 py-12">
+      <p role="status" className="text-body-sm text-muted-foreground">
         Cargando hoja de ruta...
       </p>
     </div>
-  )
+  );
 }
 
 export function HomeError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-8">
+    <div className="w-full px-5 py-12">
       <div
         role="alert"
-        className="rounded-2xl border border-destructive/20 bg-destructive/10 p-6 text-center"
+        className="rounded-lg bg-negative-soft p-6 text-center"
       >
-        <h1 className="font-serif text-xl font-bold text-[var(--sea-ink)]">
+        <h1 className="text-title text-foreground">
           No pudimos cargar tu hoja de ruta
         </h1>
-        <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
+        <p className="mt-2 text-body-sm text-muted-foreground">
           Volvé a intentarlo para ver tu planificación.
         </p>
         <Button type="button" className="mt-4" onClick={onRetry}>
@@ -28,5 +28,5 @@ export function HomeError({ onRetry }: { onRetry: () => void }) {
         </Button>
       </div>
     </div>
-  )
+  );
 }

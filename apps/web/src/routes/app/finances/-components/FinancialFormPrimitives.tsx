@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../../components/ui/select'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../../components/ui/sheet'
+import { Sheet } from '../../../../components/ui/sheet'
+import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
 import { Switch } from '../../../../components/ui/switch'
 import { getArsEquivalent } from '../../../../features/financial/financial'
 import { formatMoneyInput, type CurrencyCode } from '../../../../lib/money'
@@ -218,7 +219,7 @@ export function FinancialAmountFields<TDraft extends { amount: string; currency:
         </Field>
       </div>
       {arsEquivalent !== null && (
-        <p className="text-sm text-[var(--sea-ink-soft)]">
+        <p className="text-sm text-muted-foreground">
           Equivale a ARS {formatMoneyInput(arsEquivalent.toFixed(0))}
         </p>
       )}
@@ -269,16 +270,10 @@ export function FinancialSheetFrame({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
-        <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
-          <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">{title}</SheetTitle>
-          <SheetDescription>{description}</SheetDescription>
-        </SheetHeader>
+      <SidePanelContent>
+        <SidePanelHeader title={title} description={description} />
         {children}
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }

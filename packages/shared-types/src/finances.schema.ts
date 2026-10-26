@@ -7,6 +7,7 @@ const SourceSchema = z.object({ id: IdSchema, name: z.string(), normalizedName: 
 const IncomeSchema = z.object({
   id: IdSchema, sourceKind: z.string(), sourceId: IdSchema.nullable(), sourceName: z.string(),
   concept: z.string().nullable(), amount: z.string(), currency: z.enum(['ARS', 'USD']), recurring: z.boolean(), effectiveMonth: DateSchema, arsEquivalent: z.string().nullable(),
+  createdAt: z.iso.datetime(),
 });
 const ExpenseSchema = IncomeSchema.extend({ endMonth: DateSchema.nullable() });
 const MoneySchema = z.object({ amount: z.string(), currency: z.literal('ARS') });

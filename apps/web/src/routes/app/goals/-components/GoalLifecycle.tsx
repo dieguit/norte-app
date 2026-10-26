@@ -253,10 +253,10 @@ function GoalLifecycleAllocationSection({
   return (
     <section aria-label="Distribución del Plan" className="flex flex-col gap-3">
       {lifecycle === 'pause' && (
-        <div data-testid="allocation-row" className="flex items-center justify-between gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5">
+        <div data-testid="allocation-row" className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/40 p-4 sm:p-5">
           <div className="flex flex-col items-start gap-0.5">
-            <span className="text-sm font-medium text-[var(--sea-ink)]">{context.goalName || 'Objetivo'}</span>
-            <span className="text-xs text-[var(--sea-ink-soft)] font-normal">Sin asignación de aporte mensual</span>
+            <span className="text-sm font-medium text-foreground">{context.goalName || 'Objetivo'}</span>
+            <span className="text-xs text-muted-foreground font-normal">Sin asignación de aporte mensual</span>
           </div>
           <Badge variant="secondary">Pausado</Badge>
         </div>

@@ -1,11 +1,6 @@
 import { SheetLoadingState } from '../../../components/SheetLoadingState'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '../../../components/ui/sheet'
+import { Sheet } from '../../../components/ui/sheet'
+import { SidePanelContent, SidePanelHeader } from '../../../components/norte/SidePanel'
 import { Button } from '../../../components/ui/button'
 import type {
   ContributionKind,
@@ -36,20 +31,15 @@ export function SavingContributionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
-        <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
-          <SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">
-            {kind === 'investment' ? 'Registrar inversión' : 'Registrar ahorro'}
-          </SheetTitle>
-          <SheetDescription className="text-sm text-[var(--sea-ink-soft)]">
-            {kind === 'investment'
+      <SidePanelContent>
+        <SidePanelHeader
+          title={kind === 'investment' ? 'Registrar inversión' : 'Registrar ahorro'}
+          description={
+            kind === 'investment'
               ? 'Registrá una inversión en ARS o USD y mirá cómo se distribuye en tus objetivos.'
-              : 'Registrá un ahorro en ARS o USD y mirá cómo se distribuye en tus objetivos.'}
-          </SheetDescription>
-        </SheetHeader>
+              : 'Registrá un ahorro en ARS o USD y mirá cómo se distribuye en tus objetivos.'
+          }
+        />
 
         {contributionContext.loading ? (
           <SheetLoadingState />
@@ -69,7 +59,7 @@ export function SavingContributionSheet({
             onSuccess={() => onOpenChange(false)}
           />
         ) : null}
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }

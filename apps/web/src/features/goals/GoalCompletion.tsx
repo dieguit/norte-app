@@ -378,7 +378,7 @@ function useGoalCompletionConfirmAction(
 function CompletionError({ state, onReview }: { state: GoalCompletionState; onReview: () => void }) {
   if (!state.serverError) return null
   return (
-    <div ref={state.serverErrorRef} tabIndex={-1} role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive outline-none focus:ring-2 focus:ring-destructive">
+    <div ref={state.serverErrorRef} tabIndex={-1} role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive outline-none focus:ring-2 focus:ring-destructive">
       {state.serverError}
       {state.isPreviewRevalidationRequired && <Button type="button" variant="outline" className="mt-3 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={onReview} disabled={state.isPreviewPending || state.isSubmitting}>Revisar datos actualizados</Button>}
     </div>
@@ -403,8 +403,8 @@ function CompletionWithdrawalField({
     <Field data-invalid={Boolean(error)}>
       <div className="grid grid-cols-2 items-start gap-4">
         <FieldLabel htmlFor={`completion-${place.id}`} className="flex w-full min-w-0 flex-col items-start gap-1">
-          <span className="text-sm font-medium text-[var(--sea-ink)]">{place.name}</span>
-          <span className="text-xs font-normal text-[var(--sea-ink-soft)]">Disponible: {formatMoney(place.balance)}</span>
+          <span className="text-sm font-medium text-foreground">{place.name}</span>
+          <span className="text-xs font-normal text-muted-foreground">Disponible: {formatMoney(place.balance)}</span>
         </FieldLabel>
         <Input id={`completion-${place.id}`} aria-label={`Monto a retirar de ${place.name}`} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} inputMode="decimal" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="min-w-0 text-right font-mono text-sm" />
       </div>
@@ -417,15 +417,15 @@ function CompletionWithdrawalsSection({ context, state, view, onChange }: { cont
   return (
     <section aria-labelledby="completion-sources-title" className="flex flex-col gap-4">
       <div>
-        <h2 id="completion-sources-title" className="text-base font-semibold text-[var(--sea-ink)]">¿De dónde sale el dinero?</h2>
-        <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">Elegí de qué lugares de ahorro sale el monto exacto de {formatMoney(context.targetAmount)}.</p>
+        <h2 id="completion-sources-title" className="text-base font-semibold text-foreground">¿De dónde sale el dinero?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Elegí de qué lugares de ahorro sale el monto exacto de {formatMoney(context.targetAmount)}.</p>
       </div>
-      {view.availableShortfall && <p role="alert" className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/60 p-4 text-sm text-[var(--sea-ink-soft)]">El saldo disponible entre tus lugares de ahorro no alcanza para este objetivo. Faltan {formatMoney({ amount: view.availableShortfall.toFixed(2), currency: context.targetAmount.currency })}.</p>}
+      {view.availableShortfall && <p role="alert" className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">El saldo disponible entre tus lugares de ahorro no alcanza para este objetivo. Faltan {formatMoney({ amount: view.availableShortfall.toFixed(2), currency: context.targetAmount.currency })}.</p>}
       <div className="flex flex-col gap-4">
         {context.savingsPlaces.map((place) => <CompletionWithdrawalField key={place.id} place={place} value={state.withdrawals[place.id] ?? ''} error={view.errors[place.id]} disabled={state.isSubmitting} onChange={(value) => onChange(place.id, value)} />)}
       </div>
-      <div className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/40 p-4">
-        <p role="status" aria-live="polite" className="text-sm font-semibold text-[var(--sea-ink)]">Seleccionado: {formatMoney({ amount: view.selectedTotal.toFixed(2), currency: context.targetAmount.currency })} de {formatMoney(context.targetAmount)}</p>
+      <div className="rounded-lg border border-border bg-muted/40 p-4">
+        <p role="status" aria-live="polite" className="text-sm font-semibold text-foreground">Seleccionado: {formatMoney({ amount: view.selectedTotal.toFixed(2), currency: context.targetAmount.currency })} de {formatMoney(context.targetAmount)}</p>
         {view.totalError && <p className="mt-1 text-sm text-destructive" role="alert">{view.totalError}</p>}
       </div>
     </section>
@@ -436,10 +436,10 @@ function CompletionPlanSection({ state, view, onChange }: { state: GoalCompletio
   return (
     <section aria-labelledby="completion-plan-title" className="flex flex-col gap-3">
       <div>
-        <h2 id="completion-plan-title" className="text-base font-semibold text-[var(--sea-ink)]">Redistribuí tu Plan</h2>
-        <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">Al completar este objetivo, su aporte mensual queda disponible para tus otros objetivos.</p>
+        <h2 id="completion-plan-title" className="text-base font-semibold text-foreground">Redistribuí tu Plan</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Al completar este objetivo, su aporte mensual queda disponible para tus otros objetivos.</p>
       </div>
-      {view.remainingGoals.length === 0 ? <p className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/40 p-4 text-sm text-[var(--sea-ink-soft)]">No quedan objetivos activos: el Plan mensual se va a pausar.</p> : <PlanAllocationEditor allocation={view.allocation} disabled={Boolean(view.availableShortfall) || !view.withdrawalsValid || state.isPreviewPending || state.isSubmitting} onPercentageChange={onChange} onPercentageCommit={() => undefined} />}
+      {view.remainingGoals.length === 0 ? <p className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">No quedan objetivos activos: el Plan mensual se va a pausar.</p> : <PlanAllocationEditor allocation={view.allocation} disabled={Boolean(view.availableShortfall) || !view.withdrawalsValid || state.isPreviewPending || state.isSubmitting} onPercentageChange={onChange} onPercentageCommit={() => undefined} />}
     </section>
   )
 }
@@ -449,17 +449,17 @@ function CompletionImpactSection({ state, view }: { state: GoalCompletionState; 
   return (
     <section aria-labelledby="completion-impact-title" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="completion-impact-title" className="text-base font-semibold text-[var(--sea-ink)]">Impacto en las fechas</h2>
-        {(state.isPreviewPending || showPending) && <span className="text-right text-xs text-[var(--sea-ink-soft)]" role="status">{state.isPreviewPending ? 'Actualizando impacto...' : 'Proyección pendiente de actualización'}</span>}
+        <h2 id="completion-impact-title" className="text-base font-semibold text-foreground">Impacto en las fechas</h2>
+        {(state.isPreviewPending || showPending) && <span className="text-right text-xs text-muted-foreground" role="status">{state.isPreviewPending ? 'Actualizando impacto...' : 'Proyección pendiente de actualización'}</span>}
       </div>
-      {!view.withdrawalsValid ? <p className="rounded-xl border border-[var(--line)] bg-[var(--foam)]/40 p-4 text-center text-sm text-[var(--sea-ink-soft)]">Completá los retiros para calcular el impacto.</p> : state.preview?.proposal.impacts.length ? <div className={state.isPreviewPending ? 'opacity-50' : undefined}><AllocationImpactComparison impacts={state.preview.proposal.impacts} /></div> : null}
+      {!view.withdrawalsValid ? <p className="rounded-lg border border-border bg-muted/40 p-4 text-center text-sm text-muted-foreground">Completá los retiros para calcular el impacto.</p> : state.preview?.proposal.impacts.length ? <div className={state.isPreviewPending ? 'opacity-50' : undefined}><AllocationImpactComparison impacts={state.preview.proposal.impacts} /></div> : null}
     </section>
   )
 }
 
 function CompletionFooter({ state, view, onCancel, onConfirm }: { state: GoalCompletionState; view: ReturnType<typeof useGoalCompletionView>; onCancel: () => void; onConfirm: () => void }) {
   return (
-    <div className="sticky bottom-0 flex flex-col items-stretch gap-3 border-t border-[var(--line)] bg-popover px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between">
+    <div className="sticky bottom-0 flex flex-col items-stretch gap-3 border-t border-border bg-popover px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between">
       <Button type="button" variant="outline" onClick={onCancel} disabled={state.isSubmitting} className="w-full sm:w-auto">Cancelar</Button>
       <Button type="button" disabled={Boolean(view.availableShortfall) || !view.withdrawalsValid || !view.allocationsValid || !state.preview || !view.isPreviewSynced || state.isPreviewPending || state.isSubmitting} onClick={onConfirm} className="w-full sm:w-auto">{state.isSubmitting ? 'Completando...' : 'Confirmar, marcar como completado'}</Button>
     </div>
@@ -478,7 +478,7 @@ export function GoalCompletion({ context, onCancel, onUpdated, onContextInvalid 
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <div className="flex flex-col gap-6">
-          <p className="text-sm leading-relaxed text-[var(--sea-ink-soft)]">Completar {context.goalName} significa usar los ahorros acumulados para alcanzar el objetivo; las deducciones quedan registradas y reducen esos lugares de ahorro.</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">Completar {context.goalName} significa usar los ahorros acumulados para alcanzar el objetivo; las deducciones quedan registradas y reducen esos lugares de ahorro.</p>
           <CompletionError state={state} onReview={onReview} />
           <CompletionWithdrawalsSection context={context} state={state} view={view} onChange={inputActions.handleWithdrawalChange} />
           <CompletionPlanSection state={state} view={view} onChange={inputActions.handlePercentageChange} />

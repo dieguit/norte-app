@@ -154,7 +154,7 @@ describe('App route layout', () => {
     const router = createTestRouter()
     render(<RouterProvider router={router} />)
 
-    expect(await screen.findByRole('heading', { name: 'Inicio' })).toBeDefined()
+    expect(await screen.findByRole('heading', { name: /Inicio/ })).toBeDefined()
     expect(screen.getAllByRole('navigation', { name: 'Navegación principal' })).toHaveLength(2)
   })
 

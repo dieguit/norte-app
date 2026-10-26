@@ -36,10 +36,10 @@ export function useSheetLoader<T>({ open, load }: SheetLoaderOptions<T>) {
 export function SheetLoadingState() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-6" role="status">
-      <div className="h-6 w-32 animate-pulse rounded bg-[var(--surface-strong)]" />
-      <div className="h-10 w-full animate-pulse rounded-lg bg-[var(--surface-strong)]" />
-      <div className="h-10 w-full animate-pulse rounded-lg bg-[var(--surface-strong)]" />
-      <div className="h-24 w-full animate-pulse rounded-xl bg-[var(--surface-strong)]" />
+      <div className="h-6 w-32 animate-pulse rounded bg-muted" />
+      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+      <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+      <div className="h-24 w-full animate-pulse rounded-lg bg-muted" />
       <p className="sr-only">Cargando...</p>
     </div>
   )

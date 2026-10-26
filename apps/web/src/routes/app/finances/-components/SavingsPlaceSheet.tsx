@@ -6,11 +6,11 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '../../../../component
 import { Input } from '../../../../components/ui/input'
 import {
   Sheet,
-  SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
 } from '../../../../components/ui/sheet'
+import { SidePanelContent } from '../../../../components/norte/SidePanel'
 import {
   createSavingsPlace,
   renameSavingsPlace,
@@ -161,10 +161,7 @@ function SavingsPlaceSheetView({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
+      <SidePanelContent>
         <SavingsPlaceSheetHeader isEdit={isEdit} />
 
         <form
@@ -182,13 +179,13 @@ function SavingsPlaceSheetView({
           <SavingsPlaceSheetFields name={name} error={nameError} isPending={isPending} onNameChange={onNameChange} />
           <SavingsPlaceSheetActions isEdit={isEdit} isPending={isPending} onDelete={onDelete} />
         </form>
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }
 
 function SavingsPlaceSheetHeader({ isEdit }: { isEdit: boolean }) {
-  return <SheetHeader className="border-b border-[var(--line)] px-6 py-5"><SheetTitle className="font-serif text-2xl font-bold text-[var(--sea-ink)]">{isEdit ? 'Editar lugar' : 'Nuevo lugar'}</SheetTitle><SheetDescription>{isEdit ? 'Modificá el nombre del lugar de ahorro.' : 'Creá un lugar para empezar a registrar dónde guardás tu dinero.'}</SheetDescription></SheetHeader>
+  return <SheetHeader className="border-b border-border px-6 py-5"><SheetTitle className="font-serif text-2xl font-bold text-foreground">{isEdit ? 'Editar lugar' : 'Nuevo lugar'}</SheetTitle><SheetDescription>{isEdit ? 'Modificá el nombre del lugar de ahorro.' : 'Creá un lugar para empezar a registrar dónde guardás tu dinero.'}</SheetDescription></SheetHeader>
 }
 
 function SavingsPlaceSheetFields({ name, error, isPending, onNameChange }: { name: string; error: string | null; isPending: boolean; onNameChange: (name: string) => void }) {

@@ -1,16 +1,14 @@
 import { useState } from "react";
-import { Button } from "../../../components/ui/button";
-import { formatMonthName } from "../../../lib/format";
-import {
-  getPreviousCalendarMonth,
-  type InitialHomeState,
-} from "../../../features/financial/financial";
 import type { RoadmapData } from "@repo/shared-types";
+import { HeaderAction, PageHeader } from "../../../components/norte/PageHeader";
+import { Page, SplitLayout } from "../../../components/norte/PageLayout";
+import { getPreviousCalendarMonth, type InitialHomeState } from "../../../features/financial/financial";
 import type { GoalWorkspaceItem } from "../../../features/goals/goals";
-import { GoalCompletionBanner } from "./GoalCompletionBanner";
 import type { CatchUpContribution } from "./ContributionActionSheet";
 import { HomeDialogs } from "./HomeDialogs";
-import { PreviousMonthStatus } from "./HomeStatus";
+import { PreviousMonthAlerts } from "./HomeStatus";
+import { HomeTargets } from "./HomeTargets";
+import { activeGoals, monthTargets, monthTitle } from "./home-view";
 import { Roadmap } from "./Roadmap";
 
 export interface HomeProps {
@@ -26,40 +24,47 @@ export function Home({ home, roadmap, completionGoals = [], now }: HomeProps) {
   const [completionGoalId, setCompletionGoalId] = useState<string | null>(null);
   const closedMonth = getPreviousCalendarMonth(now);
   const shortfalls = home.previousMonthShortfalls ?? [];
+  const month = roadmap.currentMonth.month;
+
+  const openContribution = () => {
+    setCatchUpContribution(null);
+    setIsContributionOpen(true);
+  };
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-3 py-8 sm:px-8 sm:py-12">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-4xl">
-          Inicio
-        </h1>
-        <Button
-          type="button"
-          onClick={() => {
-            setCatchUpContribution(null);
-            setIsContributionOpen(true);
-          }}
-        >
-          + Registrar
-        </Button>
-      </header>
-      <PreviousMonthStatus
-        month={formatMonthName(closedMonth)}
-        closedMonth={closedMonth}
-        shortfalls={shortfalls}
-        onCatchUp={(contribution) => {
-          setCatchUpContribution(contribution);
-          setIsContributionOpen(true);
-        }}
+    <Page>
+      <PageHeader
+        eyebrow="Inicio"
+        title={monthTitle(month)}
+        action={<HeaderAction label="Registrar aporte" onClick={openContribution} />}
       />
-      {completionGoals.map((goal) => (
-        <GoalCompletionBanner
-          key={goal.id}
-          goal={goal}
+      <SplitLayout
+        aside={
+          <>
+            <PreviousMonthAlerts
+              closedMonth={closedMonth}
+              shortfalls={shortfalls}
+              onCatchUp={(contribution) => {
+                setCatchUpContribution(contribution);
+                setIsContributionOpen(true);
+              }}
+            />
+            <HomeTargets
+              month={month}
+              targets={monthTargets(activeGoals(roadmap), roadmap.currentMonth.contributions, month)}
+              onRegister={openContribution}
+            />
+          </>
+        }
+      >
+        <Roadmap
+          roadmap={roadmap}
+          completionGoals={completionGoals}
+          closedMonth={closedMonth}
+          shortfalls={shortfalls}
           onComplete={setCompletionGoalId}
         />
-      ))}
-      <Roadmap roadmap={roadmap} />
+      </SplitLayout>
       <HomeDialogs
         isContributionOpen={isContributionOpen}
         setIsContributionOpen={setIsContributionOpen}
@@ -68,6 +73,6 @@ export function Home({ home, roadmap, completionGoals = [], now }: HomeProps) {
         completionGoalId={completionGoalId}
         setCompletionGoalId={setCompletionGoalId}
       />
-    </div>
+    </Page>
   );
 }
