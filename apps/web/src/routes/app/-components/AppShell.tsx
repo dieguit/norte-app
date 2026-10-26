@@ -2,26 +2,8 @@ import type { ReactNode } from "react";
 import { UserButton, useUser } from "@clerk/tanstack-react-start";
 import { useRouterState } from "@tanstack/react-router";
 import { MapGrid } from "../../../components/norte/MapGrid";
+import { AppBrand } from "../../../components/AppBrand";
 import { AppNavigation } from "./AppShellNavigation";
-
-function AppBrand() {
-  return (
-    <a
-      href="/app"
-      aria-label="Norte"
-      className="flex min-h-11 items-center gap-2.5 text-foreground no-underline hover:text-foreground"
-    >
-      <img
-        src="/images/logo.png"
-        alt=""
-        className="size-8 rounded-xl object-contain shadow-[var(--shadow-card)]"
-        width="32"
-        height="32"
-      />
-      <span className="text-sm font-semibold tracking-[4px]">NORTE</span>
-    </a>
-  );
-}
 
 function MobileHeader() {
   return (
