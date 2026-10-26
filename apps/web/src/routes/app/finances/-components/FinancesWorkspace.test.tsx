@@ -74,6 +74,7 @@ const sampleWorkspace = {
         currency: "ARS" as const,
         recurring: true,
         effectiveMonth: "2026-01-01",
+        createdAt: "2026-01-01T12:00:00.000Z",
         arsEquivalent: null,
       },
       {
@@ -86,6 +87,7 @@ const sampleWorkspace = {
         currency: "ARS" as const,
         recurring: false,
         effectiveMonth: "2026-08-01",
+        createdAt: "2026-08-05T12:00:00.000Z",
         arsEquivalent: null,
       },
     ],
@@ -104,6 +106,7 @@ const sampleWorkspace = {
         recurring: true,
         effectiveMonth: "2026-06-01",
         endMonth: null,
+        createdAt: "2026-06-01T12:00:00.000Z",
         arsEquivalent: null,
       },
       {
@@ -117,6 +120,7 @@ const sampleWorkspace = {
         recurring: true,
         effectiveMonth: "2026-01-01",
         endMonth: "2026-08-01",
+        createdAt: "2026-01-01T12:00:00.000Z",
         arsEquivalent: null,
       },
       {
@@ -130,6 +134,7 @@ const sampleWorkspace = {
         recurring: false,
         effectiveMonth: "2026-08-01",
         endMonth: null,
+        createdAt: "2026-08-05T12:00:00.000Z",
         arsEquivalent: "300000.00",
       },
     ],
@@ -156,11 +161,21 @@ const ui = (view: FinancesView, workspace: Workspace = sampleWorkspace) => (
 const legendValue = (label: string) => screen.getByText(label, { selector: "dt" }).nextElementSibling;
 
 describe("FinancesWorkspace", () => {
+  it.each(["incomes", "expenses", "savings"] as const)("pins only the mobile %s header", (view) => {
+    const { container } = render(ui(view));
+    expect(container.querySelector("header")).toHaveClass("sticky", "top-0", "z-20", "bg-background", "xl:static");
+    if (view === "savings") expect(screen.queryByRole("group", { name: "Mes de finanzas" })).not.toBeInTheDocument();
+  });
+  it("does not pin the summary header", () => {
+    const { container } = render(ui("summary"));
+    expect(container.querySelector("header")).not.toHaveClass("sticky");
+  });
   describe("summary", () => {
     it("renders the month summary with flow, goals note and section links", () => {
       render(ui("summary"));
 
-      expect(screen.getByRole("heading", { level: 1, name: "Agosto 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Finanzas · Agosto 2026" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /^Beneficios/ })).not.toBeInTheDocument();
       const summary = screen.getByRole("region", { name: "Resumen del mes" });
       expect(summary).toHaveTextContent("$ 200.000,00");
       expect(summary).toHaveTextContent("Disponible este mes");
@@ -228,6 +243,13 @@ describe("FinancesWorkspace", () => {
 
       expect(screen.getByRole("heading", { name: "Nuevo gasto" })).toBeInTheDocument();
     });
+
+    it("shows the movements log with filters", async () => {
+      render(ui("summary"));
+      expect(screen.getByRole("heading", { name: "Últimos movimientos" })).toBeDefined();
+      await userEvent.click(screen.getByRole("button", { name: "Ingresos", pressed: false }));
+      expect(screen.getByRole("button", { name: "Ingresos", pressed: true })).toBeDefined();
+    });
   });
 
   describe("month switching", () => {
@@ -238,7 +260,7 @@ describe("FinancesWorkspace", () => {
       await user.click(screen.getByRole("button", { name: "Mes anterior" }));
 
       expect(await screen.findByRole("region", { name: "Resumen del mes" })).toHaveTextContent("$ 350.000,00");
-      expect(screen.getByRole("heading", { level: 1, name: "Julio 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Finanzas · Julio 2026" })).toBeInTheDocument();
       expect(legendValue("Gastos")).toHaveTextContent("$ 250.000,00");
       expect(legendValue("Objetivos 90%")).toHaveTextContent("$ 315.000,00");
       expect(screen.getByRole("link", { name: /^Ingresos/ })).toHaveTextContent("$ 600.000,00");
@@ -254,9 +276,9 @@ describe("FinancesWorkspace", () => {
       const user = userEvent.setup();
       const { rerender } = render(ui("summary"));
 
-      await user.click(screen.getByRole("button", { name: "Agosto 2026" }));
+      await user.click(screen.getByRole("button", { name: "Ago 2026" }));
       await user.click(screen.getByRole("button", { name: "Jul" }));
-      expect(screen.getByRole("heading", { level: 1, name: "Julio 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Finanzas · Julio 2026" })).toBeInTheDocument();
 
       rerender(ui("savings"));
       const bank = await screen.findByRole("region", { name: "Banco Nación" });
@@ -302,7 +324,7 @@ describe("FinancesWorkspace", () => {
 
       await user.click(screen.getByRole("button", { name: "Mes anterior" }));
       expect(await screen.findByRole("region", { name: "Resumen del mes" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { level: 1, name: "Junio 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Finanzas · Junio 2026" })).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -322,7 +344,7 @@ describe("FinancesWorkspace", () => {
       expect(await screen.findByRole("link", { name: /^Ingresos/ })).toHaveTextContent("$ 600,00");
       pending.get("2026-07")!({ ...sampleWorkspace, month: "2026-07" });
       await waitFor(() => expect(screen.getByRole("link", { name: /^Ingresos/ })).toHaveTextContent("$ 600,00"));
-      expect(screen.getByRole("heading", { level: 1, name: "Junio 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Finanzas · Junio 2026" })).toBeInTheDocument();
     });
 
     it("refreshes the selected prior month when the route loader is invalidated", async () => {
@@ -340,6 +362,14 @@ describe("FinancesWorkspace", () => {
   });
 
   describe("sub-pages", () => {
+    it("renders sub-page breadcrumb, back link and desktop CTA", () => {
+      const workspace = { ...sampleWorkspace, month: "2026-10" };
+      render(<FinancesWorkspace workspace={workspace} initialMonth="2026-10" view="expenses" />);
+      expect(screen.getByRole("heading", { level: 1, name: "Gastos" })).toBeDefined();
+      expect(within(screen.getByRole("navigation", { name: "Ruta" })).getByRole("link", { name: "Finanzas" })).toHaveAttribute("href", "/app/finances");
+      expect(screen.getAllByRole("button", { name: "Agregar gasto" })).toHaveLength(2); // header (xl) + FAB (mobile)
+    });
+
     it("renders a back link and a shared month stepper", async () => {
       const user = userEvent.setup();
       render(ui("expenses"));
@@ -383,14 +413,14 @@ describe("FinancesWorkspace", () => {
 
       expect(screen.getByLabelText("Agrupar por")).toHaveValue("category");
       await user.selectOptions(screen.getByLabelText("Agrupar por"), "date");
-      expect(screen.getByRole("heading", { level: 2, name: "Desde Enero 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 2, name: "Sábado 1" })).toBeInTheDocument();
     });
 
     it("opens income sheet to add a new income", async () => {
       const user = userEvent.setup();
       render(ui("incomes"));
 
-      await user.click(screen.getByRole("button", { name: "Agregar ingreso" }));
+      await user.click(screen.getAllByRole("button", { name: "Agregar ingreso" })[0]);
 
       expect(screen.getByRole("heading", { name: "Nuevo ingreso" })).toBeInTheDocument();
     });
@@ -428,17 +458,16 @@ describe("FinancesWorkspace", () => {
 
       await user.selectOptions(screen.getByLabelText("Agrupar por"), "date");
 
-      const august = screen.getByRole("heading", { level: 2, name: "Agosto 2026" });
-      const june = screen.getByRole("heading", { level: 2, name: "Desde Junio 2026" });
-      expect(august.compareDocumentPosition(june)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      const wednesday = screen.getByRole("heading", { level: 2, name: "Miércoles 5" });
+      const saturday = screen.getByRole("heading", { level: 2, name: "Sábado 1" });
+      expect(wednesday.compareDocumentPosition(saturday)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
       const flightRow = screen.getByRole("button", { name: "Editar gasto Pasaje aéreo" });
       expect(flightRow).toHaveTextContent("Vuelo");
       expect(flightRow).toHaveTextContent("US$ 200,00");
 
       await user.click(within(screen.getByRole("group", { name: "Mes de finanzas" })).getByRole("button", { name: "Mes anterior" }));
 
-      expect(await screen.findByRole("heading", { level: 2, name: "Desde Enero 2026" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { level: 2, name: "Desde Junio 2026" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { level: 2, name: "Miércoles 1" })).toBeInTheDocument();
       expect(screen.getByLabelText("Agrupar por")).toHaveValue("date");
 
       await user.click(screen.getByRole("button", { name: "Editar gasto Servicios" }));
@@ -452,7 +481,7 @@ describe("FinancesWorkspace", () => {
       expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("—");
       expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("0 movimientos");
       expect(screen.queryByLabelText("Agrupar por")).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Agregar ingreso" })).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: "Agregar ingreso" })[0]).toBeInTheDocument();
 
       rerender(ui("expenses", emptyWorkspace));
 
@@ -460,7 +489,7 @@ describe("FinancesWorkspace", () => {
       expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("—");
       expect(screen.getByRole("figure", { name: "Total del mes" })).toHaveTextContent("0 movimientos");
       expect(screen.queryByLabelText("Agrupar por")).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Agregar gasto" })).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: "Agregar gasto" })[0]).toBeInTheDocument();
     });
 
     it("preserves income tab list and item editing", async () => {
@@ -484,6 +513,7 @@ describe("FinancesWorkspace", () => {
                   currency: "ARS" as const,
                   recurring: true,
                   effectiveMonth: "2026-08-01",
+                  createdAt: "2026-08-05T12:00:00.000Z",
                   arsEquivalent: null,
                 },
               ],
@@ -509,7 +539,7 @@ describe("FinancesWorkspace", () => {
       const user = userEvent.setup();
       render(ui("expenses"));
 
-      await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+      await user.click(screen.getAllByRole("button", { name: "Agregar gasto" })[0]);
 
       expect(
         screen.getByRole("heading", { name: "Nuevo gasto" }),

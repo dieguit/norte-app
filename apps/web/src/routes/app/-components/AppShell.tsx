@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { UserButton } from "@clerk/tanstack-react-start";
+import { UserButton, useUser } from "@clerk/tanstack-react-start";
 import { useRouterState } from "@tanstack/react-router";
 import { MapGrid } from "../../../components/norte/MapGrid";
 import { AppNavigation } from "./AppShellNavigation";
@@ -25,7 +25,7 @@ function AppBrand() {
 
 function MobileHeader() {
   return (
-    <header className="flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center justify-between border-b border-border bg-secondary/90 px-5 pt-[env(safe-area-inset-top)] backdrop-blur-md md:hidden">
+    <header className="flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center justify-between bg-secondary/90 px-5 pt-[env(safe-area-inset-top)] backdrop-blur-md md:hidden">
       <AppBrand />
       <UserButton
         appearance={{
@@ -39,16 +39,29 @@ function MobileHeader() {
   );
 }
 
+function SidebarUser() {
+  const { user } = useUser();
+  return (
+    <div className="mt-auto flex items-center gap-3 pt-4">
+      <UserButton appearance={{ elements: { userButtonAvatarBox: "!size-8" } }} />
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate text-sm font-semibold text-foreground">
+          {user?.firstName ?? user?.username ?? "Cuenta"}
+        </span>
+        <span className="text-caption text-muted-foreground">Configuración</span>
+      </div>
+    </div>
+  );
+}
+
 function DesktopSidebar({ pathname }: { pathname: string }) {
   return (
-    <aside className="hidden w-[250px] shrink-0 flex-col border-r border-border bg-secondary p-6 md:flex">
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-secondary p-6 md:flex">
       <div className="pb-8">
         <AppBrand />
       </div>
       <AppNavigation pathname={pathname} />
-      <div className="mt-auto border-t border-border pt-4">
-        <UserButton appearance={{ elements: { userButtonAvatarBox: "!size-8" } }} />
-      </div>
+      <SidebarUser />
     </aside>
   );
 }

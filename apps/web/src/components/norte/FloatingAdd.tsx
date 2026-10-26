@@ -8,7 +8,7 @@ export function FloatingAdd({
   "aria-label": string;
 }) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 h-20 bg-gradient-to-t from-background to-transparent backdrop-blur-[2px] md:bottom-0 md:left-[250px]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 h-20 bg-gradient-to-t from-background to-transparent backdrop-blur-[2px] md:bottom-0 md:left-64 xl:hidden">
       <div className="mx-auto flex h-full max-w-2xl justify-end px-5 pt-3.5">
         <button
           type="button"

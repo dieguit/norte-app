@@ -1,58 +1,17 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, PiggyBank } from "lucide-react";
+import { ArrowUpRight, PiggyBank } from "lucide-react";
 import type { FinancesWorkspace } from "@repo/shared-types";
-import { FloatingAdd } from "../../../../components/norte/FloatingAdd";
 import { FlowBar } from "../../../../components/norte/FlowBar";
 import { Money } from "../../../../components/norte/Money";
-import { MonthPickerPopover, shiftMonth } from "../../../../components/norte/MonthStepper";
 import { MiniRing, SectionIcon, SectionRow } from "../../../../components/norte/SectionRow";
 import { isExpenseIncludedInMonth } from "../../../../features/financial/expenses";
 import { isIncomeIncludedInMonth } from "../../../../features/financial/incomes";
-import { formatCalendarMonth, formatPercentage } from "../../../../lib/format";
+import { formatPercentage } from "../../../../lib/format";
 import { cn } from "../../../../lib/utils";
-import { ExpenseSheet } from "./ExpenseSheet";
 import { categoryTotals, plural, savingsTotals } from "./finances-summary";
-
-const ARROW =
-  "relative flex size-9 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors after:absolute after:-inset-1 hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring motion-reduce:transition-none";
-
-export function FinancesSummaryHeader({ month, onMonthChange }: { month: string; onMonthChange: (month: string) => void }) {
-  return (
-    <header className="flex items-center justify-between gap-3">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="m-0 text-overline text-accent-brand">Finanzas</p>
-        <h1 className="m-0 text-display text-foreground">
-          <MonthPickerPopover
-            value={month}
-            onValueChange={onMonthChange}
-            trigger={
-              <button
-                type="button"
-                className="-my-1.5 flex min-h-11 items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring"
-              >
-                {formatCalendarMonth(month).replace(" de ", " ")}
-                <ChevronDown className="size-[18px] text-muted-foreground" aria-hidden="true" />
-              </button>
-            }
-          />
-        </h1>
-      </div>
-      <div className="flex shrink-0 gap-1">
-        <button type="button" aria-label="Mes anterior" className={ARROW} onClick={() => onMonthChange(shiftMonth(month, -1))}>
-          <ChevronLeft className="size-[18px]" aria-hidden="true" />
-        </button>
-        <button type="button" aria-label="Mes siguiente" className={ARROW} onClick={() => onMonthChange(shiftMonth(month, 1))}>
-          <ChevronRight className="size-[18px]" aria-hidden="true" />
-        </button>
-      </div>
-    </header>
-  );
-}
 
 export function FinancesSummary({ workspace }: { workspace: FinancesWorkspace }) {
   const { month, summary, goalDedicationPercentage } = workspace;
-  const [isAddOpen, setIsAddOpen] = useState(false);
   const balance = Number(summary.balance.amount);
   const overspent = balance < 0;
   const incomes = workspace.incomes.incomes.filter((income) => isIncomeIncludedInMonth(income, month));
@@ -121,9 +80,6 @@ export function FinancesSummary({ workspace }: { workspace: FinancesWorkspace })
           }
         />
       </nav>
-
-      <FloatingAdd aria-label="Agregar gasto" onClick={() => setIsAddOpen(true)} />
-      <ExpenseSheet open={isAddOpen} onOpenChange={setIsAddOpen} month={month} sources={workspace.expenses.sources} />
     </>
   );
 }

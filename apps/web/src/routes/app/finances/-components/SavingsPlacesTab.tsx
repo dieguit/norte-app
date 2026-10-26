@@ -3,6 +3,7 @@ import { ArrowDownLeft, ArrowLeftRight, Ellipsis, Flag } from "lucide-react";
 import { ChartRing, chartColor } from "../../../../components/norte/CategoryDonut";
 import { FloatingAdd } from "../../../../components/norte/FloatingAdd";
 import { Money } from "../../../../components/norte/Money";
+import { SplitLayout } from "../../../../components/norte/PageLayout";
 import { Button } from "../../../../components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../components/ui/popover";
 import {
@@ -145,52 +146,63 @@ function PlaceGroup({
   );
 }
 
-export function SavingsPlacesTab({ workspace }: { workspace: SavingsPlacesWorkspace }) {
+export function SavingsPlacesTab({
+  workspace,
+  createOpen,
+  onCreateOpenChange,
+}: {
+  workspace: SavingsPlacesWorkspace;
+  createOpen: boolean;
+  onCreateOpenChange: (open: boolean) => void;
+}) {
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [transferPlace, setTransferPlace] = useState<Place | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const places = [...workspace.places].sort(byBalance);
   const totals = savingsTotals(places);
 
   return (
-    <div className="flex flex-col">
-      <div className="grid grid-cols-2 gap-3 pb-5">
-        {CURRENCIES.map(([code, label], index) => (
-          <CurrencyDonut key={code} code={code} label={label} places={places} total={totals[index]} />
-        ))}
-      </div>
+    <>
+      <SplitLayout
+        aside={
+          <div className="grid grid-cols-2 gap-3">
+            {CURRENCIES.map(([code, label], index) => (
+              <CurrencyDonut key={code} code={code} label={label} places={places} total={totals[index]} />
+            ))}
+          </div>
+        }
+      >
+        {places.length === 0 ? (
+          <div className="flex flex-col gap-1 py-8 text-center">
+            <p className="m-0 text-heading text-foreground">Todavía no tenés lugares de ahorro.</p>
+            <p className="m-0 text-body-sm text-muted-foreground">Creá un lugar para empezar a registrar dónde guardás tu dinero.</p>
+          </div>
+        ) : (
+          <section aria-label="Lugares de ahorro" className="flex flex-col">
+            <p className="m-0 flex h-12 items-center text-body-sm font-medium text-muted-foreground">
+              {plural(places.length, "lugar", "lugares")}
+            </p>
+            {places.map((place, rank) => (
+              <PlaceGroup
+                key={place.id}
+                place={place}
+                color={chartColor("savings", rank)}
+                movements={getSavingsPlaceEntries(workspace.movements, place.id).slice(0, INLINE_MOVEMENTS)}
+                onEdit={() => setEditingPlace(place)}
+                onTransfer={() => setTransferPlace(place)}
+                onMovements={() => setSelectedPlace(place)}
+              />
+            ))}
+          </section>
+        )}
+      </SplitLayout>
 
-      {places.length === 0 ? (
-        <div className="flex flex-col gap-1 py-8 text-center">
-          <p className="m-0 text-heading text-foreground">Todavía no tenés lugares de ahorro.</p>
-          <p className="m-0 text-body-sm text-muted-foreground">Creá un lugar para empezar a registrar dónde guardás tu dinero.</p>
-        </div>
-      ) : (
-        <section aria-label="Lugares de ahorro" className="flex flex-col">
-          <p className="m-0 flex h-12 items-center text-body-sm font-medium text-muted-foreground">
-            {plural(places.length, "lugar", "lugares")}
-          </p>
-          {places.map((place, rank) => (
-            <PlaceGroup
-              key={place.id}
-              place={place}
-              color={chartColor("savings", rank)}
-              movements={getSavingsPlaceEntries(workspace.movements, place.id).slice(0, INLINE_MOVEMENTS)}
-              onEdit={() => setEditingPlace(place)}
-              onTransfer={() => setTransferPlace(place)}
-              onMovements={() => setSelectedPlace(place)}
-            />
-          ))}
-        </section>
-      )}
-
-      <FloatingAdd aria-label="Agregar lugar" onClick={() => setIsCreateOpen(true)} />
+      <FloatingAdd aria-label="Agregar lugar" onClick={() => onCreateOpenChange(true)} />
       <SavingsPlaceSheet
-        open={isCreateOpen || editingPlace !== null}
+        open={createOpen || editingPlace !== null}
         onOpenChange={(open: boolean) => {
           if (!open) {
-            setIsCreateOpen(false);
+            onCreateOpenChange(false);
             setEditingPlace(null);
           }
         }}
@@ -216,6 +228,6 @@ export function SavingsPlacesTab({ workspace }: { workspace: SavingsPlacesWorksp
           movements={getSavingsPlaceEntries(workspace.movements, selectedPlace.id)}
         />
       )}
-    </div>
+    </>
   );
 }

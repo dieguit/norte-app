@@ -6,11 +6,11 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '../../../../component
 import { Input } from '../../../../components/ui/input'
 import {
   Sheet,
-  SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
 } from '../../../../components/ui/sheet'
+import { SidePanelContent } from '../../../../components/norte/SidePanel'
 import {
   createSavingsPlace,
   renameSavingsPlace,
@@ -161,10 +161,7 @@ function SavingsPlaceSheetView({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
+      <SidePanelContent>
         <SavingsPlaceSheetHeader isEdit={isEdit} />
 
         <form
@@ -182,7 +179,7 @@ function SavingsPlaceSheetView({
           <SavingsPlaceSheetFields name={name} error={nameError} isPending={isPending} onNameChange={onNameChange} />
           <SavingsPlaceSheetActions isEdit={isEdit} isPending={isPending} onDelete={onDelete} />
         </form>
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }

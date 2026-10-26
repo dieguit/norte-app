@@ -41,7 +41,7 @@ export function AppNavigation({
         const active = isActivePath(pathname, to);
         const className = mobile
           ? `flex min-h-11 w-18 flex-col items-center gap-1 text-[11px] no-underline transition-colors motion-reduce:transition-none ${active ? "font-semibold text-foreground" : "font-medium text-subtle-foreground hover:text-foreground"}`
-          : `flex min-h-11 items-center gap-3 rounded-md px-3 text-sm no-underline transition-colors motion-reduce:transition-none ${active ? "bg-muted font-semibold text-foreground" : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"}`;
+          : `flex min-h-11 items-center gap-3 rounded-md px-3 text-sm no-underline transition-colors motion-reduce:transition-none ${active ? "bg-background font-semibold text-foreground shadow-[var(--shadow-card)]" : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"}`;
         return (
           <Fragment key={to}>
             <Link to={to} aria-current={active ? "page" : undefined} className={className}>

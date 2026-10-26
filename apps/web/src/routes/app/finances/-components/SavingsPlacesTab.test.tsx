@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
+import { useState } from 'react'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -17,6 +18,14 @@ vi.mock('../../../../features/savings-places/savings-places.functions', () => ({
 }))
 
 afterEach(cleanup)
+
+function Harness({ workspace }: { workspace: React.ComponentProps<typeof SavingsPlacesTab>['workspace'] }) {
+  const [createOpen, setCreateOpen] = useState(false)
+  return <SavingsPlacesTab workspace={workspace} createOpen={createOpen} onCreateOpenChange={setCreateOpen} />
+}
+
+const renderTab = (tabWorkspace: React.ComponentProps<typeof SavingsPlacesTab>['workspace'] = workspace) =>
+  render(<Harness workspace={tabWorkspace} />)
 
 const workspace = {
   places: [
@@ -38,7 +47,7 @@ async function openAction(user: ReturnType<typeof userEvent.setup>, place: strin
 describe('SavingsPlacesTab', () => {
   it('summarizes pesos and dollars in two donuts and lists places by balance', () => {
     const crypto = { id: 'crypto', name: 'Binance', balances: { ARS: '-50.00', USD: '100.00' }, hasMovements: true }
-    render(<SavingsPlacesTab workspace={{ ...workspace, places: [crypto, ...workspace.places].reverse() }} />)
+    renderTab({ ...workspace, places: [crypto, ...workspace.places].reverse() })
 
     const pesos = screen.getByRole('figure', { name: 'Pesos' })
     expect(pesos).toHaveTextContent('ARS')
@@ -59,18 +68,14 @@ describe('SavingsPlacesTab', () => {
   })
 
   it('shows the latest three incoming movements under each place, newest first', () => {
-    render(
-      <SavingsPlacesTab
-        workspace={{
-          ...workspace,
-          movements: [
-            ...workspace.movements,
-            { kind: 'completion', id: 'completion_bank', goalId: 'goal_trip', goalName: 'Vacaciones', placeId: 'bank', placeName: 'Banco Nación', amount: '300.00', currency: 'ARS', createdAt: '2026-08-21T12:00:00.000Z' },
-            { kind: 'contribution', id: 'contribution_old', placeId: 'bank', placeName: 'Banco Nación', amount: '10.00', currency: 'ARS', createdAt: '2026-08-01T12:00:00.000Z' },
-          ],
-        }}
-      />,
-    )
+    renderTab({
+      ...workspace,
+      movements: [
+        ...workspace.movements,
+        { kind: 'completion', id: 'completion_bank', goalId: 'goal_trip', goalName: 'Vacaciones', placeId: 'bank', placeName: 'Banco Nación', amount: '300.00', currency: 'ARS', createdAt: '2026-08-21T12:00:00.000Z' },
+        { kind: 'contribution', id: 'contribution_old', placeId: 'bank', placeName: 'Banco Nación', amount: '10.00', currency: 'ARS', createdAt: '2026-08-01T12:00:00.000Z' },
+      ],
+    })
 
     const rows = within(screen.getByRole('region', { name: 'Banco Nación' })).getAllByRole('listitem')
     expect(rows).toHaveLength(3)
@@ -86,7 +91,7 @@ describe('SavingsPlacesTab', () => {
 
   it('opens the selected place movements sheet from the place menu', async () => {
     const user = userEvent.setup()
-    render(<SavingsPlacesTab workspace={workspace} />)
+    renderTab()
 
     await openAction(user, 'Banco Nación', 'Ver movimientos de Banco Nación')
     const section = screen.getByRole('region', { name: 'Movimientos de Banco Nación' })
@@ -100,7 +105,7 @@ describe('SavingsPlacesTab', () => {
 
   it('opens the edit sheet from the place menu', async () => {
     const user = userEvent.setup()
-    render(<SavingsPlacesTab workspace={workspace} />)
+    renderTab()
 
     await openAction(user, 'Banco Nación', 'Editar lugar Banco Nación')
     expect(screen.getByRole('heading', { name: 'Editar lugar' })).toBeInTheDocument()
@@ -109,7 +114,7 @@ describe('SavingsPlacesTab', () => {
 
   it('opens the transfer sheet from the place menu', async () => {
     const user = userEvent.setup()
-    render(<SavingsPlacesTab workspace={workspace} />)
+    renderTab()
 
     await openAction(user, 'Banco Nación', 'Transferir desde Banco Nación')
 
@@ -122,7 +127,7 @@ describe('SavingsPlacesTab', () => {
 
   it('switches transfer source and resets the draft', async () => {
     const user = userEvent.setup()
-    render(<SavingsPlacesTab workspace={workspace} />)
+    renderTab()
 
     await openAction(user, 'Banco Nación', 'Transferir desde Banco Nación')
     await user.click(screen.getByRole('combobox', { name: 'Hacia' }))
@@ -144,7 +149,7 @@ describe('SavingsPlacesTab', () => {
 
   it('updates the edit sheet with the newly selected place', async () => {
     const user = userEvent.setup()
-    render(<SavingsPlacesTab workspace={workspace} />)
+    renderTab()
 
     await openAction(user, 'Banco Nación', 'Editar lugar Banco Nación')
     await user.click(screen.getByRole('button', { name: 'Close' }))
@@ -156,7 +161,7 @@ describe('SavingsPlacesTab', () => {
 
   it('opens a new place from the floating add button', async () => {
     const user = userEvent.setup()
-    render(<SavingsPlacesTab workspace={workspace} />)
+    renderTab()
 
     await user.click(screen.getByRole('button', { name: 'Agregar lugar' }))
     expect(screen.getByRole('heading', { name: 'Nuevo lugar' })).toBeInTheDocument()
@@ -164,7 +169,7 @@ describe('SavingsPlacesTab', () => {
 
   it('keeps the empty state useful for creating a place', async () => {
     const user = userEvent.setup()
-    render(<SavingsPlacesTab workspace={{ places: [], movements: [] }} />)
+    renderTab({ places: [], movements: [] })
 
     expect(screen.getByText('Todavía no tenés lugares de ahorro.')).toBeInTheDocument()
     const pesos = screen.getByRole('figure', { name: 'Pesos' })

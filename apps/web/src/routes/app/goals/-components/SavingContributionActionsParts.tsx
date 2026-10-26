@@ -3,7 +3,8 @@ import { Ellipsis, Pencil, Trash2 } from 'lucide-react'
 import { Money } from '../../../../components/norte/Money'
 import { Button } from '../../../../components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../../components/ui/popover'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../../components/ui/sheet'
+import { Sheet } from '../../../../components/ui/sheet'
+import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
 import { formatDate } from '../../../../lib/format'
 import { createMoney } from '../../../../lib/money'
 import type { ContributionSummary } from '../../../../features/goals/goals'
@@ -89,13 +90,17 @@ export function ContributionEditSheet({ item, onClose }: { item: ContributionSum
   const isInvestment = item.kind === 'investment'
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]">
-        <SheetHeader className="border-b border-border px-6 py-5">
-          <SheetTitle className="text-title text-foreground">{isInvestment ? 'Corregir inversión' : 'Corregir ahorro'}</SheetTitle>
-          <SheetDescription className="text-body-sm text-muted-foreground">{isInvestment ? 'Modificá los datos de esta inversión manteniendo la distribución original entre objetivos.' : 'Modificá los datos de este ahorro manteniendo la distribución original entre objetivos.'}</SheetDescription>
-        </SheetHeader>
+      <SidePanelContent>
+        <SidePanelHeader
+          title={isInvestment ? 'Corregir inversión' : 'Corregir ahorro'}
+          description={
+            isInvestment
+              ? 'Modificá los datos de esta inversión manteniendo la distribución original entre objetivos.'
+              : 'Modificá los datos de este ahorro manteniendo la distribución original entre objetivos.'
+          }
+        />
         <SavingContribution initialContribution={item} onCancel={onClose} onSuccess={onClose} />
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }

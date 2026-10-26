@@ -1,13 +1,14 @@
 import BigNumber from 'bignumber.js'
 import type { ReactNode } from 'react'
-import { X } from 'lucide-react'
 import type { GoalWorkspaceItem } from '../../../../features/goals/goals'
 import { Money } from '../../../../components/norte/Money'
+import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
 import { Button } from '../../../../components/ui/button'
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../../components/ui/sheet'
+import { Sheet } from '../../../../components/ui/sheet'
 import { formatDate, formatPercentage } from '../../../../lib/format'
 import { shortMoney, shortMonth } from '../../-components/home-view'
 import { GOAL_PRIORITY_LABELS, STRATEGY_LABELS, capitalizedMonth, getGoalProjectionDisplay, goalProgress } from './goal-display'
+import { GoalEditBody } from './GoalEditSheet'
 import type { GoalAction } from './GoalsWorkspaceParts'
 import { SavingContributionActions } from './SavingContributionActions'
 
@@ -137,27 +138,10 @@ function GoalDetail({ goal, actions, onClose, onChangePlanning }: { goal: GoalWo
   const contributions = goal.contributions ?? goal.savingContributions ?? []
   return (
     <>
-      <span aria-hidden="true" className="mx-auto h-1 w-9 shrink-0 rounded-xs bg-border" />
-      <SheetHeader className="flex-row items-start gap-2.5 p-0">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <SheetTitle className="font-serif text-[24px] font-semibold tracking-[-0.3px] text-foreground">{goal.name}</SheetTitle>
-          <SheetDescription className="text-body-sm text-muted-foreground">
-            {STRATEGY_LABELS[goal.strategy]} · {goal.currency} · {GOAL_PRIORITY_LABELS[goal.priority]}
-          </SheetDescription>
-        </div>
-        <SheetClose
-          render={
-            <button type="button" aria-label="Cerrar" className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground after:absolute after:-inset-1 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring" />
-          }
-        >
-          <X className="size-[18px]" aria-hidden="true" />
-        </SheetClose>
-      </SheetHeader>
-
       {actions.length > 0 && (
         <div className="flex gap-2">
-          {actions.map(({ label, short, icon: Icon, run }) => (
-            <Button key={label} type="button" variant="outline" aria-label={label} onClick={() => { onClose(); run() }} className="relative h-10 flex-1 gap-1.5 rounded-md px-2.5 text-[13px] font-semibold after:absolute after:-inset-1">
+          {actions.map(({ label, short, icon: Icon, stay, run }) => (
+            <Button key={label} type="button" variant="outline" aria-label={label} onClick={() => { if (!stay) onClose(); run() }} className="relative h-10 flex-1 gap-1.5 rounded-md px-2.5 text-[13px] font-semibold after:absolute after:-inset-1">
               <Icon className="size-4" aria-hidden="true" />
               {short ?? label}
             </Button>
@@ -187,16 +171,38 @@ function GoalDetail({ goal, actions, onClose, onChangePlanning }: { goal: GoalWo
   )
 }
 
-export function GoalDetailSheet({ goal, actions, onClose, onChangePlanning }: { goal: GoalWorkspaceItem | null; actions: GoalAction[]; onClose: () => void; onChangePlanning?: () => void }) {
+export function GoalDetailSheet({
+  goal,
+  actions,
+  editing,
+  onEditBack,
+  onClose,
+  onChangePlanning,
+}: {
+  goal: GoalWorkspaceItem | null
+  actions: GoalAction[]
+  editing: boolean
+  onEditBack: () => void
+  onClose: () => void
+  onChangePlanning?: () => void
+}) {
   return (
     <Sheet open={goal !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        side="bottom"
-        showCloseButton={false}
-        className="max-h-[90dvh] gap-5 overflow-y-auto rounded-t-[20px] border-0 bg-background px-5 pt-2.5 pb-6 shadow-float md:mx-auto md:max-w-2xl"
-      >
-        {goal && <GoalDetail goal={goal} actions={actions} onClose={onClose} onChangePlanning={onChangePlanning} />}
-      </SheetContent>
+      <SidePanelContent>
+        {goal && (editing ? (
+          <>
+            <SidePanelHeader eyebrow={goal.name} title="Editar objetivo" onBack={onEditBack} />
+            <GoalEditBody goalId={goal.id} onDone={onClose} />
+          </>
+        ) : (
+          <>
+            <SidePanelHeader title={goal.name} description={`${STRATEGY_LABELS[goal.strategy]} · ${goal.currency} · ${GOAL_PRIORITY_LABELS[goal.priority]}`} />
+            <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
+              <GoalDetail goal={goal} actions={actions} onClose={onClose} onChangePlanning={onChangePlanning} />
+            </div>
+          </>
+        ))}
+      </SidePanelContent>
     </Sheet>
   )
 }

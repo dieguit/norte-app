@@ -1,10 +1,5 @@
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '../../components/ui/sheet'
+import { Sheet } from '../../components/ui/sheet'
+import { SidePanelContent, SidePanelHeader } from '../../components/norte/SidePanel'
 import type { GoalCompletionContext } from './goal-completion'
 import { GoalCompletion } from './GoalCompletion'
 import { GoalCompletionError, GoalCompletionLoading } from './GoalCompletionSheetParts'
@@ -29,13 +24,13 @@ export function GoalCompletionSheet({ open, goalId, onOpenChange }: GoalCompleti
   const state = useGoalCompletionContext(open, goalId)
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]">
-        <SheetHeader className="border-b border-border px-6 py-5">
-          <SheetTitle className="text-title text-foreground">Completar objetivo</SheetTitle>
-          <SheetDescription className="text-sm text-muted-foreground">Usá los ahorros acumulados para completarlo y revisá cómo cambian las deducciones de tu Plan.</SheetDescription>
-        </SheetHeader>
+      <SidePanelContent>
+        <SidePanelHeader
+          title="Completar objetivo"
+          description="Usá los ahorros acumulados para completarlo y revisá cómo cambian las deducciones de tu Plan."
+        />
         <GoalCompletionBody {...state} onOpenChange={onOpenChange} onContextInvalid={state.reloadContext} />
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }

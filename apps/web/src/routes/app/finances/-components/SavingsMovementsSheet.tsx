@@ -1,10 +1,5 @@
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '../../../../components/ui/sheet'
+import { Sheet } from '../../../../components/ui/sheet'
+import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
 import type { SavingsMovement } from '../../../../features/savings-places/savings-places'
 import { Money } from '../../../../components/norte/Money'
 import { createMoney } from '../../../../lib/money'
@@ -24,18 +19,11 @@ export function SavingsMovementsSheet({
 }: SavingsMovementsSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
-        <SheetHeader className="border-b border-border px-6 py-5">
-          <SheetTitle className="font-serif text-2xl font-bold text-foreground">
-            Movimientos de {placeName}
-          </SheetTitle>
-          <SheetDescription>
-            Consultá los aportes, transferencias recibidas y objetivos completados en este lugar.
-          </SheetDescription>
-        </SheetHeader>
+      <SidePanelContent>
+        <SidePanelHeader
+          title={`Movimientos de ${placeName}`}
+          description="Consultá los aportes, transferencias recibidas y objetivos completados en este lugar."
+        />
 
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
           <section
@@ -75,7 +63,7 @@ export function SavingsMovementsSheet({
             )}
           </section>
         </div>
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }

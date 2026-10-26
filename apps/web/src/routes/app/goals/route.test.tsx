@@ -211,7 +211,7 @@ describe('Goals routes and workspace', () => {
       const router = createTestRouter()
       render(<RouterProvider router={router} />)
 
-      expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos' })).toBeDefined()
+      expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos · Tus objetivos' })).toBeDefined()
       expect(screen.getByRole('heading', { level: 2, name: 'Activos' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Cambiar planificación de objetivos' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Más acciones de Colchón financiero' })).toBeDefined()
@@ -263,7 +263,7 @@ describe('Goals routes and workspace', () => {
       const retryButton = screen.getByRole('button', { name: 'Reintentar' })
       fireEvent.click(retryButton)
 
-      expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos' })).toBeDefined()
+      expect(await screen.findByRole('heading', { level: 1, name: 'Objetivos · Tus objetivos' })).toBeDefined()
       expect(screen.getByRole('heading', { level: 2, name: 'Activos' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Cambiar planificación de objetivos' })).toBeInTheDocument()
     })

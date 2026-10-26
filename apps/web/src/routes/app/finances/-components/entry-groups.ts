@@ -1,5 +1,6 @@
 import BigNumber from "bignumber.js";
 import { createMoney } from "../../../../lib/money";
+import { movementDay } from "../../../../lib/movement-day";
 
 export type GroupableEntry = {
   id: string;
@@ -11,19 +12,20 @@ export type GroupableEntry = {
   currency: "ARS" | "USD";
   recurring: boolean;
   effectiveMonth: string;
+  createdAt: string;
   arsEquivalent?: string | null;
 };
 
 type Labels = Readonly<Record<string, string>>;
 
-const categoryName = (entry: GroupableEntry, labels: Labels) =>
+export const categoryName = (entry: GroupableEntry, labels: Labels) =>
   entry.sourceKind === "custom" ? entry.sourceName : (labels[entry.sourceKind] ?? entry.sourceName);
 
 export const entryLabel = (entry: GroupableEntry, labels: Labels) => entry.concept ?? categoryName(entry, labels);
 
 export const categoryKey = (entry: GroupableEntry) => entry.sourceId ?? `${entry.sourceKind}:${entry.sourceName}`;
 
-const sumArs = (entries: GroupableEntry[]) =>
+export const sumArs = (entries: GroupableEntry[]) =>
   entries.reduce((sum, entry) => sum.plus(entry.arsEquivalent ?? entry.amount), new BigNumber(0));
 
 function groupBy<T>(items: T[], keyOf: (item: T) => string) {
@@ -32,7 +34,7 @@ function groupBy<T>(items: T[], keyOf: (item: T) => string) {
   return [...groups];
 }
 
-export function groupByCategory<T extends GroupableEntry>(entries: T[], labels: Labels = {}) {
+export function groupByCategory<T extends GroupableEntry>(entries: T[], labels: Labels = {}, month?: string) {
   const grand = sumArs(entries);
   return groupBy(entries, categoryKey)
     .map(([key, items]) => {
@@ -42,17 +44,19 @@ export function groupByCategory<T extends GroupableEntry>(entries: T[], labels: 
         label: categoryName(items[0], labels),
         total: createMoney(total, "ARS"),
         share: grand.isZero() ? 0 : total.div(grand).toNumber(),
-        entries: [...items].sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth)),
+        entries: month
+          ? [...items].sort((a, b) => movementDay(b, month).localeCompare(movementDay(a, month)))
+          : [...items].sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth)),
       };
     })
     .sort((a, b) => b.share - a.share || a.label.localeCompare(b.label, "es"))
     .map((group, rank) => ({ ...group, rank }));
 }
 
-export function groupByMonth<T extends GroupableEntry>(entries: T[]) {
-  return groupBy(entries, (entry) => entry.effectiveMonth.slice(0, 7))
+export function groupByDay<T>(items: T[], dayOf: (item: T) => string) {
+  return groupBy(items, dayOf)
     .sort(([a], [b]) => b.localeCompare(a))
-    .map(([month, items]) => ({ month, total: createMoney(sumArs(items), "ARS"), entries: items }));
+    .map(([day, entries]) => ({ day, entries }));
 }
 
 export function formatShare(share: number) {

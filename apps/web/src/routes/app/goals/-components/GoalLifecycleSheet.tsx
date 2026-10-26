@@ -1,12 +1,7 @@
 import { useCallback } from 'react'
 import { SheetLoadingState, useSheetLoader } from '../../../../components/SheetLoadingState'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '../../../../components/ui/sheet'
+import { Sheet } from '../../../../components/ui/sheet'
+import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
 import { getGoalLifecycleContext } from '../../../../features/goals/goals.functions'
 import type { GoalLifecycleContext } from '../../../../features/goals/goal-lifecycle'
 import type { GoalLifecycle as GoalLifecycleType } from '../../../../features/goals/goal-lifecycle.schema'
@@ -44,18 +39,11 @@ function GoalLifecycleSheetBody({
         }
 
   return (
-    <SheetContent
-      side="right"
-      className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-    >
-      <SheetHeader className="border-b border-border px-6 py-5">
-        <SheetTitle className="text-title text-foreground">
-          {copy.title}
-        </SheetTitle>
-        <SheetDescription className="text-sm text-muted-foreground">
-          {copy.description}
-        </SheetDescription>
-      </SheetHeader>
+    <SidePanelContent>
+      <SidePanelHeader
+        title={copy.title}
+        description={copy.description}
+      />
 
       {loading ? (
         <SheetLoadingState />
@@ -71,7 +59,7 @@ function GoalLifecycleSheetBody({
           onUpdated={() => onOpenChange(false)}
         />
       ) : null}
-    </SheetContent>
+    </SidePanelContent>
   )
 }
 

@@ -4,7 +4,7 @@ import { MonthPicker } from "@/components/ui/monthpicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatMonthName } from "@/lib/format";
 
-export function shiftMonth(month: string, delta: number) {
+function shiftMonth(month: string, delta: number) {
   const [year, monthNumber] = month.split("-").map(Number);
   return new Date(Date.UTC(year, monthNumber - 1 + delta, 1)).toISOString().slice(0, 7);
 }
@@ -17,7 +17,7 @@ function monthLabel(month: string) {
 const ROUND =
   "relative flex h-10 items-center justify-center rounded-full text-foreground transition-colors after:absolute after:-inset-0.5 hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring motion-reduce:transition-none";
 
-export function MonthPickerPopover({
+function MonthPickerPopover({
   value,
   onValueChange,
   trigger,

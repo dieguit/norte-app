@@ -13,13 +13,13 @@ export type GoalActionProps = {
   onCompleteGoal?: (goalId: string) => void
 }
 
-export type GoalAction = { label: string; short?: string; icon: LucideIcon; run: () => void }
+export type GoalAction = { label: string; short?: string; icon: LucideIcon; stay?: boolean; run: () => void }
 
 export function goalActions(goal: GoalWorkspaceItem, { onEditGoal, onChangeGoalLifecycle, onCompleteGoal }: GoalActionProps): GoalAction[] {
   if (goal.status === 'completed') return []
   const active = goal.status === 'active'
   const actions: GoalAction[] = []
-  if (onEditGoal) actions.push({ label: 'Editar', icon: Pencil, run: () => onEditGoal(goal.id) })
+  if (onEditGoal) actions.push({ label: 'Editar', icon: Pencil, stay: true, run: () => onEditGoal(goal.id) })
   if (onChangeGoalLifecycle) {
     actions.push({ label: active ? 'Pausar' : 'Reanudar', icon: active ? Pause : Play, run: () => onChangeGoalLifecycle(goal.id, active ? 'pause' : 'resume') })
   }
@@ -94,7 +94,7 @@ export function GoalMenu({ goal, onDetail, ...actionProps }: { goal: GoalWorkspa
           <button
             type="button"
             aria-label={`Más acciones de ${goal.name}`}
-            className={`relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors after:absolute after:-inset-1 hover:bg-muted data-[popup-open]:bg-muted motion-reduce:transition-none ${FOCUS}`}
+            className={`relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors after:absolute after:-inset-1 hover:bg-muted data-[popup-open]:bg-muted motion-reduce:transition-none ${FOCUS}`}
           />
         }
       >
@@ -109,13 +109,14 @@ export function GoalMenu({ goal, onDetail, ...actionProps }: { goal: GoalWorkspa
   )
 }
 
-export function GoalRow({ goal, color, month, actions, onAssign }: { goal: GoalWorkspaceItem; color?: string; month: string; actions: ReactNode; onAssign?: () => void }) {
+export function GoalRow({ goal, color, month, actions, onAssign, onDetail }: { goal: GoalWorkspaceItem; color?: string; month: string; actions: ReactNode; onAssign?: () => void; onDetail: () => void }) {
   const dated = isDated(goal)
   const progress = goalProgress(goal)
   const unfunded = Number(planFunding(goal, month)?.percentage ?? 0) === 0
   const showToday = goal.status !== 'completed' && (dated || Number(goal.actualValue.amount) > 0)
   return (
-    <li className="flex flex-col gap-2 border-t border-border py-3.5">
+    <li className="relative isolate flex flex-col gap-2 border-t border-border py-3.5">
+      <button type="button" aria-label={`Ver detalle de ${goal.name}`} onClick={onDetail} className={`absolute inset-0 z-0 min-h-11 w-full rounded-sm ${FOCUS}`} />
       <div className={cn('flex gap-2.5', dated ? 'items-start' : 'items-center')}>
         <span
           aria-hidden="true"
@@ -132,7 +133,7 @@ export function GoalRow({ goal, color, month, actions, onAssign }: { goal: GoalW
           <p className="m-0 text-caption text-muted-foreground">{goalRowMeta(goal, month)}</p>
         </div>
         {!dated && goal.status === 'active' && unfunded && onAssign && (
-          <button type="button" aria-label={`Asignar aportes a ${goal.name}`} onClick={onAssign} className={LINK}>
+          <button type="button" aria-label={`Asignar aportes a ${goal.name}`} onClick={onAssign} className={`z-10 ${LINK}`}>
             Asignar
           </button>
         )}

@@ -1,12 +1,7 @@
 import type { ReactNode } from 'react'
 import { SheetLoadingState } from '../../../../components/SheetLoadingState'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '../../../../components/ui/sheet'
+import { Sheet } from '../../../../components/ui/sheet'
+import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
 
 export function GoalContextSheet({
   open,
@@ -27,14 +22,8 @@ export function GoalContextSheet({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]"
-      >
-        <SheetHeader className="border-b border-border px-6 py-5">
-          <SheetTitle className="text-title text-foreground">{title}</SheetTitle>
-          <SheetDescription className="text-sm text-muted-foreground">{description}</SheetDescription>
-        </SheetHeader>
+      <SidePanelContent>
+        <SidePanelHeader title={title} description={description} />
         {loading ? (
           <SheetLoadingState />
         ) : error ? (
@@ -44,7 +33,7 @@ export function GoalContextSheet({
         ) : (
           children
         )}
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }

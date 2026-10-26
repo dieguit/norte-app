@@ -19,6 +19,7 @@ import {
   updateSavingContribution,
   deleteSavingContribution,
 } from "../../../../features/contributions/saving-contribution.functions";
+import { getGoalEditContext } from "../../../../features/goals/goals.functions";
 import { GoalsWorkspace } from "./GoalsWorkspace";
 import { GoalsEmpty, GoalsError, GoalsLoading } from "./GoalsRouteStates";
 
@@ -56,6 +57,35 @@ vi.mock(
     getSavingContributionContext: vi.fn(),
   }),
 );
+
+vi.mock("../../../../features/goals/goals.functions", () => ({
+  getGoalEditContext: vi.fn(async () => ({
+    profile: "present",
+    goalId: "goal-1",
+    draft: {
+      type: "purchase",
+      name: "Colchón financiero",
+      targetAmount: "1.000",
+      currency: "USD",
+      desiredMonth: "2027-10",
+      priority: "high",
+      strategy: "save",
+      allocations: [{ goalId: "goal-1", percentage: "100.00" }],
+    },
+    context: {
+      currentMonth: "2026-08",
+      expensesKnowledge: "known",
+      hasEmergencyFund: false,
+      plannedMonthlyContribution: { amount: "100000.00", currency: "ARS" },
+      currentAllocation: {
+        effectiveMonth: "2026-08-01",
+        entries: [{ goalId: "goal-1", percentage: "100.00" }],
+      },
+    },
+  })),
+  previewGoalEdit: vi.fn(),
+  confirmGoalEdit: vi.fn(),
+}));
 
 afterEach(() => {
   cleanup();
@@ -133,6 +163,26 @@ async function openContributionActions(user: User) {
 }
 
 describe("GoalsWorkspace component", () => {
+  it.each(["click", "Enter", "Space"])("opens goal details from the main row with %s", async (activation) => {
+    const user = userEvent.setup();
+    render(<GoalsWorkspace workspace={makeWorkspace({ groups: [{ status: "active", goals: [makeGoal()] }] })} />);
+    const row = screen.getByRole("button", { name: "Ver detalle de Colchón financiero" });
+    expect(row).not.toContainElement(screen.getByRole("button", { name: "Más acciones de Colchón financiero" }));
+    if (activation === "click") await user.click(row);
+    else {
+      row.focus();
+      await user.keyboard(activation === "Enter" ? "{Enter}" : " ");
+    }
+    expect(await screen.findByRole("dialog", { name: "Colchón financiero" })).toBeInTheDocument();
+  });
+
+  it("renders desktop header and how-it-works aside", () => {
+    render(<GoalsWorkspace workspace={makeWorkspace({ groups: [{ status: "active", goals: [makeGoal()] }] })} />);
+    expect(screen.getByRole("heading", { level: 1, name: "Objetivos · Tus objetivos" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Cómo funciona" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Nuevo objetivo" })).toBeDefined();
+  });
+
   it("lists active goals by projected month under Activos with meta, progress and Hoy", () => {
     const zapas = makeGoal({
       id: "zapas", name: "Zapas", currency: "ARS",
@@ -197,12 +247,30 @@ describe("GoalsWorkspace component", () => {
     expect(screen.getAllByRole("button", { name: /^Asignar aportes a/ })).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Asignar aportes a Viaje" }));
     expect(onChangePlanning).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("hides the plan and Activos when there are no active goals", () => {
     render(<GoalsWorkspace workspace={makeWorkspace({ groups: [{ status: "paused", goals: [makeGoal({ status: "paused" })] }] })} />);
     expect(screen.queryByRole("region", { name: "Tu plan mensual" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Activos" })).not.toBeInTheDocument();
+  });
+
+  it("renders groups without plan or how-it-works when there are only paused or completed goals", () => {
+    render(
+      <GoalsWorkspace
+        workspace={makeWorkspace({
+          groups: [
+            { status: "paused", goals: [makeGoal({ id: "p", name: "Vacaciones", status: "paused" })] },
+            { status: "completed", goals: [makeGoal({ id: "c", name: "Laptop", status: "completed" })] },
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByRole("region", { name: "Tu plan mensual" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Cómo funciona" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pausados/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Completados/ })).toBeInTheDocument();
   });
 
   it("keeps paused and completed goals in collapsed groups with counts", async () => {
@@ -250,6 +318,7 @@ describe("GoalsWorkspace component", () => {
     );
 
     await openMenu(user, "Colchón financiero");
+    expect(screen.queryByRole("dialog", { name: "Colchón financiero" })).not.toBeInTheDocument();
     expect(["Ver detalle", "Editar", "Pausar", "Marcar como cumplido"].every((name) => screen.getByRole("button", { name }))).toBe(true);
     await user.click(screen.getByRole("button", { name: "Editar" }));
     expect(onEditGoal).toHaveBeenCalledWith("goal-1");
@@ -749,6 +818,35 @@ describe("GoalsWorkspace component", () => {
       expect(toast.success).toHaveBeenCalledWith("Inversión eliminada.");
     });
   });
+
+  it("swaps detail to edit inside the same panel and back", async () => {
+    const workspace = makeWorkspace({ groups: [{ status: "active", goals: [makeGoal()] }] });
+    render(<GoalsWorkspace workspace={workspace} onEditGoal={vi.fn()} />);
+    await userEvent.click(screen.getAllByRole("button", { name: /Más acciones de/ })[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalle" }));
+    const panel = screen.getByRole("dialog");
+    expect(panel).toHaveAttribute("data-side", "right");
+    await userEvent.click(within(panel).getByRole("button", { name: "Editar" }));
+    expect(await screen.findByRole("dialog", { name: "Editar objetivo" })).toBeDefined();
+    expect(getGoalEditContext).toHaveBeenCalledWith({ data: { goalId: "goal-1" } });
+    await userEvent.click(screen.getByRole("button", { name: "Volver" }));
+    expect(screen.getByRole("dialog", { name: workspace.groups[0].goals[0].name })).toBeDefined();
+  });
+
+  it("reopens in detail mode after closing while editing", async () => {
+    const workspace = makeWorkspace({ groups: [{ status: "active", goals: [makeGoal()] }] });
+    render(<GoalsWorkspace workspace={workspace} onEditGoal={vi.fn()} />);
+    await userEvent.click(screen.getAllByRole("button", { name: /Más acciones de/ })[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalle" }));
+    const panel = screen.getByRole("dialog");
+    await userEvent.click(within(panel).getByRole("button", { name: "Editar" }));
+    expect(await screen.findByRole("dialog", { name: "Editar objetivo" })).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await userEvent.click(screen.getAllByRole("button", { name: /Más acciones de/ })[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalle" }));
+    expect(screen.getByRole("dialog", { name: workspace.groups[0].goals[0].name })).toBeDefined();
+  });
 });
 
 describe("GoalsRouteStates", () => {
@@ -788,6 +886,8 @@ describe("GoalsRouteStates", () => {
 
     const btn = screen.getByRole("button", { name: "Nuevo objetivo" });
     expect(btn).toHaveAttribute("id", "new-goal-trigger");
+    expect(btn.parentElement).toHaveClass("flex");
+    expect(btn.parentElement).not.toHaveClass("hidden");
     btn.click();
     expect(handleNewGoal).toHaveBeenCalledTimes(1);
   });

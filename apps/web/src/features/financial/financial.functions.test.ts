@@ -53,8 +53,8 @@ describe('financial.server boundary', () => {
       const payload = {
         goalDedicationPercentage: '85.00', month: '2026-08',
         summary: { income: { amount: '800000.00', currency: 'ARS' }, expenses: { amount: '200000.00', currency: 'ARS' }, balance: { amount: '600000.00', currency: 'ARS' }, contribution: { amount: '510000.00', currency: 'ARS' } },
-        incomes: { sources: [{ id: '11111111-1111-4111-8111-111111111111', name: 'Sueldo Principal', normalizedName: 'sueldo principal' }], incomes: [{ id: '22222222-2222-4222-8222-222222222222', sourceKind: 'custom', sourceId: '11111111-1111-4111-8111-111111111111', sourceName: 'Sueldo Principal', concept: 'Sueldo Principal', amount: '800000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-01-01', arsEquivalent: null }] },
-        expenses: { sources: [], expenses: [{ id: '33333333-3333-4333-8333-333333333333', sourceKind: 'housing', sourceId: null, sourceName: 'housing', concept: 'Alquiler', amount: '200000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-01-01', endMonth: null, arsEquivalent: null }] },
+        incomes: { sources: [{ id: '11111111-1111-4111-8111-111111111111', name: 'Sueldo Principal', normalizedName: 'sueldo principal' }], incomes: [{ id: '22222222-2222-4222-8222-222222222222', sourceKind: 'custom', sourceId: '11111111-1111-4111-8111-111111111111', sourceName: 'Sueldo Principal', concept: 'Sueldo Principal', amount: '800000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-01-01', arsEquivalent: null, createdAt: '2026-01-01T12:00:00.000Z' }] },
+        expenses: { sources: [], expenses: [{ id: '33333333-3333-4333-8333-333333333333', sourceKind: 'housing', sourceId: null, sourceName: 'housing', concept: 'Alquiler', amount: '200000.00', currency: 'ARS', recurring: true, effectiveMonth: '2026-01-01', endMonth: null, arsEquivalent: null, createdAt: '2026-01-01T12:00:00.000Z' }] },
         savings: { places: [], movements: [] },
       }
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(payload))))

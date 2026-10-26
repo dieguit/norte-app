@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RoadmapData } from '@repo/shared-types'
@@ -9,6 +9,7 @@ import { Home } from './Home'
 
 vi.mock('@clerk/tanstack-react-start', () => ({
   UserButton: () => <button type="button">Cuenta</button>,
+  useUser: () => ({ user: { firstName: 'Edison' } }),
 }))
 
 let currentPathname = '/app'
@@ -96,6 +97,7 @@ describe('AppShell', () => {
 
     expect(container.firstElementChild).toHaveClass('h-dvh', 'overflow-hidden')
     expect(screen.getAllByRole('banner')[0]).toHaveClass('shrink-0')
+    expect(screen.getAllByRole('banner')[0]).not.toHaveClass('border-b')
     expect(screen.getAllByRole('banner')[0]).toHaveClass(
       'h-[calc(3.5rem+env(safe-area-inset-top))]',
       'pt-[env(safe-area-inset-top)]',
@@ -149,5 +151,44 @@ describe('AppShell', () => {
     expect(goalsLinks[0]?.getAttribute('aria-current')).toBe('page')
     expect(goalsLinks[1]?.getAttribute('aria-current')).toBe('page')
     expect(screen.getAllByRole('link', { name: 'Inicio' })[0]?.getAttribute('aria-current')).toBeNull()
+  })
+
+  it('shows Finanzas subitems only in the desktop navigation', () => {
+    currentPathname = '/app/finances/expenses'
+    render(
+      <AppShell>
+        <Home home={mockHome} roadmap={emptyRoadmap} />
+      </AppShell>,
+    )
+
+    for (const name of ['Ingresos', 'Gastos', 'Ahorros']) {
+      expect(screen.getAllByRole('link', { name })).toHaveLength(1)
+    }
+    expect(screen.getByRole('link', { name: 'Gastos' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Gastos' })).toHaveAttribute('href', '/app/finances/expenses')
+    expect(screen.queryByRole('link', { name: 'Beneficios' })).not.toBeInTheDocument()
+  })
+
+  it('shows user name and settings caption in the sidebar footer', () => {
+    render(
+      <AppShell>
+        <div />
+      </AppShell>,
+    )
+    const sidebar = screen.getByRole('complementary')
+    expect(within(sidebar).getByText('Edison')).toBeDefined()
+    expect(within(sidebar).getByText('Configuración')).toBeDefined()
+    expect(sidebar).toHaveClass('w-64')
+  })
+
+  it('styles the active desktop item as a card', () => {
+    currentPathname = '/app/goals'
+    render(
+      <AppShell>
+        <div />
+      </AppShell>,
+    )
+    const link = within(screen.getByRole('complementary')).getByRole('link', { name: 'Objetivos' })
+    expect(link).toHaveClass('bg-background', 'shadow-[var(--shadow-card)]')
   })
 })

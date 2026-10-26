@@ -1,4 +1,5 @@
-import { Sheet, SheetContent, SheetHeader } from '../../../components/ui/sheet'
+import { Sheet, SheetHeader } from '../../../components/ui/sheet'
+import { SidePanelContent } from '../../../components/norte/SidePanel'
 import { useSavingContributionContext } from './useSavingContributionContext'
 import { ContributionActionContent } from './ContributionActionContent'
 import { ContributionActionHeader } from './ContributionActionHeader'
@@ -35,7 +36,7 @@ export function ContributionActionSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:max-w-none data-[side=right]:sm:w-[450px] data-[side=right]:sm:max-w-[450px]">
+      <SidePanelContent>
         <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
           <ContributionActionHeader selectedAction={selection.selectedAction} onBack={() => selection.setSelectedAction(null)} />
         </SheetHeader>
@@ -50,7 +51,7 @@ export function ContributionActionSheet({
           onSelect={selection.setSelectedAction}
           onCancel={() => handleOpenChange(false)}
         />
-      </SheetContent>
+      </SidePanelContent>
     </Sheet>
   )
 }
