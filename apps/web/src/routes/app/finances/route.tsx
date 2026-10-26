@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, useChildMatches, useRouter } from '@tanstack/react-router'
 import { getFinancesWorkspace } from '../../../features/financial/financial.functions'
 import { FinancialOnboarding } from '../-components/FinancialOnboarding'
 import { FinancesWorkspace, type FinancesView } from './-components/FinancesWorkspace'
@@ -29,7 +29,7 @@ function FinancesRouteError() {
   )
 }
 
-const VIEW_BY_PATH: Record<string, FinancesView> = {
+const VIEW_BY_ROUTE_ID: Record<string, FinancesView> = {
   '/app/finances/incomes': 'incomes',
   '/app/finances/expenses': 'expenses',
   '/app/finances/savings': 'savings',
@@ -37,7 +37,7 @@ const VIEW_BY_PATH: Record<string, FinancesView> = {
 
 function FinancesRoute() {
   const data = Route.useLoaderData()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const routeId = useChildMatches({ select: (matches) => matches[0]?.routeId })
   if (!data) return <FinancialOnboarding />
-  return <FinancesWorkspace workspace={data} view={VIEW_BY_PATH[pathname] ?? 'summary'} />
+  return <FinancesWorkspace workspace={data} view={(routeId && VIEW_BY_ROUTE_ID[routeId]) || 'summary'} />
 }
