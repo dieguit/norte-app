@@ -1,14 +1,15 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { RotateCw } from "lucide-react";
 import { AppBrand } from "./AppBrand";
 import { Button, buttonVariants } from "./ui/button";
 
 export function NotFoundPage() {
+  const inApp = useLocation({ select: (l) => /^\/app(\/|$)/.test(l.pathname) });
   return (
     <ErrorPage
       title="Página no encontrada"
       description="La página que buscás no existe o se movió."
-      homeHref="/"
+      homeHref={inApp ? "/app" : "/"}
     />
   );
 }

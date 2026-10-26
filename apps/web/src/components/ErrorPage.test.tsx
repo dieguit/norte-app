@@ -11,10 +11,10 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorPage, NotFoundPage } from "./ErrorPage";
 
-function renderInRouter(ui: ReactNode) {
+function renderInRouter(ui: ReactNode, path = "/") {
   const router = createRouter({
     routeTree: createRootRoute({ component: () => ui }),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    history: createMemoryHistory({ initialEntries: [path] }),
   });
   return render(<RouterProvider router={router} />);
 }
@@ -28,6 +28,15 @@ describe("ErrorPage", () => {
     expect(await screen.findByRole("heading", { name: "Página no encontrada" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /volver a intentar/i })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ir al inicio/i })).toHaveAttribute("href", "/");
+  });
+
+  it.each([
+    ["/app/nope", "/app"],
+    ["/apple", "/"],
+  ])("404 at %s links home to %s", async (path, href) => {
+    renderInRouter(<NotFoundPage />, path);
+
+    expect(await screen.findByRole("link", { name: /ir al inicio/i })).toHaveAttribute("href", href);
   });
 
   it("500 retries and links home to the given href", async () => {
