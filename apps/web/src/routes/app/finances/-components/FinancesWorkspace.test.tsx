@@ -218,7 +218,7 @@ describe("FinancesWorkspace", () => {
       const summary = screen.getByRole("region", { name: "Resumen del mes" });
       expect(summary).toHaveTextContent("$ 200.000,00");
       expect(summary).toHaveTextContent("Disponible este mes");
-      expect(legendValue("Gastos")).toHaveTextContent("$ 500.000,00");
+      expect(screen.queryByText("Gastos", { selector: "dt" })).not.toBeInTheDocument();
       expect(legendValue("Objetivos 90%")).toHaveTextContent("$ 180.000,00");
       expect(legendValue("Queda")).toHaveTextContent("$ 20.000,00");
       expect(
@@ -354,7 +354,6 @@ describe("FinancesWorkspace", () => {
           name: "Finanzas · Julio 2026",
         }),
       ).toBeInTheDocument();
-      expect(legendValue("Gastos")).toHaveTextContent("$ 250.000,00");
       expect(legendValue("Objetivos 90%")).toHaveTextContent("$ 315.000,00");
       expect(screen.getByRole("link", { name: /^Ingresos/ })).toHaveTextContent(
         "$ 600.000,00",

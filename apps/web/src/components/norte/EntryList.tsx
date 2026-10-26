@@ -88,7 +88,7 @@ export function LogRow({
         className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted"
         style={color ? { background: `color-mix(in srgb, ${color} 15%, transparent)` } : undefined}
       >
-        {Icon ? <Icon className="size-4 text-foreground" aria-hidden="true" /> : <span className="size-2.5 rounded-full" style={{ background: color }} />}
+        {Icon ? <Icon className="size-4 text-foreground" style={color ? { color } : undefined} aria-hidden="true" /> : <span className="size-2.5 rounded-full" style={{ background: color }} />}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-center gap-1.5">
