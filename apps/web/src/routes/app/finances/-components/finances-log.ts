@@ -1,11 +1,10 @@
-import { ArrowDownLeft, PiggyBank } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, PiggyBank } from "lucide-react";
 import type { FinancesWorkspace } from "@repo/shared-types";
-import { chartColor } from "../../../../components/norte/CategoryDonut";
 import type { LogDay, LogItem, LogKind } from "../../../../components/norte/MovementLog";
 import { FIXED_EXPENSE_SOURCES, isExpenseIncludedInMonth } from "../../../../features/financial/expenses";
 import { FIXED_INCOME_SOURCES, isIncomeIncludedInMonth } from "../../../../features/financial/incomes";
 import { localDay, movementDay } from "../../../../lib/movement-day";
-import { categoryKey, categoryName, entryLabel, groupByCategory, groupByDay } from "./entry-groups";
+import { categoryName, entryLabel, groupByDay } from "./entry-groups";
 
 export type LogFilter = "all" | LogKind;
 
@@ -15,19 +14,18 @@ export function financesLog(workspace: FinancesWorkspace, filter: LogFilter): Lo
   const { month } = workspace;
   const incomes = workspace.incomes.incomes.filter((income) => isIncomeIncludedInMonth(income, month));
   const expenses = workspace.expenses.expenses.filter((expense) => isExpenseIncludedInMonth(expense, month));
-  const ranks = new Map(groupByCategory(expenses, FIXED_EXPENSE_SOURCES).map((group) => [group.key, group.rank]));
   const items: Dated[] = [
     ...incomes.map((income) => ({
       id: income.id, kind: "income" as const, day: movementDay(income, month),
       label: entryLabel(income, FIXED_INCOME_SOURCES), category: `Ingreso · ${categoryName(income, FIXED_INCOME_SOURCES)}`,
       amount: { amount: income.amount, currency: income.currency }, recurring: income.recurring,
-      icon: ArrowDownLeft, tone: "positive" as const, sign: "always" as const,
+      icon: ArrowUpRight, color: "var(--chart-income-3)", tone: "positive" as const, sign: "always" as const,
     })),
     ...expenses.map((expense) => ({
       id: expense.id, kind: "expense" as const, day: movementDay(expense, month),
       label: entryLabel(expense, FIXED_EXPENSE_SOURCES), category: `Gasto · ${categoryName(expense, FIXED_EXPENSE_SOURCES)}`,
       amount: { amount: `-${expense.amount}`, currency: expense.currency }, recurring: expense.recurring,
-      color: chartColor("expense", ranks.get(categoryKey(expense)) ?? 8),
+      icon: ArrowDownRight, color: "var(--chart-expense-4)",
     })),
     ...workspace.savings.movements.flatMap((movement) => {
       const day = localDay(movement.createdAt);
