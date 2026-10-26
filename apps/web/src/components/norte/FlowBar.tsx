@@ -9,7 +9,7 @@ type FlowSummary = { income: MoneyValue; expenses: MoneyValue; balance: MoneyVal
 type SegmentKey = "expenses" | "goals" | "free" | "over";
 
 const SWATCH: Record<SegmentKey, string> = {
-  expenses: "bg-foreground",
+  expenses: "bg-chart-expense-2",
   goals: "bg-accent-brand",
   free: "bg-accent-brand-soft",
   over: "bg-negative",
