@@ -5,25 +5,20 @@ import { createMoney, type Money as MoneyValue } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { Money } from "./Money";
 
-type FlowSummary = { income: MoneyValue; expenses: MoneyValue; balance: MoneyValue; contribution: MoneyValue };
-type SegmentKey = "expenses" | "goals" | "free" | "over";
+type FlowSummary = { balance: MoneyValue; contribution: MoneyValue };
+type SegmentKey = "goals" | "free" | "over";
 
 const SWATCH: Record<SegmentKey, string> = {
-  expenses: "bg-chart-expense-2",
   goals: "bg-accent-brand",
   free: "bg-accent-brand-soft",
   over: "bg-negative",
 };
 
-export function getFlowSegments({ income, expenses, balance, contribution }: FlowSummary) {
-  const [i, e, b, c] = [income, expenses, balance, contribution].map((money) => Number(money.amount));
-  const parts: Array<[SegmentKey, number, number]> =
-    b < 0
-      ? [["expenses", i, e], ["over", -b, e]]
-      : [["expenses", e, i], ["goals", c, i], ["free", b - c, i]];
-  return parts
-    .filter(([, value, base]) => value > 0 && base > 0)
-    .map(([key, value, base]) => ({ key, share: value / base }));
+export function getFlowSegments({ balance, contribution }: FlowSummary) {
+  const [b, c] = [balance, contribution].map((money) => Number(money.amount));
+  if (b < 0) return [{ key: "over" as SegmentKey, share: 1 }];
+  const parts: Array<[SegmentKey, number]> = [["goals", c], ["free", b - c]];
+  return parts.filter(([, value]) => value > 0 && b > 0).map(([key, value]) => ({ key, share: value / b }));
 }
 
 export function FlowBar({ summary, goalsPercentage }: { summary: FlowSummary; goalsPercentage: string }) {
@@ -31,12 +26,10 @@ export function FlowBar({ summary, goalsPercentage }: { summary: FlowSummary; go
   const segments = getFlowSegments(summary);
   const legend: Array<[SegmentKey, string, ReactNode]> = overspent
     ? [
-        ["expenses", "Gastos", <Money value={summary.expenses} />],
         ["goals", "Objetivos", <Money value={summary.contribution} />],
         ["over", "Excedido", <Money value={summary.balance} sign="never" tone="negative" />],
       ]
     : [
-        ["expenses", "Gastos", <Money value={summary.expenses} />],
         ["goals", `Objetivos ${formatPercentage(goalsPercentage)}`, <Money value={summary.contribution} />],
         ["free", "Queda", <Money value={createMoney(new BigNumber(summary.balance.amount).minus(summary.contribution.amount), "ARS")} />],
       ];
