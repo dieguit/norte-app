@@ -31,10 +31,18 @@ export class HomeService {
       goals: goalsState.workspace,
       finances: {
         incomes: {
-          incomes: finances.incomes.incomes.map(({ createdAt, ...income }) => income),
+          incomes: finances.incomes.incomes.map(({ createdAt, ...income }) => {
+            void createdAt;
+            return income;
+          }),
         },
         expenses: {
-          expenses: finances.expenses.expenses.map(({ createdAt, ...expense }) => expense),
+          expenses: finances.expenses.expenses.map(
+            ({ createdAt, ...expense }) => {
+              void createdAt;
+              return expense;
+            },
+          ),
         },
       },
       currentMonth,
