@@ -17,6 +17,7 @@ export function getRouter() {
     scrollToTopSelectors: ['#app-scroll-area'],
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
+    defaultViewTransition: true,
     notFoundMode: 'root',
     rewrite: {
       input: ({ url }) => deLocalizeUrl(url),
