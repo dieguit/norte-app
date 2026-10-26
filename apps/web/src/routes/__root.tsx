@@ -4,6 +4,7 @@ import { esES } from "@clerk/localizations";
 import { Toaster } from "sonner";
 import { getLocale } from "#/paraglide/runtime";
 import appCss from "../styles.css?url";
+import { NotFoundPage } from "../components/ErrorPage";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -17,6 +18,7 @@ export const Route = createRootRoute({
     ],
   }),
   shellComponent: RootDocument,
+  notFoundComponent: NotFoundPage,
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {

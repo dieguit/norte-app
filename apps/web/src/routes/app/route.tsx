@@ -1,8 +1,9 @@
 import { useUser } from '@clerk/tanstack-react-start'
 import { PostHogProvider, usePostHog } from '@posthog/react'
-import { createFileRoute, isRedirect, Outlet, redirect } from '@tanstack/react-router'
+import { createFileRoute, isRedirect, Outlet, redirect, useRouter } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { getFinancialAppState } from '../../features/financial/financial.functions'
+import { ErrorPage } from '../../components/ErrorPage'
 import { AppShell } from './-components/AppShell'
 
 export const Route = createFileRoute('/app')({
@@ -21,7 +22,20 @@ export const Route = createFileRoute('/app')({
     }
   },
   component: AppLayout,
+  errorComponent: AppRouteError,
 })
+
+function AppRouteError() {
+  const router = useRouter()
+  return (
+    <ErrorPage
+      title="Algo salió mal"
+      description={"No pudimos cargar esta página.\nProbá de nuevo en unos instantes."}
+      homeHref="/app"
+      onRetry={() => router.invalidate()}
+    />
+  )
+}
 
 function AppLayout() {
   return (
