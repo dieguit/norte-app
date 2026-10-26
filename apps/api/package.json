@@ -22,7 +22,8 @@
     "check-types": "tsc --noEmit",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
-    "db:studio": "drizzle-kit studio --config drizzle.config.ts"
+    "db:studio": "drizzle-kit studio --config drizzle.config.ts",
+    "db:seed:demo": "tsx --env-file=.env scripts/seed-demo.ts"
   },
   "dependencies": {
     "@chat-adapter/telegram": "4.43.0",
