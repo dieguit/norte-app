@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildInstructions, createNorteAgent } from './norte-agent';
+import {
+  buildInstructions,
+  createNorteAgent,
+  reserveFinalReply,
+} from './norte-agent';
 
 const env = {
   LLM_BASE_URL: 'http://127.0.0.1:4999/v1',
@@ -35,6 +39,7 @@ describe('norte agent', () => {
     expect(processors.map((p) => p.id)).toEqual([
       'unicode-normalizer',
       'norte-input-guardrails',
+      'norte-domain-router',
     ]);
   });
 
@@ -45,15 +50,29 @@ describe('norte agent', () => {
     expect(text).not.toContain('Todavía no tenés acceso');
     expect(text).not.toContain('(monto, concepto, categoría');
     expect(text).toContain('getCurrentDate');
-    expect(text).toContain('listCategories');
-    expect(text).toContain('getNotificationSettings');
-    expect(text).toContain('day_close_checkin');
+    expect(text).toContain('skill');
+    expect(text).not.toContain('getNotificationSettings');
     expect(text).toContain('sólo podés ayudar con sus finanzas');
     expect(text).toContain('Aviso de espera');
   });
 
   it('omits links when no web app url is configured', () => {
     expect(buildInstructions()).not.toContain('/app/goals');
-    expect(buildInstructions()).toContain('fondo-de-emergencia: ');
+    expect(buildInstructions()).not.toContain('fondo-de-emergencia: ');
+  });
+
+  it('reserves the last step for a reply when tools would exhaust maxSteps', () => {
+    expect(
+      reserveFinalReply({ iteration: 9, finishReason: 'tool-calls' }),
+    ).toMatchObject({
+      continue: false,
+      feedback: expect.any(String) as string,
+    });
+    expect(
+      reserveFinalReply({ iteration: 3, finishReason: 'tool-calls' }),
+    ).toBeUndefined();
+    expect(
+      reserveFinalReply({ iteration: 9, finishReason: 'stop' }),
+    ).toBeUndefined();
   });
 });

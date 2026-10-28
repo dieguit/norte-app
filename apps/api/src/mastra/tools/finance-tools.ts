@@ -59,6 +59,28 @@ const toKindLabels = (sources: Record<string, string>) =>
 const toCustomList = (sources: Array<{ id: string; name: string }>) =>
   sources.map((s) => ({ sourceId: s.id, name: s.name }));
 
+export async function listCategoriesFor(
+  finances: FinanceServices['finances'],
+  userId: string,
+) {
+  const workspace = await finances.getWorkspace(
+    userId,
+    todayInArgentina().month,
+  );
+  if (!workspace) return { profile: 'missing' as const };
+  return {
+    expense: {
+      recurring: toKindLabels(RECURRING_EXPENSE_SOURCES),
+      oneTime: toKindLabels(ONE_TIME_EXPENSE_SOURCES),
+      custom: toCustomList(workspace.expenses.sources),
+    },
+    income: {
+      fixed: toKindLabels(FIXED_INCOME_SOURCES),
+      custom: toCustomList(workspace.incomes.sources),
+    },
+  };
+}
+
 export function createFinanceTools(
   { expenses, incomes, finances }: FinanceServices,
   { pending, undo }: ActionStores,
@@ -88,17 +110,7 @@ export function createFinanceTools(
       inputSchema: z.object({}),
       execute: (_input, context) =>
         toolResult('list-categories', context?.requestContext, () =>
-          withWorkspace(context, (workspace) => ({
-            expense: {
-              recurring: toKindLabels(RECURRING_EXPENSE_SOURCES),
-              oneTime: toKindLabels(ONE_TIME_EXPENSE_SOURCES),
-              custom: toCustomList(workspace.expenses.sources),
-            },
-            income: {
-              fixed: toKindLabels(FIXED_INCOME_SOURCES),
-              custom: toCustomList(workspace.incomes.sources),
-            },
-          })),
+          listCategoriesFor(finances, requireUserId(context?.requestContext)),
         ),
     }),
 
