@@ -120,10 +120,24 @@ describe('validateEnv', () => {
     const result = validateEnv({
       ...validEnv,
       CHAT_CHANNEL: 'whatsapp',
+      WHATSAPP_PHONE_NUMBER: '5491112345678',
       WEB_APP_URL: 'https://app.norte.test',
     });
     expect(result.CHAT_CHANNEL).toBe('whatsapp');
+    expect(result.WHATSAPP_PHONE_NUMBER).toBe('5491112345678');
     expect(result.WEB_APP_URL).toBe('https://app.norte.test');
+  });
+
+  it('requires a valid WHATSAPP_PHONE_NUMBER when CHAT_CHANNEL is whatsapp', () => {
+    const env = {
+      ...validEnv,
+      CHAT_CHANNEL: 'whatsapp',
+      WEB_APP_URL: 'https://app.norte.test',
+    };
+    expect(() => validateEnv(env)).toThrow(/WHATSAPP_PHONE_NUMBER/);
+    expect(() =>
+      validateEnv({ ...env, WHATSAPP_PHONE_NUMBER: '+5491112345678' }),
+    ).toThrow(/WHATSAPP_PHONE_NUMBER/);
   });
 
   it('requires TELEGRAM_BOT_TOKEN when CHAT_CHANNEL is telegram', () => {
