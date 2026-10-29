@@ -30,7 +30,7 @@ describe('Mastra routes (e2e)', () => {
             id: 'cmpl-test',
             object: 'chat.completion',
             created: 0,
-            model: 'cx/gpt-5.5',
+            model: 'cx/gpt-6-luna',
             choices: [
               {
                 index: 0,
@@ -80,7 +80,7 @@ describe('Mastra routes (e2e)', () => {
     expect(calls).toContainEqual({
       url: '/v1/chat/completions',
       auth: 'Bearer test-llm-key',
-      model: 'cx/gpt-5.5',
+      model: 'cx/gpt-6-luna',
     });
   });
 
