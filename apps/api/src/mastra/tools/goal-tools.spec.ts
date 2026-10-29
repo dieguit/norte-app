@@ -33,7 +33,16 @@ const proposal = (n: number) => ({
 function setup() {
   const goals = {
     getWorkspace: vi.fn(),
-    getPlanContext: vi.fn(),
+    getPlanContext: vi.fn().mockResolvedValue({
+      profile: 'present',
+      allocationContext: {
+        activeGoals: [{ id: GOAL_ID }],
+        currentAllocation: {
+          entries: [{ goalId: GOAL_ID, percentage: '100.00' }],
+        },
+        financialSummary: { dedicationPercentage: '20' },
+      },
+    }),
     getLifecyclePlanContext: vi.fn(),
     getCompletionContext: vi.fn(),
     previewCreation: vi
@@ -64,6 +73,235 @@ function setup() {
 }
 
 describe('goal tools', () => {
+  it.each([undefined, '25'])(
+    'derives creation allocations with share %s and confirms the derived draft',
+    async (share) => {
+      const { goals, tools, stores } = setup();
+      const input = {
+        ...draft,
+        allocations: undefined,
+        desiredMonth: undefined,
+      };
+      await tools.previewGoalCreation.execute!(
+        { draft: input, share } as never,
+        ctx('u1'),
+      );
+      const derived = {
+        ...draft,
+        desiredMonth: '',
+        allocations: [
+          { goalId: GOAL_ID, percentage: share ? '75.00' : '50.00' },
+          { goalId: 'pending-goal', percentage: share ? '25.00' : '50.00' },
+        ],
+      };
+      expect(goals.previewCreation).toHaveBeenCalledWith('u1', derived);
+      await stores.pending.take('u1')!.run();
+      expect(goals.confirmCreation).toHaveBeenCalledWith('u1', {
+        draft: derived,
+        previewToken: TOKEN_A,
+      });
+    },
+  );
+
+  it('resumes with equal share and redistributes zero-total entries', async () => {
+    const { goals, tools } = setup();
+    goals.getPlanContext.mockResolvedValue({
+      profile: 'present',
+      allocationContext: {
+        activeGoals: [{ id: 'other' }],
+        pendingAllocation: {
+          entries: [
+            { goalId: 'other', percentage: '0' },
+            { goalId: 'stale', percentage: '100' },
+          ],
+        },
+      },
+    });
+    await tools.previewGoalLifecycle.execute!(
+      { goalId: GOAL_ID, lifecycle: 'resume' },
+      ctx('u1'),
+    );
+    expect(goals.previewLifecycle).toHaveBeenCalledWith('u1', GOAL_ID, {
+      lifecycle: 'resume',
+      allocations: [
+        { goalId: 'other', percentage: '50.00' },
+        { goalId: GOAL_ID, percentage: '50.00' },
+      ],
+    });
+  });
+
+  it('merges editable changes over the fetched draft', async () => {
+    const { goals, tools, stores } = setup();
+    goals.getPlanContext.mockResolvedValue({
+      profile: 'present',
+      editContext: { draft },
+    });
+    goals.previewEdit.mockResolvedValue({
+      proposal: proposal(1),
+      previewToken: TOKEN_A,
+    });
+    await tools.previewGoalEdit.execute!(
+      { goalId: GOAL_ID, changes: { name: 'Auto' } },
+      ctx('u1'),
+    );
+    expect(goals.previewEdit).toHaveBeenCalledWith('u1', GOAL_ID, {
+      ...draft,
+      name: 'Auto',
+    });
+    await stores.pending.take('u1')!.run();
+    expect(goals.confirmEdit).toHaveBeenCalledWith('u1', GOAL_ID, {
+      draft: { ...draft, name: 'Auto' },
+      previewToken: TOKEN_A,
+    });
+  });
+
+  it('defaults dedication and rebalances a requested share', async () => {
+    const { goals, tools } = setup();
+    goals.getPlanContext.mockResolvedValue({
+      profile: 'present',
+      allocationContext: {
+        activeGoals: [{ id: GOAL_ID }, { id: 'other' }],
+        financialSummary: { dedicationPercentage: '20' },
+        currentAllocation: {
+          entries: [
+            { goalId: GOAL_ID, percentage: '50' },
+            { goalId: 'other', percentage: '50' },
+          ],
+        },
+      },
+    });
+    goals.previewAllocationChange.mockResolvedValue({
+      proposal: proposal(1),
+      previewToken: TOKEN_A,
+    });
+    await tools.previewAllocationChange.execute!(
+      { share: { goalId: GOAL_ID, percentage: '30' } },
+      ctx('u1'),
+    );
+    expect(goals.previewAllocationChange).toHaveBeenCalledWith('u1', {
+      dedicationPercentage: 20,
+      allocations: [
+        { goalId: GOAL_ID, percentage: '30.00' },
+        { goalId: 'other', percentage: '70.00' },
+      ],
+    });
+  });
+
+  it('lists detail with current share and latest contribution allocations', async () => {
+    const { goals, tools } = setup();
+    const contributions = Array.from({ length: 22 }, (_, i) => ({
+      id: `c${i}`,
+      kind: 'saving',
+      amount: '100',
+      currency: 'ARS',
+      placeName: 'Banco',
+      createdAt: `2026-10-${String(i + 1).padStart(2, '0')}T00:00:00Z`,
+      allocations: [{ goalId: GOAL_ID, amount: '25' }],
+    }));
+    goals.getWorkspace.mockResolvedValue({
+      profile: 'present',
+      workspace: {
+        financialSummary: { month: '2026-10' },
+        groups: [
+          {
+            goals: [
+              {
+                id: GOAL_ID,
+                funding: [
+                  { effectiveMonth: '2026-09-01', percentage: '25' },
+                  { effectiveMonth: '2026-11-01', percentage: '80' },
+                ],
+                savingContributions: contributions,
+                completionWithdrawals: [],
+              },
+              { id: 'other', funding: [] },
+            ],
+          },
+        ],
+      },
+    });
+    const result = await tools.listGoals.execute!(
+      { goalId: GOAL_ID },
+      ctx('u1'),
+    );
+    expect(result).toMatchObject({
+      goals: [
+        {
+          id: GOAL_ID,
+          share: '25',
+          contributions: expect.arrayContaining([
+            expect.objectContaining({ id: 'c21', allocationAmount: '25' }),
+          ]) as unknown,
+          completionWithdrawals: [],
+        },
+      ],
+    });
+    expect(
+      (result as { goals: { contributions: unknown[] }[] }).goals[0]
+        .contributions,
+    ).toHaveLength(20);
+  });
+
+  it('defaults completion withdrawals and redistributes allocations, including confirm', async () => {
+    const { goals, tools, stores } = setup();
+    goals.getCompletionContext.mockResolvedValue({
+      profile: 'present',
+      context: {
+        targetAmount: { amount: '100.00', currency: 'ARS' },
+        savingsPlaces: [
+          { id: 'p1', balance: { amount: '120.00', currency: 'ARS' } },
+        ],
+        activeGoals: [{ id: GOAL_ID }, { id: 'other' }],
+        currentAllocation: {
+          entries: [
+            { goalId: GOAL_ID, percentage: '40' },
+            { goalId: 'other', percentage: '60' },
+          ],
+        },
+      },
+    });
+    goals.previewCompletion.mockResolvedValue({
+      proposal: proposal(1),
+      previewToken: TOKEN_A,
+    });
+    await tools.previewGoalCompletion.execute!({ goalId: GOAL_ID }, ctx('u1'));
+    const body = {
+      withdrawals: [{ placeId: 'p1', amount: '100.00' }],
+      allocations: [{ goalId: 'other', percentage: '100.00' }],
+    };
+    expect(goals.previewCompletion).toHaveBeenCalledWith('u1', GOAL_ID, body);
+    await stores.pending.take('u1')!.run();
+    expect(goals.confirmCompletion).toHaveBeenCalledWith('u1', GOAL_ID, {
+      ...body,
+      previewToken: TOKEN_A,
+    });
+    expect(goals.getCompletionContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for withdrawals when more than one place covers the target', async () => {
+    const { goals, tools, stores } = setup();
+    const targetAmount = { amount: '100', currency: 'ARS' };
+    const savingsPlaces = ['p1', 'p2'].map((id) => ({
+      id,
+      balance: targetAmount,
+    }));
+    goals.getCompletionContext.mockResolvedValue({
+      profile: 'present',
+      context: { targetAmount, savingsPlaces },
+    });
+    await expect(
+      tools.previewGoalCompletion.execute!(
+        { goalId: GOAL_ID, allocations: [] },
+        ctx('u1'),
+      ),
+    ).resolves.toEqual({
+      error: 'Elegí de qué lugares sacar el dinero (deben sumar el objetivo).',
+      targetAmount,
+      savingsPlaces,
+    });
+    expect(stores.pending.has('u1')).toBe(false);
+    expect(goals.previewCompletion).not.toHaveBeenCalled();
+  });
   it('previews creation without proposedSource and confirms via confirmPendingAction', async () => {
     const { goals, stores, tools, pendingTools } = setup();
     goals.confirmCreation.mockResolvedValue({
@@ -141,9 +379,9 @@ describe('goal tools', () => {
 
   it('confirms lifecycle with the same allocations used in the preview', async () => {
     const { goals, stores, tools } = setup();
-    const allocations = [{ goalId: GOAL_ID, percentage: '100' }];
+    const allocations = [{ goalId: GOAL_ID, percentage: '0.00' }];
     await tools.previewGoalLifecycle.execute!(
-      { goalId: GOAL_ID, lifecycle: 'pause', allocations } as never,
+      { goalId: GOAL_ID, lifecycle: 'pause' },
       ctx('u1'),
     );
     expect(goals.previewLifecycle).toHaveBeenCalledWith('u1', GOAL_ID, {
@@ -280,6 +518,25 @@ describe('contribution tools', () => {
       draft: expect.objectContaining({ amount: '50000' }) as unknown,
       previewToken: TOKEN_A,
     });
+  });
+
+  it('passes previous-month catch-up through confirmation', async () => {
+    const { getPreviousCalendarMonth } = await import('@repo/finance-utils');
+    const catchUpMonth = getPreviousCalendarMonth(new Date());
+    const { contributions, stores, tools } = setupContributions();
+    await tools.previewSaving.execute!(
+      { draft: savingDraft, catchUpPreviousMonth: true } as never,
+      ctx('u1'),
+    );
+    const pending = stores.pending.take('u1')!;
+    expect(pending.summary).toBe(
+      `Ahorro registrado (regularización ${catchUpMonth})`,
+    );
+    await pending.run();
+    expect(contributions.confirmSaving).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ catchUpMonth, previewToken: TOKEN_A }),
+    );
   });
 
   it('stages edits and deletes', async () => {

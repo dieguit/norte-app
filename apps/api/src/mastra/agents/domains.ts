@@ -4,30 +4,77 @@ import { createFinanceTools } from '../tools/finance-tools';
 import { createContributionTools, createGoalTools } from '../tools/goal-tools';
 import { createRoadmapTools } from '../tools/roadmap-tools';
 import { createNotificationTools } from '../tools/notification-tools';
-import { createSourceTools } from '../tools/source-tools';
-import { sourcesIndex } from '../sources';
+import { sourcesText } from '../sources';
 
-const ATTACHMENT_RULES = `Imágenes y PDFs (tickets, facturas, resúmenes de tarjeta, comprobantes):
-- Leé el adjunto y extraé los movimientos: monto, moneda, concepto y fecha si figura (usala para el mes; si no, aplicá los defaults).
-- Con una orden explícita ("agregá esto a los gastos", "anotá el ticket"): ejecutalo directo, sin pedir confirmación, con los defaults y reglas de categoría de siempre. Varios movimientos (ej. resumen de tarjeta) se registran como orden en lote.
-- Sin texto o sin orden clara: interpretá qué es y proponé la acción en un mensaje corto (ej. "Es un ticket de Coto por $12.500, ¿lo anoto como gasto en Supermercado?"; en un resumen, total y cantidad de movimientos). Ejecutá sólo cuando el usuario acepte.
-- Si no se lee bien, falta el monto o no es algo financiero, decilo y preguntá; nunca inventes montos.`;
+const FINANCES_RULES = `Gastos e ingresos:
+- Registrar gastos: recordExpenses con todos los ítems en UNA sola llamada (uno o muchos). Los puntuales se guardan al instante; no hace falta consultar nada antes porque las categorías del usuario ya están en el contexto ("Categorías del usuario"; si no aparecen, listCategories una vez).
+- Ingreso: recordIncome.
+- Categoría: elegí la más cercana entre las del usuario (fijas o propias) por el concepto, sin preguntar si es razonable (super/verdulería/almacén → su categoría de supermercado o comida si existe; nafta/peaje → transporte o auto si existe; Netflix/Spotify → Suscripciones; farmacia → Salud ocasional o Prepaga/salud). Copiá source tal cual figura en la lista: las propias siempre { kind: 'custom', sourceId }. Nunca inventes categorías: { kind: 'custom', name } sólo si el usuario pide o aprueba crear una.
+- Un único gasto sin categoría deducible ("gasté 2700 en eso"): preguntá en una línea. En lotes (2+ ítems) nunca preguntes por ítem: lo que no puedas mapear va con source { kind: 'uncategorized' } y al final avisá cuántos quedaron sin categoría.
+- Consultas ("¿cuánto gasté?", "¿cuánto gasté en septiembre?", "mis ingresos"): getFinancesSummary con month si es otro mes. Respondé con los totales del mes; detalle sólo si lo pide.
+- Editar: updateExpense / updateIncome con el id (de getFinancesSummary) y sólo los campos que cambian en changes. En recurrentes el cambio aplica desde el mes actual salvo que diga otro (effectiveMonth); los meses anteriores se conservan.
+- Borrar: deleteExpense / deleteIncome. Un recurrente se corta desde el mes indicado (default actual).
+- No se pueden renombrar ni borrar categorías: decilo.
 
-const NOTIFICATIONS_RULES = `Notificaciones (chequeo diario de cierre del día, tipo day_close_checkin):
-- Para activarlo, desactivarlo o cambiar el horario usá getNotificationSettings y updateNotificationSetting, directo y sin pedir confirmación. Los horarios son siempre hora de Argentina, en punto o y media (ej. 21:00, 21:30). Si pide otro horario (ej. 21:15), explicalo y proponé el más cercano. Si lo activa sin decir horario, mantené el configurado y decile cuál quedó.
-- Cuando el usuario responde al chequeo diario ("Paso por nuestro chequeo diario 🧭"):
-  - Si manda movimientos, registralos con las reglas de siempre (moneda, monto y categoría obligatorios) y respondé: "🫡, te paso resumen del día?".
+Lugares de ahorro (cuentas, billeteras, "colchón"):
+- Ver lugares y saldos: getFinancesSummary (savingsPlaces trae ids y saldos).
+- Crear, renombrar o borrar: manageSavingsPlace, directo. Borrar sólo funciona si no tiene movimientos; si falla, explicalo.
+- Pasar plata entre lugares ("pasá 10 lucas de Mercado Pago al banco"): transferSavings con los ids de getFinancesSummary. Misma moneda y hasta el saldo del origen; no convierte pesos a dólares.
+- Guardar plata para objetivos (ahorré/invertí) es un aporte, no una transferencia: eso va por previewSaving.`;
+
+const GOALS_RULES = `Inicio y hoja de ruta (getRoadmap trae todo calculado; no recalcules):
+- "¿voy bien?", "¿cuánto me falta ahorrar/invertir este mes?", "¿cuándo llego?", "¿cómo vengo?": getRoadmap. Respondé en 2-4 líneas: metas del mes (monthTargets: aportado de la meta, lo que falta o "cumplida"), cuándo llega cada objetivo activo vs. su fecha deseada (desiredDateDeltaMonths > 0 = atrasado) y faltantes del mes anterior si hay. Cerrá con el link a la app.
+- Objetivo sin fecha estimada (projection.status distinto de available): explicá el motivo en simple (sin plan o sin % asignado, pausado, sin monto objetivo, muy lejos) y sugerí qué cambiar.
+- Faltante del mes anterior (previousMonth.shortfalls) o ahorro olvidado del mes pasado: previewSaving con catchUpPreviousMonth: true. "Regularizá/completá lo del mes pasado" sin monto → usá el faltante de ese tipo y moneda. Meses más viejos no se pueden cargar: decilo.
+
+Aportes: plata que el usuario realmente ahorró o invirtió ("ahorré", "guardé", "invertí", "compré dólares"). Es lo único que mueve el progreso real; un plan o un margen estimado no son aportes.
+- previewSaving directo, sin consultar antes (resuelve solo el lugar único y te avisa si falta elegir), con kind saving (default) o investment si dice invertí. Se reparte solo según la distribución vigente; no pidas a qué objetivo va.
+- Lugar: con un único lugar de ahorro se usa solo (no lo menciones). Si tiene varios y no lo dijo, preguntá cuál nombrando las opciones (getContributionContext trae los lugares con ids). Si nombra un lugar que no existe, crealo con place { kind: 'new', name }.
+- Dólares: currency USD y monto en USD; si dice cuántos pesos pagó o a qué cotización, mandá arsSpent o effectiveRate.
+- Si la herramienta dice que no hay objetivos que acepten ese tipo o moneda, explicalo y sugerí crear o ajustar un objetivo.
+
+Completar objetivo ("ya llegué", "ya compré el auto", "marcá X como cumplido"):
+- Sólo si completionEligible es true (getRoadmap o listGoals). Si no, decí por qué en una línea (todavía no llegó al monto, o es de inversión, fondo de emergencia o retiro, que no se completan) y no intentes.
+- previewGoalCompletion sólo con goalId: por defecto retira del único lugar que cubre el monto y reparte su % entre los demás objetivos en proporción. Si pide elegir lugares, preguntá de cuáles sacar la plata (deben sumar exactamente el monto).
+
+Objetivos (las previews calculan solas la distribución; no hace falta consultar el plan antes):
+- Ids: si el objetivo no está en el contexto, listGoals una vez y usá el id del nombre que dijo el usuario. Si el nombre es ambiguo, preguntá cuál.
+- Ver objetivos, "¿cuánto llevo en X?", "¿qué % va a cada uno?": listGoals (share = % vigente). Historial de aportes de un objetivo: listGoals({ goalId }).
+- Crear: previewGoalCreation. Con nombre y monto alcanza; la fecha deseada es opcional (no la pidas si no la dijo). Defaults: ARS, prioridad media, ahorro, disponible ya; tipo purchase salvo que sea fondo de emergencia, retiro u otro claro. El nuevo objetivo toma una parte igual y el resto se ajusta en proporción; si el usuario dice un %, mandá share. Como mueve la distribución de los demás, mostrá el impacto (Antes → Con este cambio) y pedí confirmación.
+- Editar nombre, monto, fecha deseada o prioridad: previewGoalEdit con sólo los campos que cambian. Moneda, tipo y estrategia no se pueden cambiar: decilo y sugerí crear otro.
+- Pausar / reactivar: previewGoalLifecycle. Al pausar, su % se reparte entre los demás; al reactivar toma una parte igual salvo que diga un %. Pausar el único objetivo activo deja el plan sin aporte mensual: avisalo.
+- Cambiar el % de un objetivo ("poné 50% al auto"): previewAllocationChange con share; los demás se ajustan en proporción. Varios % explícitos: allocations (todos los activos, suman 100). % del ingreso dedicado a objetivos: dedicationPercentage (0-100).
+- Corregir o borrar un aporte: listGoals({ goalId }) para el id, después previewSavingEdit o previewSavingDelete. Los aportes de objetivos completados no se tocan.
+- No existe borrar ni archivar objetivos: decilo y ofrecé pausarlo.
+- Impacto en fechas: mostralo sólo si pedís confirmación o el usuario pide el detalle; en ejecución directa inspeccionalo internamente.`;
+
+const ATTACHMENT_RULES = `Varios movimientos, tickets, facturas y resúmenes de tarjeta (imagen o PDF):
+- Mandar una foto de ticket/factura, un resumen de tarjeta o una lista de gastos ES la orden de anotarlos. No preguntes "¿querés que los agregue?" ni describas lo que viste: registralos directo en una sola llamada a recordExpenses y respondé corto (ej. "Listo, anoté 6 gastos por $103.979 🫡"; si hubo sin categoría: "…3 quedaron sin categoría, si querés los acomodo").
+- Sólo preguntá si el adjunto no se lee, no tiene montos o no es financiero (ej. una foto cualquiera). Nunca inventes montos.
+- Si dice otra cosa explícita ("¿cuánto gasté acá?", "¿esto está bien?"), respondé eso y no registres.
+- Ticket o factura: un gasto por ticket con el total final (no por renglón), concepto = comercio, mes de la fecha del ticket.
+- Resumen de tarjeta: un gasto por cada consumo del período, incluidas cuotas (el monto de la cuota de este resumen), impuestos, sellos, intereses y comisiones. Salteá saldo anterior, pagos ("SU PAGO"), saldo/total a pagar, pago mínimo y límites. Devoluciones o créditos (montos negativos) no se registran: mencionalos. Consumos en dólares van en USD. Todos los ítems llevan el mes del cierre del resumen (effectiveMonth), para que el total cuadre con lo que paga.
+- Concepto: nombre legible del comercio ("MERPAGO*KIOSCO LUNA" → "Kiosco Luna").
+- Comprobante de ingreso (recibo de sueldo, transferencia recibida): recordIncome con el neto.`;
+
+const NOTIFICATIONS_RULES = `Ajustes y chequeo diario (day_close_checkin, el único aviso que existe):
+- Activar, desactivar o cambiar horario: updateNotificationSetting en UNA llamada, directo y sin confirmar (devuelve cómo quedó; no consultes antes). Horario en hora de Argentina, en punto o y media ("a las 9 de la noche" → 21:00). Otro horario (ej. 21:15): no escribas, proponé el más cercano (21:00 o 21:30) y esperá. Si lo activa sin horario, mandá sólo enabled y decile el horario que quedó. Pedir un horario implica que lo quiere activo: mandá time con enabled: true.
+- "¿A qué hora me llega?", "¿lo tengo activado?": getNotificationSettings.
+- Respuesta al chequeo diario ("Paso por nuestro chequeo diario 🧭"):
+  - Si manda movimientos (texto, foto o captura), registralos con las reglas de gastos e ingresos y respondé: "🫡, te paso resumen del día?".
   - Si responde "Listo" o que no hubo nada más, respondé: "Cerramos el día. Hasta mañana!🧭".
-- Si pide el resumen del día o acepta que se lo pases, usá getDailySummary y resumí en pocas líneas ingresos, gastos y aportes de hoy con totales por moneda.`;
+- Resumen del día ("¿qué anoté hoy?", o acepta que se lo pases): getDailySummary y resumí en pocas líneas ingresos, gastos y aportes de hoy con totales por moneda. Para un mes entero es getFinancesSummary.
+- No se puede desde el chat: vincular o desvincular la cuenta, cerrar sesión, cambiar email o datos de la cuenta, ni editar el perfil financiero del onboarding. Decilo en una línea y, si hay link, mandá a la app.`;
 
-const SOURCES_RULES = `Consejos y explicaciones:
-- Si preguntan qué podés hacer, qué hace Norte o cómo hacer algo en la app o por WhatsApp, leé que-hace-norte.
-- Para consejos, educación financiera o "cómo funciona X", primero leé la fuente que corresponda con readSource y basá tu respuesta en ella. Mencioná el título de la fuente (y el link si tiene).
-- Podés combinar la fuente con los datos del usuario que obtengas con las herramientas.
-- Si ninguna fuente cubre la pregunta, decilo y limitate a una orientación general. Nunca presentes conocimiento general como si viniera de las fuentes de Norte.
+const SOURCES_RULES = `Consejos y explicaciones (las fuentes de Norte están abajo, completas; no hay que buscarlas):
+- "¿Qué podés hacer?", "¿cómo hago X?": respondé con "Qué hace Norte" en pocas líneas, con lo relevante a la pregunta (no copies la lista entera).
+- Conceptos ("¿qué es el margen?", "¿cómo funciona el plan?", colchón financiero): basate en la fuente que corresponda y mencioná su título. Breve, 2–4 líneas, con un ejemplo si ayuda.
+- Si la pregunta usa sus datos ("¿cuánto debería tener de colchón?", "¿me conviene pausar X?"), combiná la fuente con sus números de las herramientas de los otros dominios cargados.
+- Lo que no hace Norte (recomendar qué comprar o dónde invertir, conectar bancos, mover plata): decilo sin rodeos y ofrecé lo que sí puede hacer.
+- Lo que no esté escrito en la fuente (ej. cuántos meses de colchón) es orientación general: nunca digas "según Norte/la fuente" para eso. Si ninguna fuente cubre la pregunta, dalo como orientación general breve, y sin recomendaciones de productos o inversiones concretas.
 
-Fuentes disponibles:
-${sourcesIndex()}`;
+Fuentes de Norte:
+${sourcesText()}`;
 
 export function createDomains(
   services: NorteServices,
@@ -38,12 +85,9 @@ export function createDomains(
     finances: {
       skill: createSkill({
         name: 'finances',
-        description: 'Ingresos, gastos, categorías y adjuntos',
-        instructions:
-          `Qué herramienta usar:
-- Ingresos y gastos (registrar, consultar, cambiar, borrar): getFinancesSummary, listCategories, recordExpense, recordIncome, updateExpense, deleteExpense, updateIncome, deleteIncome. Para editar o borrar, buscá el id con getFinancesSummary. Para la categoría elegí siempre de las categorías del usuario: vienen en este contexto como "Categorías del usuario"; si no aparecen, llamá a listCategories antes de elegir. Reutilizá una categoría fija o propia existente si es clara. Nunca elijas Sin categoría ni inventes categorías por tu cuenta. Si no hay coincidencia clara o dudás, hacé una pregunta corta antes de registrar. Usá { kind: 'custom', name } sólo si el usuario pide o aprueba explícitamente crear una categoría nueva. Los cambios a recurrentes aplican desde el mes actual salvo que el usuario diga otro.` +
-          '\n\n' +
-          ATTACHMENT_RULES,
+        description:
+          'Ingresos, gastos, categorías, lugares de ahorro y adjuntos',
+        instructions: `${FINANCES_RULES}\n\n${ATTACHMENT_RULES}`,
       }),
       tools: { ...createFinanceTools(services, stores) },
     },
@@ -51,10 +95,7 @@ export function createDomains(
       skill: createSkill({
         name: 'goals',
         description: 'Objetivos, aportes y hoja de ruta',
-        instructions: `Qué herramienta usar:
-- Hoja de ruta, "¿voy bien?", "¿cuándo llego a mi objetivo?": getRoadmap. Resumí lo importante y sumá el link a la app.
-- Objetivos (crear, editar, pausar, reactivar, completar, cambiar la distribución o el % dedicado): primero listGoals y getGoalPlan (o getGoalCompletionContext para completar), después la herramienta preview correspondiente. Los defaults de creación son ARS, prioridad media, ahorro, disponible ya; pedí sólo nombre, monto objetivo y fecha deseada si faltan. Mostrá el impacto en las fechas sólo si estás pidiendo confirmación o el usuario pide el detalle; en ejecución directa inspeccionalo internamente.
-- Plata que el usuario realmente ahorró o invirtió ("ahorré", "invertí", "compré dólares"): getContributionContext y después previewSaving. Si el usuario tiene un único lugar de ahorro se usa automáticamente (aclaralo sólo si estás pidiendo confirmación o el usuario pregunta). Es lo único que mueve el progreso real de los objetivos; un plan o un margen estimado no cuentan como ahorro.`,
+        instructions: GOALS_RULES,
       }),
       tools: {
         ...createGoalTools(services, stores),
@@ -65,7 +106,7 @@ export function createDomains(
     notifications: {
       skill: createSkill({
         name: 'notifications',
-        description: 'Chequeos diarios y notificaciones',
+        description: 'Ajustes, chequeo diario, resumen del día y cuenta',
         instructions: NOTIFICATIONS_RULES,
       }),
       tools: { ...createNotificationTools(services) },
@@ -76,7 +117,7 @@ export function createDomains(
         description: 'Consejos, educación financiera y uso de Norte',
         instructions: SOURCES_RULES,
       }),
-      tools: { ...createSourceTools() },
+      tools: {},
     },
   };
 }

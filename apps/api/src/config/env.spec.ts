@@ -11,8 +11,8 @@ describe('validateEnv', () => {
     CLERK_AUTHORIZED_PARTIES: 'http://localhost:3100',
     LLM_BASE_URL: 'http://localhost:20128/v1',
     LLM_API_KEY: 'llm-key',
-    LLM_MODEL: 'cx/gpt-5.5',
-    LLM_GUARD_MODEL: 'kr/claude-haiku-4.5',
+    LLM_MODEL: 'agy/gemini-3.8-flash-low',
+    LLM_GUARD_MODEL: 'agy-flash-lite',
     MASTRA_API_KEY: 'mastra-key',
   };
 
@@ -58,14 +58,37 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...validEnv, PORT: '99999' })).toThrow();
   });
 
-  it.each([
-    'LLM_BASE_URL',
-    'LLM_API_KEY',
-    'LLM_MODEL',
-    'LLM_GUARD_MODEL',
-    'MASTRA_API_KEY',
-  ])('throws when %s is missing', (key) => {
+  it.each(['MASTRA_API_KEY'])('throws when %s is missing', (key) => {
     expect(() => validateEnv({ ...validEnv, [key]: undefined })).toThrow(key);
+  });
+
+  it('accepts omitted model overrides and provider credentials', () => {
+    const result = validateEnv({
+      ...validEnv,
+      LLM_MODEL: undefined,
+      LLM_GUARD_MODEL: undefined,
+      LLM_BASE_URL: undefined,
+      LLM_API_KEY: undefined,
+    });
+    expect(result.LLM_MODEL).toBeUndefined();
+    expect(result.LLM_GUARD_MODEL).toBeUndefined();
+  });
+
+  it('normalizes unique raw IDs and accepts direct OpenAI aliases', () => {
+    expect(validateEnv(validEnv).LLM_MODEL).toBe('agy-flash-low');
+    expect(
+      validateEnv({
+        ...validEnv,
+        LLM_MODEL: 'openai-gpt-6-luna',
+        OPENAI_API_KEY: 'key',
+      }).OPENAI_API_KEY,
+    ).toBe('key');
+  });
+
+  it('rejects unknown model overrides', () => {
+    expect(() => validateEnv({ ...validEnv, LLM_MODEL: 'unknown' })).toThrow(
+      'LLM_MODEL',
+    );
   });
 
   it('throws when LLM_BASE_URL is not a valid URL', () => {

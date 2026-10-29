@@ -4,6 +4,7 @@ import {
   createNorteAgent,
   reserveFinalReply,
 } from './norte-agent';
+import { roles } from '../../config/llm.config';
 
 const env = {
   LLM_BASE_URL: 'http://127.0.0.1:4999/v1',
@@ -13,6 +14,19 @@ const env = {
 };
 
 describe('norte agent', () => {
+  it('uses the main role effort unless overridden', async () => {
+    const normal = createNorteAgent(env, { services: {} as never });
+    expect((await normal.getDefaultOptions()).providerOptions).toEqual({
+      omniroute: { reasoningEffort: roles.main.effort },
+    });
+    const bench = createNorteAgent(env, {
+      services: {} as never,
+      main: { model: 'agy-flash-low', effort: 'minimal' },
+    });
+    expect((await bench.getDefaultOptions()).providerOptions).toEqual({
+      omniroute: { reasoningEffort: 'minimal' },
+    });
+  });
   it('exposes confirm and undo tools', async () => {
     const agent = createNorteAgent(env, { services: {} as never });
     const tools = await agent.listTools();
@@ -20,11 +34,9 @@ describe('norte agent', () => {
       expect.arrayContaining([
         'confirmPendingAction',
         'undoLastWrite',
-        'recordExpense',
+        'recordExpenses',
         'getFinancesSummary',
         'getRoadmap',
-        'readSource',
-        'getCurrentDate',
         'listCategories',
         'getNotificationSettings',
         'updateNotificationSetting',
@@ -49,7 +61,7 @@ describe('norte agent', () => {
     expect(text).toContain('https://app.norte.test/app/goals');
     expect(text).not.toContain('Todavía no tenés acceso');
     expect(text).not.toContain('(monto, concepto, categoría');
-    expect(text).toContain('getCurrentDate');
+    expect(text).toContain('fecha de hoy');
     expect(text).toContain('skill');
     expect(text).not.toContain('getNotificationSettings');
     expect(text).toContain('sólo podés ayudar con sus finanzas');

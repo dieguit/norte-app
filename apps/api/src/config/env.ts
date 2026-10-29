@@ -1,4 +1,17 @@
 import { z } from 'zod';
+import { modelAlias } from './llm.config';
+
+const modelOverride = z
+  .string()
+  .transform((value, ctx) => {
+    try {
+      return modelAlias(value);
+    } catch (error) {
+      ctx.addIssue({ code: 'custom', message: String(error) });
+      return z.NEVER;
+    }
+  })
+  .optional();
 
 const envSchema = z
   .object({
@@ -20,10 +33,12 @@ const envSchema = z
           .filter(Boolean),
       )
       .pipe(z.array(z.url()).min(1)),
-    LLM_BASE_URL: z.url(),
-    LLM_API_KEY: z.string().min(1),
-    LLM_MODEL: z.string().min(1),
-    LLM_GUARD_MODEL: z.string().min(1),
+    LLM_BASE_URL: z.url().optional(),
+    LLM_API_KEY: z.string().min(1).optional(),
+    OPENAI_API_KEY: z.string().min(1).optional(),
+    GROQ_API_KEY: z.string().min(1).optional(),
+    LLM_MODEL: modelOverride,
+    LLM_GUARD_MODEL: modelOverride,
     MASTRA_API_KEY: z.string().min(1),
     CHAT_CHANNEL: z.enum(['whatsapp', 'telegram']).optional(),
     TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),

@@ -13,6 +13,97 @@ import {
 } from './domain-router';
 
 describe('domain routing', () => {
+  const modelDomains = Object.fromEntries(
+    domainNames.map((name) => [
+      name,
+      { skill: { instructions: `${name} rules` }, tools: {} },
+    ]),
+  ) as unknown as Parameters<typeof createDomainProcessor>[0];
+
+  it.each([
+    [['advice', 'notifications', 'finances', 'goals'], 'goals'],
+    [['advice', 'notifications', 'finances'], 'finances'],
+    [['advice', 'notifications'], 'notifications'],
+    [['advice'], 'advice'],
+    [[], undefined],
+  ])(
+    'selects the model by fixed priority for %j',
+    async (selected, expected) => {
+      const models = Object.fromEntries(
+        domainNames.map((name) => [
+          name,
+          {
+            model: {
+              providerId: 'omniroute',
+              modelId: name,
+              url: 'http://localhost/v1',
+            },
+            providerOptions: { openai: { reasoningEffort: 'low' } },
+          },
+        ]),
+      );
+      const processor = createDomainProcessor(modelDomains, models);
+      const requestContext = new RequestContext();
+      requestContext.set('norteDomains', selected);
+      const result = await processor.processInputStep!({
+        requestContext,
+        state: {},
+        systemMessages: [],
+        messages: [],
+      } as unknown as Parameters<
+        NonNullable<typeof processor.processInputStep>
+      >[0]);
+      if (expected) expect(result).toMatchObject(models[expected]);
+      else expect(result).not.toHaveProperty('model');
+    },
+  );
+
+  it('keeps the default model when selected domains have no override', async () => {
+    for (const models of [
+      undefined,
+      { goals: { model: 'omniroute/goals' as const } },
+    ]) {
+      const processor = createDomainProcessor(modelDomains, models);
+      const requestContext = new RequestContext();
+      requestContext.set('norteDomains', ['finances']);
+      const result = await processor.processInputStep!({
+        requestContext,
+        state: {},
+        systemMessages: [],
+        messages: [],
+      } as unknown as Parameters<
+        NonNullable<typeof processor.processInputStep>
+      >[0]);
+      expect(result).not.toHaveProperty('model');
+    }
+  });
+
+  it('uses the domain model instead of the default during an agent run', async () => {
+    const override = createMockModel({ mockText: 'OVERRIDE', version: 'v2' });
+    if (override.specificationVersion !== 'v2')
+      throw new Error('Expected v2 mock');
+    const agent = new Agent({
+      id: 'domain-model-test',
+      name: 'Domain model test',
+      instructions: 'Reply briefly.',
+      model: createMockModel({ mockText: 'DEFAULT', version: 'v2' }),
+      inputProcessors: [
+        createDomainProcessor(modelDomains, {
+          goals: { model: override },
+        }),
+      ],
+    });
+    const requestContext = new RequestContext();
+    requestContext.set('norteDomains', ['goals']);
+    expect((await agent.generate('Hola', { requestContext })).text).toBe(
+      'OVERRIDE',
+    );
+    requestContext.set('norteDomains', ['advice']);
+    expect((await agent.generate('Hola', { requestContext })).text).toBe(
+      'DEFAULT',
+    );
+  });
+
   it('sends only text to the router, replacing attachments with a marker', () => {
     expect(
       routingText({
@@ -72,12 +163,17 @@ describe('domain routing', () => {
         {
           role: 'system',
           content: expect.stringMatching(
+            /^Hoy es \d{4}-\d{2}-\d{2} \(mes \d{4}-\d{2}\)/,
+          ) as string,
+        },
+        {
+          role: 'system',
+          content: expect.stringMatching(
             /^Skill "advice" ya cargada[^]*advice rules$/,
           ) as string,
         },
       ],
       activeTools: [
-        'getCurrentDate',
         'confirmPendingAction',
         'undoLastWrite',
         'skill',
@@ -136,7 +232,7 @@ describe('domain routing', () => {
     } as unknown as Parameters<
       NonNullable<typeof processor.processInputStep>
     >[0])) as { systemMessages: { content: string }[] };
-    const [finances, goals] = result.systemMessages.map((m) => m.content);
+    const [, finances, goals] = result.systemMessages.map((m) => m.content);
     expect(finances).toContain('Categorías del usuario');
     expect(finances).toContain('Café');
     expect(goals).not.toContain('Categorías del usuario');
