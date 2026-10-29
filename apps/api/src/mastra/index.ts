@@ -9,25 +9,23 @@ import {
 import { PostgresStoreVNext } from '@mastra/pg';
 import type { Env } from '../config/env';
 import { createNorteAgent } from './agents/norte-agent';
+import type { LlmEnv } from '../config/llm.config';
 import type { NorteServices } from './services';
 
 export function createMastra(
-  env: Pick<
-    Env,
-    | 'DATABASE_URL'
-    | 'MASTRA_API_KEY'
-    | 'LLM_BASE_URL'
-    | 'LLM_API_KEY'
-    | 'LLM_MODEL'
-    | 'LLM_GUARD_MODEL'
-  >,
+  env: Pick<Env, 'DATABASE_URL' | 'MASTRA_API_KEY'> & LlmEnv,
   options: {
     services: NorteServices;
     webAppUrl?: string;
     channels?: ChannelConfig;
+    main?: Parameters<typeof createNorteAgent>[1]['main'];
+    domainModels?: Parameters<typeof createNorteAgent>[1]['domainModels'];
+    guard?: Parameters<typeof createNorteAgent>[1]['guard'];
+    scorers?: NonNullable<ConstructorParameters<typeof Mastra>[0]>['scorers'];
   },
 ): Mastra {
   return new Mastra({
+    scorers: options.scorers,
     agents: {
       norteAgent: createNorteAgent(env, options),
     },

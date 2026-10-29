@@ -292,7 +292,7 @@ export class ProfileService {
       : null;
   }
 
-  private async getPreviousMonthShortfalls(
+  async getPreviousMonthShortfalls(
     userId: string,
     now: Date,
   ): Promise<Shortfall[]> {

@@ -113,11 +113,24 @@ export class ExpensesService {
     userId: string,
     input: { draft: ExpenseDraft; effectiveMonth: string },
   ) {
-    return this.db.transaction(async (tx) =>
-      serializeExpense(
-        await this.insert(tx, userId, input.draft, input.effectiveMonth),
-      ),
-    );
+    return this.createMany(userId, [input]).then(([expense]) => expense);
+  }
+
+  createMany(
+    userId: string,
+    items: { draft: ExpenseDraft; effectiveMonth: string }[],
+  ) {
+    return this.db.transaction(async (tx) => {
+      const created: ReturnType<typeof serializeExpense>[] = [];
+      for (const item of items) {
+        created.push(
+          serializeExpense(
+            await this.insert(tx, userId, item.draft, item.effectiveMonth),
+          ),
+        );
+      }
+      return created;
+    });
   }
 
   update(

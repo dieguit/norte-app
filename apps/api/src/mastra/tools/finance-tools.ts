@@ -7,8 +7,10 @@ import {
   RECURRING_EXPENSE_SOURCES,
 } from '@repo/shared-types';
 import { z } from 'zod';
+import BigNumber from 'bignumber.js';
+import { normalizeMoneyAmount } from '../../money';
 import type { NorteServices } from '../services';
-import { todayInArgentina } from './date';
+import { todayInArgentina } from '../../argentina-time';
 import type { ActionStores } from './pending-actions';
 import { toolResult } from './tool-result';
 import { requireUserId } from './user-context';
@@ -22,32 +24,27 @@ const IdSchema = z
   .uuid()
   .describe('Record id from getFinancesSummary');
 
-const ToolExpenseDraftSchema = ExpenseDraftSchema.extend({
-  source: ExpenseDraftSchema.shape.source.refine(
-    (source) => source.kind !== 'uncategorized',
-    {
-      message:
-        'Elegí una categoría existente; si no podés deducirla, preguntale al usuario antes de registrar.',
-    },
-  ),
+const categorized = <T extends z.ZodType<{ kind: string }>>(source: T) =>
+  source.refine((source) => source.kind !== 'uncategorized', {
+    message:
+      'Elegí una categoría existente; si no podés deducirla, preguntale al usuario antes de registrar.',
+  });
+const toolDefaults = {
   currency: z.enum(['ARS', 'USD']).default('ARS'),
   recurring: z.boolean().default(false),
-});
+};
+const ToolExpenseDraftSchema = ExpenseDraftSchema.extend(toolDefaults);
 
 const ToolIncomeDraftSchema = IncomeDraftSchema.extend({
-  source: IncomeDraftSchema.shape.source.refine(
-    (source) => source.kind !== 'uncategorized',
-    {
-      message:
-        'Elegí una categoría existente; si no podés deducirla, preguntale al usuario antes de registrar.',
-    },
-  ),
-  currency: z.enum(['ARS', 'USD']).default('ARS'),
-  recurring: z.boolean().default(false),
+  ...toolDefaults,
+  source: categorized(IncomeDraftSchema.shape.source),
   effectiveMonth: MonthSchema.optional(),
 });
 
-type FinanceServices = Pick<NorteServices, 'expenses' | 'incomes' | 'finances'>;
+type FinanceServices = Pick<
+  NorteServices,
+  'expenses' | 'incomes' | 'finances' | 'savingsPlaces'
+>;
 
 const staged = (preview: unknown) => ({ needsConfirmation: true, preview });
 
@@ -56,13 +53,64 @@ const toKindLabels = (sources: Record<string, string>) =>
     .filter(([kind]) => kind !== 'uncategorized')
     .map(([kind, label]) => ({ kind, label }));
 
+// Emit the exact `source` shape the write tools accept; models dropped `kind` when given bare sourceIds.
 const toCustomList = (sources: Array<{ id: string; name: string }>) =>
-  sources.map((s) => ({ sourceId: s.id, name: s.name }));
+  sources.map((s) => ({ kind: 'custom', sourceId: s.id, label: s.name }));
+
+export async function listCategoriesFor(
+  finances: FinanceServices['finances'],
+  userId: string,
+) {
+  const workspace = await finances.getWorkspace(
+    userId,
+    todayInArgentina().month,
+  );
+  if (!workspace) return { profile: 'missing' as const };
+  return {
+    expense: {
+      recurring: toKindLabels(RECURRING_EXPENSE_SOURCES),
+      oneTime: toKindLabels(ONE_TIME_EXPENSE_SOURCES),
+      custom: toCustomList(workspace.expenses.sources),
+    },
+    income: {
+      fixed: toKindLabels(FIXED_INCOME_SOURCES),
+      custom: toCustomList(workspace.incomes.sources),
+    },
+  };
+}
 
 export function createFinanceTools(
-  { expenses, incomes, finances }: FinanceServices,
+  { expenses, incomes, finances, savingsPlaces }: FinanceServices,
   { pending, undo }: ActionStores,
 ) {
+  const stage = (
+    userId: string,
+    actionType: string,
+    summary: string,
+    preview: unknown,
+    run: () => Promise<unknown>,
+  ) => {
+    pending.set(userId, { actionType, summary, run });
+    return staged(preview);
+  };
+  const record = async <T>(
+    userId: string,
+    actionType: string,
+    recurring: boolean,
+    preview: unknown,
+    write: () => Promise<T>,
+    remove: (created: T) => Promise<unknown>,
+    summary: string,
+  ) => {
+    const run = async () => {
+      const created = await write();
+      undo.set(userId, { actionType, summary, run: () => remove(created) });
+      return { ...(preview as object), undoAvailable: true };
+    };
+    return recurring
+      ? stage(userId, actionType, 'Registros guardados', preview, run)
+      : run();
+  };
   const withWorkspace = async <T>(
     context: { requestContext?: unknown } | undefined,
     fn: (
@@ -70,8 +118,8 @@ export function createFinanceTools(
         Awaited<ReturnType<FinanceServices['finances']['getWorkspace']>>
       >,
     ) => T,
+    month = todayInArgentina().month,
   ) => {
-    const month = todayInArgentina().month;
     const workspace = await finances.getWorkspace(
       requireUserId(context?.requestContext as never),
       month,
@@ -84,87 +132,100 @@ export function createFinanceTools(
     listCategories: createTool({
       id: 'list-categories',
       description:
-        "Lists available fixed and custom categories for expenses and incomes. Always use before recording or editing an income or expense to map to an existing fixed category or custom sourceId. Never choose uncategorized. If unclear or no match, ask the user before writing. Only use { kind: 'custom', name } if the user explicitly requests or approves creating a new category.",
+        "Lists fixed and custom expense/income categories with the exact source shape to pass. Only needed if 'Categorías del usuario' is not already in context. Only use { kind: 'custom', name } if the user explicitly requests or approves creating a new category.",
       inputSchema: z.object({}),
       execute: (_input, context) =>
         toolResult('list-categories', context?.requestContext, () =>
-          withWorkspace(context, (workspace) => ({
-            expense: {
-              recurring: toKindLabels(RECURRING_EXPENSE_SOURCES),
-              oneTime: toKindLabels(ONE_TIME_EXPENSE_SOURCES),
-              custom: toCustomList(workspace.expenses.sources),
-            },
-            income: {
-              fixed: toKindLabels(FIXED_INCOME_SOURCES),
-              custom: toCustomList(workspace.incomes.sources),
-            },
-          })),
+          listCategoriesFor(finances, requireUserId(context?.requestContext)),
         ),
     }),
 
     getFinancesSummary: createTool({
       id: 'get-finances-summary',
       description:
-        "Current month income, expenses, estimated margin and contributions, plus the user's income/expense records with ids and savings places.",
-      inputSchema: z.object({}),
-      execute: (_input, context) =>
+        "Any month's totals, income/expense records and savingsPlaces ids. Defaults to current Argentina month.",
+      inputSchema: z.object({ month: MonthSchema.optional() }),
+      execute: ({ month }, context) =>
         toolResult('get-finances-summary', context?.requestContext, () =>
-          withWorkspace(context, (workspace) => ({
-            month: workspace.month,
-            goalDedicationPercentage: workspace.goalDedicationPercentage,
-            summary: workspace.summary,
-            incomes: workspace.incomes.incomes,
-            expenses: workspace.expenses.expenses,
-            savingsPlaces: workspace.savings.places,
-            recentMovements: workspace.savings.movements.slice(0, 10),
-          })),
+          withWorkspace(
+            context,
+            (workspace) => ({
+              month: workspace.month,
+              goalDedicationPercentage: workspace.goalDedicationPercentage,
+              summary: workspace.summary,
+              incomes: workspace.incomes.incomes,
+              expenses: workspace.expenses.expenses,
+              savingsPlaces: workspace.savings.places,
+              recentMovements: workspace.savings.movements.slice(0, 10),
+            }),
+            month,
+          ),
         ),
     }),
 
-    recordExpense: createTool({
-      id: 'record-expense',
+    recordExpenses: createTool({
+      id: 'record-expenses',
       description:
-        'Records an expense. Currency defaults to ARS and effectiveMonth to current month. recurring=false is a one-time expense for effectiveMonth (written immediately, undoable). recurring=true is monthly from effectiveMonth (stages a preview; execute via confirmPendingAction). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
+        'Record 1..100 expenses atomically. Defaults ARS/current Argentina month. All one-time writes immediately with one undo; any recurring stages the whole batch for confirmPendingAction. Use listCategories; uncategorized allowed only in batches. Custom name only with user approval.',
       inputSchema: z.object({
-        draft: ToolExpenseDraftSchema,
-        effectiveMonth: MonthSchema.optional(),
+        items: z
+          .array(
+            z.object({
+              draft: ToolExpenseDraftSchema,
+              effectiveMonth: MonthSchema.optional(),
+            }),
+          )
+          .min(1)
+          .max(100),
       }),
       execute: (input, context) =>
-        toolResult('record-expense', context?.requestContext, async () => {
+        toolResult('record-expenses', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
-          const effectiveMonth =
-            input.effectiveMonth ?? todayInArgentina().month;
-          const write = () =>
-            expenses.create(userId, {
-              draft: input.draft,
-              effectiveMonth,
-            });
-          if (input.draft.recurring) {
-            pending.set(userId, {
-              actionType: 'record-expense',
-              summary: 'Gasto mensual registrado',
-              run: write,
-            });
-            return staged({
-              type: 'expense',
-              draft: input.draft,
-              effectiveMonth,
-            });
-          }
-          const created = await write();
-          undo.set(userId, {
-            actionType: 'record-expense',
-            summary: 'Gasto eliminado',
-            run: () => expenses.delete(userId, created.id, effectiveMonth),
-          });
-          return { created, undoAvailable: true };
+          // Statements have unmappable merchants; asking per line defeats bulk entry.
+          if (input.items.length === 1)
+            categorized(ExpenseDraftSchema.shape.source).parse(
+              input.items[0].draft.source,
+            );
+          const items = input.items.map((item) => ({
+            ...item,
+            effectiveMonth: item.effectiveMonth ?? todayInArgentina().month,
+          }));
+          const total = Object.fromEntries(
+            ['ARS', 'USD'].map((currency) => [
+              currency,
+              items
+                .filter((item) => item.draft.currency === currency)
+                .reduce(
+                  (sum, item) =>
+                    sum.plus(normalizeMoneyAmount(item.draft.amount)),
+                  new BigNumber(0),
+                )
+                .toFixed(2),
+            ]),
+          );
+          return record(
+            userId,
+            'record-expenses',
+            items.some((item) => item.draft.recurring),
+            { created: items.length, total },
+            () => expenses.createMany(userId, items),
+            async (created) => {
+              for (const [index, row] of created.entries())
+                await expenses.delete(
+                  userId,
+                  row.id,
+                  items[index].effectiveMonth,
+                );
+            },
+            items.length === 1 ? 'Gasto eliminado' : 'Gastos eliminados',
+          );
         }),
     }),
 
     recordIncome: createTool({
       id: 'record-income',
       description:
-        'Records an income. Currency defaults to ARS and effectiveMonth to current month. recurring=false is one-time for draft.effectiveMonth (written immediately, undoable). recurring=true is monthly from draft.effectiveMonth (stages a preview; execute via confirmPendingAction). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
+        'Records an income. Currency defaults to ARS and effectiveMonth to current month. recurring=false is one-time for draft.effectiveMonth (written immediately, undoable). recurring=true is monthly from draft.effectiveMonth (stages a preview; execute via confirmPendingAction). Use listCategories to pick an existing category; never uncategorized. Pass source exactly as listed: { kind } for fixed categories, { kind: "custom", sourceId } for the user’s own. If unsure, ask before recording. Use custom name only if user explicitly requested or approved a new category.',
       inputSchema: z.object({ draft: ToolIncomeDraftSchema }),
       execute: (input, context) =>
         toolResult('record-income', context?.requestContext, async () => {
@@ -174,53 +235,56 @@ export function createFinanceTools(
             effectiveMonth:
               input.draft.effectiveMonth ?? todayInArgentina().month,
           };
-          const write = () => incomes.create(userId, { draft });
-          if (draft.recurring) {
-            pending.set(userId, {
-              actionType: 'record-income',
-              summary: 'Ingreso mensual registrado',
-              run: write,
-            });
-            return staged({ type: 'income', draft });
-          }
-          const created = await write();
-          undo.set(userId, {
-            actionType: 'record-income',
-            summary: 'Ingreso eliminado',
-            run: () => incomes.delete(userId, created.id),
-          });
-          return { created, undoAvailable: true };
+          return record(
+            userId,
+            'record-income',
+            draft.recurring,
+            { created: 1, draft },
+            () => incomes.create(userId, { draft }),
+            (created) => incomes.delete(userId, created.id),
+            'Ingreso eliminado',
+          );
         }),
     }),
 
     updateExpense: createTool({
       id: 'update-expense',
       description:
-        'Stages replacing an expense (execute via confirmPendingAction). Currency defaults to ARS and effectiveMonth to current month. For recurring expenses, effectiveMonth is the month the change applies from (history before it is kept). Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
+        'Stage partial expense changes; omitted fields stay unchanged. confirmPendingAction executes. effectiveMonth defaults to current Argentina month; recurring history is preserved.',
       inputSchema: z.object({
         id: IdSchema,
-        draft: ToolExpenseDraftSchema,
+        changes: ExpenseDraftSchema.partial(),
         effectiveMonth: MonthSchema.optional(),
       }),
-      execute: ({ id, draft, effectiveMonth }, context) =>
-        toolResult('update-expense', context?.requestContext, () => {
+      execute: ({ id, changes, effectiveMonth }, context) =>
+        toolResult('update-expense', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
           const month = effectiveMonth ?? todayInArgentina().month;
-          pending.set(userId, {
-            actionType: 'update-expense',
-            summary: 'Gasto actualizado',
-            run: () =>
-              expenses.update(userId, id, {
-                draft,
-                effectiveMonth: month,
-              }),
+          const workspace = await finances.getWorkspace(userId, month);
+          const existing = workspace?.expenses.expenses.find(
+            (row) => row.id === id,
+          );
+          if (!existing) return { error: 'Gasto no encontrado.' };
+          const draft = ExpenseDraftSchema.parse({
+            ...existing,
+            source:
+              existing.sourceKind === 'custom'
+                ? { kind: 'custom', sourceId: existing.sourceId }
+                : { kind: existing.sourceKind },
+            ...changes,
           });
-          return staged({
-            type: 'expense-update',
-            id,
-            draft,
-            effectiveMonth: month,
-          });
+          return stage(
+            userId,
+            'update-expense',
+            'Gasto actualizado',
+            {
+              type: 'expense-update',
+              id,
+              draft,
+              effectiveMonth: month,
+            },
+            () => expenses.update(userId, id, { draft, effectiveMonth: month }),
+          );
         }),
     }),
 
@@ -236,33 +300,51 @@ export function createFinanceTools(
         toolResult('delete-expense', context?.requestContext, () => {
           const userId = requireUserId(context?.requestContext);
           const month = effectiveMonth ?? todayInArgentina().month;
-          pending.set(userId, {
-            actionType: 'delete-expense',
-            summary: 'Gasto eliminado',
-            run: () => expenses.delete(userId, id, month),
-          });
-          return staged({ type: 'expense-delete', id, effectiveMonth: month });
+          return stage(
+            userId,
+            'delete-expense',
+            'Gasto eliminado',
+            { type: 'expense-delete', id, effectiveMonth: month },
+            () => expenses.delete(userId, id, month),
+          );
         }),
     }),
 
     updateIncome: createTool({
       id: 'update-income',
       description:
-        'Stages replacing an income record (execute via confirmPendingAction). Currency defaults to ARS and effectiveMonth to current month. Use listCategories to pick an existing category; never uncategorized. If unsure, ask before updating.',
-      inputSchema: z.object({ id: IdSchema, draft: ToolIncomeDraftSchema }),
-      execute: ({ id, draft: rawDraft }, context) =>
-        toolResult('update-income', context?.requestContext, () => {
+        'Stage partial income changes; omitted fields stay unchanged. confirmPendingAction executes. Use listCategories when changing category.',
+      inputSchema: z.object({
+        id: IdSchema,
+        changes: IncomeDraftSchema.partial(),
+      }),
+      execute: ({ id, changes }, context) =>
+        toolResult('update-income', context?.requestContext, async () => {
           const userId = requireUserId(context?.requestContext);
-          const draft = {
-            ...rawDraft,
-            effectiveMonth: rawDraft.effectiveMonth ?? todayInArgentina().month,
-          };
-          pending.set(userId, {
-            actionType: 'update-income',
-            summary: 'Ingreso actualizado',
-            run: () => incomes.update(userId, id, { draft }),
+          const workspace = await finances.getWorkspace(
+            userId,
+            todayInArgentina().month,
+          );
+          const existing = workspace?.incomes.incomes.find(
+            (row) => row.id === id,
+          );
+          if (!existing) return { error: 'Ingreso no encontrado.' };
+          const draft = IncomeDraftSchema.parse({
+            ...existing,
+            effectiveMonth: existing.effectiveMonth.slice(0, 7),
+            source:
+              existing.sourceKind === 'custom'
+                ? { kind: 'custom', sourceId: existing.sourceId }
+                : { kind: existing.sourceKind },
+            ...changes,
           });
-          return staged({ type: 'income-update', id, draft });
+          return stage(
+            userId,
+            'update-income',
+            'Ingreso actualizado',
+            { type: 'income-update', id, draft },
+            () => incomes.update(userId, id, { draft }),
+          );
         }),
     }),
 
@@ -274,12 +356,64 @@ export function createFinanceTools(
       execute: ({ id }, context) =>
         toolResult('delete-income', context?.requestContext, () => {
           const userId = requireUserId(context?.requestContext);
-          pending.set(userId, {
-            actionType: 'delete-income',
-            summary: 'Ingreso eliminado',
-            run: () => incomes.delete(userId, id),
-          });
-          return staged({ type: 'income-delete', id });
+          return stage(
+            userId,
+            'delete-income',
+            'Ingreso eliminado',
+            { type: 'income-delete', id },
+            () => incomes.delete(userId, id),
+          );
+        }),
+    }),
+    manageSavingsPlace: createTool({
+      id: 'manage-savings-place',
+      description:
+        'Create, rename or delete a savings place immediately. Get placeId from getFinancesSummary.savingsPlaces.',
+      inputSchema: z.object({
+        action: z.enum(['create', 'rename', 'delete']),
+        placeId: IdSchema.optional(),
+        name: z.string().trim().min(1).optional(),
+      }),
+      execute: ({ action, placeId, name }, context) =>
+        toolResult(
+          'manage-savings-place',
+          context?.requestContext,
+          async () => {
+            const userId = requireUserId(context?.requestContext);
+            if (action !== 'delete' && !name)
+              return { error: 'Ingresá un nombre.' };
+            if (action !== 'create' && !placeId)
+              return { error: 'Elegí un lugar de ahorro.' };
+            if (action === 'create') return savingsPlaces.create(userId, name!);
+            if (action === 'rename')
+              await savingsPlaces.rename(userId, placeId!, name!);
+            else await savingsPlaces.delete(userId, placeId!);
+            return { success: true };
+          },
+        ),
+    }),
+    transferSavings: createTool({
+      id: 'transfer-savings',
+      description:
+        'Stage a same-currency savings transfer; confirmPendingAction executes. Get ids from getFinancesSummary.savingsPlaces. No FX.',
+      inputSchema: z.object({
+        fromPlaceId: IdSchema,
+        toPlaceId: IdSchema,
+        amount: ExpenseDraftSchema.shape.amount,
+        currency: z.enum(['ARS', 'USD']),
+      }),
+      execute: (input, context) =>
+        toolResult('transfer-savings', context?.requestContext, () => {
+          const userId = requireUserId(context?.requestContext);
+          if (input.fromPlaceId === input.toPlaceId)
+            return { error: 'Elegí dos lugares de ahorro distintos.' };
+          return stage(
+            userId,
+            'transfer-savings',
+            'Ahorros transferidos',
+            input,
+            () => savingsPlaces.transfer(userId, input),
+          );
         }),
     }),
   };

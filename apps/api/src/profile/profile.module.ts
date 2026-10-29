@@ -8,5 +8,6 @@ import { ProfileService } from './profile.service';
   imports: [DatabaseModule],
   controllers: [ProfileController],
   providers: [ProfileService, ClerkAuthGuard],
+  exports: [ProfileService],
 })
 export class ProfileModule {}

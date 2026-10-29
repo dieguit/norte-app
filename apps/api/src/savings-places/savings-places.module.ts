@@ -6,5 +6,6 @@ import { SavingsPlacesService } from './savings-places.service';
   imports: [DatabaseModule],
   controllers: [SavingsPlacesController],
   providers: [SavingsPlacesService],
+  exports: [SavingsPlacesService],
 })
 export class SavingsPlacesModule {}

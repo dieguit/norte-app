@@ -24,6 +24,30 @@ const row = {
 };
 
 describe('ExpensesService', () => {
+  it('inserts every batch item in one transaction and propagates failures', async () => {
+    const tx = {
+      insert: vi.fn(() => ({
+        values: vi.fn(() => ({ returning: vi.fn().mockResolvedValue([row]) })),
+      })),
+    };
+    const transaction = vi.fn(<T>(callback: (t: typeof tx) => Promise<T>) =>
+      callback(tx),
+    );
+    const service = new ExpensesService({ transaction } as never);
+    const item = { draft, effectiveMonth: '2026-01' };
+    await expect(service.createMany('user-1', [item, item])).resolves.toEqual([
+      row,
+      row,
+    ]);
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(tx.insert).toHaveBeenCalledTimes(2);
+    tx.insert.mockImplementationOnce(() => {
+      throw new Error('write failed');
+    });
+    await expect(service.createMany('user-1', [item])).rejects.toThrow(
+      'write failed',
+    );
+  });
   it('normalizes create amount and returns only the expense contract', async () => {
     const values = vi.fn().mockReturnValue({
       returning: vi.fn().mockResolvedValue([{ ...row, userId: 'private' }]),

@@ -142,7 +142,7 @@ export function createPendingActionTools({ pending, undo }: ActionStores) {
     undoLastWrite: createTool({
       id: 'undo-last-write',
       description:
-        'Undoes the last one-time income or expense recorded in this chat (within 10 minutes). Use when the user asks to undo ("deshacer", "borralo", "me equivoqué").',
+        'Undoes the last one-time income or expense write in this chat (a whole recordExpenses batch counts as one), within 10 minutes. Use when the user asks to undo ("deshacer", "borralo", "me equivoqué").',
       inputSchema: z.object({}),
       execute: (_input, context) =>
         toolResult('undo-last-write', context?.requestContext, async () => {
