@@ -43,10 +43,10 @@ export function PlanAllocationEditor({
   return (
     <section
       aria-label="Distribución de tu aporte mensual"
-      className="flex flex-col gap-4 rounded-xl border border-[var(--line)] bg-[var(--foam)]/30 p-4 sm:p-5"
+      className="flex flex-col gap-4 rounded-lg border border-border bg-muted/40 p-4 sm:p-5"
     >
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-semibold text-[var(--sea-ink)]">Distribución de tu aporte mensual</h3>
+        <h3 className="text-base font-semibold text-foreground">Distribución de tu aporte mensual</h3>
         {errorMessage && <FieldError id={errorId}>{errorMessage}</FieldError>}
       </div>
       <div className="flex flex-col gap-6">

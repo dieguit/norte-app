@@ -3,7 +3,7 @@ import { expect } from './test'
 
 export async function recordSaving(page: Page, { place, amount }: { place: string; amount: string }) {
   await page.goto('/app')
-  await page.getByRole('button', { name: '+ Registrar' }).click()
+  await page.getByRole('button', { name: /^Registrar( aporte)?$/ }).click()
   await page.getByRole('button', { name: 'Ahorré ARS' }).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel('Monto en pesos').fill(amount)

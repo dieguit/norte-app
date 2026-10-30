@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Roadmap } from "./Roadmap";
 import type { GoalWorkspaceItem } from "../../../features/goals/goals";
-import type {
-  RoadmapData,
-  RoadmapMonth,
-} from "@repo/shared-types";
+import type { RoadmapData, RoadmapMonth } from "@repo/shared-types";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -132,116 +129,181 @@ const roadmap: RoadmapData = {
 };
 
 describe("Roadmap component", () => {
-  it("renders topology and progressively discloses chronological history", async () => {
+  it("discloses history one month at a time above the current position", async () => {
     const user = userEvent.setup();
     render(<Roadmap roadmap={roadmap} />);
 
     expect(
       screen.getByRole("heading", { name: "Tu hoja de ruta" }),
     ).toBeVisible();
-    expect(screen.getByText(/Hoy/)).toBeVisible();
-    expect(screen.getByText("Historial")).toBeVisible();
-    expect(
-      screen.getByText("Septiembre de 2026").closest("section"),
-    ).toHaveClass("py-3");
-    expect(
-      screen.getByRole("region", {
-        name: "Gastos previstos para Agosto de 2026",
-      }),
-    ).toHaveAttribute("data-side", "left");
-    expect(
-      screen.getByRole("region", {
-        name: "Ingresos y aportes para Agosto de 2026",
-      }),
-    ).toHaveAttribute("data-side", "right");
-    expect(
-      screen.getByRole("heading", { name: "Colchón de 3 meses" }),
-    ).toHaveAttribute("data-roadmap-objective", "full-width");
-    const projectedGoalCard = screen
-      .getByRole("heading", { name: "Colchón de 3 meses" })
-      .closest("article");
-    expect(projectedGoalCard).toHaveClass("bg-[var(--surface-strong)]");
-    expect(projectedGoalCard).not.toHaveClass("backdrop-blur-md");
-    expect(
-      screen.getByRole("heading", { name: "Viaje" }).closest("article"),
-    ).toHaveClass("bg-[var(--surface-strong)]");
-    expect(screen.queryByText("Julio de 2026")).not.toBeInTheDocument();
-    expect(screen.queryByText("Junio de 2026")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Cargar Julio de 2026" }),
-    ).toBeVisible();
+    expect(screen.getByText("Aportes y objetivos proyectados")).toBeVisible();
+    expect(screen.queryByText("Julio 2026")).not.toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: "Cargar Julio de 2026" }),
+      screen.getByRole("button", { name: "Ver meses anteriores" }),
     );
-    expect(screen.getByText("Julio de 2026")).toBeVisible();
-    expect(
-      screen.getByRole("button", { name: "Cargar Junio de 2026" }),
-    ).toBeVisible();
-
+    expect(screen.getByRole("heading", { name: "Julio 2026" })).toBeVisible();
     await user.click(
-      screen.getByRole("button", { name: "Cargar Junio de 2026" }),
+      screen.getByRole("button", { name: "Ver meses anteriores" }),
     );
-    expect(screen.getByText("Junio de 2026")).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: /^Cargar/ }),
+      screen.queryByRole("button", { name: "Ver meses anteriores" }),
     ).not.toBeInTheDocument();
 
     expect(
-      [...screen.getByText("Historial").parentElement!.querySelectorAll("h3")].map(
-        (heading) => heading.textContent,
-      ),
-    ).toEqual(["Junio de 2026", "Julio de 2026"]);
+      screen
+        .getAllByRole("heading", { level: 3 })
+        .map((heading) => heading.textContent),
+    ).toEqual([
+      "Junio 2026",
+      "Julio 2026",
+      "Estás acá · Agosto 2026",
+      "Sin fecha proyectada",
+    ]);
+    expect(screen.getAllByText("Sin aportes registrados")).toHaveLength(2);
   });
 
-  it("does not render income or expense sections for future months", () => {
+  it("shows projected goals and no per-month income or expense breakdown", () => {
     render(<Roadmap roadmap={roadmap} />);
 
     expect(
-      screen.queryByRole("region", {
-        name: "Gastos previstos para Septiembre de 2026",
-      }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("heading", { level: 4, name: "Colchón de 3 meses" }),
+    ).toBeVisible();
+    expect(screen.getByText(/· En 1 mes$/)).toBeVisible();
     expect(
-      screen.queryByRole("region", {
-        name: "Ingresos y aportes para Septiembre de 2026",
-      }),
+      screen.queryByRole("region", { name: /Gastos previstos/ }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText("Vivienda")).not.toBeInTheDocument();
+  });
 
-    const todaySection = screen.getByRole("region", { name: "Hoy · Agosto de 2026" });
-    const futureSection = screen.getByRole("region", {
-      name: "Septiembre de 2026",
+  it("totals what is saved for active goals at the current position", () => {
+    render(
+      <Roadmap
+        roadmap={{
+          ...roadmap,
+          futureMonths: [
+            {
+              ...month("2026-09"),
+              objectives: [
+                {
+                  ...goal,
+                  actualValue: { amount: "1820000.00", currency: "ARS" },
+                },
+              ],
+            },
+          ],
+          undatedObjectives: [
+            {
+              ...goal,
+              id: "usd",
+              name: "Viaje",
+              currency: "USD",
+              actualValue: { amount: "2350.00", currency: "USD" },
+              projection: { status: "commitment_absent" },
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Llevás ahorrado para tus objetivos"),
+    ).toBeVisible();
+    const totals = screen.getByText(
+      "Llevás ahorrado para tus objetivos",
+    ).nextElementSibling!;
+    expect(totals).toHaveTextContent("$ 1.820.000");
+    expect(totals).toHaveTextContent("US$ 2.350");
+  });
+
+  it("lists undated goals after the timeline with a plan link", () => {
+    render(<Roadmap roadmap={roadmap} />);
+
+    const current = screen.getByRole("heading", {
+      name: "Estás acá · Agosto 2026",
     });
-    expect(todaySection.parentElement?.className).toContain(
-      "before:border-solid",
-    );
-    expect(futureSection.parentElement?.className).toContain(
-      "before:border-dashed",
-    );
-  });
-
-  it("renders undated objectives after the timeline", () => {
-    render(<Roadmap roadmap={roadmap} />);
-
-    const todayHeading = screen.getByRole("heading", { name: /Hoy/ });
-    const undatedHeading = screen.getByRole("heading", {
+    const undated = screen.getByRole("heading", {
       name: "Sin fecha proyectada",
     });
-
     expect(
-      todayHeading.compareDocumentPosition(undatedHeading) &
+      current.compareDocumentPosition(undated) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(screen.getByText("Sin aporte mensual")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Planificar Viaje" }),
+    ).toHaveAttribute("href", "/app/goals");
+  });
+
+  it("marks the last closed month as fulfilled or short", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Roadmap roadmap={roadmap} closedMonth="2026-07" shortfalls={[]} />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Ver meses anteriores" }),
+    );
+    expect(screen.getByText("Cumplido")).toBeVisible();
+
+    rerender(
+      <Roadmap
+        roadmap={roadmap}
+        closedMonth="2026-07"
+        shortfalls={[
+          {
+            kind: "saving",
+            currency: "USD",
+            amount: { amount: "120.00", currency: "USD" },
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Faltó US$ 120")).toBeVisible();
+  });
+
+  it("renders a reached goal once, with its completion action and reallocation note", async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    const reached = {
+      ...goal,
+      progressPercentage: "100.00",
+      targetAmount: { amount: "250000.00", currency: "ARS" as const },
+      actualValue: { amount: "250000.00", currency: "ARS" as const },
+      funding: [{ percentage: "40.00", effectiveMonth: "2026-01-01" }],
+      completionEligible: true,
+    };
+    render(
+      <Roadmap
+        roadmap={roadmap}
+        completionGoals={[reached]}
+        onComplete={onComplete}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole("heading", { name: "Colchón de 3 meses" }),
+    ).toHaveLength(1);
+    expect(screen.getByText("Alcanzado · Agosto 2026")).toBeVisible();
+    expect(
+      screen.getByText("Al completarlo, su 40% se reparte entre los demás"),
+    ).toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: "Completar Colchón de 3 meses" }),
+    );
+    expect(onComplete).toHaveBeenCalledWith("goal-1");
   });
 
   it("renders empty roadmap state when there is no activity", () => {
-    const emptyRoadmap: RoadmapData = {
-      undatedObjectives: [],
-      futureMonths: [],
-      currentMonth: month("2026-08"),
-      historyMonths: [],
-    };
-    render(<Roadmap roadmap={emptyRoadmap} />);
+    render(
+      <Roadmap
+        roadmap={{
+          undatedObjectives: [],
+          futureMonths: [],
+          currentMonth: month("2026-08"),
+          historyMonths: [],
+        }}
+      />,
+    );
 
     expect(screen.getByText("Tu hoja de ruta empieza hoy")).toBeVisible();
     expect(screen.getByRole("link", { name: "Ir a Finanzas" })).toHaveAttribute(
@@ -253,7 +315,7 @@ describe("Roadmap component", () => {
     ).toHaveAttribute("href", "/app/goals");
   });
 
-  it("distinguishes completed milestones with explicit success text and icon", () => {
+  it("lists goals completed this month at the current position", () => {
     const completedGoal = {
       ...goal,
       id: "completed-goal",
@@ -261,7 +323,6 @@ describe("Roadmap component", () => {
       status: "completed" as const,
       completedAt: "2026-08-15T00:00:00.000Z",
     };
-
     render(
       <Roadmap
         roadmap={{
@@ -274,25 +335,9 @@ describe("Roadmap component", () => {
       />,
     );
 
-    const completedCard = screen
-      .getByRole("heading", { name: "Viaje cumplido" })
-      .closest("article");
-    expect(completedCard).toHaveClass(
-      "border-[var(--lagoon-deep)]/35",
-      "bg-[var(--lagoon)]/90",
-    );
-    expect(completedCard).not.toHaveClass("bg-[var(--lagoon)]/25");
-    const completedLabelText = within(completedCard!).getByText(
-      "Objetivo completado",
-    );
-    expect(completedLabelText).toBeVisible();
-    const completedLabel = completedLabelText.closest("p");
-    expect(completedLabel).toHaveClass("text-[var(--sea-ink)]");
+    expect(screen.getByText("Cumpliste Viaje cumplido")).toBeVisible();
     expect(
-      completedCard?.querySelector("svg.lucide-circle-check"),
-    ).toHaveAttribute("aria-hidden", "true");
-    const projectedLabelText = screen.getByText("Objetivo proyectado");
-    expect(projectedLabelText).toBeVisible();
-    expect(projectedLabelText.closest("p")).toHaveClass("text-[var(--palm)]");
+      screen.queryByRole("heading", { name: "Viaje cumplido" }),
+    ).not.toBeInTheDocument();
   });
 });

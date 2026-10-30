@@ -40,6 +40,10 @@ import { BenefitsService } from '../benefits/benefits.service';
 import { NotificationsCron } from './notifications.cron';
 import { BenefitsHarvestCron } from './benefits-harvest.cron';
 import { createMastra } from './index';
+import { ProfileModule } from '../profile/profile.module';
+import { ProfileService } from '../profile/profile.service';
+import { SavingsPlacesModule } from '../savings-places/savings-places.module';
+import { SavingsPlacesService } from '../savings-places/savings-places.service';
 
 @Injectable()
 export class MastraLifecycle
@@ -76,6 +80,7 @@ export class MastraLifecycle
 
 const mastraModule = MastraModule.registerAsync({
   imports: [
+    ProfileModule,
     WhatsappModule,
     ExpensesModule,
     IncomesModule,
@@ -85,8 +90,10 @@ const mastraModule = MastraModule.registerAsync({
     ContributionsModule,
     NotificationsModule,
     BenefitsModule,
+    SavingsPlacesModule,
   ],
   inject: [
+    ProfileService,
     ConfigService,
     WHATSAPP_ADAPTER,
     WhatsappLinksService,
@@ -98,8 +105,10 @@ const mastraModule = MastraModule.registerAsync({
     ContributionsService,
     NotificationsService,
     BenefitsService,
+    SavingsPlacesService,
   ],
   useFactory: (
+    profile: ProfileService,
     config: ConfigService<Env, true>,
     channel: ChatChannel | null,
     links: WhatsappLinksService,
@@ -111,6 +120,7 @@ const mastraModule = MastraModule.registerAsync({
     contributions: ContributionsService,
     notifications: NotificationsService,
     benefits: BenefitsService,
+    savingsPlaces: SavingsPlacesService,
   ) => {
     const webAppUrl = config.get('WEB_APP_URL', { infer: true });
     return {
@@ -119,12 +129,15 @@ const mastraModule = MastraModule.registerAsync({
           DATABASE_URL: config.get('DATABASE_URL'),
           LLM_BASE_URL: config.get('LLM_BASE_URL'),
           LLM_API_KEY: config.get('LLM_API_KEY'),
+          OPENAI_API_KEY: config.get('OPENAI_API_KEY'),
+          GROQ_API_KEY: config.get('GROQ_API_KEY'),
           LLM_MODEL: config.get('LLM_MODEL'),
           LLM_GUARD_MODEL: config.get('LLM_GUARD_MODEL'),
           MASTRA_API_KEY: config.get('MASTRA_API_KEY'),
         },
         {
           services: {
+            profile,
             expenses,
             incomes,
             finances,
@@ -133,6 +146,7 @@ const mastraModule = MastraModule.registerAsync({
             contributions,
             notifications,
             benefits,
+            savingsPlaces,
           },
           webAppUrl,
           ...(channel

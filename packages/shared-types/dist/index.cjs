@@ -829,7 +829,8 @@ var IncomeSchema = import_zod9.z.object({
   currency: import_zod9.z.enum(["ARS", "USD"]),
   recurring: import_zod9.z.boolean(),
   effectiveMonth: DateSchema2,
-  arsEquivalent: import_zod9.z.string().nullable()
+  arsEquivalent: import_zod9.z.string().nullable(),
+  createdAt: import_zod9.z.iso.datetime()
 });
 var ExpenseSchema = IncomeSchema.extend({ endMonth: DateSchema2.nullable() });
 var MoneySchema3 = import_zod9.z.object({ amount: import_zod9.z.string(), currency: import_zod9.z.literal("ARS") });

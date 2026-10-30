@@ -2,7 +2,7 @@ import { formatCalendarMonth } from '../../lib/format'
 import type { GoalProjection } from './goals'
 import type { Money } from '../../lib/money'
 
-export function formatGoalProjection(projection: GoalProjection): string {
+function formatGoalProjection(projection: GoalProjection): string {
   switch (projection.status) {
     case 'available':
       return formatCalendarMonth(projection.completionMonth)
@@ -56,29 +56,29 @@ export function AllocationImpactComparison({
         return (
           <div
             key={impact.goalId}
-            className="flex flex-col gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--foam)]/20 p-4"
+            className="flex flex-col gap-2.5 rounded-lg border border-border bg-muted/40 p-4"
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-[var(--sea-ink)]">
+              <span className="text-sm font-semibold text-foreground">
                 {impact.goalName}
               </span>
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div className="flex flex-col gap-0.5 rounded-lg bg-[var(--surface)] p-2.5 border border-[var(--line)]">
-                <span className="text-xs font-semibold text-[var(--sea-ink-soft)] uppercase tracking-wider">
+              <div className="flex flex-col gap-0.5 rounded-lg bg-background p-2.5 border border-border">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Antes
                 </span>
-                <p className="text-sm font-medium text-[var(--sea-ink-soft)]">
+                <p className="text-sm font-medium text-muted-foreground">
                   {beforeText}
                 </p>
               </div>
 
-              <div className="flex flex-col gap-0.5 rounded-lg bg-[var(--foam)]/60 p-2.5 border border-[var(--line)]">
-                <span className="text-xs font-semibold text-[var(--pine)] uppercase tracking-wider">
+              <div className="flex flex-col gap-0.5 rounded-lg bg-muted/40 p-2.5 border border-border">
+                <span className="text-xs font-semibold text-accent-brand uppercase tracking-wider">
                   Con este cambio
                 </span>
-                <p className="text-sm font-semibold text-[var(--sea-ink)]">
+                <p className="text-sm font-semibold text-foreground">
                   {formatGoalProjection(impact.after)}
                 </p>
               </div>

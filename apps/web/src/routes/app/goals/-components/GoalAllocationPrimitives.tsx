@@ -76,11 +76,11 @@ export function GoalAllocationBody({
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
-      <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
-        <h3 className="text-base font-semibold text-[var(--sea-ink)]">Distribución e impacto</h3>
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <h3 className="text-base font-semibold text-foreground">Distribución e impacto</h3>
       </div>
       {serverError && (
-        <div ref={serverErrorRef} tabIndex={-1} role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive outline-none focus:ring-2 focus:ring-destructive">
+        <div ref={serverErrorRef} tabIndex={-1} role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive outline-none focus:ring-2 focus:ring-destructive">
           {serverError}
         </div>
       )}
@@ -106,16 +106,16 @@ export function GoalAllocationImpactSection({
   return (
     <section aria-label="Impacto en objetivos" className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-[var(--sea-ink)]">Impacto en las fechas</h3>
+        <h3 className="text-base font-semibold text-foreground">Impacto en las fechas</h3>
         {(isPreviewPending || outdated) && (
-          <span className="text-xs text-[var(--sea-ink-soft)] animate-pulse">
+          <span className="text-xs text-muted-foreground animate-pulse">
             {isPreviewPending ? 'Actualizando impacto...' : 'Proyección pendiente de actualización'}
           </span>
         )}
       </div>
       {!isAllocationsValid && (
-        <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-4 text-center">
-          <p className="text-sm text-[var(--sea-ink-soft)] font-medium">Completá la distribución para calcular el impacto</p>
+        <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+          <p className="text-sm text-muted-foreground font-medium">Completá la distribución para calcular el impacto</p>
         </div>
       )}
       {showImpacts && impacts.length > 0 && (
@@ -143,7 +143,7 @@ export function GoalAllocationFooter({
   savingLabel: string
 }) {
   return (
-    <div className="sticky bottom-0 border-t border-[var(--line)] bg-popover px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between">
+    <div className="sticky bottom-0 border-t border-border bg-popover px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between">
       <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancelar</Button>
       <Button type="button" disabled={disabled} onClick={onConfirm}>
         {isSubmitting ? savingLabel : confirmLabel}

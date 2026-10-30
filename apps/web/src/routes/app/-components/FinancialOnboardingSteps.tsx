@@ -132,8 +132,7 @@ export function ObjectiveStep({
           Elegí tu primer objetivo
         </h1>
         <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-          Empezamos por uno. Más adelante vas a poder sumar o cambiar
-          objetivos.
+          Empezamos por uno. Más adelante vas a poder sumar o cambiar objetivos.
         </p>
       </div>
       <GoalObjectiveFields
@@ -376,7 +375,9 @@ function ExpenseRow({
       <div>
         <p className="font-semibold text-[var(--sea-ink)]">{label}</p>
         <p className="mt-1 text-sm tabular-nums text-[var(--sea-ink-soft)]">
-          {formatMoney(createMoney(expense.draft.amount, expense.draft.currency))}
+          {formatMoney(
+            createMoney(expense.draft.amount, expense.draft.currency),
+          )}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -592,12 +593,20 @@ function ExpenseActions({
         </p>
       )}
       {!hasExpenses && (
-        <p id="expense-requirement" className="text-right text-sm text-[var(--sea-ink-soft)]">
+        <p
+          id="expense-requirement"
+          className="text-right text-sm text-[var(--sea-ink-soft)]"
+        >
           Agregá al menos un gasto recurrente para completar este paso.
         </p>
       )}
       <div className="flex items-center justify-between">
-        <Button type="button" variant="outline" onClick={onBack} disabled={isSubmitting}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          disabled={isSubmitting}
+        >
           Volver
         </Button>
         <Button

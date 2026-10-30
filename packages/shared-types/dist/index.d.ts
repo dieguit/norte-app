@@ -1054,6 +1054,7 @@ declare const FinancesWorkspaceSchema: z.ZodObject<{
             recurring: z.ZodBoolean;
             effectiveMonth: z.ZodISODate;
             arsEquivalent: z.ZodNullable<z.ZodString>;
+            createdAt: z.ZodISODateTime;
         }, z.core.$strip>>;
     }, z.core.$strip>;
     expenses: z.ZodObject<{
@@ -1076,6 +1077,7 @@ declare const FinancesWorkspaceSchema: z.ZodObject<{
             recurring: z.ZodBoolean;
             effectiveMonth: z.ZodISODate;
             arsEquivalent: z.ZodNullable<z.ZodString>;
+            createdAt: z.ZodISODateTime;
             endMonth: z.ZodNullable<z.ZodISODate>;
         }, z.core.$strip>>;
     }, z.core.$strip>;

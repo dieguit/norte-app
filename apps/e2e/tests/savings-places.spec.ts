@@ -10,16 +10,15 @@ test.beforeEach(async () => {
 test('creates a place, transfers savings into it and lists movements', async ({ page }) => {
   await recordSaving(page, { place: 'Banco Nación', amount: '100000' })
 
-  await page.goto('/app/finances')
-  await page.getByRole('tab', { name: 'Ahorros' }).click()
-  await expect(page.getByRole('heading', { name: 'Tus ahorros' })).toBeVisible()
+  await page.goto('/app/finances/savings')
 
-  await page.getByRole('button', { name: 'Nuevo lugar' }).click()
+  await page.getByRole('button', { name: 'Agregar lugar' }).click()
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel('Nombre del lugar').fill('Mercado Pago')
   await sheet.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Lugar creado.')).toBeVisible()
 
+  await page.getByRole('button', { name: 'Acciones de Banco Nación' }).click()
   await page.getByRole('button', { name: 'Transferir desde Banco Nación' }).click()
   await sheet.getByLabel('Hacia').click()
   await page.getByRole('option', { name: 'Mercado Pago' }).click()
@@ -28,7 +27,7 @@ test('creates a place, transfers savings into it and lists movements', async ({ 
   await expect(page.getByText('Transferencia realizada.')).toBeVisible()
 
   await page.reload()
-  await page.getByRole('tab', { name: 'Ahorros' }).click()
+  await page.getByRole('button', { name: 'Acciones de Mercado Pago' }).click()
   await page.getByRole('button', { name: 'Ver movimientos de Mercado Pago' }).click()
   await expect(page.getByRole('dialog', { name: 'Movimientos de Mercado Pago' })).toBeVisible()
   await expect(sheet.getByText('40.000').first()).toBeVisible()

@@ -1,11 +1,15 @@
 import { useState } from "react";
 import type { RoadmapData } from "@repo/shared-types";
+import type { GoalWorkspaceItem } from "../../../features/goals/goals";
+import type { HomeShortfall } from "./HomeStatus";
+import { activeGoals, goalTotals } from "./home-view";
 import {
+  CurrentNode,
+  GoalNode,
+  HistoryNode,
   LoadMoreHistory,
   RoadmapEmptyState,
-  RoadmapHistory,
-  RoadmapTimeline,
-  RoadmapUndatedObjectives,
+  UndatedNode,
 } from "./RoadmapParts";
 
 function hasRoadmapActivity(roadmap: RoadmapData) {
@@ -24,37 +28,81 @@ function hasRoadmapActivity(roadmap: RoadmapData) {
   ].some(Boolean);
 }
 
-export function Roadmap({ roadmap }: { roadmap: RoadmapData }) {
+export function Roadmap({
+  roadmap,
+  completionGoals = [],
+  closedMonth,
+  shortfalls = [],
+  onComplete,
+}: {
+  roadmap: RoadmapData;
+  completionGoals?: GoalWorkspaceItem[];
+  closedMonth?: string;
+  shortfalls?: HomeShortfall[];
+  onComplete?: (goalId: string) => void;
+}) {
   const [visibleHistoryCount, setVisibleHistoryCount] = useState(0);
-  const visibleHistory = roadmap.historyMonths.slice(0, visibleHistoryCount);
-  const nextHistory = roadmap.historyMonths[visibleHistoryCount];
+  const currentMonth = roadmap.currentMonth.month;
+  const reachedIds = new Set(completionGoals.map((goal) => goal.id));
+  const goals = activeGoals(roadmap);
+  const projected = [roadmap.currentMonth, ...roadmap.futureMonths]
+    .flatMap((month) => month.objectives)
+    .filter((goal) => goal.status !== "completed" && !reachedIds.has(goal.id));
+  const undated = roadmap.undatedObjectives.filter(
+    (goal) => !reachedIds.has(goal.id),
+  );
 
   return (
-    <section aria-labelledby="roadmap-heading" className="mx-auto w-full max-w-lg">
-      <header>
+    <section
+      aria-labelledby="roadmap-heading"
+      className="flex flex-col pt-4 pb-8"
+    >
+      <header className="flex flex-col gap-0.5 pb-3">
         <h2
           id="roadmap-heading"
-          className="font-serif text-3xl font-bold text-[var(--sea-ink)]"
+          className="m-0 font-serif text-[22px] leading-tight font-semibold text-foreground"
         >
           Tu hoja de ruta
         </h2>
-        <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-          Tu plan, tus aportes y los hitos que proyectan tus objetivos.
+        <p className="m-0 text-body-sm text-muted-foreground">
+          Aportes y objetivos proyectados
         </p>
       </header>
-      {nextHistory && (
+      {visibleHistoryCount < roadmap.historyMonths.length && (
         <LoadMoreHistory
-          month={nextHistory.month}
           onLoad={() => setVisibleHistoryCount((count) => count + 1)}
         />
       )}
-      <RoadmapHistory months={visibleHistory} />
-      <RoadmapTimeline
-        futureMonths={roadmap.futureMonths}
-        currentMonth={roadmap.currentMonth}
-      />
-      <RoadmapUndatedObjectives objectives={roadmap.undatedObjectives} />
-      {!hasRoadmapActivity(roadmap) && <RoadmapEmptyState />}
+      {roadmap.historyMonths
+        .slice(0, visibleHistoryCount)
+        .reverse()
+        .map((month) => (
+          <HistoryNode
+            key={month.month}
+            month={month}
+            shortfalls={month.month === closedMonth ? shortfalls : undefined}
+          />
+        ))}
+      <CurrentNode month={roadmap.currentMonth} totals={goalTotals(goals)} />
+      {completionGoals.map((goal) => (
+        <GoalNode
+          key={goal.id}
+          goal={goal}
+          currentMonth={currentMonth}
+          reached
+          reallocates={goals.some(
+            (other) => other.id !== goal.id && other.status === "active",
+          )}
+          onComplete={onComplete}
+        />
+      ))}
+      {projected.map((goal) => (
+        <GoalNode key={goal.id} goal={goal} currentMonth={currentMonth} />
+      ))}
+      {undated.length > 0 && <UndatedNode goals={undated} />}
+      {!hasRoadmapActivity(roadmap) && completionGoals.length === 0 && (
+        <RoadmapEmptyState />
+      )}
     </section>
   );
 }

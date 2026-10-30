@@ -1,151 +1,68 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { RoadmapTimeline } from "./RoadmapParts";
-import type { RoadmapMonth } from "@repo/shared-types";
+import { afterEach, describe, expect, it } from "vitest";
+import type { GoalWorkspaceItem } from "../../../features/goals/goals";
+import { GoalNode } from "./RoadmapParts";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    to,
-    children,
-    ...props
-  }: React.ComponentProps<"a"> & { to: string }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
-}));
+afterEach(cleanup);
 
-afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-});
+const goal: GoalWorkspaceItem = {
+  id: "goal-1",
+  name: "Casa propia",
+  type: "purchase",
+  currency: "USD",
+  priority: "high",
+  strategy: "save",
+  status: "active",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  savingsValue: { amount: "9000.00", currency: "USD" },
+  investmentValue: { amount: "0.00", currency: "USD" },
+  actualValue: { amount: "9000.00", currency: "USD" },
+  targetAmount: { amount: "50000.00", currency: "USD" },
+  progressPercentage: "18.00",
+  funding: [],
+  projection: { status: "available", completionMonth: "2030-03" },
+  usesPlanningRate: false,
+  completionEligible: false,
+};
 
-function expense({
-  id,
-  sourceKind,
-  concept,
-  amount,
-  currency,
-}: {
-  id: string;
-  sourceKind: string;
-  concept: string | null;
-  amount: string;
-  currency: "ARS" | "USD";
-}): RoadmapMonth["oneTimeExpenses"][number] {
-  return {
-    id,
-    sourceKind,
-    sourceId: null,
-    sourceName: "Vivienda",
-    concept,
-    amount,
-    currency,
-    recurring: false,
-    effectiveMonth: "2026-09",
-    endMonth: null,
-  };
-}
+describe("GoalNode", () => {
+  it("shows progress, today amounts and an on-time badge", () => {
+    render(
+      <GoalNode
+        goal={{ ...goal, desiredDateDeltaMonths: 0 }}
+        currentMonth="2025-10"
+      />,
+    );
 
-function contribution({
-  id,
-  amount,
-  currency,
-  kind,
-}: {
-  id: string;
-  amount: string;
-  currency: "ARS" | "USD";
-  kind: "saving" | "investment";
-}): RoadmapMonth["contributions"][number] {
-  return {
-    id,
-    amount,
-    currency,
-    kind,
-    createdAt: "2026-09-01T00:00:00.000Z",
-    allocations: [],
-  };
-}
+    expect(screen.getByText(/· En 4 años y 5 meses$/)).toBeVisible();
+    expect(screen.getByText("18%")).toBeVisible();
+    expect(screen.getByText("Hoy")).toBeVisible();
+    expect(screen.getByText("US$ 9.000 de US$ 50.000")).toBeVisible();
+    expect(screen.getByText("A tiempo")).toBeVisible();
+  });
 
-describe("RoadmapParts - Financial grouping", () => {
-  it("expands a category to show inline concept totals while keeping contributions itemized", async () => {
-    const user = userEvent.setup();
-    const currentMonth: RoadmapMonth = {
-      month: "2026-09",
-      objectives: [],
-      recurringExpenses: [],
-      endingExpenses: [],
-      oneTimeIncomes: [],
-      recurringIncomes: [],
-      contributions: [
-        contribution({
-          id: "contrib-1",
-          amount: "500.00",
-          currency: "ARS",
-          kind: "saving",
-        }),
-      ],
-      oneTimeExpenses: [
-        expense({
-          id: "rent-1",
-          sourceKind: "housing",
-          concept: "Alquiler",
-          amount: "100.25",
-          currency: "ARS",
-        }),
-        expense({
-          id: "rent-2",
-          sourceKind: "housing",
-          concept: "Alquiler",
-          amount: "50.75",
-          currency: "ARS",
-        }),
-        expense({
-          id: "housing-blank",
-          sourceKind: "housing",
-          concept: " ",
-          amount: "25.00",
-          currency: "ARS",
-        }),
-        expense({
-          id: "housing-usd",
-          sourceKind: "housing",
-          concept: null,
-          amount: "10.00",
-          currency: "USD",
-        }),
-      ],
-    };
+  it("flags late goals and hides progress when there is no target", () => {
+    render(
+      <GoalNode
+        goal={{
+          ...goal,
+          targetAmount: undefined,
+          progressPercentage: undefined,
+          desiredDateDeltaMonths: 2,
+        }}
+        currentMonth="2025-10"
+      />,
+    );
 
-    render(<RoadmapTimeline futureMonths={[]} currentMonth={currentMonth} />);
+    expect(screen.getByText("2 meses tarde")).toBeVisible();
+    expect(screen.queryByText(/%$/)).not.toBeInTheDocument();
+    expect(screen.getByText("US$ 9.000")).toBeVisible();
+  });
 
-    const arsCategory = screen.getByRole("button", {
-      name: /Alquiler \/ vivienda:\s*\$176,00/,
-    });
-
-    expect(arsCategory).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Alquiler: $151,00")).not.toBeInTheDocument();
-    expect(screen.getByText("$176,00")).toBeInTheDocument();
-
-    await user.click(arsCategory);
-
-    expect(arsCategory).toHaveAttribute("aria-expanded", "true");
-    expect(
-      screen.getByText((_, element) => element?.textContent === "Alquiler: $151,00")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText((_, element) => element?.textContent === "Sin concepto: $25,00")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Alquiler \/ vivienda:\s*US\$10,00/ })
-    ).toBeInTheDocument();
-
-    // Verify contribution remains itemized and rendered once with label and amount
-    expect(screen.getByText("Ahorro")).toBeInTheDocument();
-    expect(screen.getByText("$ 500,00")).toBeInTheDocument();
+  it("omits the badge without a desired date", () => {
+    render(<GoalNode goal={goal} currentMonth="2025-10" />);
+    expect(screen.queryByText("A tiempo")).not.toBeInTheDocument();
   });
 });

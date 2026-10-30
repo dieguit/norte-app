@@ -1,6 +1,5 @@
 import { Logger, type Provider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import QRCode from 'qrcode';
 import type { Env } from '../config/env';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
@@ -48,9 +47,10 @@ export const whatsappAdapterProvider: Provider = {
       adapterName: 'whatsapp',
       userName: 'Norte',
       auth: await usePostgresAuthState(db),
-      onQR: async (qr) =>
+      phoneNumber: config.getOrThrow('WHATSAPP_PHONE_NUMBER'),
+      onPairingCode: (code) =>
         logger.log(
-          `Escaneá este QR desde WhatsApp > Dispositivos vinculados:\n${await QRCode.toString(qr, { type: 'terminal', small: true })}`,
+          `Ingresá este código en WhatsApp > Dispositivos vinculados > Vincular con número de teléfono: ${code}`,
         ),
     });
     return { key: 'whatsapp', adapter };

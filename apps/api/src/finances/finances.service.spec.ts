@@ -61,6 +61,7 @@ describe('FinancesService daily summary', () => {
     currency: 'USD',
     recurring: false,
     effectiveMonth: '2026-10-01',
+    createdAt: new Date('2026-10-21T15:00:00Z'),
   };
   const expenseA = {
     id: 'e1',
@@ -73,6 +74,7 @@ describe('FinancesService daily summary', () => {
     recurring: false,
     effectiveMonth: '2026-10-01',
     endMonth: null,
+    createdAt: new Date('2026-10-21T15:00:00Z'),
   };
   const expenseB = {
     ...expenseA,
@@ -108,6 +110,8 @@ describe('FinancesService daily summary', () => {
         arsEquivalent: '150000.00',
       }),
     ]);
+    expect(result.incomes[0].createdAt).toBe('2026-10-21T15:00:00.000Z');
+    expect(result.expenses[0].createdAt).toBe('2026-10-21T15:00:00.000Z');
     expect(result.expenses.map((e) => e.sourceName)).toEqual([
       'Supermercado',
       'health',

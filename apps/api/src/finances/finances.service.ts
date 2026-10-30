@@ -61,6 +61,7 @@ const toIncomeItem = (row: IncomeRow, sourceNames: Map<string, string>) => ({
   currency: row.currency as 'ARS' | 'USD',
   recurring: row.recurring,
   effectiveMonth: row.effectiveMonth,
+  createdAt: row.createdAt.toISOString(),
   arsEquivalent: arsEquivalent(row.amount, row.currency),
 });
 
@@ -77,6 +78,7 @@ const toExpenseItem = (row: ExpenseRow, sourceNames: Map<string, string>) => ({
   recurring: row.recurring,
   effectiveMonth: row.effectiveMonth,
   endMonth: row.endMonth,
+  createdAt: row.createdAt.toISOString(),
   arsEquivalent: arsEquivalent(row.amount, row.currency),
 });
 

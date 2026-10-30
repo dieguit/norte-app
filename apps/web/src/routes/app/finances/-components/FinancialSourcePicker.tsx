@@ -1,14 +1,19 @@
-import { Field, FieldDescription, FieldError, FieldLabel } from '../../../../components/ui/field'
-import { Input } from '../../../../components/ui/input'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "../../../../components/ui/field";
+import { Input } from "../../../../components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../../../components/ui/select'
+} from "../../../../components/ui/select";
 
-type FinancialSourceOption = { value: string; label: string }
+type FinancialSourceOption = { value: string; label: string };
 
 function FinancialSourceSelect({
   label,
@@ -20,10 +25,21 @@ function FinancialSourceSelect({
   error,
   disabled,
   onValueChange,
-}: Pick<FinancialSourcePickerProps, 'label' | 'triggerId' | 'errorId' | 'options' | 'selectedValue' | 'isOtherSource' | 'error' | 'disabled' | 'onValueChange'>) {
+}: Pick<
+  FinancialSourcePickerProps,
+  | "label"
+  | "triggerId"
+  | "errorId"
+  | "options"
+  | "selectedValue"
+  | "isOtherSource"
+  | "error"
+  | "disabled"
+  | "onValueChange"
+>) {
   return (
     <Select
-      items={[...options, { value: 'other', label: 'Otro (agregar nuevo)' }]}
+      items={[...options, { value: "other", label: "Otro (agregar nuevo)" }]}
       value={selectedValue}
       disabled={disabled}
       onValueChange={onValueChange}
@@ -31,7 +47,7 @@ function FinancialSourceSelect({
       <SelectTrigger
         id={triggerId}
         aria-label={label}
-        aria-invalid={error && !isOtherSource ? 'true' : undefined}
+        aria-invalid={error && !isOtherSource ? "true" : undefined}
         aria-describedby={error && !isOtherSource ? errorId : undefined}
         className="w-full"
       >
@@ -46,7 +62,7 @@ function FinancialSourceSelect({
         <SelectItem value="other">Otro (agregar nuevo)</SelectItem>
       </SelectContent>
     </Select>
-  )
+  );
 }
 
 function FinancialNewSourceField({
@@ -57,10 +73,21 @@ function FinancialNewSourceField({
   showPersistenceHint,
   disabled,
   onNewSourceNameChange,
-}: Pick<FinancialSourcePickerProps, 'newSourceId' | 'newSourceName' | 'error' | 'errorId' | 'showPersistenceHint' | 'disabled' | 'onNewSourceNameChange'>) {
+}: Pick<
+  FinancialSourcePickerProps,
+  | "newSourceId"
+  | "newSourceName"
+  | "error"
+  | "errorId"
+  | "showPersistenceHint"
+  | "disabled"
+  | "onNewSourceNameChange"
+>) {
   return (
     <Field data-invalid={!!error}>
-      <FieldLabel htmlFor={newSourceId}>Nombre de la categoría nueva</FieldLabel>
+      <FieldLabel htmlFor={newSourceId}>
+        Nombre de la categoría nueva
+      </FieldLabel>
       <Input
         id={newSourceId}
         aria-label="Nombre de la categoría nueva"
@@ -71,28 +98,30 @@ function FinancialNewSourceField({
         onChange={(event) => onNewSourceNameChange(event.target.value)}
       />
       {showPersistenceHint && (
-        <FieldDescription>Esta categoría se va a guardar para que puedas volver a usarla</FieldDescription>
+        <FieldDescription>
+          Esta categoría se va a guardar para que puedas volver a usarla
+        </FieldDescription>
       )}
       {error && <FieldError id={errorId}>{error}</FieldError>}
     </Field>
-  )
+  );
 }
 
 type FinancialSourcePickerProps = {
-  label: string
-  triggerId: string
-  errorId: string
-  newSourceId: string
-  options: FinancialSourceOption[]
-  selectedValue: string | null
-  isOtherSource: boolean
-  newSourceName: string
-  error?: string
-  showPersistenceHint: boolean
-  disabled: boolean
-  onValueChange: (value: string | null) => void
-  onNewSourceNameChange: (name: string) => void
-}
+  label: string;
+  triggerId: string;
+  errorId: string;
+  newSourceId: string;
+  options: FinancialSourceOption[];
+  selectedValue: string | null;
+  isOtherSource: boolean;
+  newSourceName: string;
+  error?: string;
+  showPersistenceHint: boolean;
+  disabled: boolean;
+  onValueChange: (value: string | null) => void;
+  onNewSourceNameChange: (name: string) => void;
+};
 
 export function FinancialSourcePicker({
   label,
@@ -136,5 +165,5 @@ export function FinancialSourcePicker({
       )}
       {!isOtherSource && error && <FieldError id={errorId}>{error}</FieldError>}
     </Field>
-  )
+  );
 }

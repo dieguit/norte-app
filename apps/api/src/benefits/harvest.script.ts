@@ -27,7 +27,7 @@ async function main() {
     const agent = createBenefitsExtractorAgent({
       LLM_BASE_URL: required('LLM_BASE_URL'),
       LLM_API_KEY: required('LLM_API_KEY'),
-      LLM_MODEL: required('LLM_MODEL'),
+      LLM_MODEL: process.env.LLM_MODEL,
     });
     const results = await runHarvest(
       drizzle(pool, { schema }),

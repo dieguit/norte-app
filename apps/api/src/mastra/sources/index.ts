@@ -5,15 +5,18 @@ import type { Source } from './types';
 
 export type { Source } from './types';
 
-// ponytail: index in prompt + readSource tool; switch to @mastra/rag + pgvector past ~100 docs or long PDFs.
+// shortcut: whole corpus inlined in the advice skill (~6 KB, saves a readSource step); move to a lookup tool or RAG past ~15 KB.
 export const sources: Source[] = [
   queHaceNorte,
   comoFuncionaNorte,
   fondoDeEmergencia,
 ];
 
-export function sourcesIndex(list: Source[] = sources): string {
+export function sourcesText(list: Source[] = sources): string {
   return list
-    .map((source) => `${source.slug}: ${source.title} — ${source.summary}`)
-    .join('\n');
+    .map(
+      (source) =>
+        `<fuente titulo="${source.title}"${source.url ? ` url="${source.url}"` : ''}>\n${source.body.trim()}\n</fuente>`,
+    )
+    .join('\n\n');
 }

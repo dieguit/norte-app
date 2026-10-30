@@ -29,7 +29,22 @@ export class HomeService {
 
     const roadmap = buildRoadmap({
       goals: goalsState.workspace,
-      finances,
+      finances: {
+        incomes: {
+          incomes: finances.incomes.incomes.map(({ createdAt, ...income }) => {
+            void createdAt;
+            return income;
+          }),
+        },
+        expenses: {
+          expenses: finances.expenses.expenses.map(
+            ({ createdAt, ...expense }) => {
+              void createdAt;
+              return expense;
+            },
+          ),
+        },
+      },
       currentMonth,
     });
 

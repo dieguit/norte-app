@@ -62,6 +62,56 @@ const presentFinancesWorkspace: FinancesWorkspace = {
 };
 
 describe('HomeService', () => {
+  it('projects timestamped finance entries into the strict roadmap contract', async () => {
+    const income = {
+      id: 'salary',
+      sourceKind: 'salary',
+      sourceId: null,
+      sourceName: 'Sueldo',
+      concept: null,
+      amount: '3000000.00',
+      currency: 'ARS' as const,
+      recurring: true,
+      effectiveMonth: '2026-07-01',
+      arsEquivalent: null,
+      createdAt: '2026-07-01T12:00:00.000Z',
+    };
+    const expense = {
+      ...income,
+      id: 'rent',
+      sourceKind: 'housing',
+      endMonth: '2026-08-01',
+    };
+    const service = new HomeService(
+      { getWorkspace: vi.fn().mockResolvedValue(presentGoalsWorkspace) } as any,
+      {
+        getWorkspace: vi.fn().mockResolvedValue({
+          ...presentFinancesWorkspace,
+          incomes: { sources: [], incomes: [income] },
+          expenses: { sources: [], expenses: [expense] },
+        }),
+      } as any,
+    );
+
+    const result = await service.getHome('user-1', '2026-08');
+    if (!('roadmap' in result)) throw new Error('Expected roadmap');
+    expect(result.roadmap.currentMonth.recurringIncomes[0]).toMatchObject({
+      id: 'salary',
+      amount: '3000000.00',
+    });
+    expect(result.roadmap.currentMonth.endingExpenses[0]).toMatchObject({
+      id: 'rent',
+      endMonth: '2026-08-01',
+    });
+    expect(result.roadmap.historyMonths[0].month).toBe('2026-07');
+    expect(result.roadmap.currentMonth.recurringIncomes[0]).not.toHaveProperty(
+      'createdAt',
+    );
+    expect(result.roadmap.currentMonth.endingExpenses[0]).not.toHaveProperty(
+      'createdAt',
+    );
+  });
+
   it('returns missing profile if goals workspace profile is missing', async () => {
     const goalsService = {
       getWorkspace: vi.fn().mockResolvedValue({ profile: 'missing' }),

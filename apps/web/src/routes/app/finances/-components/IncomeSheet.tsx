@@ -91,7 +91,8 @@ function getValidationErrors(issues: readonly ValidationIssue[]) {
   const errors: Record<string, string> = {};
   for (const issue of issues) {
     const field = issue.path[1];
-    if (typeof field === "string" && !errors[field]) errors[field] = issue.message;
+    if (typeof field === "string" && !errors[field])
+      errors[field] = issue.message;
   }
   return errors;
 }
@@ -103,7 +104,10 @@ function normalizeIncomeDraft(draft: IncomeDraft): IncomeDraft {
   };
 }
 
-async function persistIncome(income: IncomeRow | undefined, draft: IncomeDraft) {
+async function persistIncome(
+  income: IncomeRow | undefined,
+  draft: IncomeDraft,
+) {
   if (income) {
     await updateIncome({ data: { incomeId: income.id, draft } });
     return;
@@ -117,8 +121,16 @@ function useIncomeDraftState({
   income,
   draft: initialDraft,
   recurringOnly = false,
-}: Pick<IncomeSheetProps, "open" | "month" | "income" | "draft" | "recurringOnly">): FinancialDraftState<IncomeDraftInput> {
-  const initialDraftValue = getIncomeDraft(income, initialDraft, month, recurringOnly);
+}: Pick<
+  IncomeSheetProps,
+  "open" | "month" | "income" | "draft" | "recurringOnly"
+>): FinancialDraftState<IncomeDraftInput> {
+  const initialDraftValue = getIncomeDraft(
+    income,
+    initialDraft,
+    month,
+    recurringOnly,
+  );
   return useFinancialDraftState({
     open,
     initialDraft: initialDraftValue,
@@ -144,10 +156,18 @@ async function persistIncomeForm(
   });
 }
 
-function focusFirstInvalidIncomeField(draft: IncomeDraftInput, errors: Record<string, string>) {
+function focusFirstInvalidIncomeField(
+  draft: IncomeDraftInput,
+  errors: Record<string, string>,
+) {
   const fields = [
     ["amount", "income-amount"],
-    ["source", draft.source?.kind === "custom" && "name" in draft.source ? "new-income-name" : "income-source-trigger"],
+    [
+      "source",
+      draft.source?.kind === "custom" && "name" in draft.source
+        ? "new-income-name"
+        : "income-source-trigger",
+    ],
     ["concept", "income-concept"],
     ["effectiveMonth", "income-month-picker"],
   ] as const;
@@ -173,7 +193,6 @@ function useIncomeSheetActions({
   setValidationErrors,
   setSaving,
 }: IncomeSheetActionProps) {
-
   async function save() {
     if (saving) return;
     const parsed = createIncomeSchema.safeParse({ draft });
@@ -195,7 +214,9 @@ function useIncomeSheetActions({
         try {
           await router.invalidate();
         } catch {
-          toast.error("El ingreso se guardó, pero no pudimos actualizar la vista.");
+          toast.error(
+            "El ingreso se guardó, pero no pudimos actualizar la vista.",
+          );
         }
       } else {
         onOpenChange(false);
@@ -223,7 +244,9 @@ function useIncomeSheetActions({
       try {
         await router.invalidate();
       } catch {
-        toast.error("El ingreso se eliminó, pero no pudimos actualizar la vista.");
+        toast.error(
+          "El ingreso se eliminó, pero no pudimos actualizar la vista.",
+        );
       }
     } catch {
       setError("No pudimos eliminar el ingreso.");
@@ -232,14 +255,22 @@ function useIncomeSheetActions({
     }
   }
 
-  return { onSave: () => void save(), onRemove: income ? () => void remove() : undefined };
+  return {
+    onSave: () => void save(),
+    onRemove: income ? () => void remove() : undefined,
+  };
 }
 
 function useIncomeSheet(props: IncomeSheetProps) {
   const state = useIncomeDraftState(props);
   const router = useRouter();
   const posthog = usePostHog();
-  const actions = useIncomeSheetActions({ ...props, ...state, router, posthog });
+  const actions = useIncomeSheetActions({
+    ...props,
+    ...state,
+    router,
+    posthog,
+  });
 
   return {
     ...state,
@@ -249,14 +280,26 @@ function useIncomeSheet(props: IncomeSheetProps) {
   };
 }
 
-function getTitle(recurringOnly: boolean, hasDraft: boolean, hasIncome: boolean) {
-  if (recurringOnly) return hasDraft ? "Editar ingreso recurrente" : "Nuevo ingreso recurrente";
+function getTitle(
+  recurringOnly: boolean,
+  hasDraft: boolean,
+  hasIncome: boolean,
+) {
+  if (recurringOnly)
+    return hasDraft ? "Editar ingreso recurrente" : "Nuevo ingreso recurrente";
   return hasIncome ? "Editar ingreso" : "Nuevo ingreso";
 }
 
 export function IncomeSheet(props: IncomeSheetProps) {
   const state = useIncomeSheet(props);
-  const { open, onOpenChange, sources, income, draft, recurringOnly = false } = props;
+  const {
+    open,
+    onOpenChange,
+    sources,
+    income,
+    draft,
+    recurringOnly = false,
+  } = props;
   return (
     <FinancialSheetFrame
       open={open}
@@ -269,19 +312,19 @@ export function IncomeSheet(props: IncomeSheetProps) {
           : "Indicá el origen y desde cuándo contás con este ingreso."
       }
     >
-        <IncomeSheetForm
-          draft={state.draft}
-          error={state.error}
-          validationErrors={state.validationErrors}
-          saving={state.saving}
-          arsEquivalent={state.arsEquivalent}
-          showPersistenceHint={state.showPersistenceHint}
-          onDraftChange={state.onDraftChange}
-          onSave={state.onSave}
-          onRemove={state.onRemove}
-          sources={sources}
-          recurringOnly={recurringOnly}
-        />
+      <IncomeSheetForm
+        draft={state.draft}
+        error={state.error}
+        validationErrors={state.validationErrors}
+        saving={state.saving}
+        arsEquivalent={state.arsEquivalent}
+        showPersistenceHint={state.showPersistenceHint}
+        onDraftChange={state.onDraftChange}
+        onSave={state.onSave}
+        onRemove={state.onRemove}
+        sources={sources}
+        recurringOnly={recurringOnly}
+      />
     </FinancialSheetFrame>
   );
 }

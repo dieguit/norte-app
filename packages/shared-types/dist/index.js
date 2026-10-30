@@ -660,7 +660,8 @@ var IncomeSchema = z9.object({
   currency: z9.enum(["ARS", "USD"]),
   recurring: z9.boolean(),
   effectiveMonth: DateSchema2,
-  arsEquivalent: z9.string().nullable()
+  arsEquivalent: z9.string().nullable(),
+  createdAt: z9.iso.datetime()
 });
 var ExpenseSchema = IncomeSchema.extend({ endMonth: DateSchema2.nullable() });
 var MoneySchema3 = z9.object({ amount: z9.string(), currency: z9.literal("ARS") });

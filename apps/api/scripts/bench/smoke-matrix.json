@@ -1,0 +1,4 @@
+[
+  { "name": "smoke-low", "model": "gemini/gemini-3.6-flash", "effort": "low" },
+  { "name": "smoke-medium", "model": "gemini/gemini-3.6-flash", "effort": "medium" }
+]

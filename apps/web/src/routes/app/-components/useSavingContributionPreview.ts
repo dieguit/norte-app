@@ -1,70 +1,85 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { parseMoneyInput } from '../../../lib/money'
-import { deriveUsdPurchase } from '@repo/shared-types'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
+import { parseMoneyInput } from "../../../lib/money";
+import { deriveUsdPurchase } from "@repo/shared-types";
 import {
   type ContributionKind,
   type EligibleGoal,
   type SavingContributionContext,
   type SavingContributionPreviewResult,
   type SavingDraftInput,
-} from '../../../features/contributions/saving-contribution'
+} from "../../../features/contributions/saving-contribution";
 import {
   previewSavingContribution,
   previewSavingContributionEdit,
-} from '../../../features/contributions/saving-contribution.functions'
-import type { SavingContributionSummary } from '../../../features/goals/goals'
-import type { SavingContributionDraftState } from './useSavingContributionDraft'
+} from "../../../features/contributions/saving-contribution.functions";
+import type { SavingContributionSummary } from "../../../features/goals/goals";
+import type { SavingContributionDraftState } from "./useSavingContributionDraft";
 
 interface UseSavingContributionPreviewOptions {
-  kind: ContributionKind
-  context?: SavingContributionContext
-  draft: SavingContributionDraftState
-  isEdit: boolean
-  initialContribution?: SavingContributionSummary | null
+  kind: ContributionKind;
+  context?: SavingContributionContext;
+  draft: SavingContributionDraftState;
+  isEdit: boolean;
+  initialContribution?: SavingContributionSummary | null;
 }
 
 interface PreviewState {
-  preview: SavingContributionPreviewResult | null
-  isPreviewPending: boolean
-  serverError: string | null
-  validationError: string | null
+  preview: SavingContributionPreviewResult | null;
+  isPreviewPending: boolean;
+  serverError: string | null;
+  validationError: string | null;
 }
 
 interface PreviewPlan {
-  draft: SavingDraftInput
-  validationError?: string
+  draft: SavingDraftInput;
+  validationError?: string;
 }
 
-function getEditGoals(initialContribution: SavingContributionSummary): EligibleGoal[] {
+function getEditGoals(
+  initialContribution: SavingContributionSummary,
+): EligibleGoal[] {
   return initialContribution.allocations.map((allocation) => ({
-      id: allocation.goalId,
-      name: allocation.goalName,
-      percentage: allocation.percentage,
-  }))
+    id: allocation.goalId,
+    name: allocation.goalName,
+    percentage: allocation.percentage,
+  }));
 }
 
-function getContextGoals(kind: ContributionKind, context?: SavingContributionContext) {
-  return kind === 'investment' ? getInvestmentGoals(context) : getSavingGoals(context)
+function getContextGoals(
+  kind: ContributionKind,
+  context?: SavingContributionContext,
+) {
+  return kind === "investment"
+    ? getInvestmentGoals(context)
+    : getSavingGoals(context);
 }
 
 function getInvestmentGoals(context?: SavingContributionContext) {
   return {
     ARS: context?.eligibleInvestmentGoals ?? [],
     USD: context?.eligibleInvestmentGoalsUsd ?? [],
-  }
+  };
 }
 
 function getSavingGoals(context?: SavingContributionContext) {
   return {
     ARS: context?.eligibleGoals ?? [],
     USD: context?.eligibleGoalsUsd ?? [],
-  }
+  };
 }
 
-function getEligibleGoals(options: UseSavingContributionPreviewOptions): EligibleGoal[] {
-  const { kind, context, draft, isEdit, initialContribution } = options
-  if (isEdit && initialContribution) return getEditGoals(initialContribution)
-  return getContextGoals(kind, context)[draft.currency]
+function getEligibleGoals(
+  options: UseSavingContributionPreviewOptions,
+): EligibleGoal[] {
+  const { kind, context, draft, isEdit, initialContribution } = options;
+  if (isEdit && initialContribution) return getEditGoals(initialContribution);
+  return getContextGoals(kind, context)[draft.currency];
 }
 
 function getUsdValues(draft: SavingContributionDraftState) {
@@ -73,75 +88,93 @@ function getUsdValues(draft: SavingContributionDraftState) {
       usdAmount: draft.amount,
       arsSpent: draft.arsSpent || null,
       effectiveRate: draft.effectiveRate || null,
-    })
+    });
   } catch {
-    return null
+    return null;
   }
 }
 
-function createValidUsdPlan(kind: ContributionKind, draft: SavingContributionDraftState, values: NonNullable<ReturnType<typeof getUsdValues>>): PreviewPlan {
+function createValidUsdPlan(
+  kind: ContributionKind,
+  draft: SavingContributionDraftState,
+  values: NonNullable<ReturnType<typeof getUsdValues>>,
+): PreviewPlan {
   return {
     draft: {
       kind,
-      currency: 'USD',
+      currency: "USD",
       amount: draft.amount,
       arsSpent: values?.arsSpent ?? (draft.arsSpent || null),
       effectiveRate: values?.effectiveRate ?? (draft.effectiveRate || null),
-      ...(kind === 'saving' && draft.place ? { place: draft.place } : {}),
+      ...(kind === "saving" && draft.place ? { place: draft.place } : {}),
     },
-  }
+  };
 }
 
-function createInvalidUsdPlan(kind: ContributionKind, draft: SavingContributionDraftState): PreviewPlan {
+function createInvalidUsdPlan(
+  kind: ContributionKind,
+  draft: SavingContributionDraftState,
+): PreviewPlan {
   return {
-    draft: { kind, currency: 'USD', amount: draft.amount },
-    validationError: draft.amount && draft.arsSpent && draft.effectiveRate
-      ? 'Los valores en USD, ARS gastados y tipo de cambio no coinciden.'
-      : undefined,
-  }
+    draft: { kind, currency: "USD", amount: draft.amount },
+    validationError:
+      draft.amount && draft.arsSpent && draft.effectiveRate
+        ? "Los valores en USD, ARS gastados y tipo de cambio no coinciden."
+        : undefined,
+  };
 }
 
-function buildUsdDraft(kind: ContributionKind, draft: SavingContributionDraftState): PreviewPlan | null {
-  if (!parseMoneyInput(draft.amount, 'USD')) return null
-  const values = getUsdValues(draft)
-  if (values) return createValidUsdPlan(kind, draft, values)
-  return hasCompleteUsdDraft(draft) ? createInvalidUsdPlan(kind, draft) : null
+function buildUsdDraft(
+  kind: ContributionKind,
+  draft: SavingContributionDraftState,
+): PreviewPlan | null {
+  if (!parseMoneyInput(draft.amount, "USD")) return null;
+  const values = getUsdValues(draft);
+  if (values) return createValidUsdPlan(kind, draft, values);
+  return hasCompleteUsdDraft(draft) ? createInvalidUsdPlan(kind, draft) : null;
 }
 
 function hasCompleteUsdDraft(draft: SavingContributionDraftState) {
-  return Boolean(draft.amount && draft.arsSpent && draft.effectiveRate)
+  return Boolean(draft.amount && draft.arsSpent && draft.effectiveRate);
 }
 
 function buildPreviewPlan(
   kind: ContributionKind,
   draft: SavingContributionDraftState,
 ): PreviewPlan | null {
-  if (kind === 'saving' && draft.place?.kind === 'new' && !draft.place.name.trim()) {
-    return null
+  if (
+    kind === "saving" &&
+    draft.place?.kind === "new" &&
+    !draft.place.name.trim()
+  ) {
+    return null;
   }
-  if (draft.currency === 'USD') return buildUsdDraft(kind, draft)
-  if (!parseMoneyInput(draft.amount, 'ARS')) return null
+  if (draft.currency === "USD") return buildUsdDraft(kind, draft);
+  if (!parseMoneyInput(draft.amount, "ARS")) return null;
   return {
     draft: {
       kind,
-      currency: 'ARS',
+      currency: "ARS",
       amount: draft.amount,
-      ...(kind === 'saving' && draft.place ? { place: draft.place } : {}),
+      ...(kind === "saving" && draft.place ? { place: draft.place } : {}),
     },
-  }
+  };
 }
 
 function getSafePreviewErrorMessage(error: any) {
-  const message = error?.message
-  if (message && !message.includes('{') && !message.includes('Zod')) {
-    return message
+  const message = error?.message;
+  if (message && !message.includes("{") && !message.includes("Zod")) {
+    return message;
   }
-  return 'No pudimos calcular la vista previa.'
+  return "No pudimos calcular la vista previa.";
 }
 
 function requestPreview(plan: PreviewPlan, editContributionId?: string) {
-  if (editContributionId) return previewSavingContributionEdit({ data: { contributionId: editContributionId, draft: plan.draft } })
-  return previewSavingContribution({ data: plan.draft })
+  if (editContributionId)
+    return previewSavingContributionEdit({
+      data: { contributionId: editContributionId, draft: plan.draft },
+    });
+  return previewSavingContribution({ data: plan.draft });
 }
 
 function scheduleRemotePreview(
@@ -149,17 +182,39 @@ function scheduleRemotePreview(
   setState: Dispatch<SetStateAction<PreviewState>>,
   editContributionId?: string,
 ) {
-  let active = true
-  setState((current) => ({ ...current, isPreviewPending: true, validationError: null }))
+  let active = true;
+  setState((current) => ({
+    ...current,
+    isPreviewPending: true,
+    validationError: null,
+  }));
   const timer = setTimeout(() => {
     requestPreview(plan, editContributionId)
-      .then((preview) => active && setState({ preview, isPreviewPending: false, serverError: null, validationError: null }))
-      .catch((error: any) => active && setState((current) => ({ ...current, preview: null, isPreviewPending: false, serverError: getSafePreviewErrorMessage(error) })))
-  }, 250)
+      .then(
+        (preview) =>
+          active &&
+          setState({
+            preview,
+            isPreviewPending: false,
+            serverError: null,
+            validationError: null,
+          }),
+      )
+      .catch(
+        (error: any) =>
+          active &&
+          setState((current) => ({
+            ...current,
+            preview: null,
+            isPreviewPending: false,
+            serverError: getSafePreviewErrorMessage(error),
+          })),
+      );
+  }, 250);
   return () => {
-    active = false
-    clearTimeout(timer)
-  }
+    active = false;
+    clearTimeout(timer);
+  };
 }
 
 function usePreviewCalculation(
@@ -173,18 +228,40 @@ function usePreviewCalculation(
     isPreviewPending: false,
     serverError: null,
     validationError: null,
-  })
+  });
   useEffect(() => {
-    const { draft, kind, isEdit, initialContribution } = options
-    if (!hasEligibleGoals || hasIncompleteInvestmentData || (kind === 'saving' && !draft.place)) {
-      setState((current) => ({ ...current, preview: null, isPreviewPending: false }))
-      return
+    const { draft, kind, isEdit, initialContribution } = options;
+    if (
+      !hasEligibleGoals ||
+      hasIncompleteInvestmentData ||
+      (kind === "saving" && !draft.place)
+    ) {
+      setState((current) => ({
+        ...current,
+        preview: null,
+        isPreviewPending: false,
+      }));
+      return;
     }
 
-    const plan = buildPreviewPlan(kind, draft)
-    if (!plan) return setState((current) => ({ ...current, preview: null, isPreviewPending: false }))
-    if (plan.validationError) return setState((current) => ({ ...current, preview: null, validationError: plan.validationError ?? null }))
-    return scheduleRemotePreview(plan, setState, isEdit ? initialContribution?.id : undefined)
+    const plan = buildPreviewPlan(kind, draft);
+    if (!plan)
+      return setState((current) => ({
+        ...current,
+        preview: null,
+        isPreviewPending: false,
+      }));
+    if (plan.validationError)
+      return setState((current) => ({
+        ...current,
+        preview: null,
+        validationError: plan.validationError ?? null,
+      }));
+    return scheduleRemotePreview(
+      plan,
+      setState,
+      isEdit ? initialContribution?.id : undefined,
+    );
   }, [
     options.kind,
     options.context,
@@ -193,15 +270,17 @@ function usePreviewCalculation(
     options.draft.arsSpent,
     options.draft.effectiveRate,
     options.draft.place?.kind,
-    options.draft.place?.kind === 'existing' ? options.draft.place.placeId : options.draft.place?.name,
+    options.draft.place?.kind === "existing"
+      ? options.draft.place.placeId
+      : options.draft.place?.name,
     options.isEdit,
     options.initialContribution,
     hasEligibleGoals,
     hasIncompleteInvestmentData,
     eligibleGoals,
-  ])
+  ]);
 
-  return { state, setState }
+  return { state, setState };
 }
 
 export function useSavingContributionPreview(
@@ -209,28 +288,44 @@ export function useSavingContributionPreview(
 ) {
   const eligibleGoals = useMemo(
     () => getEligibleGoals(options),
-    [options.kind, options.context, options.draft.currency, options.isEdit, options.initialContribution],
-  )
-  const hasEligibleGoals = eligibleGoals.length > 0
-  const investmentState = options.draft.currency === 'ARS'
-    ? options.context?.investmentState.ars
-    : options.context?.investmentState.usd
-  const hasIncompleteInvestmentData = options.kind === 'investment' && investmentState?.status === 'incomplete'
-  const calculatedState = usePreviewCalculation(options, eligibleGoals, hasEligibleGoals, hasIncompleteInvestmentData)
-  const { state, setState } = calculatedState
+    [
+      options.kind,
+      options.context,
+      options.draft.currency,
+      options.isEdit,
+      options.initialContribution,
+    ],
+  );
+  const hasEligibleGoals = eligibleGoals.length > 0;
+  const investmentState =
+    options.draft.currency === "ARS"
+      ? options.context?.investmentState.ars
+      : options.context?.investmentState.usd;
+  const hasIncompleteInvestmentData =
+    options.kind === "investment" && investmentState?.status === "incomplete";
+  const calculatedState = usePreviewCalculation(
+    options,
+    eligibleGoals,
+    hasEligibleGoals,
+    hasIncompleteInvestmentData,
+  );
+  const { state, setState } = calculatedState;
 
   return {
     ...state,
     eligibleGoals,
     hasEligibleGoals,
     hasIncompleteInvestmentData,
-    clearPreview: () =>
-      setState((current) => ({ ...current, preview: null })),
+    clearPreview: () => setState((current) => ({ ...current, preview: null })),
     setServerError: (message: string | null) =>
       setState((current) => ({ ...current, serverError: message })),
     setPreview: (preview: SavingContributionPreviewResult | null) =>
       setState((current) => ({ ...current, preview })),
     clearErrors: () =>
-      setState((current) => ({ ...current, serverError: null, validationError: null })),
-  }
+      setState((current) => ({
+        ...current,
+        serverError: null,
+        validationError: null,
+      })),
+  };
 }

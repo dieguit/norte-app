@@ -8,7 +8,9 @@ export function useFinancesMonth(
 ) {
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
   const [monthData, setMonthData] = useState(workspace);
-  const [freshForWorkspace, setFreshForWorkspace] = useState<typeof workspace | null>(workspace);
+  const [freshForWorkspace, setFreshForWorkspace] = useState<
+    typeof workspace | null
+  >(workspace);
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const requestId = useRef(0);
@@ -30,21 +32,30 @@ export function useFinancesMonth(
     setFreshForWorkspace(null);
     setLoadingMonth(true);
     setLoadError(false);
-    getFinancesWorkspace({ data: { month: selectedMonth } }).then((next) => {
-      if (id === requestId.current && next?.month === selectedMonth) {
-        setMonthData(next);
-        setFreshForWorkspace(workspace);
-      }
-      else if (id === requestId.current) setLoadError(true);
-    }).catch(() => {
-      if (id === requestId.current) setLoadError(true);
-    }).finally(() => {
-      if (id === requestId.current) setLoadingMonth(false);
-    });
-    return () => { requestId.current += 1; };
+    getFinancesWorkspace({ data: { month: selectedMonth } })
+      .then((next) => {
+        if (id === requestId.current && next?.month === selectedMonth) {
+          setMonthData(next);
+          setFreshForWorkspace(workspace);
+        } else if (id === requestId.current) setLoadError(true);
+      })
+      .catch(() => {
+        if (id === requestId.current) setLoadError(true);
+      })
+      .finally(() => {
+        if (id === requestId.current) setLoadingMonth(false);
+      });
+    return () => {
+      requestId.current += 1;
+    };
   }, [selectedMonth, workspace]);
 
-  const current = !loadingMonth && freshForWorkspace === workspace && monthData.month === selectedMonth ? monthData : null;
+  const current =
+    !loadingMonth &&
+    freshForWorkspace === workspace &&
+    monthData.month === selectedMonth
+      ? monthData
+      : null;
 
   return { selectedMonth, selectMonth, current, loadingMonth, loadError };
 }
