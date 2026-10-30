@@ -183,6 +183,20 @@
       "when": 1793322835197,
       "tag": "0025_benefit_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793373478929,
+      "tag": "0026_nappy_revanche",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793374127422,
+      "tag": "0027_benefits_coverage_scope",
+      "breakpoints": true
     }
   ]
 }

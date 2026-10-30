@@ -1,5 +1,14 @@
 import { onboardingDrafts } from './legacy.schema';
 import {
+  benefitBanks,
+  benefitBrands,
+  benefitCampaigns,
+  benefitCampaignBanks,
+  benefitIngestRuns,
+  benefitCategoryMappings,
+  benefitDetailCache,
+} from '../benefits/ingest/schema';
+import {
   allocationPlanEntries,
   allocationPlanSnapshots,
   expenses,
@@ -37,6 +46,13 @@ import {
 } from '../benefits/benefits.schema';
 
 export const schema = {
+  benefitDetailCache,
+  benefitBanks,
+  benefitBrands,
+  benefitCampaigns,
+  benefitCampaignBanks,
+  benefitIngestRuns,
+  benefitCategoryMappings,
   benefitRevisions,
   benefitSources,
   benefitSourceRuns,
@@ -70,6 +86,13 @@ export const schema = {
 
 export type Schema = typeof schema;
 export {
+  benefitDetailCache,
+  benefitBanks,
+  benefitBrands,
+  benefitCampaigns,
+  benefitCampaignBanks,
+  benefitIngestRuns,
+  benefitCategoryMappings,
   benefitRevisions,
   benefitSources,
   benefitSourceRuns,

@@ -279,3 +279,6 @@ export {
   type BenefitMatch,
 } from "./benefits.schema";
 
+
+export * from "./benefits-admin.schema";
+export * from "./benefits-catalog.schema";

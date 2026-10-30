@@ -30,6 +30,16 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
+  AdminBenefitActionResultSchema: () => AdminBenefitActionResultSchema,
+  AdminBenefitActionSchema: () => AdminBenefitActionSchema,
+  AdminBenefitDetailSchema: () => AdminBenefitDetailSchema,
+  AdminBenefitListItemSchema: () => AdminBenefitListItemSchema,
+  AdminBenefitListQuerySchema: () => AdminBenefitListQuerySchema,
+  AdminBenefitListSchema: () => AdminBenefitListSchema,
+  AdminBenefitRevisionSchema: () => AdminBenefitRevisionSchema,
+  AdminSourceListSchema: () => AdminSourceListSchema,
+  AdminSourcePolicyPatchSchema: () => AdminSourcePolicyPatchSchema,
+  AdminSourceSchema: () => AdminSourceSchema,
   AllocationChangeConfirmationSchema: () => AllocationChangeConfirmationSchema,
   AllocationChangeContextSchema: () => AllocationChangeContextSchema,
   AllocationChangeContextStateSchema: () => AllocationChangeContextStateSchema,
@@ -45,6 +55,8 @@ __export(index_exports, {
   BenefitCapSchema: () => BenefitCapSchema,
   BenefitCatalogResponseSchema: () => BenefitCatalogResponseSchema,
   BenefitCategorySchema: () => BenefitCategorySchema,
+  BenefitEvidenceSchema: () => BenefitEvidenceSchema,
+  BenefitLifecycleSchema: () => BenefitLifecycleSchema,
   BenefitMatchSchema: () => BenefitMatchSchema,
   BenefitPreferencesSchema: () => BenefitPreferencesSchema,
   BenefitProfileFactsSchema: () => BenefitProfileFactsSchema,
@@ -53,8 +65,13 @@ __export(index_exports, {
   CAP_SCOPES: () => CAP_SCOPES,
   CARD_NETWORKS: () => CARD_NETWORKS,
   CARD_TYPES: () => CARD_TYPES,
+  CATALOG_CATEGORIES: () => CATALOG_CATEGORIES,
+  CATALOG_CATEGORY_LABELS: () => CATALOG_CATEGORY_LABELS,
+  CampaignOfferSchema: () => CampaignOfferSchema,
+  CampaignTermsSchema: () => CampaignTermsSchema,
   CardNetworkSchema: () => CardNetworkSchema,
   CardSelectorSchema: () => CardSelectorSchema,
+  CatalogCategorySchema: () => CatalogCategorySchema,
   ConfirmAllocationChangeWireSchema: () => ConfirmAllocationChangeWireSchema,
   ConfirmGoalCompletionWireSchema: () => ConfirmGoalCompletionWireSchema,
   ConfirmGoalCreationWireSchema: () => ConfirmGoalCreationWireSchema,
@@ -1200,7 +1217,8 @@ var CardSelectorSchema = import_zod14.z.object({
 var PROVIDER_FACT_KEYS = [
   "salaryAccount",
   "plan",
-  "loyaltyLevel"
+  "loyaltyLevel",
+  "tier"
 ];
 var REQUIREMENT_MAX_DEPTH = 5;
 var REQUIREMENT_MAX_NODES = 50;
@@ -1247,7 +1265,8 @@ var InstrumentFactsSchema = import_zod14.z.object({
 var ProviderFactsSchema = import_zod14.z.object({
   salaryAccount: import_zod14.z.boolean().optional(),
   plan: slug.optional(),
-  loyaltyLevel: slug.optional()
+  loyaltyLevel: slug.optional(),
+  tier: slug.optional()
 }).strict();
 var BenefitProfileFactsSchema = import_zod14.z.object({
   instrumentFacts: import_zod14.z.record(slug, InstrumentFactsSchema).default({}),
@@ -1396,8 +1415,192 @@ var BenefitPreferencesSchema = import_zod14.z.object({
   categories: import_zod14.z.array(BenefitCategorySchema),
   enabled: import_zod14.z.boolean()
 });
+
+// src/benefits-admin.schema.ts
+var import_zod15 = require("zod");
+var BenefitLifecycleSchema = import_zod15.z.enum(BENEFIT_LIFECYCLE);
+var BenefitEvidenceSchema = import_zod15.z.object({
+  sourceUrl: import_zod15.z.string(),
+  detailUrl: import_zod15.z.string().nullable(),
+  termsUrl: import_zod15.z.string().nullable(),
+  quotes: import_zod15.z.array(import_zod15.z.object({ field: import_zod15.z.string(), quote: import_zod15.z.string() }))
+});
+var AdminBenefitListQuerySchema = import_zod15.z.object({
+  status: BenefitLifecycleSchema.optional(),
+  source: import_zod15.z.string().min(1).max(80).optional()
+});
+var AdminBenefitListItemSchema = import_zod15.z.object({
+  id: import_zod15.z.string(),
+  lifecycle: BenefitLifecycleSchema,
+  origin: import_zod15.z.enum(["harvest", "manual"]),
+  publisherProviderSlug: import_zod15.z.string(),
+  category: BenefitCategorySchema,
+  title: import_zod15.z.string(),
+  merchant: import_zod15.z.string().nullable(),
+  rules: BenefitRulesSchema,
+  hasPendingRevision: import_zod15.z.boolean(),
+  lastVerifiedAt: import_zod15.z.string().nullable()
+  // ISO
+});
+var AdminBenefitListSchema = import_zod15.z.object({
+  benefits: import_zod15.z.array(AdminBenefitListItemSchema)
+});
+var AdminBenefitRevisionSchema = import_zod15.z.object({
+  id: import_zod15.z.string(),
+  baseVersion: import_zod15.z.number().int(),
+  category: BenefitCategorySchema,
+  title: import_zod15.z.string(),
+  merchant: import_zod15.z.string().nullable(),
+  rules: BenefitRulesSchema,
+  evidence: BenefitEvidenceSchema,
+  actor: import_zod15.z.string(),
+  createdAt: import_zod15.z.string(),
+  // ISO
+  // Top-level fields that differ from the current snapshot; rules sub-keys as "rules.<key>".
+  changedFields: import_zod15.z.array(import_zod15.z.string())
+});
+var AdminBenefitDetailSchema = AdminBenefitListItemSchema.extend({
+  evidence: BenefitEvidenceSchema,
+  protectedFields: import_zod15.z.array(import_zod15.z.string()),
+  version: import_zod15.z.number().int(),
+  pendingRevision: AdminBenefitRevisionSchema.nullable()
+});
+var AdminBenefitActionSchema = import_zod15.z.discriminatedUnion("action", [
+  import_zod15.z.object({
+    action: import_zod15.z.literal("approve"),
+    reason: import_zod15.z.string().max(500).optional()
+  }),
+  import_zod15.z.object({ action: import_zod15.z.literal("reject"), reason: import_zod15.z.string().min(1).max(500) }),
+  import_zod15.z.object({ action: import_zod15.z.literal("reverify") })
+]);
+var AdminBenefitActionResultSchema = import_zod15.z.object({
+  benefitId: import_zod15.z.string(),
+  lifecycle: BenefitLifecycleSchema,
+  version: import_zod15.z.number().int()
+});
+var AdminSourceSchema = import_zod15.z.object({
+  sourceId: import_zod15.z.string(),
+  providerSlug: import_zod15.z.string(),
+  url: import_zod15.z.string(),
+  status: import_zod15.z.string(),
+  coverage: import_zod15.z.string(),
+  note: import_zod15.z.string().nullable(),
+  enabled: import_zod15.z.boolean(),
+  // effective (catalog default + DB override)
+  autoPublish: import_zod15.z.boolean(),
+  lastRun: import_zod15.z.object({
+    outcome: import_zod15.z.enum(["ok", "partial", "blocked", "failed"]),
+    complete: import_zod15.z.boolean(),
+    detected: import_zod15.z.number().int(),
+    valid: import_zod15.z.number().int(),
+    rejected: import_zod15.z.number().int(),
+    diagnostics: import_zod15.z.array(import_zod15.z.string()),
+    startedAt: import_zod15.z.string()
+    // ISO
+  }).nullable()
+});
+var AdminSourceListSchema = import_zod15.z.object({
+  sources: import_zod15.z.array(AdminSourceSchema)
+});
+var AdminSourcePolicyPatchSchema = import_zod15.z.object({
+  enabled: import_zod15.z.boolean().optional(),
+  autoPublish: import_zod15.z.boolean().optional()
+}).refine(
+  (p) => p.enabled !== void 0 || p.autoPublish !== void 0,
+  "Nada para cambiar"
+);
+
+// src/benefits-catalog.schema.ts
+var import_zod16 = require("zod");
+var CATALOG_CATEGORIES = [
+  "supermercados",
+  "gastronomia",
+  "indumentaria",
+  "hogar",
+  "electronica",
+  "salud-belleza",
+  "viajes",
+  "transporte",
+  "combustible-autos",
+  "entretenimiento",
+  "ninos-libreria",
+  "mascotas-servicios",
+  "otros"
+];
+var CatalogCategorySchema = import_zod16.z.enum(CATALOG_CATEGORIES);
+var CATALOG_CATEGORY_LABELS = {
+  supermercados: "Supermercados",
+  gastronomia: "Gastronom\xEDa",
+  indumentaria: "Indumentaria y accesorios",
+  hogar: "Hogar",
+  electronica: "Electr\xF3nica",
+  "salud-belleza": "Salud y belleza",
+  viajes: "Viajes",
+  transporte: "Transporte",
+  "combustible-autos": "Combustible y autos",
+  entretenimiento: "Entretenimiento",
+  "ninos-libreria": "Ni\xF1os, juguetes y librer\xEDa",
+  "mascotas-servicios": "Mascotas y servicios",
+  otros: "Otros"
+};
+var isoDay2 = import_zod16.z.iso.date();
+var CampaignOfferSchema = import_zod16.z.discriminatedUnion("kind", [
+  import_zod16.z.object({
+    kind: import_zod16.z.literal("percent"),
+    percentageBps: import_zod16.z.number().int().min(1).max(1e4),
+    // Galicia says "ahorro" without telling discount from cashback.
+    mode: import_zod16.z.enum(["discount", "cashback", "unspecified"])
+  }).strict(),
+  import_zod16.z.object({
+    kind: import_zod16.z.literal("installments"),
+    count: import_zod16.z.number().int().min(2).max(60),
+    upTo: import_zod16.z.boolean()
+    // "hasta N cuotas"
+  }).strict()
+]);
+var CampaignTermsSchema = import_zod16.z.object({
+  offers: import_zod16.z.array(CampaignOfferSchema).min(1).max(4),
+  eligibility: RequirementSchema,
+  // incomplete = some requirement could not be read from the source; never shown as eligible.
+  eligibilityCompleteness: import_zod16.z.enum(["complete", "incomplete"]),
+  unresolved: import_zod16.z.array(import_zod16.z.string().min(1)).max(10),
+  capState: import_zod16.z.enum(["known", "none", "unknown"]),
+  caps: import_zod16.z.array(BenefitCapSchema).max(5),
+  minimumSpendMinor: import_zod16.z.number().int().nonnegative().nullable(),
+  // null = unknown, 0 = none
+  validity: import_zod16.z.object({
+    from: isoDay2.nullable(),
+    to: isoDay2.nullable(),
+    // inclusive, Argentina; null = unknown end
+    weekdays: import_zod16.z.array(import_zod16.z.number().int().min(0).max(6)).min(1).nullable()
+    // null = every day
+  }).strict(),
+  channels: import_zod16.z.array(import_zod16.z.string().min(1)).max(10),
+  // e.g. modo, qr, nfc, online, instore
+  where: import_zod16.z.string().max(500).nullable(),
+  // "Consultá los locales adheridos"
+  legalText: import_zod16.z.string().max(2e4).nullable(),
+  warnings: import_zod16.z.array(import_zod16.z.string().min(1)).max(10)
+}).strict().superRefine((t, ctx) => {
+  if (t.capState === "known" && !t.caps.length)
+    ctx.addIssue({ code: "custom", message: "capState known requiere caps" });
+  if (t.capState !== "known" && t.caps.length)
+    ctx.addIssue({ code: "custom", message: "caps s\xF3lo con capState known" });
+  if (t.validity.from && t.validity.to && t.validity.from > t.validity.to)
+    ctx.addIssue({ code: "custom", message: "vigencia invertida" });
+});
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  AdminBenefitActionResultSchema,
+  AdminBenefitActionSchema,
+  AdminBenefitDetailSchema,
+  AdminBenefitListItemSchema,
+  AdminBenefitListQuerySchema,
+  AdminBenefitListSchema,
+  AdminBenefitRevisionSchema,
+  AdminSourceListSchema,
+  AdminSourcePolicyPatchSchema,
+  AdminSourceSchema,
   AllocationChangeConfirmationSchema,
   AllocationChangeContextSchema,
   AllocationChangeContextStateSchema,
@@ -1413,6 +1616,8 @@ var BenefitPreferencesSchema = import_zod14.z.object({
   BenefitCapSchema,
   BenefitCatalogResponseSchema,
   BenefitCategorySchema,
+  BenefitEvidenceSchema,
+  BenefitLifecycleSchema,
   BenefitMatchSchema,
   BenefitPreferencesSchema,
   BenefitProfileFactsSchema,
@@ -1421,8 +1626,13 @@ var BenefitPreferencesSchema = import_zod14.z.object({
   CAP_SCOPES,
   CARD_NETWORKS,
   CARD_TYPES,
+  CATALOG_CATEGORIES,
+  CATALOG_CATEGORY_LABELS,
+  CampaignOfferSchema,
+  CampaignTermsSchema,
   CardNetworkSchema,
   CardSelectorSchema,
+  CatalogCategorySchema,
   ConfirmAllocationChangeWireSchema,
   ConfirmGoalCompletionWireSchema,
   ConfirmGoalCreationWireSchema,

@@ -22,6 +22,7 @@
     "check-types": "tsc --noEmit",
     "benefits:verify": "tsx --env-file=.env src/benefits/verify.script.ts",
     "benefits:review": "tsx --env-file=.env src/benefits/review.script.ts",
+    "benefits:ingest": "tsx --env-file=.env src/benefits/ingest/ingest.script.ts",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config drizzle.config.ts",

@@ -1,0 +1,132 @@
+{
+  "banks": [
+    {
+      "id": "0330e59b-b6e3-43eb-9083-a88fcc61e845",
+      "name": "Banco Nación"
+    },
+    {
+      "id": "88d8705e-2dda-46f9-8411-bb4916af858e",
+      "name": "Galicia"
+    },
+    {
+      "id": "9146b116-c53b-4cb3-ad11-7731c78f613a",
+      "name": "NaranjaX"
+    },
+    {
+      "id": "049ad22b-c0f0-4733-be35-e31256801ce8",
+      "name": "BBVA"
+    },
+    {
+      "id": "167504f6-caaf-4ead-b65b-6e6695ae6209",
+      "name": "Santander"
+    },
+    {
+      "id": "6a089c91-a7d3-4199-a578-2132a3733f69",
+      "name": "Macro"
+    },
+    {
+      "id": "bcfcac03-6f79-4995-bfab-7b8916b0747a",
+      "name": "ICBC"
+    },
+    {
+      "id": "b59fbc01-420f-4d88-8d53-be17029bc4ba",
+      "name": "Credicoop"
+    },
+    {
+      "id": "2313b643-1a79-4312-a213-98cd9a3942b1",
+      "name": "Ciudad"
+    },
+    {
+      "id": "54fdfe50-7b7e-4316-bf88-97923d5a8a8d",
+      "name": "Supervielle"
+    },
+    {
+      "id": "d58d01e9-9411-4f6f-980f-fd469bcef30d",
+      "name": "Banco Santa Fe"
+    },
+    {
+      "id": "96d00eb6-7d82-4d41-ae31-4e76da979cf9",
+      "name": "BANCOR"
+    },
+    {
+      "id": "467504f6-caaf-4ead-b65b-1e6695ae6202",
+      "name": "Patagonia"
+    },
+    {
+      "id": "b164059a-b71a-11ea-b3de-0242ac130004",
+      "name": "Hipotecario"
+    },
+    {
+      "id": "521bea00-ec3a-49ab-a019-6ae0bddf57c3",
+      "name": "Banco Entre Rios"
+    },
+    {
+      "id": "4ae6a213-2991-4c7a-820f-5be7646cd513",
+      "name": "Banco Corrientes"
+    },
+    {
+      "id": "661d0b0f-556f-4e7b-9c79-823e1cd901a1",
+      "name": "Buepp"
+    },
+    {
+      "id": "ce8aabb1-f663-4832-82ec-de9b5b572aa1",
+      "name": "Comafi"
+    },
+    {
+      "id": "888318e4-0537-457c-9db2-767dbc2f6bd3",
+      "name": "Banco Santa Cruz"
+    },
+    {
+      "id": "74f9a732-f38f-4e2e-8263-b51e114ce1f3",
+      "name": "Banco San Juan"
+    },
+    {
+      "id": "6f3ec9ee-e522-4173-bc42-2066873071d2",
+      "name": "Banco Bica"
+    },
+    {
+      "id": "f3f5910c-013f-47f7-819e-3d802cf3f7b7",
+      "name": "YOY"
+    },
+    {
+      "id": "0d5e249d-a5c7-4210-9f88-9bb04ce1453e",
+      "name": "BPN"
+    },
+    {
+      "id": "29e77dfe-9687-4ad3-94e4-49262eeadda7",
+      "name": "Banco Piano"
+    },
+    {
+      "id": "de724a57-e527-43aa-b672-481b9ee5b053",
+      "name": "Banco Dino"
+    },
+    {
+      "id": "ad400e13-f76a-4877-a01d-1819d16146e9",
+      "name": "Banco Columbia"
+    },
+    {
+      "id": "5d41169c-5ffc-44cd-9217-c716a6d93e12",
+      "name": "Banco del Chubut"
+    },
+    {
+      "id": "55d67acc-9729-491f-9fdb-867477a79738",
+      "name": "Banco Santiago"
+    },
+    {
+      "id": "3d836cb4-656f-425a-b8c6-0be28454bdf9",
+      "name": "IUDÚ"
+    },
+    {
+      "id": "24c3f23c-0034-42fd-9946-cafe2dbcdf25",
+      "name": "Banco Coinag"
+    },
+    {
+      "id": "d98319c0-c1eb-44c3-a62f-bc6b814abfa7",
+      "name": "Banco Roela"
+    },
+    {
+      "id": "3c602da4-8c5f-4419-8450-f979354f6e16",
+      "name": "Prex"
+    }
+  ]
+}

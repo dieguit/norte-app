@@ -88,6 +88,7 @@ export const PROVIDER_FACT_KEYS = [
   "salaryAccount",
   "plan",
   "loyaltyLevel",
+  "tier",
 ] as const;
 
 export type Requirement =
@@ -169,6 +170,7 @@ export const ProviderFactsSchema = z
     salaryAccount: z.boolean().optional(),
     plan: slug.optional(),
     loyaltyLevel: slug.optional(),
+    tier: slug.optional(),
   })
   .strict();
 export type ProviderFacts = z.infer<typeof ProviderFactsSchema>;
