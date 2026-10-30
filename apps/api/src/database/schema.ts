@@ -27,9 +27,20 @@ import {
   notificationSettings,
   notifications,
 } from '../notifications/notifications.schema';
-import { benefitUserPreferences, benefits } from '../benefits/benefits.schema';
+import {
+  benefitUserPreferences,
+  benefits,
+  benefitRevisions,
+  benefitSources,
+  benefitSourceRuns,
+  benefitSourcePolicies,
+} from '../benefits/benefits.schema';
 
 export const schema = {
+  benefitRevisions,
+  benefitSources,
+  benefitSourceRuns,
+  benefitSourcePolicies,
   onboardingDrafts,
   financialProfiles,
   incomes,
@@ -59,6 +70,10 @@ export const schema = {
 
 export type Schema = typeof schema;
 export {
+  benefitRevisions,
+  benefitSources,
+  benefitSourceRuns,
+  benefitSourcePolicies,
   allocationPlanEntries,
   allocationPlanSnapshots,
   expenses,

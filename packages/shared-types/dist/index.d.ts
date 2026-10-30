@@ -10903,6 +10903,11 @@ declare const BenefitCatalogResponseSchema: z.ZodObject<{
             wallet: "wallet";
             membership: "membership";
         }>;
+        coverage: z.ZodEnum<{
+            active: "active";
+            pending: "pending";
+            partial: "partial";
+        }>;
         instruments: z.ZodArray<z.ZodObject<{
             slug: z.ZodString;
             label: z.ZodString;
@@ -10919,6 +10924,15 @@ declare const BenefitCatalogResponseSchema: z.ZodObject<{
                 prepaid: "prepaid";
             }>;
             tier: z.ZodNullable<z.ZodString>;
+            issuerProviderSlug: z.ZodNullable<z.ZodString>;
+            segment: z.ZodNullable<z.ZodString>;
+            productLevel: z.ZodNullable<z.ZodString>;
+            usage: z.ZodNullable<z.ZodEnum<{
+                wallet_access: "wallet_access";
+                account_access: "account_access";
+                subscription: "subscription";
+                loyalty: "loyalty";
+            }>>;
         }, z.core.$strip>>;
     }, z.core.$strip>>;
     categories: z.ZodArray<z.ZodObject<{
@@ -10938,6 +10952,22 @@ declare const BenefitCatalogResponseSchema: z.ZodObject<{
 }, z.core.$strip>;
 type BenefitCatalogResponse = z.infer<typeof BenefitCatalogResponseSchema>;
 declare const UpdateBenefitPreferencesSchema: z.ZodObject<{
+    instrumentFacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        segment: z.ZodOptional<z.ZodString>;
+        productLevel: z.ZodOptional<z.ZodString>;
+        issuerCountry: z.ZodOptional<z.ZodString>;
+        membershipStatus: z.ZodOptional<z.ZodEnum<{
+            unknown: "unknown";
+            active: "active";
+            inactive: "inactive";
+        }>>;
+        membershipValidUntil: z.ZodOptional<z.ZodISODate>;
+    }, z.core.$strict>>>;
+    providerFacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        salaryAccount: z.ZodOptional<z.ZodBoolean>;
+        plan: z.ZodOptional<z.ZodString>;
+        loyaltyLevel: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
     instrumentSlugs: z.ZodArray<z.ZodString>;
     categories: z.ZodArray<z.ZodEnum<{
         supermercado: "supermercado";
@@ -10966,6 +10996,22 @@ declare const BenefitPreferencesSchema: z.ZodObject<{
         otros: "otros";
     }>>;
     enabled: z.ZodBoolean;
+    instrumentFacts: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
+        segment: z.ZodOptional<z.ZodString>;
+        productLevel: z.ZodOptional<z.ZodString>;
+        issuerCountry: z.ZodOptional<z.ZodString>;
+        membershipStatus: z.ZodOptional<z.ZodEnum<{
+            unknown: "unknown";
+            active: "active";
+            inactive: "inactive";
+        }>>;
+        membershipValidUntil: z.ZodOptional<z.ZodISODate>;
+    }, z.core.$strict>>>;
+    providerFacts: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
+        salaryAccount: z.ZodOptional<z.ZodBoolean>;
+        plan: z.ZodOptional<z.ZodString>;
+        loyaltyLevel: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
 }, z.core.$strip>;
 type BenefitPreferences = z.infer<typeof BenefitPreferencesSchema>;
 

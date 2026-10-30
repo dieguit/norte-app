@@ -176,6 +176,13 @@
       "when": 1792799172853,
       "tag": "0024_benefits",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793322835197,
+      "tag": "0025_benefit_rules",
+      "breakpoints": true
     }
   ]
 }

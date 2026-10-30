@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { arrayOverlaps, inArray } from 'drizzle-orm';
+import type { BenefitRules } from '@repo/shared-types';
+import { eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import {
   benefits,
   benefitUserPreferences,
@@ -17,141 +18,165 @@ const safe =
   new URL(databaseUrl).pathname.replace(/^\//, '') === 'norte_test';
 if (databaseUrl && !safe)
   throw new Error('Benefits matching test only permits norte_test');
-const describeWhenSafe = safe ? describe : describe.skip;
 
-describeWhenSafe('BenefitsService matching', () => {
-  const pool = new Pool({ connectionString: databaseUrl });
-  const db = drizzle(pool, { schema });
-  const notifications = new NotificationsService(db);
-  const service = new BenefitsService(db, notifications);
+(safe ? describe : describe.skip)(
+  'BenefitsService published-rule matching',
+  () => {
+    const pool = new Pool({ connectionString: databaseUrl });
+    const db = drizzle(pool, { schema });
+    const service = new BenefitsService(db, new NotificationsService(db));
+    const users: string[] = [];
+    const ids: string[] = [];
+    const NOW = new Date('2026-10-22T02:00:00Z'); // Wednesday in Argentina.
+    const rules: BenefitRules = {
+      eligibility: {
+        allOf: [
+          { card: { instrumentSlugs: ['galicia-visa-credito'] } },
+          { membership: { instrumentSlug: 'modo' } },
+        ],
+      },
+      eligibilityCompleteness: 'complete',
+      unresolved: [],
+      offer: { type: 'cashback', percentageBps: 2000 },
+      currency: 'ARS',
+      minimumSpendMinor: 0,
+      capState: 'none',
+      caps: [],
+      validity: {
+        from: '2026-10-01',
+        to: '2026-10-31',
+        weekdays: [3],
+        monthDays: null,
+      },
+      channels: { allowed: ['modo'], excluded: [] },
+      requiredActions: [],
+      stackable: 'unknown',
+      recurrence: 'campaign',
+    };
 
-  const TEST_SLUGS = ['galicia-visa-credito', 'modo'];
-  let testUserIds: string[] = [];
-
-  const cleanup = async () => {
-    await db
-      .delete(benefits)
-      .where(arrayOverlaps(benefits.instrumentSlugs, TEST_SLUGS));
-    if (testUserIds.length > 0) {
-      await db
-        .delete(benefitUserPreferences)
-        .where(inArray(benefitUserPreferences.userId, testUserIds));
-      testUserIds = [];
-    }
-  };
-
-  beforeEach(cleanup);
-
-  afterAll(async () => {
-    await cleanup();
-    await pool.end();
-  });
-
-  const NOW = new Date('2026-10-22T02:00:00Z'); // 2026-10-21 23:00 in AR, a Wednesday (3); UTC date is already Thursday
-  const row = (
-    slug: string,
-    over: Partial<typeof benefits.$inferInsert> = {},
-  ) => ({
-    providerSlug: 'test',
-    sourceUrl: 'https://s.test',
-    fingerprint: randomUUID(),
-    title: 't',
-    merchant: 'Coto',
-    category: 'supermercado',
-    kind: 'discount',
-    value: 20,
-    instrumentSlugs: [slug],
-    firstSeenAt: NOW,
-    lastSeenAt: NOW,
-    ...over,
-  });
-
-  it('matches by instrument, category, AR weekday, validity and freshness', async () => {
-    const slug = 'galicia-visa-credito';
-    const u = `user_${randomUUID()}`;
-    testUserIds.push(u);
-    await db.insert(benefitUserPreferences).values({
-      userId: u,
-      instrumentSlugs: [slug, 'removed-from-catalog'],
-      categories: ['supermercado', 'cine'],
+    afterAll(async () => {
+      if (ids.length)
+        await db.delete(benefits).where(inArray(benefits.id, ids));
+      if (users.length)
+        await db
+          .delete(benefitUserPreferences)
+          .where(inArray(benefitUserPreferences.userId, users));
+      await pool.end();
     });
-    await db.insert(benefits).values([
-      row(slug, { merchant: 'Wednesday', weekdays: [3] }),
-      row(slug, {
-        merchant: 'Everyday',
-        weekdays: null,
-        kind: 'nxm',
-        value: 2,
+
+    async function seed(
+      rulePatch: Partial<BenefitRules> = {},
+      rowPatch: Partial<typeof benefits.$inferInsert> = {},
+    ) {
+      const id = randomUUID();
+      ids.push(id);
+      await db.insert(benefits).values({
+        id,
+        publisherProviderSlug: 'galicia',
+        identityKey: `test:${id}`,
+        origin: 'harvest',
+        lifecycle: 'published',
         category: 'cine',
-      }),
-      row(slug, { merchant: 'Thursday', weekdays: [4] }),
-      row(slug, { merchant: 'OtherCategory', category: 'viajes' }),
-      row('modo', { merchant: 'OtherInstrument' }),
-      row(slug, { merchant: 'Expired', validTo: '2026-10-20' }),
-      row(slug, { merchant: 'NotYet', validFrom: '2026-10-22' }),
-      row(slug, {
-        merchant: 'Stale',
-        lastSeenAt: new Date('2026-10-18T00:00:00Z'),
-      }),
-    ]);
-    const matched = await service.findMatching(u, NOW);
-    expect(matched.map((m) => m.merchant)).toEqual(['Everyday', 'Wednesday']);
-    expect(matched[0].instrumentLabel).toBe('Galicia Visa crédito');
-  });
-
-  it('does not match when user holds a removed slug (not in catalog) even if benefit is tagged with it', async () => {
-    const removedSlug = 'removed-slug';
-    const u = `user_${randomUUID()}`;
-    testUserIds.push(u);
-    await db.insert(benefitUserPreferences).values({
-      userId: u,
-      instrumentSlugs: [removedSlug],
-      categories: ['supermercado'],
-    });
-    await db.insert(benefits).values([
-      row(removedSlug, {
-        merchant: 'RemovedInstrumentPromo',
-        category: 'supermercado',
-        weekdays: null,
-      }),
-    ]);
-    const matched = await service.findMatching(u, NOW);
-    expect(matched).toEqual([]);
-    await db
-      .delete(benefits)
-      .where(arrayOverlaps(benefits.instrumentSlugs, [removedSlug]));
-  });
-
-  it('returns nothing without preferences and buildDigest returns null', async () => {
-    const u = `user_${randomUUID()}`;
-    testUserIds.push(u);
-    await expect(service.findMatching(u, NOW)).resolves.toEqual([]);
-    await expect(service.buildDigest(u, NOW)).resolves.toBeNull();
-  });
-
-  it('savePreferences stores and enables the digest atomically; rejects unknown slugs', async () => {
-    const u = `user_${randomUUID()}`;
-    testUserIds.push(u);
-    await expect(
-      service.savePreferences(u, {
-        instrumentSlugs: ['nope'],
+        snapshot: {
+          title: 'Test combo',
+          merchant: 'Test Cine',
+          rules: { ...rules, ...rulePatch },
+          evidence: {
+            sourceUrl: 'https://example.com',
+            detailUrl: null,
+            termsUrl: null,
+            quotes: [],
+            fetchedContentHash: 'test',
+          },
+        },
+        contentHash: id,
+        firstSeenAt: NOW,
+        lastSeenAt: NOW,
+        lastVerifiedAt: NOW,
+        ...rowPatch,
+      });
+      return id;
+    }
+    async function user(instrumentSlugs = ['galicia-visa-credito', 'modo']) {
+      const userId = `benefits_test_${randomUUID()}`;
+      users.push(userId);
+      await db.insert(benefitUserPreferences).values({
+        userId,
+        instrumentSlugs,
         categories: ['cine'],
-      }),
-    ).rejects.toThrow('nope');
-    await expect(service.getPreferences(u)).resolves.toEqual({
-      instrumentSlugs: [],
-      categories: [],
-      enabled: false,
+        declaredAt: Object.fromEntries(
+          instrumentSlugs.map((slug) => [slug, NOW.toISOString()]),
+        ),
+      });
+      return userId;
+    }
+
+    it('requires both instruments and published rules; digest uses the same evaluator', async () => {
+      const id = await seed();
+      const draft = await seed({}, { lifecycle: 'needs_review' });
+      const full = await user(['galicia-visa-credito', 'modo', 'removed-slug']);
+      const matches = await service.findMatching(full, NOW);
+      expect(matches.find((m) => m.benefit.id === id)).toMatchObject({
+        match: { eligibility: 'eligible', availability: 'available' },
+        instrumentLabels: ['Galicia Visa crédito', 'MODO'],
+      });
+      expect(matches.some((m) => m.benefit.id === draft)).toBe(false);
+      expect(await service.buildDigest(full, NOW)).toContain(
+        'Galicia Visa crédito + MODO',
+      );
+      const cardOnly = await user(['galicia-visa-credito']);
+      expect(
+        (await service.findMatching(cardOnly, NOW)).some(
+          (m) => m.benefit.id === id,
+        ),
+      ).toBe(false);
     });
-    await expect(
-      service.savePreferences(u, {
-        instrumentSlugs: ['modo', 'modo'],
-        categories: ['cine'],
-      }),
-    ).resolves.toEqual({
-      instrumentSlugs: ['modo'],
-      categories: ['cine'],
-      enabled: true,
+
+    it('returns missing facts without guaranteeing the discount', async () => {
+      const id = await seed({
+        eligibility: {
+          providerFact: {
+            providerSlug: 'macro',
+            key: 'salaryAccount',
+            values: [true],
+          },
+        },
+      });
+      const u = await user();
+      const match = (await service.findMatching(u, NOW)).find(
+        (m) => m.benefit.id === id,
+      );
+      expect(match?.match.eligibility).toBe('needs_information');
+      expect(match?.match.missingFacts.length).toBeGreaterThan(0);
     });
-  });
-});
+
+    it('filters ongoing benefits after their first day', async () => {
+      const id = await seed({
+        recurrence: 'ongoing',
+        offer: { type: 'other', description: 'Test ongoing' },
+      });
+      const u = await user();
+      expect(
+        (await service.findMatching(u, NOW)).some((m) => m.benefit.id === id),
+      ).toBe(true);
+      expect(await service.buildDigest(u, NOW)).toContain('Test ongoing');
+      await db
+        .update(benefitUserPreferences)
+        .set({
+          declaredAt: {
+            modo: '2026-10-20T00:00:00Z',
+            'galicia-visa-credito': '2026-10-20T00:00:00Z',
+          },
+        })
+        .where(eq(benefitUserPreferences.userId, u));
+      expect((await service.buildDigest(u, NOW)) ?? '').not.toContain(
+        'Test ongoing',
+      );
+    });
+
+    it('returns nothing without preferences', async () => {
+      expect(await service.findMatching(randomUUID(), NOW)).toEqual([]);
+      expect(await service.buildDigest(randomUUID(), NOW)).toBeNull();
+    });
+  },
+);

@@ -126,4 +126,27 @@ describe('BenefitsController', () => {
       categories: ['cine'],
     });
   });
+
+  it('validates facts at the boundary', async () => {
+    const body = {
+      instrumentSlugs: ['modo'],
+      categories: ['cine'],
+      instrumentFacts: { modo: { membershipStatus: 'active' } },
+      providerFacts: { macro: { salaryAccount: true } },
+    };
+    await authed(
+      request(app.getHttpServer()).put('/me/benefits/preferences').send(body),
+    ).expect(200);
+    expect(savePreferences).toHaveBeenCalledWith(USER_ID, body);
+    await authed(
+      request(app.getHttpServer())
+        .put('/me/benefits/preferences')
+        .send({ ...body, providerFacts: { macro: { salaryAccount: 'yes' } } }),
+    ).expect(400);
+    await authed(
+      request(app.getHttpServer())
+        .put('/me/benefits/preferences')
+        .send({ ...body, categories: [] }),
+    ).expect(400);
+  });
 });

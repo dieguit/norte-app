@@ -1176,13 +1176,18 @@ var BenefitCatalogResponseSchema = z14.object({
       slug: z14.string(),
       name: z14.string(),
       kind: z14.enum(PROVIDER_KINDS),
+      coverage: z14.enum(["active", "partial", "pending"]),
       instruments: z14.array(
         z14.object({
           slug: z14.string(),
           label: z14.string(),
           network: z14.enum(CARD_NETWORKS).nullable(),
           type: z14.enum(INSTRUMENT_TYPES),
-          tier: z14.string().nullable()
+          tier: z14.string().nullable(),
+          issuerProviderSlug: z14.string().nullable(),
+          segment: z14.string().nullable(),
+          productLevel: z14.string().nullable(),
+          usage: z14.enum(MEMBERSHIP_USAGES).nullable()
         })
       )
     })
@@ -1192,10 +1197,13 @@ var BenefitCatalogResponseSchema = z14.object({
   )
 });
 var UpdateBenefitPreferencesSchema = z14.object({
+  instrumentFacts: BenefitProfileFactsSchema.shape.instrumentFacts.removeDefault().optional(),
+  providerFacts: BenefitProfileFactsSchema.shape.providerFacts.removeDefault().optional(),
   instrumentSlugs: z14.array(z14.string().min(1)).min(1, "Eleg\xED al menos una tarjeta, cuenta o membres\xEDa.").max(100),
   categories: z14.array(BenefitCategorySchema).min(1, "Eleg\xED al menos una categor\xEDa.")
 });
 var BenefitPreferencesSchema = z14.object({
+  ...BenefitProfileFactsSchema.shape,
   instrumentSlugs: z14.array(z14.string()),
   categories: z14.array(BenefitCategorySchema),
   enabled: z14.boolean()

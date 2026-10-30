@@ -25,14 +25,18 @@ export class BenefitsHarvestCron {
   }
 
   async run(now: Date) {
-    const results = await this.benefits.harvest(
+    const { results, summaries } = await this.benefits.harvestNightly(
       extractWith(this.mastra.getAgent('benefitsExtractor')),
       now,
     );
     for (const r of results) {
-      const line = `${r.provider} ${r.url}: ${r.status}, extracted ${r.extracted}, new ${r.inserted}${r.error ? `, ${r.error}` : ''}`;
-      if (r.status === 'failed') this.logger.error(line);
-      else if (r.extracted === 0)
+      const line = `${r.sourceId}: ${r.outcome}, valid ${r.candidates.length}, rejected ${r.rejected.length}, ${r.diagnostics.join('; ')}, commit ${JSON.stringify(summaries[r.sourceId] ?? null)}`;
+      if (r.outcome === 'failed') this.logger.error(line);
+      else if (
+        r.outcome === 'blocked' ||
+        r.outcome === 'partial' ||
+        r.candidates.length === 0
+      )
         this.logger.warn(`${line} (page may have changed)`);
       else this.logger.log(line);
     }

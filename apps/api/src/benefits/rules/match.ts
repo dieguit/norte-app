@@ -10,6 +10,7 @@ export function evaluateBenefit(
     rules: BenefitRules;
     lifecycle: string;
     lastVerifiedAt: Date | null;
+    excludeAfterMs?: number;
   },
   profile: EligibilityProfile,
   ctx: { now: Date; purchase?: { amountMinor: number } },
@@ -21,7 +22,9 @@ export function evaluateBenefit(
     today,
   );
   const availability = evaluateAvailability(benefit.rules, {
-    ...benefit,
+    lifecycle: benefit.lifecycle,
+    lastVerifiedAt: benefit.lastVerifiedAt,
+    excludeAfterMs: benefit.excludeAfterMs,
     today,
     now: ctx.now,
   });

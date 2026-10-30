@@ -22,7 +22,10 @@ export function BenefitsPage({
   preferences,
 }: {
   catalog: BenefitCatalogResponse;
-  preferences: BenefitPreferences;
+  preferences: Pick<
+    BenefitPreferences,
+    "instrumentSlugs" | "categories" | "enabled"
+  >;
 }) {
   const router = useRouter();
   const [instruments, setInstruments] = useState(preferences.instrumentSlugs);

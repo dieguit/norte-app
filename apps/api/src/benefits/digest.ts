@@ -1,73 +1,73 @@
 import {
   BENEFIT_CATEGORY_LABELS,
-  type BenefitCapPeriod,
-  type BenefitCategory,
-  type BenefitKind,
+  type BenefitCap,
+  type BenefitRules,
 } from '@repo/shared-types';
+import type { MatchedBenefit } from './benefits.types';
 
-export type MatchedBenefit = {
-  title: string;
-  merchant: string | null;
-  category: BenefitCategory;
-  kind: BenefitKind;
-  value: number;
-  maxAmount: number | null;
-  maxAmountPeriod: BenefitCapPeriod | null;
-  conditions: string | null;
-  sourceUrl: string;
-  instrumentLabel: string;
+const money = (minor: number) =>
+  `$${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(minor / 100)}`;
+const periods: Record<BenefitCap['period'], string> = {
+  transaction: 'por compra',
+  day: 'por día',
+  week: 'por semana',
+  month: 'por mes',
+  campaign: 'por campaña',
 };
+const channelLabel = (channel: string) =>
+  ({ modo: 'MODO', 'app-macro': 'App Macro' })[channel] ?? channel;
 
-const KIND_RANK: Record<BenefitKind, number> = {
-  nxm: 0,
-  discount: 1,
-  cashback: 1,
-  installments: 2,
-};
-const PERIOD_SUFFIX: Record<BenefitCapPeriod, string> = {
-  transaction: ' por compra',
-  day: '/día',
-  week: '/semana',
-  month: '/mes',
-};
-const ars = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
-
-export const rankBenefits = <T extends { kind: BenefitKind; value: number }>(
-  rows: T[],
-): T[] =>
-  [...rows].sort(
-    (a, b) => KIND_RANK[a.kind] - KIND_RANK[b.kind] || b.value - a.value,
-  );
-
-function valueLabel({ kind, value }: MatchedBenefit): string {
-  switch (kind) {
+function offerLabel(offer: BenefitRules['offer']): string {
+  switch (offer.type) {
     case 'discount':
-      return `${value}%`;
+      return `${offer.percentageBps / 100}% de descuento`;
     case 'cashback':
-      return `${value}% de reintegro`;
+      return `${offer.percentageBps / 100}% de reintegro`;
     case 'installments':
-      return `${value} cuotas sin interés`;
-    case 'nxm':
-      return `${value}x${value - 1}`;
+      return `${offer.installments} cuotas`;
+    default:
+      return offer.description;
   }
 }
 
-function capLabel({ maxAmount, maxAmountPeriod }: MatchedBenefit): string {
-  if (maxAmount === null) return '';
-  return ` (tope $${ars.format(maxAmount)}${maxAmountPeriod ? PERIOD_SUFFIX[maxAmountPeriod] : ''})`;
+function capLabels(rules: BenefitRules): string[] {
+  if (rules.capState === 'unknown') return ['tope sin confirmar'];
+  if (rules.capState === 'none') return ['sin tope'];
+  return rules.caps.map(
+    (cap) =>
+      `${cap.amountMinor === null ? 'tope sin confirmar' : `tope ${money(cap.amountMinor)}`} ${periods[cap.period]}`,
+  );
 }
 
-function conditionsSuffix({ conditions }: MatchedBenefit): string {
-  if (!conditions) return '';
-  const trimmed = conditions.trim();
-  return trimmed ? ` · ${trimmed}` : '';
+function channelLabels(
+  channels: MatchedBenefit['match']['channels'],
+): string[] {
+  const parts: string[] = [];
+  if (channels.allowed.length)
+    parts.push(`pagando con ${channels.allowed.map(channelLabel).join(' o ')}`);
+  if (channels.excluded.length)
+    parts.push(`excluye ${channels.excluded.map(channelLabel).join(', ')}`);
+  return parts;
+}
+
+function digestLine({
+  benefit,
+  match,
+  instrumentLabels,
+}: MatchedBenefit): string {
+  const { rules } = benefit;
+  const parts = [
+    `${offerLabel(rules.offer)} en ${benefit.merchant ?? BENEFIT_CATEGORY_LABELS[benefit.category]}${instrumentLabels.length ? ` con ${instrumentLabels.join(' + ')}` : ''}`,
+  ];
+  parts.push(...channelLabels(match.channels), ...match.requiredActions);
+  if (rules.minimumSpendMinor !== null && rules.minimumSpendMinor > 0)
+    parts.push(`compra mínima ${money(rules.minimumSpendMinor)}`);
+  parts.push(...capLabels(rules));
+  if (rules.validity.to) parts.push(`hasta ${rules.validity.to}`);
+  return `• ${parts.join(' · ')}`;
 }
 
 export function formatDigest(items: MatchedBenefit[]): string | null {
   if (!items.length) return null;
-  const lines = rankBenefits(items).map(
-    (b) =>
-      `• ${valueLabel(b)} en ${b.merchant ?? BENEFIT_CATEGORY_LABELS[b.category]} con ${b.instrumentLabel}${capLabel(b)}${conditionsSuffix(b)}`,
-  );
-  return ['Beneficios de hoy 🧭', ...lines].join('\n');
+  return ['Beneficios de hoy 🧭', ...items.map(digestLine)].join('\n');
 }

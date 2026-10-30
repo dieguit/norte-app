@@ -302,6 +302,7 @@ export const BenefitCatalogResponseSchema = z.object({
       slug: z.string(),
       name: z.string(),
       kind: z.enum(PROVIDER_KINDS),
+      coverage: z.enum(["active", "partial", "pending"]),
       instruments: z.array(
         z.object({
           slug: z.string(),
@@ -309,6 +310,10 @@ export const BenefitCatalogResponseSchema = z.object({
           network: z.enum(CARD_NETWORKS).nullable(),
           type: z.enum(INSTRUMENT_TYPES),
           tier: z.string().nullable(),
+          issuerProviderSlug: z.string().nullable(),
+          segment: z.string().nullable(),
+          productLevel: z.string().nullable(),
+          usage: z.enum(MEMBERSHIP_USAGES).nullable(),
         }),
       ),
     }),
@@ -322,6 +327,12 @@ export type BenefitCatalogResponse = z.infer<
 >;
 
 export const UpdateBenefitPreferencesSchema = z.object({
+  instrumentFacts: BenefitProfileFactsSchema.shape.instrumentFacts
+    .removeDefault()
+    .optional(),
+  providerFacts: BenefitProfileFactsSchema.shape.providerFacts
+    .removeDefault()
+    .optional(),
   instrumentSlugs: z
     .array(z.string().min(1))
     .min(1, "Elegí al menos una tarjeta, cuenta o membresía.")
@@ -335,6 +346,7 @@ export type UpdateBenefitPreferences = z.infer<
 >;
 
 export const BenefitPreferencesSchema = z.object({
+  ...BenefitProfileFactsSchema.shape,
   instrumentSlugs: z.array(z.string()),
   categories: z.array(BenefitCategorySchema),
   enabled: z.boolean(),

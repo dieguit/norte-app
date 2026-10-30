@@ -1364,13 +1364,18 @@ var BenefitCatalogResponseSchema = import_zod14.z.object({
       slug: import_zod14.z.string(),
       name: import_zod14.z.string(),
       kind: import_zod14.z.enum(PROVIDER_KINDS),
+      coverage: import_zod14.z.enum(["active", "partial", "pending"]),
       instruments: import_zod14.z.array(
         import_zod14.z.object({
           slug: import_zod14.z.string(),
           label: import_zod14.z.string(),
           network: import_zod14.z.enum(CARD_NETWORKS).nullable(),
           type: import_zod14.z.enum(INSTRUMENT_TYPES),
-          tier: import_zod14.z.string().nullable()
+          tier: import_zod14.z.string().nullable(),
+          issuerProviderSlug: import_zod14.z.string().nullable(),
+          segment: import_zod14.z.string().nullable(),
+          productLevel: import_zod14.z.string().nullable(),
+          usage: import_zod14.z.enum(MEMBERSHIP_USAGES).nullable()
         })
       )
     })
@@ -1380,10 +1385,13 @@ var BenefitCatalogResponseSchema = import_zod14.z.object({
   )
 });
 var UpdateBenefitPreferencesSchema = import_zod14.z.object({
+  instrumentFacts: BenefitProfileFactsSchema.shape.instrumentFacts.removeDefault().optional(),
+  providerFacts: BenefitProfileFactsSchema.shape.providerFacts.removeDefault().optional(),
   instrumentSlugs: import_zod14.z.array(import_zod14.z.string().min(1)).min(1, "Eleg\xED al menos una tarjeta, cuenta o membres\xEDa.").max(100),
   categories: import_zod14.z.array(BenefitCategorySchema).min(1, "Eleg\xED al menos una categor\xEDa.")
 });
 var BenefitPreferencesSchema = import_zod14.z.object({
+  ...BenefitProfileFactsSchema.shape,
   instrumentSlugs: import_zod14.z.array(import_zod14.z.string()),
   categories: import_zod14.z.array(BenefitCategorySchema),
   enabled: import_zod14.z.boolean()

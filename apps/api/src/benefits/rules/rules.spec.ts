@@ -31,6 +31,24 @@ const profile = (...instruments: HeldInstrument[]): EligibilityProfile => ({
   instrumentFacts: {},
   providerFacts: {},
 });
+
+it('evaluateBenefit explicitly honors the exclusion TTL override', () => {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const benefit = {
+    id: 'manual',
+    rules: ypf,
+    lifecycle: 'published',
+    lastVerifiedAt: new Date(now.getTime() - 8 * dayMs),
+  };
+  expect(evaluateBenefit(benefit, profile(), { now }).availability).toBe(
+    'unavailable',
+  );
+  expect(
+    evaluateBenefit({ ...benefit, excludeAfterMs: 90 * dayMs }, profile(), {
+      now,
+    }).availability,
+  ).not.toBe('unavailable');
+});
 const match = (rules: BenefitRules, p: EligibilityProfile, clock = now) =>
   evaluateBenefit(
     { id: 'test', rules, lifecycle: 'published', lastVerifiedAt: clock },
