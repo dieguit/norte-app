@@ -182,6 +182,35 @@ describe("campaigns", () => {
 });
 
 describe("campaign detail", () => {
+  it("shows purchase conditions for the campaign and each bank", async () => {
+    const condition = {
+      kind: "coupon" as const,
+      code: "BANCO",
+      instruction: "Ingresalo al pagar",
+      evidence: "fuente",
+    };
+    m.getExplorerCampaign.mockResolvedValue({
+      access: "granted",
+      data: {
+        ...detail,
+        terms: { ...detail.terms!, purchaseConditions: [condition] },
+        banks: detail.banks.map((bank) => ({
+          ...bank,
+          terms: bank.terms && {
+            ...bank.terms,
+            purchaseConditions: [{ ...condition, code: bank.slug }],
+          },
+        })),
+      },
+    } as never);
+    renderAt(`/app/admin/benefits/${detail.id}`);
+    expect(
+      await screen.findByText("Cupón BANCO: Ingresalo al pagar"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Cupón macro: Ingresalo al pagar"),
+    ).toBeInTheDocument();
+  });
   it("shows verification, bank branches, warnings and raw data as text", async () => {
     renderAt(`/app/admin/benefits/${detail.id}`);
 

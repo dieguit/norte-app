@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { searchBenefits } from "@/features/benefits/benefits.functions";
+import { purchaseConditionText } from "@/features/benefits/purchase-condition-format";
 import {
   capText,
   categoryLabel,
@@ -27,9 +28,8 @@ import {
   nextDateText,
   offersText,
   usableWithText,
-  variantText,
 } from "./benefit-format";
-import { ChipButton, Notice } from "./BenefitParts";
+import { ChipButton, Notice, VariantSummary } from "./BenefitParts";
 
 export type ListSearch = Partial<
   Pick<BenefitSearchQuery, "q" | "category" | "bank" | "day">
@@ -46,7 +46,7 @@ const ALL = "all";
 
 function BenefitRow({ benefit }: { benefit: BenefitResult }) {
   const next = nextDateText(benefit.nextDate);
-  const others = benefit.variants.filter((v) => v.id !== benefit.id);
+  const others = benefit.variants;
   return (
     <Link
       to="/app/finances/benefits/$id"
@@ -62,11 +62,24 @@ function BenefitRow({ benefit }: { benefit: BenefitResult }) {
             {offersText(benefit.offers)}
           </span>
         </div>
-        {usableWithText(benefit) && (
+        {benefit.match === "conditional" && (
+          <span className="text-caption font-medium text-accent-brand">
+            Compatible con tus tarjetas · Condicionado
+          </span>
+        )}
+        {benefit.match !== "needs_tier" && usableWithText(benefit) && (
           <span className="text-body-sm text-foreground">
             {usableWithText(benefit)}
           </span>
         )}
+        {benefit.purchaseConditions.map((condition, index) => (
+          <span key={index} className="text-caption text-muted-foreground">
+            {condition.kind === "legal_purchase"
+              ? "Condiciones legales sin interpretar: "
+              : ""}
+            {purchaseConditionText(condition)}
+          </span>
+        ))}
         <span className="text-body-sm text-muted-foreground">
           {[next, daysText(benefit.validity), capText(benefit)]
             .filter(Boolean)
@@ -87,8 +100,11 @@ function BenefitRow({ benefit }: { benefit: BenefitResult }) {
           </span>
         )}
         {others.length > 0 && (
-          <span className="text-caption">
-            También: {others.map(variantText).join(" · ")}
+          <span className="mt-1 flex flex-col gap-2 border-t border-border pt-2">
+            <span className="text-caption font-semibold">Otras opciones</span>
+            {others.map((v) => (
+              <VariantSummary key={v.variantKey} variant={v} />
+            ))}
           </span>
         )}
       </div>
@@ -288,8 +304,8 @@ function NotConfigured() {
         Contanos con qué bancos pagás
       </h2>
       <p className="m-0 text-body text-muted-foreground">
-        Con tus bancos, tarjetas y nivel te mostramos los descuentos que podés
-        usar cada día, con el enlace para verificarlos.
+        Con tus bancos, tarjetas y nivel te mostramos beneficios compatibles con
+        tu perfil, con el enlace para verificar sus condiciones.
       </p>
       <Link
         to="/app/finances/benefits/settings"
@@ -346,8 +362,8 @@ export function BenefitsList({
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
         <p className="m-0 text-body-sm text-muted-foreground">
-          Descuentos que podés usar con tus bancos, según lo que publica cada
-          banco.
+          Beneficios compatibles con tu perfil, según lo que publica cada banco.
+          Revisá las condiciones antes de pagar.
         </p>
         <Link
           to="/app/finances/benefits/settings"

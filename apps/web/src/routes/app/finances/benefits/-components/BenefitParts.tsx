@@ -1,7 +1,64 @@
 import type { ReactNode } from "react";
+import type { BenefitResult } from "@repo/shared-types";
 import { ExternalLink, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { safeHttpUrl } from "./benefit-format";
+import { purchaseConditionText } from "@/features/benefits/purchase-condition-format";
+import {
+  capText,
+  channelsText,
+  daysText,
+  minimumText,
+  nextDateText,
+  safeHttpUrl,
+  usableWithText,
+  variantText,
+} from "./benefit-format";
+
+export function VariantSummary({
+  variant,
+}: {
+  variant: BenefitResult["variants"][number];
+}) {
+  const ways = usableWithText(variant);
+  return (
+    <span className="block text-body-sm text-foreground">
+      <span className="font-semibold">{variantText(variant)}</span>
+      {variant.match === "needs_tier"
+        ? " · Depende de tu nivel"
+        : variant.match === "conditional"
+          ? " · Condicionado"
+          : " · Compatible con tu perfil"}
+      {ways && (
+        <span className="block">
+          {variant.match === "needs_tier"
+            ? "Si tenés el nivel requerido: "
+            : ""}
+          {ways}
+        </span>
+      )}
+      <span className="block text-muted-foreground">
+        {[
+          nextDateText(variant.nextDate),
+          daysText(variant.validity),
+          channelsText(variant.channels),
+          variant.where,
+          capText(variant),
+          minimumText(variant.minimumSpendMinor),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </span>
+      {variant.purchaseConditions.map((condition, i) => (
+        <span key={i} className="block text-muted-foreground">
+          {condition.kind === "legal_purchase"
+            ? "Condiciones legales sin interpretar: "
+            : ""}
+          {purchaseConditionText(condition)}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export function Notice({
   tone = "info",

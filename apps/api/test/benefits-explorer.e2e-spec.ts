@@ -57,6 +57,7 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
     tiers: null,
     rawTierSignal: null,
     terms: {
+      purchaseConditions: [],
       offers: [{ kind: 'percent', percentageBps: 1000, mode: 'discount' }],
       eligibility: { membership: { instrumentSlug: 'modo' } },
       eligibilityCompleteness: 'complete',
@@ -167,11 +168,19 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
       }),
     );
     await db.insert(presence).values(
-      campaignIds.flatMap((id) =>
+      campaignIds.flatMap((id, i) =>
         ['macro', 'galicia'].map((bankSlug) => ({
           campaignId: id,
           bankSlug,
-          terms: listing(id).terms,
+          terms:
+            i === 1
+              ? null
+              : i === 4
+                ? {
+                    ...listing(id).terms!,
+                    validity: { from: null, to: '2000-01-01', weekdays: null },
+                  }
+                : listing(id).terms,
           tiers: {
             bankSlug,
             codes: bankSlug === 'macro' ? ['platinum'] : ['eminent'],
@@ -281,6 +290,100 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
         terms: listing(campaignIds[4]).terms,
       })
       .where(association);
+  });
+
+  it('uses complete unexpired terms on the same filtered bank, not the representative', async () => {
+    const id = campaignIds[1];
+    const get = (query: Record<string, string>) =>
+      request(app.getHttpServer())
+        .get('/admin/benefits/explorer/campaigns')
+        .query({ q: prefix, ...query })
+        .expect(200);
+    const association = (bankSlug: string) =>
+      and(eq(presence.campaignId, id), eq(presence.bankSlug, bankSlug));
+    const incomplete = {
+      ...listing(id).terms!,
+      eligibilityCompleteness: 'incomplete' as const,
+      unresolved: ['unknown bank conditions'],
+    };
+    await db
+      .update(campaigns)
+      .set({ terms: incomplete })
+      .where(eq(campaigns.id, id));
+    await db
+      .update(presence)
+      .set({ terms: incomplete })
+      .where(association('galicia'));
+    await db
+      .update(presence)
+      .set({ terms: listing(id).terms })
+      .where(association('macro'));
+    const has = (response: { body: { items: { id: string }[] } }) =>
+      response.body.items.some((item) => item.id === id);
+    expect(has(await get({ status: 'available' }))).toBe(true);
+    expect(has(await get({ status: 'incomplete' }))).toBe(false);
+    expect(has(await get({ status: 'incomplete', bank: 'galicia' }))).toBe(
+      true,
+    );
+    expect(has(await get({ status: 'incomplete', bank: 'macro' }))).toBe(false);
+    expect(
+      has(
+        await get({ status: 'incomplete', bank: 'galicia', tier: 'eminent' }),
+      ),
+    ).toBe(true);
+    expect(
+      has(
+        await get({ status: 'incomplete', bank: 'galicia', tier: 'platinum' }),
+      ),
+    ).toBe(false);
+    expect(has(await get({ status: 'incomplete', tier: 'eminent' }))).toBe(
+      true,
+    );
+    expect(has(await get({ status: 'incomplete', tier: 'platinum' }))).toBe(
+      false,
+    );
+    expect(has(await get({ status: 'incomplete', bank: 'absent-bank' }))).toBe(
+      false,
+    );
+    expect(has(await get({ status: 'available', bank: 'galicia' }))).toBe(
+      false,
+    );
+    expect(
+      has(await get({ status: 'available', bank: 'macro', tier: 'platinum' })),
+    ).toBe(true);
+    expect(
+      has(await get({ status: 'available', bank: 'macro', tier: 'eminent' })),
+    ).toBe(false);
+    await db
+      .update(presence)
+      .set({
+        terms: {
+          ...listing(id).terms!,
+          validity: { from: null, to: '2000-01-01', weekdays: null },
+        },
+      })
+      .where(association('macro'));
+    expect(has(await get({ status: 'available' }))).toBe(false);
+    expect(has(await get({ status: 'incomplete' }))).toBe(false);
+    await db
+      .update(presence)
+      .set({ terms: listing(id).terms })
+      .where(association('galicia'));
+    expect(has(await get({ status: 'available', bank: 'galicia' }))).toBe(true);
+    expect(has(await get({ status: 'available', bank: 'macro' }))).toBe(false);
+    const detail = await request(app.getHttpServer())
+      .get(`/admin/benefits/explorer/campaigns/${id}`)
+      .expect(200);
+    expect(detail.body.terms.eligibilityCompleteness).toBe('incomplete');
+    expect(
+      detail.body.banks.find((b: { slug: string }) => b.slug === 'galicia')
+        .terms.eligibilityCompleteness,
+    ).toBe('complete');
+    await db.update(campaigns).set({ terms: null }).where(eq(campaigns.id, id));
+    await db
+      .update(presence)
+      .set({ terms: null })
+      .where(eq(presence.campaignId, id));
   });
 
   it('returns detail raw and bank tier codes, hides with actor, and rejects absent IDs', async () => {
@@ -419,25 +522,57 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
   });
   it('lists and updates mappings with observed-only invalidation and null category payloads', async () => {
     const id = campaignIds[0];
-    const invalidBank = and(eq(presence.campaignId, id), eq(presence.bankSlug, 'galicia'));
-    const validBank = and(eq(presence.campaignId, id), eq(presence.bankSlug, 'macro'));
+    const invalidBank = and(
+      eq(presence.campaignId, id),
+      eq(presence.bankSlug, 'galicia'),
+    );
+    const validBank = and(
+      eq(presence.campaignId, id),
+      eq(presence.bankSlug, 'macro'),
+    );
     const run: AdapterRun = {
-      source: 'playdigital', bankSlug: 'galicia', startedAt: now, completedAt: now,
-      outcome: 'partial', complete: false, totalReported: null, rawRowCount: 1,
-      observedExternalIds: [id], listings: [], anomalies: [], error: null,
+      source: 'playdigital',
+      bankSlug: 'galicia',
+      startedAt: now,
+      completedAt: now,
+      outcome: 'partial',
+      complete: false,
+      totalReported: null,
+      rawRowCount: 1,
+      observedExternalIds: [id],
+      listings: [],
+      anomalies: [],
+      error: null,
     };
     runIds.push((await commitRun(db, run, now)).runId);
-    expect((await db.select().from(presence).where(invalidBank))[0]).toMatchObject({ terms: null, snapshot: { rawCategories: [] } });
+    expect(
+      (await db.select().from(presence).where(invalidBank))[0],
+    ).toMatchObject({ terms: null, snapshot: { rawCategories: [] } });
 
     const verify = async (expected: string) => {
-      const result = await request(app.getHttpServer()).get('/admin/benefits/explorer/mappings').expect(200);
-      expect(result.body.items.find((m: { sourceKey: string }) => m.sourceKey === key).affectedCampaigns).toBe(6);
-      await request(app.getHttpServer()).patch('/admin/benefits/explorer/mappings').send({ sourceKey: key, category: 'viajes' }).expect(200);
-      expect((await db.select().from(campaigns).where(eq(campaigns.id, id)))[0].categories).toEqual([expected]);
+      const result = await request(app.getHttpServer())
+        .get('/admin/benefits/explorer/mappings')
+        .expect(200);
+      expect(
+        result.body.items.find(
+          (m: { sourceKey: string }) => m.sourceKey === key,
+        ).affectedCampaigns,
+      ).toBe(6);
+      await request(app.getHttpServer())
+        .patch('/admin/benefits/explorer/mappings')
+        .send({ sourceKey: key, category: 'viajes' })
+        .expect(200);
+      expect(
+        (await db.select().from(campaigns).where(eq(campaigns.id, id)))[0]
+          .categories,
+      ).toEqual([expected]);
     };
     await verify('viajes');
     for (const snapshot of [null, {}, { rawCategories: null }]) {
-      await db.update(presence).set({ snapshot: sql`${JSON.stringify(snapshot)}::jsonb` }).where(invalidBank);
+      await db
+        .update(presence)
+        .set({ snapshot: sql`${JSON.stringify(snapshot)}::jsonb` })
+        .where(invalidBank);
       await verify('viajes');
     }
     await db.update(presence).set({ withdrawnAt: now }).where(validBank);

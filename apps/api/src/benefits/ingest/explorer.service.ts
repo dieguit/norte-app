@@ -101,14 +101,9 @@ function statusFilter(status: ExplorerQuery['status']) {
   const expired = sql`${campaigns.terms}->'validity'->>'to' < ${todayInArgentina().today}`;
   switch (status) {
     case 'available':
-      return and(
-        eq(campaigns.hidden, false),
-        isNull(campaigns.withdrawnAt),
-        sql`${campaigns.terms}->>'eligibilityCompleteness' = 'complete'`,
-        sql`not coalesce(${expired}, false)`,
-      );
+      return and(eq(campaigns.hidden, false), isNull(campaigns.withdrawnAt));
     case 'incomplete':
-      return sql`(${campaigns.terms} is null or ${campaigns.terms}->>'eligibilityCompleteness' <> 'complete')`;
+      return undefined;
     case 'hidden':
       return eq(campaigns.hidden, true);
     case 'withdrawn':
@@ -116,6 +111,23 @@ function statusFilter(status: ExplorerQuery['status']) {
     case 'expired':
       return expired;
   }
+}
+
+function tierFilter(tier: ExplorerQuery['tier']) {
+  if (!tier) return undefined;
+  const tierBanks = Object.entries(BANK_TIERS)
+    .filter(([, tiers]) => tiers.some((candidate) => candidate.code === tier))
+    .map(([bank]) => bank);
+  return and(
+    inArray(presence.bankSlug, tierBanks),
+    or(
+      sql`${presence.tiers}->'codes' @> ${JSON.stringify([tier])}::jsonb`,
+      and(
+        isNull(presence.tiers),
+        sql`${presence.terms}->>'eligibilityCompleteness' = 'complete'`,
+      ),
+    ),
+  );
 }
 
 @Injectable()
@@ -231,35 +243,45 @@ export class BenefitsExplorerService {
     });
   }
 
-  private bankFilter(query: Pick<ExplorerQuery, 'bank' | 'tier'>) {
-    if (!query.bank && !query.tier) return undefined;
-    const tierBanks = Object.entries(BANK_TIERS)
-      .filter(([, tiers]) => tiers.some((tier) => tier.code === query.tier))
-      .map(([bank]) => bank);
-    return exists(
-      this.db
+  private bankFilter(query: Pick<ExplorerQuery, 'bank' | 'tier' | 'status'>) {
+    const bankOrTier = Boolean(query.bank ?? query.tier);
+    if (
+      !bankOrTier &&
+      !['available', 'incomplete'].includes(query.status ?? '')
+    )
+      return undefined;
+    const conditions = [
+      eq(presence.campaignId, campaigns.id),
+      isNull(presence.withdrawnAt),
+      query.status === 'available'
+        ? and(
+            sql`${presence.terms}->>'eligibilityCompleteness' = 'complete'`,
+            sql`(${presence.terms}->'validity'->>'to' is null or ${presence.terms}->'validity'->>'to' >= ${todayInArgentina().today})`,
+          )
+        : undefined,
+      query.bank ? eq(presence.bankSlug, query.bank) : undefined,
+      tierFilter(query.tier),
+    ];
+    const association = this.db
+      .select({ id: presence.campaignId })
+      .from(presence)
+      .where(and(...conditions));
+    if (query.status === 'incomplete') {
+      const complete = this.db
         .select({ id: presence.campaignId })
         .from(presence)
         .where(
           and(
-            eq(presence.campaignId, campaigns.id),
-            isNull(presence.withdrawnAt),
-            query.bank ? eq(presence.bankSlug, query.bank) : undefined,
-            query.tier
-              ? and(
-                  inArray(presence.bankSlug, tierBanks),
-                  or(
-                    sql`${presence.tiers}->'codes' @> ${JSON.stringify([query.tier])}::jsonb`,
-                    and(
-                      isNull(presence.tiers),
-                      sql`${presence.terms}->>'eligibilityCompleteness' = 'complete'`,
-                    ),
-                  ),
-                )
-              : undefined,
+            ...conditions,
+            sql`${presence.terms}->>'eligibilityCompleteness' = 'complete'`,
           ),
-        ),
-    );
+        );
+      return and(
+        bankOrTier ? exists(association) : undefined,
+        sql`not ${exists(complete)}`,
+      );
+    }
+    return exists(association);
   }
 
   async overview() {
@@ -393,7 +415,9 @@ export class BenefitsExplorerService {
       this.db
         .select({
           campaignId: presence.campaignId,
-          rawCategories: sql<string[]>`coalesce(nullif(${presence.snapshot}->'rawCategories', 'null'::jsonb), '[]'::jsonb)`,
+          rawCategories: sql<
+            string[]
+          >`coalesce(nullif(${presence.snapshot}->'rawCategories', 'null'::jsonb), '[]'::jsonb)`,
         })
         .from(presence),
     ]);

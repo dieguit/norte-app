@@ -45,6 +45,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     tiers: null,
     rawTierSignal: null,
     terms: {
+      purchaseConditions: [],
       offers: [{ kind: 'percent', percentageBps: 1000, mode: 'discount' }],
       eligibility: { membership: { instrumentSlug: 'modo' } },
       eligibilityCompleteness: 'complete',
@@ -96,6 +97,45 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     ]);
   });
   afterAll(() => pool.end());
+
+  it('materializes old stored defaults without upgrading incomplete bank terms', async () => {
+    const a = listing();
+    await commit(run([a]));
+    await db.execute(
+      sql`update ${campaigns} set terms = terms - 'purchaseConditions'`,
+    );
+    await db.execute(
+      sql`update ${presence} set terms = terms - 'purchaseConditions'`,
+    );
+    expect(
+      (await listPublishableCampaigns(db, { today: '2026-10-01' }))[0].terms
+        ?.purchaseConditions,
+    ).toEqual([]);
+    const incomplete = {
+      ...a,
+      terms: {
+        ...a.terms!,
+        eligibilityCompleteness: 'incomplete' as const,
+        unresolved: ['unknown conditions'],
+      },
+    };
+    await commit(run([incomplete], 0, 'galicia'));
+    const [row] = await db.select().from(campaigns);
+    expect(row.terms?.purchaseConditions).toEqual([]);
+    expect(row.terms?.eligibilityCompleteness).toBe('incomplete');
+    expect(
+      await listPublishableCampaigns(db, {
+        today: '2026-10-01',
+        bankSlugs: ['macro'],
+      }),
+    ).toHaveLength(1);
+    expect(
+      await listPublishableCampaigns(db, {
+        today: '2026-10-01',
+        bankSlugs: ['galicia'],
+      }),
+    ).toHaveLength(0);
+  });
 
   it('creates, updates, matches source brand ids first and caches detail incrementally', async () => {
     const a = listing();
@@ -196,7 +236,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       '2026-10-01',
     ).result;
 
-  it('retains bank-bound tier branches through withdrawal and reappearance', async () => {
+  it('retains representative terms and authoritative bank snapshots through withdrawal and reappearance', async () => {
     const a = listing(),
       keeper = listing();
     const macro = bankListing(a, 'macro', 'selecta-1');
@@ -212,7 +252,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       )[0].terms!;
     const terms = await current();
     expect(CampaignTermsSchema.safeParse(terms).success).toBe(true);
-    expect(qualifies(terms, 'macro', 'selecta-1', 'masivo')).toBe('yes');
+    expect(qualifies(terms, 'macro', 'selecta-1', 'masivo')).toBe('no');
     expect(qualifies(terms, 'galicia', 'platinum', 'eminent')).toBe('yes');
     expect(qualifies(terms, 'macro', 'platinum', 'eminent')).toBe('no');
     expect(qualifies(terms, 'galicia', 'selecta-1', 'masivo')).toBe('no');
@@ -226,7 +266,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     );
     await commit(run([macro, keeper], 3));
     expect(qualifies(await current(), 'macro', 'selecta-1', 'masivo')).toBe(
-      'yes',
+      'no',
     );
     expect(qualifies(await current(), 'galicia', 'platinum', 'eminent')).toBe(
       'yes',
@@ -244,7 +284,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
           eq(presence.campaignId, campaign.id),
         ),
       );
-    expect(p.terms).toEqual(macro.terms);
+    expect(p.terms).toEqual(CampaignTermsSchema.parse(macro.terms));
     expect(p.tiers).toEqual(macro.tiers);
   });
 
@@ -294,7 +334,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     },
   );
 
-  it('retains bank data but rejects merged eligibility exceeding the existing schema limit', async () => {
+  it('keeps many-bank campaigns publishable without building an oversized eligibility union', async () => {
     const a = listing();
     let result;
     for (let i = 0; i < 18; i++) {
@@ -302,14 +342,20 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       result = await commit(run([bankListing(a, bank, 'base')], 0, bank));
     }
     const [row] = await db.select().from(campaigns);
-    expect(row.terms).toBeNull();
-    expect(row.unpublishableReason).toBe('invalid_combined_terms');
+    expect(row.terms).toEqual(
+      CampaignTermsSchema.parse(bankListing(a, 'test-bank-0', 'base').terms),
+    );
+    expect(CampaignTermsSchema.safeParse(row.terms).success).toBe(true);
+    expect(row.unpublishableReason).toBeNull();
+    expect(
+      await listPublishableCampaigns(db, { today: '2026-10-01' }),
+    ).toHaveLength(1);
     expect(await db.select().from(presence)).toHaveLength(18);
     const [record] = await db
       .select()
       .from(runs)
       .where(eq(runs.id, result!.runId));
-    expect(record.anomalies).toContainEqual(
+    expect(record.anomalies).not.toContainEqual(
       expect.objectContaining({ kind: 'invalid_combined_terms' }),
     );
   });

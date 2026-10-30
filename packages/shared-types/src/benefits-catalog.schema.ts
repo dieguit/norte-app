@@ -57,6 +57,55 @@ export const CampaignOfferSchema = z.discriminatedUnion("kind", [
 ]);
 export type CampaignOffer = z.infer<typeof CampaignOfferSchema>;
 
+const conditionText = z.string().trim().min(1).max(500);
+const purchaseTime = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/);
+export const PurchaseConditionSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("participating_locations"),
+      instruction: conditionText,
+      evidence: conditionText,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("acquirer"),
+      mode: z.enum(["include", "exclude"]),
+      names: z.array(conditionText).min(1).max(20),
+      evidence: conditionText,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("daily_time"),
+      from: purchaseTime,
+      to: purchaseTime,
+      timezone: z.literal("America/Argentina/Buenos_Aires"),
+      evidence: conditionText,
+    })
+    .strict()
+    .refine(
+      (value) => value.from <= value.to,
+      "Overnight purchase windows unsupported",
+    ),
+  z
+    .object({
+      kind: z.literal("coupon"),
+      code: conditionText.nullable(),
+      instruction: conditionText,
+      evidence: conditionText,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("legal_purchase"),
+      text: z.string().trim().min(1).max(2000),
+      evidence: conditionText,
+    })
+    .strict(),
+]);
+export type PurchaseCondition = z.infer<typeof PurchaseConditionSchema>;
+
 export const CampaignTermsSchema = z
   .object({
     offers: z.array(CampaignOfferSchema).min(1).max(4),
@@ -64,6 +113,7 @@ export const CampaignTermsSchema = z
     // incomplete = some requirement could not be read from the source; never shown as eligible.
     eligibilityCompleteness: z.enum(["complete", "incomplete"]),
     unresolved: z.array(z.string().min(1)).max(10),
+    purchaseConditions: z.array(PurchaseConditionSchema).max(20).default([]),
     capState: z.enum(["known", "none", "unknown"]),
     caps: z.array(BenefitCapSchema).max(5),
     minimumSpendMinor: z.number().int().nonnegative().nullable(), // null = unknown, 0 = none

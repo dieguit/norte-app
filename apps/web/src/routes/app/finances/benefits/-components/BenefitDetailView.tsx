@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import type { BenefitBankList, BenefitDetail } from "@repo/shared-types";
+import { purchaseConditionText } from "@/features/benefits/purchase-condition-format";
 import {
   capText,
   categoryLabel,
@@ -13,9 +14,8 @@ import {
   SOURCE_NAMES,
   updatedText,
   usableWithText,
-  variantText,
 } from "./benefit-format";
-import { Notice, VerifyLink } from "./BenefitParts";
+import { Notice, VariantSummary, VerifyLink } from "./BenefitParts";
 
 function Row({
   label,
@@ -43,7 +43,7 @@ export function BenefitDetailView({
 }) {
   const bankName = (slug: string) =>
     banks.find((b) => b.slug === slug)?.name ?? slug;
-  const others = benefit.variants.filter((v) => v.id !== benefit.id);
+  const others = benefit.variants;
   const channels = channelsText(benefit.channels);
   const usable = usableWithText(benefit);
 
@@ -107,7 +107,7 @@ export function BenefitDetailView({
 
       <section aria-labelledby="req-title" className="flex flex-col gap-2">
         <h3 id="req-title" className="m-0 text-heading text-foreground">
-          Qué necesitás
+          Banco, tarjeta y nivel
         </h3>
         <p className="m-0 text-body text-foreground">
           {requirementsText(
@@ -116,15 +116,49 @@ export function BenefitDetailView({
             bankName,
           )}
         </p>
-        {usable && (
+        {usable && benefit.match !== "ineligible" && (
           <p className="m-0 text-body-sm text-accent-brand">
-            {benefit.match === "eligible"
-              ? "Lo podés usar: "
-              : "Si tenés el nivel requerido, lo podrías usar: "}
+            {benefit.match === "needs_tier"
+              ? "Si tenés el nivel requerido, podría ser compatible: "
+              : "Compatible con tu perfil: "}
             {usable.charAt(0).toLowerCase() + usable.slice(1)}
           </p>
         )}
       </section>
+
+      {benefit.purchaseConditions.length > 0 && (
+        <section
+          aria-labelledby="purchase-title"
+          className="flex flex-col gap-2"
+        >
+          <h3 id="purchase-title" className="m-0 text-heading text-foreground">
+            Condiciones de compra
+          </h3>
+          <ul className="m-0 flex flex-col gap-1 pl-5 text-body-sm">
+            {benefit.purchaseConditions
+              .filter((c) => c.kind !== "legal_purchase")
+              .map((c, i) => (
+                <li key={i}>{purchaseConditionText(c)}</li>
+              ))}
+          </ul>
+          {benefit.purchaseConditions.some(
+            (c) => c.kind === "legal_purchase",
+          ) && (
+            <div>
+              <p className="m-0 font-semibold text-body-sm">
+                Condiciones legales sin interpretar
+              </p>
+              {benefit.purchaseConditions
+                .filter((c) => c.kind === "legal_purchase")
+                .map((c, i) => (
+                  <p key={i} className="m-0 whitespace-pre-wrap text-body-sm">
+                    {purchaseConditionText(c)}
+                  </p>
+                ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <dl className="m-0 flex flex-col">
         <Row label="Cuándo">{daysText(benefit.validity)}</Row>
@@ -145,12 +179,12 @@ export function BenefitDetailView({
           className="flex flex-col gap-2"
         >
           <h3 id="variants-title" className="m-0 text-heading text-foreground">
-            Según el nivel
+            Otras opciones
           </h3>
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {others.map((v) => (
-              <li key={v.id} className="text-body-sm text-foreground">
-                {variantText(v)}
+              <li key={v.variantKey} className="border-t border-border py-3">
+                <VariantSummary variant={v} />
               </li>
             ))}
           </ul>

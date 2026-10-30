@@ -84,7 +84,142 @@ const query = (extra: object = {}) => ({
   data: { day: "today", page: 1, pageSize: 20, ...extra },
 });
 
+const bankAlternatives = [
+  {
+    ...jumbo.variants[0],
+    id: jumbo.id,
+    variantKey: "macro",
+    match: "conditional" as const,
+    usableWith: [
+      {
+        bankSlug: "macro",
+        bankName: "Macro",
+        card: { type: "credit" as const, network: "visa" as const },
+      },
+    ],
+    channels: ["online"],
+    minimumSpendMinor: 500000,
+    where: "Tienda online",
+    capState: "known" as const,
+    caps: [
+      { amountMinor: 100000, period: "month" as const, scope: "card" as const },
+    ],
+    purchaseConditions: [
+      {
+        kind: "coupon" as const,
+        code: "MACRO",
+        instruction: "Ingresalo",
+        evidence: "fuente",
+      },
+    ],
+  },
+  {
+    ...jumbo.variants[0],
+    id: jumbo.id,
+    variantKey: "bbva",
+    match: "needs_tier" as const,
+    usableWith: [
+      {
+        bankSlug: "bbva",
+        bankName: "BBVA",
+        card: { type: "debit" as const, network: "visa" as const },
+      },
+    ],
+    channels: ["instore"],
+    minimumSpendMinor: 0,
+    where: "Sucursales",
+    capState: "none" as const,
+    caps: [],
+    purchaseConditions: [
+      {
+        kind: "acquirer" as const,
+        mode: "exclude" as const,
+        names: ["Payway"],
+        evidence: "fuente",
+      },
+    ],
+  },
+];
+
+function expectBankAlternatives(container: HTMLElement) {
+  const macro = within(container).getByText(
+    /Con Macro Visa crédito/,
+  ).parentElement!;
+  const bbva = within(container).getByText(
+    /Si tenés el nivel requerido: Con BBVA Visa débito/,
+  ).parentElement!;
+  expect(macro).toHaveTextContent("Condicionado");
+  expect(macro).toHaveTextContent("Cupón MACRO: Ingresalo");
+  expect(macro).not.toHaveTextContent("No aplica con Payway");
+  expect(bbva).toHaveTextContent("Depende de tu nivel");
+  expect(bbva).toHaveTextContent("No aplica con Payway");
+  expect(bbva).not.toHaveTextContent("Cupón MACRO");
+  expect(
+    within(container).getByText(/Con Macro Visa crédito/),
+  ).toBeInTheDocument();
+  expect(
+    within(container).getByText(
+      /Si tenés el nivel requerido: Con BBVA Visa débito/,
+    ),
+  ).toBeInTheDocument();
+  expect(
+    within(container).getByText(
+      /Online · Tienda online · Tope \$ 1\.000 por mes · Compra mínima \$ 5\.000/,
+    ),
+  ).toBeInTheDocument();
+  expect(
+    within(container).getByText(
+      /En el local · Sucursales · Sin tope · Sin compra mínima/,
+    ),
+  ).toBeInTheDocument();
+  expect(
+    within(container).getByText("Cupón MACRO: Ingresalo"),
+  ).toBeInTheDocument();
+  expect(
+    within(container).getByText("No aplica con Payway."),
+  ).toBeInTheDocument();
+  expect(within(container).getByText(/Condicionado/)).toBeInTheDocument();
+  expect(
+    within(container).getByText(/Depende de tu nivel/),
+  ).toBeInTheDocument();
+}
+
 describe("benefits listing", () => {
+  it("shows same-campaign alternatives with their own bank and terms", async () => {
+    m.searchBenefits.mockResolvedValue({
+      ...searchResult,
+      items: [{ ...jumbo, variants: bankAlternatives }],
+    });
+    renderAt("/app/finances/benefits");
+    expectBankAlternatives(await screen.findByRole("link", { name: /Jumbo/ }));
+  });
+  it("shows conditional compatibility and purchase restrictions", async () => {
+    m.searchBenefits.mockResolvedValue({
+      ...searchResult,
+      items: [
+        {
+          ...coto,
+          match: "conditional",
+          purchaseConditions: [
+            {
+              kind: "acquirer",
+              mode: "exclude",
+              names: ["Mercado Pago"],
+              evidence: "fuente",
+            },
+          ],
+        },
+      ],
+    });
+    renderAt("/app/finances/benefits");
+    const row = await screen.findByRole("link", { name: /Coto/ });
+    expect(
+      within(row).getByText("Compatible con tus tarjetas · Condicionado"),
+    ).toBeInTheDocument();
+    expect(
+      within(row).getByText("No aplica con Mercado Pago."),
+    ).toBeInTheDocument();
+  });
   it("shows today's benefits with honest coverage and filters through the URL", async () => {
     const user = userEvent.setup();
     const router = renderAt("/app/finances/benefits");
@@ -105,14 +240,12 @@ describe("benefits listing", () => {
       within(jumboRow).getByText("20% de ahorro y hasta 6 cuotas sin interés"),
     ).toBeInTheDocument();
     expect(
-      within(jumboRow).getByText(/Tope sin confirmar/),
+      within(jumboRow).getByText("Jueves · hasta 30/11 · Tope sin confirmar"),
     ).toBeInTheDocument();
     expect(
       within(jumboRow).getByText("Con tu nivel podrías tener más"),
     ).toBeInTheDocument();
-    expect(
-      within(jumboRow).getByText("También: 10% de ahorro"),
-    ).toBeInTheDocument();
+    expect(within(jumboRow).getByText("10% de ahorro")).toBeInTheDocument();
     expect(
       screen.getByText("La información de Macro puede estar desactualizada."),
     ).toBeInTheDocument();
@@ -324,6 +457,13 @@ describe("benefit settings", () => {
 });
 
 describe("benefit detail", () => {
+  it("shows same-campaign alternatives without borrowing the representative's terms", async () => {
+    m.getBenefit.mockResolvedValue({ ...detail, variants: bankAlternatives });
+    renderAt(`/app/finances/benefits/${detail.id}`);
+    expectBankAlternatives(
+      await screen.findByRole("region", { name: "Otras opciones" }),
+    );
+  });
   it("explains requirements, variants and how to verify", async () => {
     renderAt(`/app/finances/benefits/${detail.id}`);
 
@@ -340,15 +480,15 @@ describe("benefit detail", () => {
       screen.getByText("Con tu nivel podrías tener más.", { exact: false }),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Según el nivel" })).getByText(
-        "10% de ahorro",
+      within(screen.getByRole("region", { name: "Otras opciones" })).getByText(
+        /10% de ahorro/,
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Tope sin confirmar")).toBeInTheDocument();
     expect(screen.getByText("Mínimo sin confirmar")).toBeInTheDocument();
     expect(screen.queryByText(/Lo podés usar/)).not.toBeInTheDocument();
     expect(
-      screen.getByText(/Si tenés el nivel requerido, lo podrías usar/),
+      screen.getByText(/Si tenés el nivel requerido, podría ser compatible/),
     ).toBeInTheDocument();
 
     const verify = screen.getByRole("region", {
@@ -377,5 +517,78 @@ describe("benefit detail", () => {
     expect(
       screen.queryByRole("link", { name: /Ver en MODO/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("separates profile compatibility from purchase conditions and variant uncertainty", async () => {
+    const conditions = [
+      {
+        kind: "participating_locations" as const,
+        instruction: "Consultá locales",
+        evidence: "fuente",
+      },
+      {
+        kind: "acquirer" as const,
+        mode: "exclude" as const,
+        names: ["Mercado Pago"],
+        evidence: "fuente",
+      },
+      {
+        kind: "daily_time" as const,
+        from: "09:00:00",
+        to: "18:30:00",
+        timezone: "America/Argentina/Buenos_Aires" as const,
+        evidence: "fuente",
+      },
+      {
+        kind: "coupon" as const,
+        code: "AHORRO",
+        instruction: "Ingresalo al pagar",
+        evidence: "fuente",
+      },
+      {
+        kind: "legal_purchase" as const,
+        text: "Sujeto a validación especial",
+        evidence: "fuente",
+      },
+    ];
+    m.getBenefit.mockResolvedValue({
+      ...detail,
+      match: "conditional",
+      purchaseConditions: conditions,
+      variants: [
+        {
+          ...detail.variants[0],
+          match: "needs_tier",
+          purchaseConditions: [conditions[1]],
+        },
+      ],
+    });
+    renderAt(`/app/finances/benefits/${detail.id}`);
+    expect(
+      await screen.findByRole("heading", { name: "Banco, tarjeta y nivel" }),
+    ).toBeInTheDocument();
+    const purchase = screen.getByRole("region", {
+      name: "Condiciones de compra",
+    });
+    expect(
+      within(purchase).getByText("No aplica con Mercado Pago."),
+    ).toBeInTheDocument();
+    expect(
+      within(purchase).getByText(
+        "Horario: 09:00:00 a 18:30:00 (hora de Argentina).",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(purchase).getByText("Cupón AHORRO: Ingresalo al pagar"),
+    ).toBeInTheDocument();
+    expect(
+      within(purchase).getByText("Condiciones legales sin interpretar"),
+    ).toBeInTheDocument();
+    expect(
+      within(purchase).getByText("Sujeto a validación especial"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Otras opciones" }),
+    ).toHaveTextContent("Depende de tu nivel");
   });
 });

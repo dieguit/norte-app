@@ -26,6 +26,7 @@ const galiciaTerms: CampaignTerms = {
   },
   eligibilityCompleteness: "incomplete",
   unresolved: ["Nivel no reconocido: Selecta 2"],
+  purchaseConditions: [],
   capState: "unknown",
   caps: [],
   minimumSpendMinor: null,

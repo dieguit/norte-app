@@ -1,0 +1,193 @@
+{
+  "id": "efbf8985-6694-4235-beeb-657ce71703bd",
+  "name": "20% en La Anónima ",
+  "description": "20% de reintegro en La Anónima ",
+  "type": "cashback",
+  "reward_type": "cash",
+  "scope": "Sistémica",
+  "status": "active",
+  "real_status": "RUNNING",
+  "is_engine_active": false,
+  "created_at": "2026-06-25T20:44:43.741Z",
+  "updated_at": "2026-09-29T17:50:07.128Z",
+  "deleted_at": null,
+  "short_description": "2605-La-Anonima-Supermercados-Landing-Presencial-20off",
+  "publication_description": "20% de reintegro en La Anónima ",
+  "slug": "laanonima-septiembre26",
+  "display_start_date": "2026-04-29T03:00:00.000Z",
+  "display_stop_date": "2026-12-02T02:59:59.999Z",
+  "search_tags": "la anonima,reintegro,presencial,viernes,sabados",
+  "conditions": {
+    "schedule": {
+      "stop_date": "2026-10-31",
+      "start_date": "2026-05-01",
+      "days_of_week": ["friday", "saturday"],
+      "daily_stop_time": "23:59:00",
+      "daily_start_time": "00:00:00"
+    },
+    "acquirers": {
+      "list": ["MERCADOLIBRE"],
+      "segmentation_mode": "by_blacklist"
+    },
+    "payment_flow": {
+      "flows": ["instore"]
+    },
+    "exclusiveness": "all",
+    "payment_methods": {
+      "methods": [
+        {
+          "type": "debit_card",
+          "issuer": "cabal"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "dinners_club"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "maestro"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "master"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "visa"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "american_express"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "cabal"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "dinners_club"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "confiable"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "maestro"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "master"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "visa"
+        }
+      ]
+    },
+    "has_differential_amount": false
+  },
+  "offers": [
+    {
+      "id": "efbf8985-6694-4235-beeb-657ce71703bd",
+      "benefit_id": "efbf8985-6694-4235-beeb-657ce71703bd",
+      "name": ".",
+      "priority": 1,
+      "segmentations": {
+        "whitelist": ["store_cuit"],
+        "categories": [
+          {
+            "category_id": 1,
+            "subcategory_ids": [34, 43]
+          }
+        ]
+      },
+      "requirements": {
+        "banks": {
+          "list": [
+            "0330e59b-b6e3-43eb-9083-a88fcc61e845",
+            "88d8705e-2dda-46f9-8411-bb4916af858e",
+            "049ad22b-c0f0-4733-be35-e31256801ce8",
+            "167504f6-caaf-4ead-b65b-6e6695ae6209",
+            "6a089c91-a7d3-4199-a578-2132a3733f69",
+            "bcfcac03-6f79-4995-bfab-7b8916b0747a",
+            "f3f5910c-013f-47f7-819e-3d802cf3f7b7",
+            "b59fbc01-420f-4d88-8d53-be17029bc4ba",
+            "2313b643-1a79-4312-a213-98cd9a3942b1",
+            "96d00eb6-7d82-4d41-ae31-4e76da979cf9",
+            "54fdfe50-7b7e-4316-bf88-97923d5a8a8d",
+            "d58d01e9-9411-4f6f-980f-fd469bcef30d",
+            "521bea00-ec3a-49ab-a019-6ae0bddf57c3",
+            "888318e4-0537-457c-9db2-767dbc2f6bd3",
+            "74f9a732-f38f-4e2e-8263-b51e114ce1f3",
+            "ce8aabb1-f663-4832-82ec-de9b5b572aa1",
+            "ad400e13-f76a-4877-a01d-1819d16146e9",
+            "661d0b0f-556f-4e7b-9c79-823e1cd901a1"
+          ]
+        },
+        "amount_range": {
+          "min": 50000
+        }
+      },
+      "outcomes": {
+        "cashback": {
+          "amount": 20,
+          "amount_type": "percent",
+          "cashback_mode": "cashback_por_regla"
+        },
+        "financing": {
+          "installments": []
+        }
+      },
+      "limits": {
+        "period_cap": {
+          "reset_by": "month",
+          "aggregate_by": "bank",
+          "amount_by_period": 15000,
+          "amount_of_transactions_by_period": 0
+        },
+        "transaction_cap": {
+          "amount_by_transaction": 0
+        }
+      },
+      "categories": ["1"],
+      "sub_categories": ["34", "43"],
+      "preselected": false,
+      "created_at": "2026-06-25T20:41:01.687Z",
+      "updated_at": "2026-09-29T16:20:44.662Z",
+      "deleted_at": null,
+      "offer_caps": [],
+      "offer_transaction_cap": 0
+    }
+  ],
+  "debit_list": ["cabal", "dinners_club", "maestro", "master", "visa"],
+  "credit_list": [
+    "american_express",
+    "cabal",
+    "dinners_club",
+    "confiable",
+    "maestro",
+    "master",
+    "visa"
+  ],
+  "terms_and_conditions": "<ol class=\"editor-list-ol\"><li value=\"1\" class=\"editor-listitem\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Condiciones generales</strong></b></li></ol><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align: justify; text-indent: 21px;\"><span style=\"white-space: pre-wrap;\">Promoción organizada por Play Digital S.A., CUIT 30-71682943-6, con domicilio en La Pampa 1445, Piso 13, CABA (“</span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">PDSA</strong></b><span style=\"white-space: pre-wrap;\">”). Serán igualmente de aplicación a esta promoción los Términos y Condiciones de la App MODO disponibles en https://www.modo.com.ar/terminos-y-condiciones-app-modo.</span></p><p class=\"editor-paragraph\"><br></p><ol start=\"2\" class=\"editor-list-ol\"><li value=\"2\" class=\"editor-listitem\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Vigencia</strong></b></li></ol><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align: justify; text-indent: 21px;\"><span style=\"white-space: pre-wrap;\">Desde las 00:00&nbsp; horas del día 01 de mayo de 2026 hasta las 23:59 horas del día 31 de octubre de 2026, ambas fechas inclusive o hasta alcanzar la suma de $1.022.359.800 &nbsp;&nbsp;(pesos mil veintidós millones trescientos cincuenta y nueve mil ochocientos) en concepto de reintegros otorgados a los usuarios (lo que ocurra primero).</span></p><ol start=\"3\" class=\"editor-list-ol\"><li value=\"3\" class=\"editor-listitem\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Elegibilidad</strong></b></li></ol><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align: justify; text-indent: 21px;\"><span style=\"white-space: pre-wrap;\">Aplicable a todas las personas humanas que cumplan con la totalidad de los siguientes requisitos:&nbsp;</span></p><ol class=\"editor-list-ol\"><li value=\"1\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">Realicen un pago por un monto mayor o igual a $50.000 (cincuenta mil pesos) los días </span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">VIERNES y SÁBADO </strong></b><span style=\"white-space: pre-wrap;\">en los comercios adheridos (ver listado en www.modo.com.ar/promos) (los “Comercios Adheridos”) a través de la app MODO de Play Digital S.A., o sus integraciones en aplicaciones bancarias habilitadas, según disponibilidad de cada banco (conjuntamente, “MODO”). El pago deberá ser realizado exclusivamente escaneando un Código QR que permita pagar con tarjetas a través de MODO en los comercios adheridos. </span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">La promoción no aplica para compras online.</strong></b></li><li value=\"2\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">Que dicho pago a comercios sea realizado con </span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">tarjetas de crédito, débito o prepagas </strong></b><span style=\"white-space: pre-wrap;\">emitidas en la República Argentina por alguna de las entidades adheridas a esta promoción (ver listado de entidades en el punto 7) (en adelante, “</span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Entidades Adheridas</strong></b><span style=\"white-space: pre-wrap;\">”). </span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">no aplica para pagos con transferencia desde cuenta bancaria;</strong></b><span style=\"white-space: pre-wrap;\"> </span><br><br></li><li value=\"3\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">Que tengan una cuenta abierta en la Entidad Adherida, y que dicha cuenta se encuentre asociada a MODO dentro de los quince días de finalizada la Promoción; y </span><br><br></li><li value=\"4\" class=\"editor-listitem\"><span style=\"white-space: pre-wrap;\">No registren deuda o mora en ningún producto de la Entidad Adherida con la que realice el pago(conjuntamente, el “</span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Participante</strong></b><span style=\"white-space: pre-wrap;\">”). </span><br><br></li><li value=\"5\" class=\"editor-listitem\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Bonificación:&nbsp;</strong></b></li></ol><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align: justify; text-indent: 21px;\"><span style=\"white-space: pre-wrap;\">A los Participantes se les otorgará un 20% (veinte por ciento) de reintegro sobre el monto total bruto del pago realizado en los Comercios Adheridos,&nbsp; con un tope de reintegro de hasta $15.000 (quince mil pesos) por banco por mes (la </span><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">“Bonificación”</strong></b><span style=\"white-space: pre-wrap;\">). La Promoción no aplica en los casos en los que se detecte cualquier actividad realizada por los Participantes a fin de alterar la mecánica y finalidad de la Promoción.&nbsp; PDSA se reserva el derecho a limitar, prohibir la participación o suspender la cuenta de cualquier Participante en caso de presumir la existencia de trampas, engaños, fraude o alteración en la mecánica de participación destinada a obtener beneficios forma ilegítima, alterando el espíritu de la Promoción, sin asumir responsabilidad alguna.</span></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align: justify; text-indent: 21px;\"><span style=\"white-space: pre-wrap;\">La Bonificación podrá ser acumulable con otros descuentos bancarios vigentes. </span><br><br></p><ol start=\"5\" class=\"editor-list-ol\"><li value=\"5\" class=\"editor-listitem\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Plazo y forma de acreditación:&nbsp;</strong></b></li></ol><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-indent: 21px;\"><span style=\"white-space: pre-wrap;\">Dentro de los 30 días luego de ocurrida la transacción.</span></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-indent: 21px;\"><span style=\"white-space: pre-wrap;\">El monto de cada Bonificación será depositado en la cuenta del Participante referida en el punto 3.5.&nbsp;</span></p><ol start=\"6\" class=\"editor-list-ol\"><li value=\"6\" class=\"editor-listitem\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Impuestos. Responsabilidad.&nbsp;</strong></b></li></ol><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align: justify;\"><span style=\"white-space: pre-wrap;\">Todo impuesto y/o gasto aplicable a la Bonificación será a exclusivo cargo de los Participantes. PDSA se reserva el derecho a limitar o prohibir la participación de cualquier persona o usuario en la Bonificación en caso de presumir la existencia de fraude o alteración en la mecánica de participación sin asumir responsabilidad alguna frente a tales personas, usuarios o terceros. PDSA se limita a acreditar la Bonificación respecto de los pagos realizados en los Comercios Adheridos y siempre que se cumplan los requisitos establecidos en estos Términos. Todas las consultas o reclamos por envíos, cancelaciones o responsabilidad de producto deberán ser gestionadas y dirigidas exclusivamente a través del Comercio Adherido. PDSA no se responsabilizará ni otorgará indemnización alguna, contractual y/o extracontractual, bajo ningún concepto que exceda su responsabilidad sobre la Bonificación.&nbsp;</span></p><ol start=\"7\" class=\"editor-list-ol\"><li value=\"7\" class=\"editor-listitem\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Entidades Adheridas</strong></b></li></ol><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Nación&nbsp;</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Santander&nbsp;</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco BBVA</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Galicia</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Santa Fe</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Entre Rios</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco San Juan</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Santa Cruz</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Credicoop</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Supervielle&nbsp;</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Comafi</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Columbia (Sólo en app bancaria)&nbsp;&nbsp;</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco ICBC</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Billetera YOY</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Macro&nbsp;</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Ciudad&nbsp;</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Billetera Buepp</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Banco Bancor&nbsp;</span></p><p class=\"editor-paragraph\"><br></p><ol start=\"8\" class=\"editor-list-ol\"><li value=\"8\" class=\"editor-listitem\"><b><strong class=\"editor-text-bold\" style=\"white-space: pre-wrap;\">Suspensión, Modificaciones, Cancelación.</strong></b></li></ol><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align: justify;\"><span style=\"white-space: pre-wrap;\">PDSA podrá modificar la Vigencia de la Promoción. Cuando circunstancias no imputables a PDSA o no previstas en estos términos y condiciones o que constituyan caso fortuito o fuerza mayor lo justifiquen, PDSA podrá suspender, cancelar o modificar la Promoción.</span></p><p class=\"editor-paragraph\"><br></p>",
+  "terms_and_conditions_url": null,
+  "coupon": null,
+  "card": {
+    "benefit": "20% de reintegro",
+    "validity_place": "La Anónima ",
+    "cashback_cap": "15000",
+    "participating_bank": "Bancos adheridos",
+    "image": "https://assets.mobile.playdigital.com.ar/promotions_dynamics/01ece18d-150f-4674-b14f-193eb1d23765/primary_image.jpg?v=1777572449385",
+    "banner_image": "https://assets.mobile.playdigital.com.ar/promotions_dynamics/images-pack/17c7c703-6609-44b4-959f-1af0b43d5209/landscape_web.jpg?v=1777572598937",
+    "banner_image_portrait": "https://assets.mobile.playdigital.com.ar/promotions_dynamics/publication-card/9527edab-fbd9-42a1-aa2e-fdb20bfbbc92_LaAnonima-20.jpg"
+  },
+  "details": {
+    "name": "La Anónima",
+    "faq": "<p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><b><strong class=\"editor-text-bold\" style=\"white-space:pre-wrap\">¿Cómo puedo acceder al beneficio?</strong></b></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><span style=\"white-space:pre-wrap\">Realizando una compra con tus tarjetas de crédito, débito y prepagas a través de MODO.</span></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><b><strong class=\"editor-text-bold\" style=\"white-space:pre-wrap\">¿Dónde veo el descuento aplicado?</strong></b></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><span style=\"white-space:pre-wrap\">El reintegro lo verás acreditado en la cuenta del banco con el que elegiste comprar.</span></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><b><strong class=\"editor-text-bold\" style=\"white-space:pre-wrap\">Modalidad de uso:</strong></b><span style=\"white-space:pre-wrap\"> Presencial</span></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><b><strong class=\"editor-text-bold\" style=\"white-space:pre-wrap\">Es acumulable con otras promociones ¡Sí!</strong></b></p>",
+    "applicability_description": "",
+    "primary_button": null,
+    "secondary_button": null,
+    "download_button": null
+  }
+}

@@ -71,6 +71,7 @@ export const coto: BenefitResult = {
   nextDate: "2026-10-29",
   channels: ["modo"],
   where: null,
+  purchaseConditions: [],
   requiresModo: true,
   usableWith: [
     {
@@ -105,14 +106,21 @@ export const jumbo: BenefitResult = {
   tierLabels: ["Éminent"],
   variants: [
     {
-      id: "22222222-2222-4222-8222-222222222222",
-      offers: [{ kind: "percent", percentageBps: 2000, mode: "unspecified" }],
-      tierLabels: ["Éminent"],
-    },
-    {
       id: "33333333-3333-4333-8333-333333333333",
+      variantKey: "galicia-general",
       offers: [{ kind: "percent", percentageBps: 1000, mode: "unspecified" }],
       tierLabels: [],
+      match: "eligible",
+      purchaseConditions: [],
+      usableWith: coto.usableWith,
+      channels: ["instore"],
+      minimumSpendMinor: null,
+      where: null,
+      capState: "unknown",
+      caps: [],
+      requiresModo: false,
+      validity: coto.validity,
+      nextDate: coto.nextDate,
     },
   ],
   verifyUrl: "https://www.galicia.ar/personas/buscador-de-promociones",

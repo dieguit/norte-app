@@ -97,13 +97,7 @@ export type BenefitSearchQuery = z.infer<typeof BenefitSearchQuerySchema>;
 
 const isoDay = z.iso.date();
 
-export const BenefitResultSchema = z.object({
-  id: z.string().uuid(),
-  source: z.enum(["galicia", "playdigital"]),
-  brandName: z.string().nullable(),
-  title: z.string(),
-  categories: z.array(CatalogCategorySchema),
-  offers: z.array(CampaignOfferSchema),
+const benefitQualifications = {
   capState: CampaignTermsSchema.shape.capState,
   caps: z.array(BenefitCapSchema),
   minimumSpendMinor: z.number().int().nonnegative().nullable(),
@@ -120,14 +114,29 @@ export const BenefitResultSchema = z.object({
       card: BenefitCardSchema.nullable(),
     }),
   ),
+};
+
+export const BenefitResultSchema = z.object({
+  id: z.string().uuid(),
+  source: z.enum(["galicia", "playdigital"]),
+  brandName: z.string().nullable(),
+  title: z.string(),
+  categories: z.array(CatalogCategorySchema),
+  offers: z.array(CampaignOfferSchema),
+  ...benefitQualifications,
+  purchaseConditions: CampaignTermsSchema.shape.purchaseConditions,
   // needs_tier = eligible only for a tier the user hasn't told us ("No sé").
-  match: z.enum(["eligible", "needs_tier"]),
+  match: z.enum(["eligible", "conditional", "needs_tier"]),
   tierLabels: z.array(z.string()), // tiers this variant requires, bank's wording
   variants: z.array(
     z.object({
       id: z.string().uuid(),
+      variantKey: z.string(),
       offers: z.array(CampaignOfferSchema),
+      ...benefitQualifications,
       tierLabels: z.array(z.string()),
+      match: z.enum(["eligible", "conditional", "needs_tier"]),
+      purchaseConditions: CampaignTermsSchema.shape.purchaseConditions,
     }),
   ),
   verifyUrl: z.string(),
@@ -148,7 +157,7 @@ export const BenefitSearchResultSchema = z.object({
 export type BenefitSearchResult = z.infer<typeof BenefitSearchResultSchema>;
 
 export const BenefitDetailSchema = BenefitResultSchema.extend({
-  match: z.enum(["eligible", "needs_tier", "ineligible"]),
+  match: z.enum(["eligible", "conditional", "needs_tier", "ineligible"]),
   eligibility: RequirementSchema,
   legalText: z.string().nullable(),
   warnings: z.array(z.string()),

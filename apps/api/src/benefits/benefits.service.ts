@@ -27,7 +27,12 @@ import {
   benefitIngestRuns,
 } from './ingest/schema';
 import { BANK_TIERS } from './ingest/tiers';
-import { buildResults, groupResults, rankResults } from './consumer';
+import {
+  buildResults,
+  groupResults,
+  rankResults,
+  variantsFor,
+} from './consumer';
 import { formatDigest } from './digest';
 import { ConfigService } from '@nestjs/config';
 
@@ -258,12 +263,7 @@ export class BenefitsService {
       now,
       true,
     );
-    const item = results.sort(
-      (a, b) =>
-        Number(a.match === 'ineligible') - Number(b.match === 'ineligible') ||
-        Number(a.match === 'needs_tier') - Number(b.match === 'needs_tier') ||
-        rankResults(a, b),
-    )[0];
+    const item = results.sort(rankResults)[0];
     if (!item) throw new NotFoundException('Beneficio no disponible');
     const grouped = groupResults(
       results.filter((result) => result.match !== 'ineligible'),
@@ -280,23 +280,10 @@ export class BenefitsService {
     return {
       ...item,
       usableWith: grouped?.usableWith ?? item.usableWith,
-      variants: [
-        ...new Map(
-          related
-            .filter(
-              (other) =>
-                other.id !== id && other.validity.to === item.validity.to,
-            )
-            .map((other) => [
-              other.id,
-              {
-                id: other.id,
-                offers: other.offers,
-                tierLabels: other.tierLabels,
-              },
-            ]),
-        ).values(),
-      ],
+      variants: variantsFor(
+        related.filter((other) => other.validity.to === item.validity.to),
+        item,
+      ),
     };
   }
 
@@ -319,7 +306,7 @@ export class BenefitsService {
       items.push(...next.items);
     }
     return formatDigest(
-      items.filter((i) => i.match === 'eligible'),
+      items,
       profile.categories,
       this.config.get<string>('WEB_APP_URL') ?? '',
     );

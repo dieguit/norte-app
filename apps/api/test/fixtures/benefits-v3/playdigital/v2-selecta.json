@@ -1,0 +1,137 @@
+{
+  "id": "e5c158fe-9426-45fa-84ee-10f19ffbb595",
+  "name": "Tiendas Naturales Selecta  Nivel 2",
+  "description": "",
+  "type": "cashback",
+  "reward_type": "cash",
+  "scope": "Bancaria",
+  "status": "active",
+  "real_status": "RUNNING",
+  "is_engine_active": true,
+  "created_at": "2026-09-28T16:31:18.561Z",
+  "updated_at": "2026-10-30T03:04:55.534Z",
+  "deleted_at": null,
+  "short_description": "2610-MacroSelecta-Nivel2-TiendasNaturales-Presencial-NFC-30off",
+  "publication_description": "Con TC Macro Selecta",
+  "slug": "30off-tiendanaturales2-macroselecta-oct26",
+  "display_start_date": "2026-10-01T03:00:00.000Z",
+  "display_stop_date": "2027-01-31T02:59:59.999Z",
+  "search_tags": "SEG_NS2,LYT01GLL",
+  "conditions": {
+    "schedule": {
+      "stop_date": "2026-10-31",
+      "start_date": "2026-10-01",
+      "days_of_week": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "daily_stop_time": "23:59:00",
+      "daily_start_time": "00:00:00"
+    },
+    "acquirers": {
+      "list": ["MERCADOLIBRE"],
+      "segmentation_mode": "by_blacklist"
+    },
+    "payment_flow": {
+      "flows": ["instore", "instore_nfc"]
+    },
+    "exclusiveness": "all",
+    "payment_methods": {
+      "methods": [
+        {
+          "type": "credit_card",
+          "issuer": "american_express"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "visa"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "master"
+        }
+      ]
+    },
+    "exclusiveness_source": ["modo", "banks"],
+    "has_differential_amount": false
+  },
+  "offers": [
+    {
+      "id": "e5c158fe-9426-45fa-84ee-10f19ffbb595",
+      "benefit_id": "e5c158fe-9426-45fa-84ee-10f19ffbb595",
+      "name": ".",
+      "priority": 1,
+      "segmentations": {
+        "audiences": ["selecta-nivel-2"],
+        "whitelist": ["store_acquirer_establishment_id", "store_cuit"],
+        "categories": [
+          {
+            "category_id": 2,
+            "subcategory_ids": [30, 12]
+          }
+        ]
+      },
+      "requirements": {
+        "banks": {
+          "list": ["6a089c91-a7d3-4199-a578-2132a3733f69"]
+        },
+        "amount_range": {
+          "min": 0
+        }
+      },
+      "outcomes": {
+        "cashback": {
+          "amount": 30,
+          "amount_type": "percent",
+          "cashback_mode": "cashback_bancario"
+        },
+        "financing": {
+          "installments": []
+        }
+      },
+      "limits": {
+        "period_cap": {
+          "reset_by": "month",
+          "aggregate_by": "user",
+          "amount_by_period": 60000,
+          "amount_of_transactions_by_period": 0
+        }
+      },
+      "categories": ["2"],
+      "sub_categories": ["12", "30"],
+      "preselected": false,
+      "created_at": "2026-09-28T16:31:42.892Z",
+      "updated_at": "2026-10-30T03:00:58.260Z",
+      "deleted_at": null,
+      "offer_caps": [],
+      "offer_transaction_cap": null
+    }
+  ],
+  "debit_list": [],
+  "credit_list": ["american_express", "visa", "master"],
+  "terms_and_conditions": "<p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">CARTERA DE CONSUMO. BENEFICIO CON TARJETAS DE CRÉDITO VISA SIGNATURE, MASTERCARD Y AMERICAN EXPRESS BLACK DE BANCO MACRO S.A. NIVEL 2., PAGANDO A TRAVÉS DE MODO POR APP MACRO/APP MODO, EXCLUSIVAMENTE TODOS LOS DÍAS DEL 01/10/2026 AL 31/10/2026, PARA CLIENTES /USUARIOS REGISTRADOS EN MODO. 30% DE AHORRO CON TOPE DE DEVOLUCIÓN $60.000 POR CUENTA POR MES, VÁLIDO PARA COMPRAS EN UN PAGO CON QR. APLICA EN LOCALES ADHERIDOS . MODO: SERVICIO PRESTADO POR EL PROVEEDOR DE SERVICIOS TECNOLÓGICOS PLAY DIGITAL S.A. CUIT 30716829436 AV. DEL LIBERTADOR 7208 TORRE II P.4 CABA., SIENDO LA MARCA \"MODO\" DE SU PROPIEDAD. APLICA PARA CONSUMO PERSONAL-FAMILIAR. NO VÁLIDO TARJETA DE CRÉDITO EMPRESA O AGRO. NO ACUMULA CON OTRA PROMOCIÓN. NO APLICA PARA PAGO A TRAVES DE MERCADO PAGO, OTRO PAGO ELECTRÓNICO INMEDIATO, TRANSFERENCIA 3.0. REINTEGRO A REALIZARSE EN EL MOMENTO DE LA COMPRA, EN LA CAJA DE AHORRO O CUENTA CORRIENTE DE BANCO MACRO REGISTRADA EN MODO. ESTABLECIMIENTOS /PRODUCTOS /SERVICIOS NO SON PROMOCIONADOS /GARANTIZADOS POR BANCO MACRO, NI RESULTA RESPONSABLE POR LA PRESENTACIÓN DE CUPÓN FUERA DE TÉRMINO. INFORMACIÓN DE LOS TÉRMINOS Y CONDICIONES AL 0810-555-2355, EN HTTP://www.macro.com.ar/modo-promos O EN SUCURSALES MACRO.</span></p>",
+  "terms_and_conditions_url": null,
+  "coupon": null,
+  "card": {
+    "benefit": "30% de reintegro Nivel 2",
+    "validity_place": "Tiendas Naturales",
+    "cashback_cap": "60000",
+    "participating_bank": "Macro Selecta",
+    "image": "https://assets.mobile.playdigital.com.ar/promotions_dynamics/publication-card/6b236881-144f-4f91-8631-e80ffa748b3e_Dieteticas-Detalle.jpg",
+    "banner_image": "https://assets.mobile.playdigital.com.ar/images/promotions/hub/default_banner.png",
+    "banner_image_portrait": "https://assets.mobile.playdigital.com.ar/images/promotions/hub/default_new_banner.png"
+  },
+  "details": {
+    "name": "Tiendas Naturales con Macro ",
+    "faq": "<p><strong>¿Cómo puedo acceder al beneficio?</strong></p><p>Realizando una compra con tus tarjetas de crédito Visa Signature, Mastercard y/o American Express Black Macro Selecta, a través de MODO o NFC.</p><p></p><p><strong>¿Dónde veo el descuento aplicado</strong></p><p>El reintegro lo verás acreditado en tu cuenta del Banco Macro.</p><p><br /></p>",
+    "applicability_description": "Tiendas Naturales",
+    "primary_button": null,
+    "secondary_button": null,
+    "download_button": null
+  }
+}

@@ -6,6 +6,7 @@ import type {
   CampaignTerms,
   Requirement,
 } from '@repo/shared-types';
+import { CampaignTermsSchema } from '@repo/shared-types';
 import { argentinaInstant, todayInArgentina, DAY_MS } from '../argentina-time';
 import {
   benefitCampaigns,
@@ -115,10 +116,12 @@ function classify(
   evaluation: ReturnType<typeof evaluateEligibility>,
   profile: BenefitProfile,
   bankSlug: string,
+  terms: CampaignTerms,
 ): BenefitDetail['match'] {
   const bank = profile.banks.find((b) => b.slug === bankSlug);
   if (!bank) return 'ineligible';
-  if (evaluation.result === 'yes') return 'eligible';
+  if (evaluation.result === 'yes')
+    return hasPurchaseRestrictions(terms) ? 'conditional' : 'eligible';
   if (
     evaluation.result === 'unknown' &&
     bank.tier === null &&
@@ -129,6 +132,14 @@ function classify(
   )
     return 'needs_tier';
   return 'ineligible';
+}
+
+function hasPurchaseRestrictions(terms: CampaignTerms): boolean {
+  return (
+    terms.purchaseConditions.length > 0 ||
+    terms.minimumSpendMinor !== 0 ||
+    terms.channels.length > 0
+  );
 }
 
 function matchingInstruments(
@@ -179,8 +190,10 @@ function publishableTerms({
 }: Candidate): CampaignTerms | null {
   if (campaign.hidden || campaign.withdrawnAt || presence.withdrawnAt)
     return null;
-  const terms = presence.terms;
-  return terms?.eligibilityCompleteness === 'complete' ? terms : null;
+  const parsed = CampaignTermsSchema.safeParse(presence.terms);
+  return parsed.success && parsed.data.eligibilityCompleteness === 'complete'
+    ? parsed.data
+    : null;
 }
 
 function eligibilityFor(
@@ -238,6 +251,22 @@ function tierLabels(eligibility: Requirement): string[] {
   ];
 }
 
+function campaignFields({ campaign, presence, brand }: Candidate) {
+  return {
+    [brandKey]: campaign.brandId ?? undefined,
+    id: campaign.id,
+    source: campaign.source,
+    brandName: brand?.name ?? null,
+    title: campaign.title,
+    categories: campaign.categories,
+    verifyUrl: campaign.verifyUrl,
+    verifyHint: campaign.verifyHint,
+    updatedAt: new Date(
+      presence.snapshot?.detailFetchedAt ?? presence.lastSeenAt,
+    ).toISOString(),
+  };
+}
+
 export function buildResults(
   rows: Candidate[],
   profile: BenefitProfile,
@@ -247,7 +276,7 @@ export function buildResults(
   includeIneligible = false,
 ): Matched[] {
   return rows.flatMap((row) => {
-    const { campaign, presence, brand } = row;
+    const { presence } = row;
     const terms = publishableTerms(row);
     if (!terms) return [];
     const date = nextDate(terms, day, now);
@@ -255,7 +284,7 @@ export function buildResults(
     const eligibility = eligibilityFor(terms, presence.tiers);
     const held = profileFor(profile, presence.bankSlug);
     const evaluation = evaluateEligibility(eligibility, held, date);
-    const match = classify(evaluation, profile, presence.bankSlug);
+    const match = classify(evaluation, profile, presence.bankSlug, terms);
     if (match === 'ineligible' && !includeIneligible) return [];
     const { matched, requiresModo } = matchingInstruments(
       eligibility,
@@ -265,12 +294,7 @@ export function buildResults(
     );
     return [
       {
-        [brandKey]: campaign.brandId ?? undefined,
-        id: campaign.id,
-        source: campaign.source,
-        brandName: brand?.name ?? null,
-        title: campaign.title,
-        categories: campaign.categories,
+        ...campaignFields(row),
         offers: terms.offers,
         capState: terms.capState,
         caps: terms.caps,
@@ -279,27 +303,32 @@ export function buildResults(
         nextDate: date,
         channels: terms.channels,
         where: terms.where,
+        purchaseConditions: terms.purchaseConditions,
         requiresModo,
         usableWith: usableCards(profile, presence.bankSlug, banks, matched),
         match,
         tierLabels: tierLabels(eligibility),
         variants: [],
-        verifyUrl: campaign.verifyUrl,
-        verifyHint: campaign.verifyHint,
-        updatedAt: (
-          campaign.detailFetchedAt ?? campaign.lastSeenAt
-        ).toISOString(),
         eligibility,
         legalText: terms.legalText,
-        warnings: terms.warnings,
+        warnings:
+          terms.minimumSpendMinor === null
+            ? [...new Set([...terms.warnings, 'Compra mínima sin confirmar.'])]
+            : terms.warnings,
       },
     ];
   });
 }
 
 export function rankResults(
-  a: Pick<BenefitResult, 'offers' | 'capState' | 'caps' | 'title' | 'id'>,
-  b: Pick<BenefitResult, 'offers' | 'capState' | 'caps' | 'title' | 'id'>,
+  a: Pick<
+    BenefitDetail,
+    'match' | 'offers' | 'capState' | 'caps' | 'title' | 'id'
+  >,
+  b: Pick<
+    BenefitDetail,
+    'match' | 'offers' | 'capState' | 'caps' | 'title' | 'id'
+  >,
 ): number {
   const percent = (item: typeof a) =>
     Math.max(
@@ -318,12 +347,85 @@ export function rankResults(
         ? -1
         : Math.max(0, ...item.caps.map((c) => c.amountMinor ?? -1));
   return (
+    matchRank[a.match] - matchRank[b.match] ||
     percent(b) - percent(a) ||
     installments(b) - installments(a) ||
     (cap(a) === cap(b) ? 0 : cap(b) > cap(a) ? 1 : -1) ||
     a.title.localeCompare(b.title) ||
     a.id.localeCompare(b.id)
   );
+}
+
+const matchRank = { eligible: 0, conditional: 1, needs_tier: 2, ineligible: 3 };
+
+function equivalenceKey(item: BenefitDetail): string {
+  return JSON.stringify([
+    item.id,
+    item.match,
+    item.offers,
+    item.capState,
+    item.caps,
+    item.minimumSpendMinor,
+    item.validity,
+    item.nextDate,
+    item.channels,
+    item.where,
+    item.purchaseConditions,
+    item.requiresModo,
+  ]);
+}
+
+function variantKey(item: BenefitDetail): string {
+  return JSON.stringify([
+    item.id,
+    item.usableWith,
+    item.channels,
+    item.minimumSpendMinor,
+    item.where,
+    item.capState,
+    item.caps,
+    item.requiresModo,
+    item.validity,
+    item.nextDate,
+    item.purchaseConditions,
+    item.match,
+  ]);
+}
+
+export function variantsFor(
+  items: BenefitDetail[],
+  representative: BenefitDetail,
+): BenefitResult['variants'] {
+  const key = equivalenceKey(representative);
+  return [
+    ...new Map(
+      items
+        .filter(
+          (item) => item.match !== 'ineligible' && equivalenceKey(item) !== key,
+        )
+        .sort(rankResults)
+        .map((item) => [
+          variantKey(item),
+          {
+            id: item.id,
+            variantKey: variantKey(item),
+            offers: item.offers,
+            tierLabels: item.tierLabels,
+            match: item.match as BenefitResult['match'],
+            purchaseConditions: item.purchaseConditions,
+            usableWith: item.usableWith,
+            channels: item.channels,
+            minimumSpendMinor: item.minimumSpendMinor,
+            where: item.where,
+            capState: item.capState,
+            caps: item.caps,
+            requiresModo: item.requiresModo,
+            validity: item.validity,
+            nextDate: item.nextDate,
+          },
+        ]),
+    ).values(),
+  ];
 }
 
 export function groupResults(items: Matched[]): BenefitResult[] {
@@ -334,36 +436,10 @@ export function groupResults(items: Matched[]): BenefitResult[] {
   }
   return [...groups.values()]
     .map((group) => {
-      group.sort(
-        (a, b) =>
-          Number(a.match !== 'eligible') - Number(b.match !== 'eligible') ||
-          rankResults(a, b),
-      );
+      group.sort(rankResults);
       const first = group[0]!;
       const same = group.filter(
-        (i) =>
-          i.id === first.id &&
-          i.match === first.match &&
-          JSON.stringify([
-            i.offers,
-            i.capState,
-            i.caps,
-            i.minimumSpendMinor,
-            i.validity,
-            i.channels,
-            i.where,
-            i.requiresModo,
-          ]) ===
-            JSON.stringify([
-              first.offers,
-              first.capState,
-              first.caps,
-              first.minimumSpendMinor,
-              first.validity,
-              first.channels,
-              first.where,
-              first.requiresModo,
-            ]),
+        (i) => equivalenceKey(i) === equivalenceKey(first),
       );
       return {
         ...first,
@@ -379,21 +455,8 @@ export function groupResults(items: Matched[]): BenefitResult[] {
               ]),
           ).values(),
         ],
-        variants: [
-          ...new Map(
-            group
-              .filter((i) => i.id !== first.id)
-              .map((i) => [
-                i.id,
-                { id: i.id, offers: i.offers, tierLabels: i.tierLabels },
-              ]),
-          ).values(),
-        ],
+        variants: variantsFor(group, first),
       };
     })
-    .sort(
-      (a, b) =>
-        Number(a.match !== 'eligible') - Number(b.match !== 'eligible') ||
-        rankResults(a, b),
-    );
+    .sort(rankResults);
 }

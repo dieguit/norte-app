@@ -388,42 +388,9 @@ function invalidateObservedSnapshot(p: typeof presence.$inferSelect) {
   return { terms: null, tiers: null, snapshot };
 }
 
-function combinedTerms(
-  active: (typeof presence.$inferSelect)[],
-  canonical: CampaignTerms,
-  anomalies: Anomalies,
-  externalId: string,
-): CampaignTerms {
-  const signature = sharedTerms(canonical);
-  const compatible = active.filter(
-    (p) => p.terms && sharedTerms(p.terms) === signature,
-  );
-  const conflicts = active.filter(
-    (p) => p.terms && sharedTerms(p.terms) !== signature,
-  );
-  for (const p of conflicts)
-    anomalies.push({
-      kind: 'conflicting_terms',
-      externalId,
-      detail: `Shared terms differ for bank ${p.bankSlug}; canonical bank snapshot retained`,
-    });
-  const terms = compatible.map((p) => p.terms!);
-  return {
-    ...canonical,
-    eligibility: { anyOf: terms.map((t) => t.eligibility) },
-    eligibilityCompleteness: terms.some(
-      (t) => t.eligibilityCompleteness === 'incomplete',
-    )
-      ? 'incomplete'
-      : 'complete',
-    unresolved: [...new Set(terms.flatMap((t) => t.unresolved))].slice(0, 10),
-  };
-}
-
 function publishableTerms(
   active: (typeof presence.$inferSelect)[],
   canonical: typeof presence.$inferSelect,
-  summary: CommitSummary,
   anomalies: Anomalies,
 ) {
   if (!canonical.terms)
@@ -432,22 +399,15 @@ function publishableTerms(
       unpublishableReason:
         canonical.snapshot.unpublishableReason ?? 'invalid_terms',
     };
-  const combined = combinedTerms(
-    active,
-    canonical.terms,
-    anomalies,
-    canonical.snapshot.externalId,
-  );
-  const validated = CampaignTermsSchema.safeParse(combined);
-  if (validated.success)
-    return { terms: validated.data, unpublishableReason: null };
-  summary.unpublishable++;
-  anomalies.push({
-    kind: 'invalid_combined_terms',
-    externalId: canonical.snapshot.externalId,
-    detail: validated.error.message,
-  });
-  return { terms: null, unpublishableReason: 'invalid_combined_terms' };
+  const signature = sharedTerms(canonical.terms);
+  for (const p of active)
+    if (p.terms && sharedTerms(p.terms) !== signature)
+      anomalies.push({
+        kind: 'conflicting_terms',
+        externalId: canonical.snapshot.externalId,
+        detail: `Shared terms differ for bank ${p.bankSlug}; canonical bank snapshot retained`,
+      });
+  return { terms: canonical.terms, unpublishableReason: null };
 }
 
 async function rebuildCampaign(
@@ -462,7 +422,11 @@ async function rebuildCampaign(
     .from(presence)
     .where(eq(presence.campaignId, id))
     .orderBy(asc(presence.bankSlug));
-  const active = rows.filter((p) => !p.withdrawnAt);
+  const validatedRows = rows.map((p) => {
+    const parsed = CampaignTermsSchema.safeParse(p.terms);
+    return { ...p, terms: parsed.success ? parsed.data : null };
+  });
+  const active = validatedRows.filter((p) => !p.withdrawnAt);
   if (!active.length) {
     const withdrawn = await db
       .update(campaigns)
@@ -488,7 +452,7 @@ async function rebuildCampaign(
     .update(campaigns)
     .set({
       ...campaignSnapshot(listing, canonicalCategories(rows, mapping), brandId),
-      ...publishableTerms(active, canonical, summary, anomalies),
+      ...publishableTerms(active, canonical, anomalies),
       tiers: active.length === 1 ? canonical.tiers : null,
       rawTierSignal: active.length === 1 ? listing.rawTierSignal : null,
       withdrawnAt: null,
@@ -649,32 +613,37 @@ export async function listPublishableCampaigns(
 ) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(filter.today))
     throw new Error('today must be an ISO day');
-  return db
+  const rows = await db
     .select()
     .from(campaigns)
     .where(
       and(
         eq(campaigns.hidden, false),
         isNull(campaigns.withdrawnAt),
-        sql`${campaigns.terms} is not null`,
-        sql`(${campaigns.terms}->'validity'->>'to' is null or ${campaigns.terms}->'validity'->>'to' >= ${filter.today})`,
+
         filter.categories?.length
           ? arrayOverlaps(campaigns.categories, filter.categories)
           : undefined,
-        filter.bankSlugs?.length
-          ? inArray(
-              campaigns.id,
-              db
-                .select({ id: presence.campaignId })
-                .from(presence)
-                .where(
-                  and(
-                    inArray(presence.bankSlug, filter.bankSlugs),
-                    isNull(presence.withdrawnAt),
-                  ),
-                ),
-            )
-          : undefined,
+        inArray(
+          campaigns.id,
+          db
+            .select({ id: presence.campaignId })
+            .from(presence)
+            .where(
+              and(
+                isNull(presence.withdrawnAt),
+                sql`${presence.terms}->>'eligibilityCompleteness' = 'complete'`,
+                sql`(${presence.terms}->'validity'->>'to' is null or ${presence.terms}->'validity'->>'to' >= ${filter.today})`,
+                filter.bankSlugs?.length
+                  ? inArray(presence.bankSlug, filter.bankSlugs)
+                  : undefined,
+              ),
+            ),
+        ),
       ),
     );
+  return rows.map((row) => ({
+    ...row,
+    terms: row.terms ? CampaignTermsSchema.parse(row.terms) : null,
+  }));
 }

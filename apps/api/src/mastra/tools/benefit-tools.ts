@@ -2,6 +2,8 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import {
   BenefitSearchQuerySchema,
+  BenefitSearchResultSchema,
+  BenefitResultSchema,
   UpdateBenefitProfileSchema,
 } from '@repo/shared-types';
 import type { NorteServices } from '../services';
@@ -15,12 +17,28 @@ export function createBenefitTools({
     searchBenefits: createTool({
       id: 'search-benefits',
       description:
-        'Find verified catalog benefits for the user’s banks and cards. Returns up to 10 ranked results, eligibility, verification links and total. Never invent benefits.',
+        'Find catalog benefits compatible with the user’s bank/card profile, not guaranteed entitlement. Returns up to 10 ranked results, purchase requirements, verification links and total. Each variant has its own bank/cards, eligibility and purchase requirements: never describe alternate-bank offers using parent conditions. Never invent benefits.',
       inputSchema: BenefitSearchQuerySchema.pick({
         q: true,
         category: true,
         day: true,
       }),
+      outputSchema: z.union([
+        BenefitSearchResultSchema.pick({
+          total: true,
+          profileConfigured: true,
+          staleBanks: true,
+        }).extend({
+          items: z.array(
+            BenefitResultSchema.omit({
+              source: true,
+              categories: true,
+              updatedAt: true,
+            }),
+          ),
+        }),
+        z.object({ error: z.string() }),
+      ]),
       execute: (input, context) =>
         toolResult(
           'search-benefits',
@@ -43,6 +61,10 @@ export function createBenefitTools({
                   capState,
                   caps,
                   minimumSpendMinor,
+                  purchaseConditions,
+                  variants,
+                  channels,
+                  where,
                   nextDate,
                   validity,
                   usableWith,
@@ -59,6 +81,10 @@ export function createBenefitTools({
                   capState,
                   caps,
                   minimumSpendMinor,
+                  purchaseConditions,
+                  variants,
+                  channels,
+                  where,
                   nextDate,
                   validity,
                   usableWith,

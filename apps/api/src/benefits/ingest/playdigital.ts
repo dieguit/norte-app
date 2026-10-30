@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import {
-  CampaignTermsSchema,
-  type CampaignOffer,
-  type Requirement,
-  type CardSelector,
-} from '@repo/shared-types';
+import { todayInArgentina } from '../../argentina-time';
 import { createPacedJsonFetch } from './http';
 import { BANK_TIERS } from './tiers';
+import {
+  playdigitalDetailSchema,
+  mapPlaydigitalDetail,
+  detailError,
+} from './playdigital-detail';
 import type {
   Adapter,
   AdapterContext,
@@ -39,10 +39,11 @@ const promotionSchema = z
     payment_flow: z.string().optional(),
     where: z.string().nullish(),
     start_date: z.string().optional(),
-    stop_date: z.string().optional(),
+    stop_date: z.string().nullish().catch(undefined),
+    calculated_status: z.string().nullish().catch(undefined),
     days_of_week: z.string().optional(),
-    credit_list: z.array(z.string()).nullish(),
-    debit_list: z.array(z.string()).nullish(),
+    credit_list: z.array(z.string().nullable()).nullish(),
+    debit_list: z.array(z.string().nullable()).nullish(),
   })
   .passthrough();
 const cardSchema = promotionSchema.extend({
@@ -68,43 +69,6 @@ const cardSchema = promotionSchema.extend({
     .nullish(),
 });
 type Card = z.infer<typeof cardSchema>;
-const detailSchema = z
-  .object({
-    promotion: promotionSchema,
-    trigger_params: z
-      .object({
-        pct_promo_value: z.number().optional(),
-        promo_value_type: z.string().optional(),
-        cap_amount: z.number().optional(),
-        cap_period: z.string().optional(),
-        cap_type: z.string().optional(),
-        min_amount: z.number().optional(),
-        discount_mode: z.string().nullable().optional(),
-        credit_list: z.array(z.string()).optional(),
-        debit_list: z.array(z.string()).optional(),
-        installments: z.array(z.number()).optional(),
-      })
-      .passthrough(),
-    sections: z
-      .record(
-        z.string(),
-        z
-          .object({
-            contents: z
-              .array(
-                z.object({
-                  description: z.string().optional(),
-                  title: z.string().optional(),
-                }),
-              )
-              .optional(),
-          })
-          .passthrough(),
-      )
-      .optional(),
-  })
-  .passthrough();
-
 export function playdigitalBankSlug(name: string): string {
   const slug = name
     .normalize('NFD')
@@ -156,29 +120,6 @@ export function playdigitalListingHash(card: Card): string {
     .digest('hex');
 }
 
-function text(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-function argentinaDay(value?: string): string | null {
-  if (!value) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return value; // Schema rejects invalid source dates.
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date);
-}
-
 function selectaTier(signal: string) {
   const level = /nivel[\s_-]*([1-4])\b/.exec(signal);
   return {
@@ -225,126 +166,6 @@ function macroTier(signal: string) {
   )
     unresolved.push('unknown tier signal');
   return { codes, rawTierSignal, unresolved };
-}
-
-type Detail = z.infer<typeof detailSchema>;
-type Trigger = Detail['trigger_params'];
-
-function mapOffers(p: Trigger, evidence: string): CampaignOffer[] {
-  const offers: CampaignOffer[] = [];
-  if (p.promo_value_type === 'percent' && p.pct_promo_value)
-    offers.push({
-      kind: 'percent',
-      percentageBps: Math.round(p.pct_promo_value * 100),
-      // JetsMART's card says descuento, but its body explicitly credits a reintegro to the bank account.
-      mode: /reintegro|cashback/.test(evidence)
-        ? 'cashback'
-        : /descuento/.test(evidence)
-          ? 'discount'
-          : 'unspecified',
-    });
-  const installments = [...new Set(p.installments ?? [])];
-  if (installments.length)
-    offers.push({
-      kind: 'installments',
-      count: Math.max(...installments),
-      upTo: installments.length > 1 || /hasta.*cuotas/i.test(evidence),
-    });
-  return offers;
-}
-
-function cardRequirements(
-  card: Card,
-  p: Trigger,
-  bankSlug: string,
-  unresolved: string[],
-): Requirement[] {
-  const pairs: Requirement[] = [];
-  const networks: Record<string, CardSelector['network']> = {
-    visa: 'visa',
-    master: 'mastercard',
-    mastercard: 'mastercard',
-    american_express: 'amex',
-    amex: 'amex',
-    cabal: 'cabal',
-  };
-  for (const type of ['credit', 'debit'] as const) {
-    for (const rawNetwork of p[`${type}_list`] ?? card[`${type}_list`] ?? []) {
-      const network = networks[rawNetwork];
-      if (!network) {
-        unresolved.push(`unsupported ${type} network: ${rawNetwork}`);
-        continue;
-      }
-      pairs.push({
-        card: { issuerProviderSlugs: [bankSlug], network, types: [type] },
-      });
-    }
-  }
-  if (!pairs.length) {
-    unresolved.push('missing supported card networks');
-    pairs.push({ card: { issuerProviderSlugs: [bankSlug] } });
-  }
-  return pairs;
-}
-
-function positiveMinor(amount: number | undefined): number | null {
-  return amount && amount > 0 ? Math.round(amount * 100) : null;
-}
-
-function capTerms(p: Trigger) {
-  const capPeriod = z
-    .enum(['transaction', 'day', 'week', 'month', 'campaign'])
-    .safeParse(p.cap_period);
-  const warnings: string[] = [];
-  if (!p.cap_amount)
-    warnings.push('cap_amount zero or absent: cap semantics unconfirmed');
-  if (p.cap_amount && !capPeriod.success)
-    warnings.push('cap period unconfirmed');
-  const amountMinor = positiveMinor(p.cap_amount);
-  const caps =
-    amountMinor && capPeriod.success
-      ? [
-          {
-            amountMinor,
-            period: capPeriod.data,
-            scope: p.cap_type === 'card' ? 'card' : null,
-          },
-        ]
-      : [];
-  return {
-    capState: caps.length ? 'known' : 'unknown',
-    caps,
-    warnings,
-    minimumSpendMinor: positiveMinor(p.min_amount),
-  };
-}
-
-function weekdays(
-  days: string | undefined,
-  unresolved: string[],
-  run: AdapterRun,
-  externalId: string,
-) {
-  if (!days) return null;
-  const dayMap: Record<string, number> = {
-    D: 0,
-    L: 1,
-    M: 2,
-    X: 3,
-    J: 4,
-    V: 5,
-    S: 6,
-  };
-  if (/[^DLMXJVS]/.test(days)) {
-    unresolved.push(`unparsed days: ${days}`);
-    run.anomalies.push({ kind: 'unparsed_days', detail: days, externalId });
-  }
-  const result = [
-    ...new Set(
-      [...days].flatMap((d) => (dayMap[d] === undefined ? [] : [dayMap[d]])),
-    ),
-  ];
-  return result.length === 7 ? null : result;
 }
 
 function rawCategories(card: Card): string[] {
@@ -418,119 +239,73 @@ function mapListing(
     detailStale: stale,
   };
   if (!known) return listing;
-  mapTerms(card, bank.slug, known.detail, listing, unresolved, run);
+  applyDetail(listing, known, bank, unresolved, codes, run);
   return listing;
 }
 
-function detailEvidence(card: Card, detail: Detail) {
-  const flow = detail.promotion.payment_flow ?? card.payment_flow;
-  const evidence = text(
-    JSON.stringify({
-      flow,
-      rows: card.content?.row,
-      sections: detail.sections,
-      discount_mode: detail.trigger_params.discount_mode,
-    }),
-  ).toLowerCase();
-  const modo =
-    /\bmodo\b/.test(flow ?? '') ||
-    /(?:pag\w*|compra\w*|trav[eé]s|con)\s+(?:(?:a\s+trav[eé]s\s+de|con|de)\s+)?modo\b/i.test(
-      evidence,
-    );
-  const channelEvidence = evidence.replace(
-    /no\s+(?:aplica|v[aá]lid[oa])\s+(?:para\s+)?(?:compras?\s+)?online/g,
-    '',
-  );
-  const channels = ['qr', 'nfc', 'online', 'instore'].filter((channel) =>
-    new RegExp(`(?:\\b|_)${channel}(?:\\b|_)`, 'i').test(channelEvidence),
-  );
-  if (modo) channels.unshift('modo');
-  const legal = text(
-    (detail.sections?.tyc?.contents ?? [])
-      .map((c) => c.description ?? '')
-      .join(' '),
-  );
-  return { evidence, modo, channels, legal };
-}
-
-function mapTerms(
-  card: Card,
-  bankSlug: string,
-  rawDetail: unknown,
+function applyDetail(
   listing: NormalizedListing,
+  known: KnownDetail,
+  bank: BankRef,
   unresolved: string[],
+  codes: string[] | null,
   run: AdapterRun,
 ) {
-  const externalId = listing.externalId;
-  const parsed = detailSchema.safeParse(rawDetail);
-  if (!parsed.success) {
-    listing.unpublishableReason = `invalid detail: ${parsed.error.message}`;
-    return;
-  }
-  const detail = parsed.data;
-  const p = detail.trigger_params;
-  const promotion = { ...card, ...detail.promotion };
-  const { evidence, modo, channels, legal } = detailEvidence(card, detail);
-  const offers = mapOffers(p, evidence);
-  const pairs = cardRequirements(card, p, bankSlug, unresolved);
-  const requirements: Requirement[] = [{ anyOf: pairs }];
-  if (modo) requirements.push({ membership: { instrumentSlug: 'modo' } });
-  if (listing.tiers)
-    requirements.push({
-      providerFact: {
-        providerSlug: bankSlug,
-        key: 'tier',
-        values: listing.tiers.codes,
-      },
-    });
-  const parsedWeekdays = weekdays(
-    promotion.days_of_week,
-    unresolved,
-    run,
-    externalId,
-  );
-  const terms = CampaignTermsSchema.safeParse({
-    offers,
-    eligibility: { allOf: requirements },
-    eligibilityCompleteness: unresolved.length ? 'incomplete' : 'complete',
-    unresolved: [...new Set(unresolved)].slice(0, 10),
-    ...capTerms(p),
-    validity: {
-      from: argentinaDay(promotion.start_date),
-      to: argentinaDay(promotion.stop_date),
-      weekdays: parsedWeekdays,
-    },
-    channels,
-    where: card.where || null,
-    legalText: legal || null,
-  });
-  if (terms.success) {
-    listing.terms = terms.data;
+  try {
+    validateDetail(known.detail, listing.externalId);
+    listing.terms = mapPlaydigitalDetail(known.detail, bank, unresolved, codes);
     listing.unpublishableReason = null;
-  } else {
-    listing.unpublishableReason = `invalid terms: ${terms.error.message}`;
+  } catch (error) {
+    listing.unpublishableReason = String(error).slice(0, 1200);
     run.anomalies.push({
-      kind: offers.length ? 'shape_changed' : 'unparsed_offer',
+      kind: 'unparsed_offer',
+      externalId: listing.externalId,
       detail: listing.unpublishableReason,
-      externalId,
     });
   }
 }
 
 function detailNeedsRefresh(
   known: KnownDetail | undefined,
+  externalId: string,
   listingHash: string,
   now: Date,
 ): boolean {
   return (
     !known ||
+    !cachedDetailMatches(known.detail, externalId) ||
     known.listingHash !== listingHash ||
     now.getTime() - known.fetchedAt.getTime() > 7 * 86400_000
   );
 }
 
+function cachedDetailMatches(detail: unknown, externalId: string): boolean {
+  const parsed = playdigitalDetailSchema.safeParse(detail);
+  return parsed.success && parsed.data.id === externalId;
+}
+
+function validateDetail(detail: unknown, externalId: string) {
+  const parsed = playdigitalDetailSchema.safeParse(detail);
+  if (!parsed.success)
+    throw new Error('invalid v2 detail: ' + detailError(parsed.error));
+  if (parsed.data.id !== externalId) throw new Error('v2 detail id mismatch');
+}
+
+async function fetchDetail(
+  ctx: AdapterContext,
+  externalId: string,
+  listingHash: string,
+): Promise<KnownDetail> {
+  const detail = await client(ctx)(
+    `https://www.modo.com.ar/promos/api/rewards/v2/benefit/${encodeURIComponent(externalId)}`,
+  );
+  validateDetail(detail, externalId);
+  const refreshed = { listingHash, fetchedAt: ctx.now, detail };
+  await ctx.saveDetail?.(externalId, refreshed);
+  return refreshed;
+}
+
 function detailCache(ctx: AdapterContext) {
-  const fetchJson = client(ctx);
   const details = new Map<
     string,
     {
@@ -549,18 +324,12 @@ function detailCache(ctx: AdapterContext) {
       if (existing.attemptedHash === listingHash) return existing;
       if (existing.known) known = existing.known;
     }
-    let stale = detailNeedsRefresh(known, listingHash, ctx.now);
+    let stale = detailNeedsRefresh(known, externalId, listingHash, ctx.now);
     let failed: string | undefined;
     if (stale && fetched < (ctx.maxDetailFetches ?? 2000)) {
       fetched++;
       try {
-        const detail = await fetchJson(
-          `${root}/landing/${encodeURIComponent(externalId)}`,
-        );
-        detailSchema.parse(detail);
-        const refreshed = { listingHash, fetchedAt: ctx.now, detail };
-        await ctx.saveDetail?.(externalId, refreshed);
-        known = refreshed;
+        known = await fetchDetail(ctx, externalId, listingHash);
         stale = false;
       } catch (error) {
         failed = String(error);
@@ -646,6 +415,7 @@ async function appendPage(
   rows: unknown[],
   seen: Set<string>,
   getDetail: ReturnType<typeof detailCache>,
+  today: string,
 ) {
   run.rawRowCount += rows.length;
   for (const raw of rows) {
@@ -658,32 +428,64 @@ async function appendPage(
     }
     if (seen.has(externalId)) continue;
     seen.add(externalId);
-    const result = await getDetail(externalId, card);
-    if (result.failed)
-      run.anomalies.push({
-        kind: 'detail_failed',
-        detail: result.failed,
-        externalId,
-      });
-    let listing: NormalizedListing;
-    try {
-      listing = mapListing(card, bank, result.known, result.stale, run);
-    } catch (error) {
-      listing = invalidListing(raw, externalId, bank.slug);
-      listing.unpublishableReason = `listing mapping failed: ${String(error)}`;
-      run.anomalies.push({
-        kind: 'shape_changed',
-        detail: listing.unpublishableReason,
-        externalId,
-      });
-    }
-    listing.raw.listing = raw;
-    run.listings.push(listing);
-    if (!listing.terms || result.stale) {
-      run.complete = false;
-      run.outcome = 'partial';
-    }
+    await appendCard(run, bank, raw, card, getDetail, today);
   }
+}
+
+async function appendCard(
+  run: AdapterRun,
+  bank: BankRef,
+  raw: unknown,
+  card: Card,
+  getDetail: ReturnType<typeof detailCache>,
+  today: string,
+) {
+  const externalId = listingIdentity(card).externalId;
+  const finished = listingFinished(card, today);
+  const result = finished
+    ? { known: undefined, stale: false, failed: undefined }
+    : await getDetail(externalId, card);
+  if (result.failed)
+    run.anomalies.push({
+      kind: 'detail_failed',
+      detail: result.failed,
+      externalId,
+    });
+  let listing: NormalizedListing;
+  try {
+    listing = mapListing(card, bank, result.known, result.stale, run);
+    if (finished) listing.unpublishableReason = 'finished';
+  } catch (error) {
+    listing = invalidListing(raw, externalId, bank.slug);
+    listing.unpublishableReason = `listing mapping failed: ${String(error)}`;
+    run.anomalies.push({
+      kind: 'shape_changed',
+      detail: listing.unpublishableReason,
+      externalId,
+    });
+  }
+  listing.raw.listing = raw;
+  run.listings.push(listing);
+  if (
+    (!listing.terms && listing.unpublishableReason !== 'finished') ||
+    result.stale
+  ) {
+    run.complete = false;
+    run.outcome = 'partial';
+  }
+}
+
+function listingFinished(card: Card, today: string) {
+  if (
+    card.calculated_status === 'FINISHED' ||
+    card.calculated_status === 'FINISHED_FOR_PRODUCT'
+  )
+    return true;
+  const stop = card.stop_date;
+  if (z.iso.date().safeParse(stop).success) return stop! < today;
+  if (z.iso.datetime({ offset: true }).safeParse(stop).success)
+    return todayInArgentina(new Date(stop!)).today < today;
+  return false;
 }
 
 // shortcut: stop at 1,000 pages per bank; raise only after auditing a larger source catalog.
@@ -719,7 +521,14 @@ async function readBankPages(
       run.totalReported = pagination.total_results;
     }
     const previousCount = new Set(run.observedExternalIds).size;
-    await appendPage(run, bank, response.data.cards, seen, getDetail);
+    await appendPage(
+      run,
+      bank,
+      response.data.cards,
+      seen,
+      getDetail,
+      todayInArgentina(ctx.now).today,
+    );
     const problem = paginationProblem(
       page,
       totalPages,

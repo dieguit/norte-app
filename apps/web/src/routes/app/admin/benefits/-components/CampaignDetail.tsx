@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/norte/PageHeader";
 import { SplitLayout } from "@/components/norte/PageLayout";
 import { Button } from "@/components/ui/button";
 import { hideExplorerCampaign } from "@/features/benefits-admin/benefits-explorer.functions";
+import { purchaseConditionText } from "@/features/benefits/purchase-condition-format";
 import { cn } from "@/lib/utils";
 import {
   campaignStatus,
@@ -111,6 +112,19 @@ function TermsView({ terms }: { terms: CampaignTerms }) {
           ...(terms.where ? [`Dónde: ${terms.where}`] : []),
         ]}
       />
+      {terms.purchaseConditions.length > 0 && (
+        <div>
+          <p className="m-0 mb-2 text-body-sm font-semibold">
+            Condiciones de compra
+          </p>
+          <Lines
+            items={terms.purchaseConditions.map(
+              (condition) =>
+                `${condition.kind === "legal_purchase" ? "Condiciones legales sin interpretar: " : ""}${purchaseConditionText(condition)}`,
+            )}
+          />
+        </div>
+      )}
       {terms.warnings.length > 0 && (
         <Notice tone="info" title="Advertencias del adaptador">
           <Lines items={terms.warnings} />
