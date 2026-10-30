@@ -174,11 +174,6 @@ function BanksView({
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-body-sm font-semibold text-foreground">
               {bankName(bank.slug)}
-              {bank.withdrawnAt && (
-                <span className="ml-2 font-normal text-negative">
-                  Retirada {formatDateTime(bank.withdrawnAt)}
-                </span>
-              )}
             </span>
             <span className="text-caption">
               Visto: {formatDateTime(bank.lastSeenAt)}
@@ -346,12 +341,6 @@ export function CampaignDetail({
               {[
                 ["Visto por última vez", formatDateTime(campaign.lastSeenAt)],
                 ["Detalle leído", formatDateTime(campaign.detailFetchedAt)],
-                [
-                  "Retirada",
-                  campaign.withdrawnAt
-                    ? formatDateTime(campaign.withdrawnAt)
-                    : "No",
-                ],
                 ["Señal de nivel cruda", campaign.rawTierSignal ?? "Ninguna"],
               ].map(([label, value]) => (
                 <div

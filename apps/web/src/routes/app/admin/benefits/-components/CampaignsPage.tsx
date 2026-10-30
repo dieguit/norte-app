@@ -29,8 +29,6 @@ const STATUS_FILTER = [
   { value: "available", label: "Disponibles" },
   { value: "incomplete", label: "Incompletas" },
   { value: "hidden", label: "Ocultas" },
-  { value: "withdrawn", label: "Retiradas" },
-  { value: "expired", label: "Vencidas" },
 ];
 const SOURCE_FILTER = [
   { value: ALL, label: "Todas las fuentes" },

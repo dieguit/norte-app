@@ -21,6 +21,7 @@ describe('ingestion CLI', () => {
       ['--max-details', '1.5'],
       ['--source', 'other'],
       ['--commit', '--dry-run'],
+      ['--bank', 'other'],
     ])
       expect(() => parseIngestArgs(args)).toThrow();
   });

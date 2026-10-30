@@ -55,7 +55,7 @@ export type AdapterRun = {
   complete: boolean;
   totalReported: number | null; // source's own total (pagination metadata)
   rawRowCount: number; // rows actually read, before dedupe (Macro has legit duplicate rows)
-  // Every external id seen, mapped or not: absence is judged on this, never on `listings`.
+  // Every non-finished external id seen, mapped or not, is used for absence checks.
   observedExternalIds: string[];
   listings: NormalizedListing[];
   anomalies: AdapterAnomaly[];

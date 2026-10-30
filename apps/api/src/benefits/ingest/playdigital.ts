@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { todayInArgentina } from '../../argentina-time';
 import { createPacedJsonFetch } from './http';
-import { BANK_TIERS } from './tiers';
+import { ALLOWED_BANKS, BANK_TIERS } from './tiers';
 import {
   playdigitalDetailSchema,
   mapPlaydigitalDetail,
@@ -445,6 +445,8 @@ async function appendPage(
   run.rawRowCount += rows.length;
   for (const raw of rows) {
     const externalId = observedId(raw);
+    const parsed = cardSchema.safeParse(raw);
+    if (parsed.success && listingFinished(parsed.data, today)) continue;
     const card = parseObservedCard(raw, externalId, run);
     if (!externalId) continue;
     if (!card) {
@@ -453,7 +455,7 @@ async function appendPage(
     }
     if (seen.has(externalId)) continue;
     seen.add(externalId);
-    await appendCard(run, bank, raw, card, getDetail, today);
+    await appendCard(run, bank, raw, card, getDetail);
   }
 }
 
@@ -463,13 +465,9 @@ async function appendCard(
   raw: unknown,
   card: Card,
   getDetail: ReturnType<typeof detailCache>,
-  today: string,
 ) {
   const externalId = listingIdentity(card).externalId;
-  const finished = listingFinished(card, today);
-  const result = finished
-    ? { known: undefined, stale: false, failed: undefined }
-    : await getDetail(externalId, card);
+  const result = await getDetail(externalId, card);
   if (result.failed)
     run.anomalies.push({
       kind: 'detail_failed',
@@ -479,7 +477,6 @@ async function appendCard(
   let listing: NormalizedListing;
   try {
     listing = mapListing(card, bank, result.known, result.stale, run);
-    if (finished) listing.unpublishableReason = 'finished';
   } catch (error) {
     listing = invalidListing(raw, externalId, bank.slug);
     listing.unpublishableReason = `listing mapping failed: ${String(error)}`;
@@ -501,7 +498,10 @@ async function appendCard(
     });
 }
 
-function listingFinished(card: Card, today: string) {
+export function listingFinished(
+  card: Pick<Card, 'calculated_status' | 'stop_date'>,
+  today: string,
+) {
   if (
     card.calculated_status === 'FINISHED' ||
     card.calculated_status === 'FINISHED_FOR_PRODUCT'
@@ -526,6 +526,7 @@ async function readBankPages(
   if (!bank.playdigitalId) throw new Error('missing PlayDigital bank id');
   const fetchJson = client(ctx);
   const seen = new Set<string>();
+  const traversed = new Set<string>();
   let totalPages = 1;
   for (let page = 1; page <= totalPages; page++) {
     const url = `${root}/slots/?slots=web-banco-hub-promos_corriendo&source=web_bank&banks=${encodeURIComponent(bank.playdigitalId)}&origin=web_bank&slot_info=false&limit=1000&page=${page}`;
@@ -546,7 +547,11 @@ async function readBankPages(
       totalPages = pagination.total_pages;
       run.totalReported = pagination.total_results;
     }
-    const previousCount = new Set(run.observedExternalIds).size;
+    const ids = response.data.cards
+      .map(observedId)
+      .filter((id): id is string => !!id);
+    const progressed = ids.some((id) => !traversed.has(id));
+    ids.forEach((id) => traversed.add(id));
     await appendPage(
       run,
       bank,
@@ -561,7 +566,7 @@ async function readBankPages(
       run.totalReported!,
       pagination,
       response.data.cards.length,
-      new Set(run.observedExternalIds).size > previousCount,
+      progressed,
     );
     if (problem) {
       run.outcome = 'partial';
@@ -602,17 +607,21 @@ export const playdigitalAdapter: Adapter = {
           'https://www.modo.com.ar/promos/api/rewards/v2/banks',
         ),
       );
-    return parsed.banks.map((bank) => ({
-      slug: playdigitalBankSlug(bank.name),
-      name: bank.name,
-      playdigitalId: bank.id,
-    }));
+    return parsed.banks
+      .map((bank) => ({
+        slug: playdigitalBankSlug(bank.name),
+        name: bank.name,
+        playdigitalId: bank.id,
+      }))
+      .filter((bank) => ALLOWED_BANKS.includes(bank.slug));
   },
   async run(ctx, banks) {
     const getDetail = detailCache(ctx);
     const runs: AdapterRun[] = [];
     for (const bank of banks.filter(
-      (bank) => !ctx.bankSlugs || ctx.bankSlugs.includes(bank.slug),
+      (bank) =>
+        ALLOWED_BANKS.includes(bank.slug) &&
+        (!ctx.bankSlugs || ctx.bankSlugs.includes(bank.slug)),
     )) {
       const run: AdapterRun = {
         source: 'playdigital',

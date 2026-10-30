@@ -2,6 +2,7 @@ import type { Database } from '../../database/database.types';
 import { galiciaAdapter } from './galicia';
 import { playdigitalAdapter } from './playdigital';
 import { commitRun, loadKnownDetails, saveDetail, upsertBanks } from './store';
+import { ALLOWED_BANKS } from './tiers';
 import type {
   Adapter,
   AdapterContext,
@@ -31,10 +32,7 @@ function summarizeRun(run: AdapterRun) {
     unpublishable: run.listings.filter((listing) => !listing.terms).length,
     detailsMissing:
       run.source === 'playdigital'
-        ? run.listings.filter(
-            (listing) =>
-              !listing.terms && listing.unpublishableReason !== 'finished',
-          ).length
+        ? run.listings.filter((listing) => !listing.terms).length
         : 0,
     anomalies: run.anomalies.length,
     error: run.error,
@@ -140,6 +138,8 @@ function sourceSelected(adapter: Adapter, options: IngestOptions) {
 }
 
 export async function runIngest(db: Database, options: IngestOptions) {
+  if (options.bankSlugs?.some((slug) => !ALLOWED_BANKS.includes(slug)))
+    throw new Error('Invalid bank');
   const maxDetails = options.maxDetails ?? 200;
   if (!Number.isSafeInteger(maxDetails) || maxDetails < 0)
     throw new Error('maxDetails must be a nonnegative integer');

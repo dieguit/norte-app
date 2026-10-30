@@ -98,7 +98,6 @@ function checkBrandCollision(candidate: Brand, others: Brand[]) {
 }
 
 function statusFilter(status: ExplorerQuery['status']) {
-  const expired = sql`${campaigns.terms}->'validity'->>'to' < ${todayInArgentina().today}`;
   switch (status) {
     case 'available':
       return and(eq(campaigns.hidden, false), isNull(campaigns.withdrawnAt));
@@ -106,10 +105,6 @@ function statusFilter(status: ExplorerQuery['status']) {
       return undefined;
     case 'hidden':
       return eq(campaigns.hidden, true);
-    case 'withdrawn':
-      return sql`${campaigns.withdrawnAt} is not null`;
-    case 'expired':
-      return expired;
   }
 }
 

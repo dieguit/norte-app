@@ -13,7 +13,14 @@ import {
   sql,
   inArray,
   arrayOverlaps,
+  notInArray,
+  isNotNull,
+  or,
 } from 'drizzle-orm';
+import { todayInArgentina } from '../../argentina-time';
+import { z } from 'zod';
+import { listingFinished } from './playdigital';
+import { ALLOWED_BANKS } from './tiers';
 import type { Database, Executor } from '../../database/database.types';
 import {
   benefitBanks as banks,
@@ -86,10 +93,7 @@ export function absenceBlockReason(
   if (!run.complete) return 'incomplete';
   if (run.totalReported !== null && run.rawRowCount !== run.totalReported)
     return 'count_mismatch';
-  if (
-    previousCount !== null &&
-    new Set(run.observedExternalIds).size < previousCount * 0.5
-  )
+  if (previousCount !== null && run.rawRowCount < previousCount * 0.5)
     return 'low_count';
   return null;
 }
@@ -154,7 +158,7 @@ export async function upsertBanks(
   db: Executor,
   refs: BankRef[],
 ): Promise<void> {
-  for (const bank of refs) {
+  for (const bank of refs.filter((bank) => ALLOWED_BANKS.includes(bank.slug))) {
     const value = {
       ...bank,
       ownCatalog: ['galicia', 'macro'].includes(bank.slug),
@@ -493,7 +497,7 @@ async function startRun(
     )
     .orderBy(desc(runs.startedAt))
     .limit(1);
-  const block = absenceBlockReason(run, previous?.observedCount ?? null);
+  const block = absenceBlockReason(run, previous?.rawRowCount ?? null);
   if (block) anomalies.push({ kind: 'absence_skipped', detail: block });
   const [record] = await db
     .insert(runs)
@@ -513,6 +517,73 @@ async function startRun(
   return { block, record };
 }
 
+async function pruneCampaigns(
+  tx: Executor,
+  now: Date,
+  summary: CommitSummary,
+  anomalies: Anomalies,
+) {
+  const removed = await tx
+    .delete(presence)
+    .where(
+      or(
+        notInArray(presence.bankSlug, ALLOWED_BANKS),
+        isNotNull(presence.withdrawnAt),
+        sql`${presence.snapshot}->>'unpublishableReason' = 'finished'`,
+      ),
+    )
+    .returning({ campaignId: presence.campaignId });
+  const legacy = await tx
+    .select({
+      id: campaigns.id,
+      listing: sql<unknown>`${campaigns.raw}->'listing'`,
+    })
+    .from(campaigns)
+    .where(eq(campaigns.source, 'playdigital'));
+  const legacyFields = z.object({
+    calculated_status: z.string().nullish(),
+    stop_date: z.string().nullish().catch(undefined),
+  });
+  const ended = legacy
+    .filter((row) => {
+      const parsed = legacyFields.safeParse(row.listing);
+      if (!parsed.success) return false;
+      const status = parsed.data.calculated_status;
+      return (
+        (!status ||
+          ['RUNNING', 'FINISHED', 'FINISHED_FOR_PRODUCT'].includes(status)) &&
+        listingFinished(parsed.data, todayInArgentina(now).today)
+      );
+    })
+    .map((row) => row.id);
+  for (let i = 0; i < ended.length; i += 1000)
+    await tx
+      .delete(campaigns)
+      .where(inArray(campaigns.id, ended.slice(i, i + 1000)));
+  const removedIds = [...new Set(removed.map((row) => row.campaignId))];
+  for (let i = 0; i < removedIds.length; i += 1000) {
+    const remaining = await tx
+      .selectDistinct({ campaignId: presence.campaignId })
+      .from(presence)
+      .where(inArray(presence.campaignId, removedIds.slice(i, i + 1000)));
+    for (const { campaignId: id } of remaining)
+      await rebuildCampaign(tx, id, now, summary, anomalies);
+  }
+  await tx
+    .delete(campaigns)
+    .where(
+      or(
+        sql`not exists (select 1 from ${presence} where ${presence.campaignId} = ${campaigns.id})`,
+        sql`${campaigns.terms}->'validity'->>'to' < ${todayInArgentina(now).today}`,
+      ),
+    );
+  await tx
+    .delete(details)
+    .where(
+      sql`not exists (select 1 from ${campaigns} where ${campaigns.source} = ${details.source} and ${campaigns.externalId} = ${details.externalId})`,
+    );
+}
+
 export async function commitRun(
   db: Database,
   run: AdapterRun,
@@ -525,6 +596,7 @@ export async function commitRun(
     const bankSlug =
       run.bankSlug ?? (run.source === 'galicia' ? 'galicia' : null);
     if (!bankSlug) throw new Error('PlayDigital run requires bankSlug');
+    if (!ALLOWED_BANKS.includes(bankSlug)) throw new Error('Invalid bank');
     const anomalies: Anomalies = [...run.anomalies];
     const { block, record } = await startRun(tx, run, bankSlug, anomalies);
     const summary: CommitSummary = {
@@ -564,6 +636,7 @@ export async function commitRun(
       affected.add(id);
     for (const id of affected)
       await rebuildCampaign(tx, id, now, summary, anomalies);
+    await pruneCampaigns(tx, now, summary, anomalies);
     const { runId: _, ...counts } = summary;
     await tx
       .update(runs)

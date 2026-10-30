@@ -11,9 +11,7 @@ export const ExplorerQuerySchema = z.object({
   bank: z.string().max(100).optional(),
   category: CatalogCategorySchema.optional(),
   tier: z.string().max(80).optional(),
-  status: z
-    .enum(["all", "available", "incomplete", "hidden", "withdrawn", "expired"])
-    .default("all"),
+  status: z.enum(["all", "available", "incomplete", "hidden"]).default("all"),
   page: z.coerce.number().int().min(1).max(100000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(30),
 });

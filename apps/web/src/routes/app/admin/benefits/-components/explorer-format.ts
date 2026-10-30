@@ -177,30 +177,18 @@ export function requirementLeafText(r: Requirement): string {
   return "";
 }
 
-export type CampaignStatus =
-  "hidden" | "withdrawn" | "expired" | "incomplete" | "available";
+export type CampaignStatus = "hidden" | "incomplete" | "available";
 
 export const STATUS_LABELS: Record<CampaignStatus, string> = {
   available: "Disponible",
   incomplete: "Incompleta",
   hidden: "Oculta",
-  withdrawn: "Retirada",
-  expired: "Vencida",
 };
 
-const todayInArgentina = () =>
-  new Date().toLocaleDateString("en-CA", {
-    timeZone: "America/Argentina/Buenos_Aires",
-  });
-
-// Same precedence as the API status filter; expiry is derived at read time, never stored.
 export function campaignStatus(
-  c: Pick<ExplorerCampaign, "hidden" | "withdrawnAt" | "terms">,
-  today = todayInArgentina(),
+  c: Pick<ExplorerCampaign, "hidden" | "terms">,
 ): CampaignStatus {
   if (c.hidden) return "hidden";
-  if (c.withdrawnAt) return "withdrawn";
-  if (c.terms?.validity.to && c.terms.validity.to < today) return "expired";
   if (!c.terms || c.terms.eligibilityCompleteness !== "complete")
     return "incomplete";
   return "available";

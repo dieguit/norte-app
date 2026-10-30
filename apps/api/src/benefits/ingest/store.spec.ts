@@ -98,7 +98,7 @@ describe('absence guards', () => {
   ] as const)('blocks unsafe runs %j', (change, reason) =>
     expect(absenceBlockReason({ ...run, ...change }, null)).toBe(reason),
   );
-  it('blocks low counts using distinct observed ids', () =>
+  it('blocks low counts using raw rows', () =>
     expect(
       absenceBlockReason({ ...run, observedExternalIds: ['a', 'a'] }, 3),
     ).toBe('low_count'));

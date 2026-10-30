@@ -26,7 +26,7 @@ import {
   benefitCampaignBanks,
   benefitIngestRuns,
 } from './ingest/schema';
-import { BANK_TIERS } from './ingest/tiers';
+import { ALLOWED_BANKS, BANK_TIERS } from './ingest/tiers';
 import {
   buildResults,
   groupResults,
@@ -50,9 +50,12 @@ export class BenefitsService {
         .select()
         .from(benefitBanks)
         .where(
-          or(
-            isNotNull(benefitBanks.playdigitalId),
-            eq(benefitBanks.ownCatalog, true),
+          and(
+            inArray(benefitBanks.slug, ALLOWED_BANKS),
+            or(
+              isNotNull(benefitBanks.playdigitalId),
+              eq(benefitBanks.ownCatalog, true),
+            ),
           ),
         ),
       this.db

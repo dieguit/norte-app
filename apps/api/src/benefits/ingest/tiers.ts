@@ -1,3 +1,18 @@
+// Masventas, HSBC and Brubank are absent from MODO's bank list.
+export const ALLOWED_BANKS: string[] = [
+  'macro',
+  'banco-nacion',
+  'santander',
+  'galicia',
+  'bbva',
+  'patagonia',
+  'hipotecario',
+  'banco-santiago',
+  'credicoop',
+  'comafi',
+  'supervielle',
+];
+
 // User-selectable tiers per bank (phase 0 audit). Codes are stored in profiles and eligibility facts.
 export const BANK_TIERS: Record<string, { code: string; label: string }[]> = {
   galicia: [

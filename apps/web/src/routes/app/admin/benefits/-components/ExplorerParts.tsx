@@ -26,8 +26,6 @@ const STATUS_TONE: Record<CampaignStatus, string> = {
   available: "bg-accent-brand-soft text-accent-brand",
   incomplete: "bg-secondary text-secondary-foreground border-input",
   hidden: "border-border text-muted-foreground",
-  withdrawn: "bg-negative-soft text-negative",
-  expired: "border-border text-subtle-foreground",
 };
 
 export function StatusBadge({ status }: { status: CampaignStatus }) {

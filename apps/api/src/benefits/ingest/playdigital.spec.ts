@@ -57,6 +57,15 @@ function known(
 }
 
 describe('PlayDigital adapter', () => {
+  it('does not fetch banks outside the allowlist', async () => {
+    const ctx = context(() => page([]));
+    expect(
+      await playdigitalAdapter.run(ctx, [
+        { slug: 'other', name: 'Other', playdigitalId: 'other' },
+      ]),
+    ).toEqual([]);
+    expect(ctx.fetchImpl).not.toHaveBeenCalled();
+  });
   it('normalizes numeric category strings and drops non-numeric categories without affecting completeness', async () => {
     const card = {
       ...cards[0],
@@ -101,20 +110,15 @@ describe('PlayDigital adapter', () => {
     expect(results[0]).toEqual(results[2]);
   });
   it.each(['FINISHED', 'FINISHED_FOR_PRODUCT'])(
-    'observes %s listings without fetching or reusing detail',
+    'ignores %s listings without fetching detail',
     async (status) => {
       const card = { ...cards[0], calculated_status: status };
       const ctx = context(() => page([card]));
       ctx.knownDetails.set(card.promo_id!, known(card));
       const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
       expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
-      expect(run.observedExternalIds).toContain(card.promo_id);
-      expect(run.listings[0]).toMatchObject({
-        terms: null,
-        unpublishableReason: 'finished',
-        raw: { detail: null },
-        detailFetchedAt: null,
-      });
+      expect(run.observedExternalIds).toEqual([]);
+      expect(run.listings).toEqual([]);
       expect(run.complete).toBe(true);
       expect(run.outcome).toBe('ok');
     },
@@ -127,7 +131,7 @@ describe('PlayDigital adapter', () => {
       const ctx = context(() => page([card]));
       const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
       expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
-      expect(run.listings[0].unpublishableReason).toBe('finished');
+      expect(run.listings).toEqual([]);
       expect(run.complete).toBe(true);
     },
   );
@@ -151,9 +155,8 @@ describe('PlayDigital adapter', () => {
       ctx.maxDetailFetches = 1;
       const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
       expect(ctx.fetchImpl).toHaveBeenCalledTimes(2);
-      expect(run.listings[0].unpublishableReason).toBe('finished');
-      expect(run.listings[1].terms).not.toBeNull();
-      expect(run.observedExternalIds).toEqual(['finished', active.promo_id]);
+      expect(run.listings[0].terms).not.toBeNull();
+      expect(run.observedExternalIds).toEqual([active.promo_id]);
       expect(run.complete).toBe(true);
     },
   );

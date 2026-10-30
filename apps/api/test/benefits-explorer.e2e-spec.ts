@@ -38,7 +38,7 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
   const pool = new Pool({ connectionString: url });
   const db = drizzle(pool, { schema });
   const prefix = `explorer-${randomUUID()}`;
-  const bank = prefix;
+  const bank = 'bbva';
   const key = `galicia:${prefix}`;
   const brandIds = [randomUUID(), randomUUID()];
   const campaignIds = Array.from({ length: 5 }, () => randomUUID());
@@ -147,19 +147,10 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
           brandId: brandIds[0],
           title: `${prefix} ${i}`,
           categories: ['otros' as const],
-          terms:
-            i === 1
-              ? null
-              : i === 4
-                ? {
-                    ...l.terms!,
-                    validity: { from: null, to: '2000-01-01', weekdays: null },
-                  }
-                : l.terms,
+          terms: i === 1 ? null : l.terms,
           unpublishableReason: i === 1 ? 'missing_detail' : null,
           verifyUrl: l.verify.url,
           hidden: i === 2,
-          withdrawnAt: i === 3 ? now : null,
           raw: l.raw,
           listingHash: l.listingHash,
           firstSeenAt: now,
@@ -172,15 +163,7 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
         ['macro', 'galicia'].map((bankSlug) => ({
           campaignId: id,
           bankSlug,
-          terms:
-            i === 1
-              ? null
-              : i === 4
-                ? {
-                    ...listing(id).terms!,
-                    validity: { from: null, to: '2000-01-01', weekdays: null },
-                  }
-                : listing(id).terms,
+          terms: i === 1 ? null : listing(id).terms,
           tiers: {
             bankSlug,
             codes: bankSlug === 'macro' ? ['platinum'] : ['eminent'],
@@ -208,7 +191,6 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
     await db.delete(runs).where(inArray(runs.id, runIds));
     await db.delete(brands).where(inArray(brands.id, brandIds));
     await db.delete(mappings).where(eq(mappings.sourceKey, key));
-    await db.delete(banks).where(eq(banks.slug, bank));
     await app?.close();
     await pool.end();
   });
@@ -252,14 +234,16 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
     expect((await get({ bank: 'macro', tier: 'eminent' })).body.total).toBe(0);
     expect((await get({ bank: 'macro', tier: 'platinum' })).body.total).toBe(5);
     expect((await get({ tier: 'unknown' })).body.total).toBe(0);
-    for (const status of [
-      'available',
-      'incomplete',
-      'hidden',
-      'withdrawn',
-      'expired',
-    ])
+    expect((await get({ status: 'available' })).body.total).toBe(3);
+    for (const status of ['incomplete', 'hidden'])
       expect((await get({ status })).body.total).toBe(1);
+    for (const status of ['withdrawn', 'expired']) {
+      expect(ExplorerQuerySchema.safeParse({ status }).success).toBe(false);
+      await request(app.getHttpServer())
+        .get('/admin/benefits/explorer/campaigns')
+        .query({ status })
+        .expect(400);
+    }
     const emptyPage = await get({ page: 1000 });
     expect(emptyPage.body).toMatchObject({ total: 5, items: [] });
     await request(app.getHttpServer())

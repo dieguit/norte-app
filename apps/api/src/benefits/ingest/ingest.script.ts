@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { schema } from '../../database/schema';
 import { runIngest } from './runner';
+import { ALLOWED_BANKS } from './tiers';
 import type { IngestOptions } from './runner';
 
 export function parseIngestArgs(args: string[]) {
@@ -30,7 +31,7 @@ export function parseIngestArgs(args: string[]) {
   const bankSlugs = values.bank?.flatMap((bank) =>
     bank.split(',').map((slug) => slug.trim()),
   );
-  if (bankSlugs?.some((slug) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)))
+  if (bankSlugs?.some((slug) => !ALLOWED_BANKS.includes(slug)))
     throw new Error('Invalid --bank');
   return {
     source: values.source as IngestOptions['source'],

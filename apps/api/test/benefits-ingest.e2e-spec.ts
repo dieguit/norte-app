@@ -8,11 +8,13 @@ import { CampaignTermsSchema, type CampaignTerms } from '@repo/shared-types';
 import { evaluateEligibility } from '../src/benefits/rules/eligibility';
 import { BenefitsService } from '../src/benefits/benefits.service';
 import { playdigitalAdapter } from '../src/benefits/ingest/playdigital';
+import { ALLOWED_BANKS } from '../src/benefits/ingest/tiers';
 import {
   benefitCampaigns as campaigns,
   benefitCampaignBanks as presence,
   benefitIngestRuns as runs,
   benefitBrands as brands,
+  benefitDetailCache as details,
 } from '../src/benefits/ingest/schema';
 import {
   commitRun,
@@ -339,20 +341,19 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
   it('keeps many-bank campaigns publishable without building an oversized eligibility union', async () => {
     const a = listing();
     let result;
-    for (let i = 0; i < 18; i++) {
-      const bank = `test-bank-${i}`;
+    for (const bank of ALLOWED_BANKS) {
       result = await commit(run([bankListing(a, bank, 'base')], 0, bank));
     }
     const [row] = await db.select().from(campaigns);
     expect(row.terms).toEqual(
-      CampaignTermsSchema.parse(bankListing(a, 'test-bank-0', 'base').terms),
+      CampaignTermsSchema.parse(bankListing(a, 'banco-nacion', 'base').terms),
     );
     expect(CampaignTermsSchema.safeParse(row.terms).success).toBe(true);
     expect(row.unpublishableReason).toBeNull();
     expect(
       await listPublishableCampaigns(db, { today: '2026-10-01' }),
     ).toHaveLength(1);
-    expect(await db.select().from(presence)).toHaveLength(18);
+    expect(await db.select().from(presence)).toHaveLength(ALLOWED_BANKS.length);
     const [record] = await db
       .select()
       .from(runs)
@@ -423,7 +424,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     );
   });
 
-  it('withdraws per bank only after two misses 24h apart; observed unmapped ids restore presence', async () => {
+  it('deletes each bank presence after two misses 24h apart', async () => {
     const a = listing(),
       keeper = listing();
     await commit(run([a, keeper]));
@@ -450,12 +451,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       .select()
       .from(campaigns)
       .where(eq(campaigns.externalId, a.externalId));
-    expect(restored.withdrawnAt).toBeNull();
-    const [p] = await db
-      .select()
-      .from(presence)
-      .where(eq(presence.campaignId, restored.id));
-    expect(p).toBeDefined();
+    expect(restored).toBeUndefined();
   });
 
   it('withdraws absent listings and stays fresh when listed details fail', async () => {
@@ -513,6 +509,272 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       .from(campaigns)
       .where(eq(campaigns.externalId, keeper.externalId));
     expect(row.terms).toBeNull();
+  });
+
+  it('deletes a finished listing only after two complete absences 24 hours apart', async () => {
+    const ended = listing(),
+      keeper = listing();
+    await commit(run([ended, keeper]));
+    const bank = { slug: 'macro', name: 'Macro', playdigitalId: 'macro-id' };
+    const fetchImpl: typeof fetch = async () =>
+      Response.json({
+        data: {
+          cards: [
+            { promo_id: ended.externalId, calculated_status: 'FINISHED' },
+            { promo_id: keeper.externalId },
+          ],
+        },
+        metadata: { pagination: { page: 1, total_pages: 1, total_results: 2 } },
+      });
+    for (const day of [1, 2]) {
+      const [result] = await playdigitalAdapter.run(
+        {
+          now: date(day),
+          fetchImpl,
+          knownDetails: new Map(),
+          maxDetailFetches: 0,
+          pacing: { minIntervalMs: 0, timeoutMs: 1000, retries: 0 },
+        },
+        [bank],
+      );
+      expect(result).toMatchObject({
+        outcome: 'ok',
+        complete: true,
+        rawRowCount: 2,
+        observedExternalIds: [keeper.externalId],
+      });
+      result.startedAt = result.completedAt = date(day);
+      expect((await commit(result)).withdrawnBanks).toBe(day === 1 ? 0 : 1);
+      expect(
+        await db
+          .select()
+          .from(campaigns)
+          .where(eq(campaigns.externalId, ended.externalId)),
+      ).toHaveLength(day === 1 ? 1 : 0);
+    }
+  });
+
+  it('immediately prunes legacy finished snapshots and ended raw listings, but keeps upcoming and unknown statuses', async () => {
+    const placeholder = listing(),
+      past = listing(),
+      finished = listing(),
+      finishedProduct = listing(),
+      upcoming = listing(),
+      awaiting = listing(),
+      unknown = listing(),
+      keeper = listing();
+    await commit(
+      run([
+        placeholder,
+        past,
+        finished,
+        finishedProduct,
+        upcoming,
+        awaiting,
+        unknown,
+        keeper,
+      ]),
+    );
+    const rows = await db.select().from(campaigns);
+    const byId = (id: string) => rows.find((row) => row.externalId === id)!;
+    await db
+      .update(presence)
+      .set({ snapshot: { ...placeholder, unpublishableReason: 'finished' } })
+      .where(eq(presence.campaignId, byId(placeholder.externalId).id));
+    for (const [item, raw] of [
+      [past, { stop_date: '2026-09-30' }],
+      [finished, { calculated_status: 'FINISHED' }],
+      [finishedProduct, { calculated_status: 'FINISHED_FOR_PRODUCT' }],
+      [
+        upcoming,
+        { calculated_status: 'NEXT_FOR_PRODUCT', stop_date: '2026-09-30' },
+      ],
+      [awaiting, { calculated_status: 'AWAITING', stop_date: '2026-09-30' }],
+      [unknown, { calculated_status: 'UNKNOWN', stop_date: '2026-09-30' }],
+    ] as const) {
+      await db
+        .update(campaigns)
+        .set({ raw: { listing: raw, detail: null } })
+        .where(eq(campaigns.id, byId(item.externalId).id));
+    }
+    for (const item of [placeholder, past, finished, finishedProduct, upcoming])
+      await saveDetail(db, 'playdigital', item.externalId, {
+        listingHash: 'hash',
+        fetchedAt: start,
+        detail: {},
+      });
+    await commit(run([keeper], 1));
+    const survivors = (await db.select().from(campaigns)).map(
+      (row) => row.externalId,
+    );
+    for (const item of [placeholder, past, finished, finishedProduct]) {
+      expect(survivors).not.toContain(item.externalId);
+      expect(
+        await db
+          .select()
+          .from(presence)
+          .where(eq(presence.campaignId, byId(item.externalId).id)),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(details)
+          .where(eq(details.externalId, item.externalId)),
+      ).toHaveLength(0);
+    }
+    for (const item of [upcoming, awaiting, unknown, keeper])
+      expect(survivors).toContain(item.externalId);
+    expect(
+      await db
+        .select()
+        .from(details)
+        .where(eq(details.externalId, upcoming.externalId)),
+    ).toHaveLength(1);
+  });
+
+  it('prunes expired campaigns, disallowed presences and orphan details while retaining admin data and runs', async () => {
+    const expired = listing(),
+      keeper = {
+        ...listing(),
+        terms: {
+          ...listing().terms!,
+          validity: { from: null, to: null, weekdays: null },
+        },
+      };
+    const first = await commit(run([expired, keeper]));
+    const [expiredRow] = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.externalId, expired.externalId));
+    const [keeperRow] = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.externalId, keeper.externalId));
+    await db
+      .insert(schema.benefitBanks)
+      .values({ slug: 'unwanted-test', name: 'Unwanted' })
+      .onConflictDoNothing();
+    const [basePresence] = await db
+      .select()
+      .from(presence)
+      .where(eq(presence.campaignId, keeperRow.id));
+    await db
+      .insert(presence)
+      .values({ ...basePresence, bankSlug: 'unwanted-test' });
+    const key = `pd:prune-${randomUUID()}`;
+    await setCategoryMapping(db, key, 'otros', 'test');
+    for (const id of [expired.externalId, keeper.externalId, 'orphan-test'])
+      await saveDetail(db, 'playdigital', id, {
+        listingHash: 'hash',
+        fetchedAt: start,
+        detail: {},
+      });
+    try {
+      const second = await commit(run([keeper], 31));
+      expect(
+        await db
+          .select()
+          .from(campaigns)
+          .where(eq(campaigns.id, expiredRow.id)),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(presence)
+          .where(eq(presence.bankSlug, 'unwanted-test')),
+      ).toHaveLength(0);
+      expect(
+        (await db.select().from(details)).map((row) => row.externalId),
+      ).toEqual([keeper.externalId]);
+      expect(
+        await db.select().from(brands).where(eq(brands.id, keeperRow.brandId!)),
+      ).toHaveLength(1);
+      expect(
+        await db
+          .select()
+          .from(schema.benefitCategoryMappings)
+          .where(eq(schema.benefitCategoryMappings.sourceKey, key)),
+      ).toHaveLength(1);
+      expect(
+        await db
+          .select()
+          .from(runs)
+          .where(sql`${runs.id} in (${first.runId}, ${second.runId})`),
+      ).toHaveLength(2);
+    } finally {
+      await db
+        .delete(schema.benefitCategoryMappings)
+        .where(eq(schema.benefitCategoryMappings.sourceKey, key));
+      await db
+        .delete(schema.benefitBanks)
+        .where(eq(schema.benefitBanks.slug, 'unwanted-test'));
+    }
+  });
+
+  it('never stores non-allowlisted banks', async () => {
+    const slug = `unwanted-${randomUUID()}`;
+    await upsertBanks(db, [
+      { slug, name: 'Unwanted', playdigitalId: 'unwanted' },
+    ]);
+    expect(
+      await db
+        .select()
+        .from(schema.benefitBanks)
+        .where(eq(schema.benefitBanks.slug, slug)),
+    ).toHaveLength(0);
+    await expect(commit(run([listing()], 0, slug))).rejects.toThrow(
+      'Invalid bank',
+    );
+    expect(
+      await db
+        .select()
+        .from(schema.benefitBanks)
+        .where(eq(schema.benefitBanks.slug, slug)),
+    ).toHaveLength(0);
+  });
+
+  it('blocks withdrawal when a later listing page fails', async () => {
+    const absent = listing(),
+      keeper = listing();
+    await commit(run([absent, keeper]));
+    await commit(run([keeper], 1));
+    const fetchImpl: typeof fetch = async (input) =>
+      new URL(String(input)).searchParams.get('page') === '1'
+        ? Response.json({
+            data: { cards: [{ promo_id: keeper.externalId }] },
+            metadata: {
+              pagination: { page: 1, total_pages: 2, total_results: 2 },
+            },
+          })
+        : new Response(null, { status: 500 });
+    const [partial] = await playdigitalAdapter.run(
+      {
+        now: date(2),
+        fetchImpl,
+        knownDetails: new Map(),
+        maxDetailFetches: 0,
+        pacing: { minIntervalMs: 0, timeoutMs: 1000, retries: 0 },
+      },
+      [{ slug: 'macro', name: 'Macro', playdigitalId: 'macro-id' }],
+    );
+    expect(partial).toMatchObject({ outcome: 'partial', complete: false });
+    partial.startedAt = partial.completedAt = date(2);
+    const result = await commit(partial);
+    expect(result.withdrawnBanks).toBe(0);
+    expect(
+      await db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.externalId, absent.externalId)),
+    ).toHaveLength(1);
+    const [record] = await db
+      .select()
+      .from(runs)
+      .where(eq(runs.id, result.runId));
+    expect(record.anomalies).toContainEqual({
+      kind: 'absence_skipped',
+      detail: 'outcome_not_ok',
+    });
   });
 
   it.each([
@@ -630,13 +892,13 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
         .select()
         .from(campaigns)
         .where(eq(campaigns.externalId, a.externalId));
+      if (mode === 'observed-only') {
+        expect(row).toBeUndefined();
+        return;
+      }
       expect(row.withdrawnAt).toBeNull();
       expect(row.terms).toBeNull();
-      expect(row.unpublishableReason).toBe(
-        mode === 'placeholder'
-          ? 'malformed_record'
-          : 'observed_without_listing',
-      );
+      expect(row.unpublishableReason).toBe('malformed_record');
     },
   );
 

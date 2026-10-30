@@ -27,29 +27,11 @@ describe("explorer format", () => {
     expect(minimumSpendText(0)).toBe("Sin compra mínima");
   });
 
-  it("derives status with hidden > withdrawn > expired > incomplete", () => {
+  it("derives status with hidden > incomplete", () => {
     const complete = { ...terms, eligibilityCompleteness: "complete" as const };
-    expect(campaignStatus({ ...campaign, terms: complete }, "2026-11-01")).toBe(
-      "available",
-    );
-    expect(campaignStatus(campaign, "2026-11-01")).toBe("incomplete");
-    expect(campaignStatus({ ...campaign, terms: null }, "2026-11-01")).toBe(
-      "incomplete",
-    );
-    expect(
-      campaignStatus(
-        {
-          ...campaign,
-          terms: {
-            ...complete,
-            validity: { ...complete.validity, to: "2026-10-31" },
-          },
-        },
-        "2026-11-01",
-      ),
-    ).toBe("expired");
-    expect(
-      campaignStatus({ ...campaign, hidden: true, withdrawnAt: "x" }),
-    ).toBe("hidden");
+    expect(campaignStatus({ ...campaign, terms: complete })).toBe("available");
+    expect(campaignStatus(campaign)).toBe("incomplete");
+    expect(campaignStatus({ ...campaign, terms: null })).toBe("incomplete");
+    expect(campaignStatus({ ...campaign, hidden: true })).toBe("hidden");
   });
 });
