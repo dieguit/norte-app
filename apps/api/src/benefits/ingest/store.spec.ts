@@ -1,8 +1,57 @@
 import { describe, expect, it } from 'vitest';
-import { absenceBlockReason, resolveCategories } from './store';
+import {
+  absenceBlockReason,
+  canonicalCategories,
+  resolveCategories,
+} from './store';
 import type { AdapterRun } from './types';
 
 describe('category lookup', () => {
+  it('uses the same active canonical bank and mapping precedence for admin and ingest', () => {
+    const rows: Parameters<typeof canonicalCategories>[0] = [
+      {
+        bankSlug: 'z',
+        withdrawnAt: null,
+        terms: {} as never,
+        snapshot: { rawCategories: ['pd:2'] },
+      },
+      {
+        bankSlug: 'a',
+        withdrawnAt: null,
+        terms: null,
+        snapshot: { rawCategories: ['pd:1'] },
+      },
+      {
+        bankSlug: 'b',
+        withdrawnAt: null,
+        terms: {} as never,
+        snapshot: { rawCategories: ['pd:14', 'pd:14/31'] },
+      },
+    ];
+    expect(
+      canonicalCategories(
+        rows,
+        new Map([
+          ['pd:14', 'otros'],
+          ['pd:14/31', 'viajes'],
+          ['pd:2', 'gastronomia'],
+        ]),
+      ),
+    ).toEqual(['viajes']);
+    expect(
+      canonicalCategories(
+        rows.map((row) => ({ ...row, terms: null })),
+        new Map([['pd:1', 'salud-belleza']]),
+      ),
+    ).toEqual(['salud-belleza']);
+    expect(canonicalCategories([], new Map())).toEqual(['otros']);
+    expect(
+      canonicalCategories(
+        rows.map((row) => ({ ...row, withdrawnAt: new Date() })),
+        new Map([['pd:14/31', 'viajes']]),
+      ),
+    ).toEqual(['viajes']);
+  });
   it('prefers a mapped child to its parent and preserves independent categories', () => {
     expect(
       resolveCategories(

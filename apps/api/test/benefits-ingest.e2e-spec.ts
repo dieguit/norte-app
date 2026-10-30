@@ -595,7 +595,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       .from(schema.benefitBanks)
       .where(eq(schema.benefitBanks.slug, 'macro'));
     expect(macro.ownCatalogScope).toBe(
-      'PlayDigital hub only; separate Selecta sections are not confirmed',
+      'Solo el hub de PlayDigital; las secciones Selecta separadas no están confirmadas',
     );
   });
 

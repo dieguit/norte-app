@@ -57,6 +57,27 @@ export function resolveCategories(
     : null;
 }
 
+export function canonicalCategories(
+  rows: {
+    bankSlug: string;
+    withdrawnAt: Date | null;
+    terms: CampaignTerms | null;
+    snapshot: Pick<NormalizedListing, 'rawCategories'>;
+  }[],
+  mapping: Map<string, CatalogCategory>,
+): CatalogCategory[] {
+  const active = rows.filter((row) => !row.withdrawnAt);
+  const relevant = (active.length ? active : [...rows]).sort((a, b) =>
+    a.bankSlug.localeCompare(b.bankSlug),
+  );
+  const canonical = relevant.find((row) => row.terms) ?? relevant[0];
+  return canonical
+    ? (resolveCategories(canonical.snapshot.rawCategories, mapping) ?? [
+        'otros',
+      ])
+    : ['otros'];
+}
+
 export function absenceBlockReason(
   run: AdapterRun,
   previousCount: number | null,
@@ -149,8 +170,8 @@ export async function upsertBanks(
 
 function ownCatalogScope(slug: string): string | null {
   if (slug === 'macro')
-    return 'PlayDigital hub only; separate Selecta sections are not confirmed';
-  if (slug === 'galicia') return 'Galicia own API catalog';
+    return 'Solo el hub de PlayDigital; las secciones Selecta separadas no están confirmadas';
+  if (slug === 'galicia') return 'Catálogo propio de la API de Galicia';
   return null;
 }
 
@@ -466,11 +487,7 @@ async function rebuildCampaign(
   await db
     .update(campaigns)
     .set({
-      ...campaignSnapshot(
-        listing,
-        resolveCategories(listing.rawCategories, mapping) ?? ['otros'],
-        brandId,
-      ),
+      ...campaignSnapshot(listing, canonicalCategories(rows, mapping), brandId),
       ...publishableTerms(active, canonical, summary, anomalies),
       tiers: active.length === 1 ? canonical.tiers : null,
       rawTierSignal: active.length === 1 ? listing.rawTierSignal : null,
