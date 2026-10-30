@@ -1,7 +1,6 @@
 import {
   CATALOG_CATEGORY_LABELS,
   type BenefitCap,
-  type CampaignOffer,
   type CampaignTerms,
   type CardSelector,
   type CatalogCategory,
@@ -9,6 +8,12 @@ import {
   type Requirement,
 } from "@repo/shared-types";
 import { formatMoney } from "@/lib/format";
+import {
+  listJoin,
+  offersText as formatOffers,
+} from "@/features/benefits/benefit-offer-format";
+
+export { safeHttpUrl } from "@/features/benefits/benefit-offer-format";
 
 export const SOURCE_LABELS: Record<ExplorerCampaign["source"], string> = {
   galicia: "Galicia (catálogo propio)",
@@ -18,29 +23,8 @@ export const SOURCE_LABELS: Record<ExplorerCampaign["source"], string> = {
 export const categoryLabel = (category: CatalogCategory) =>
   CATALOG_CATEGORY_LABELS[category] ?? category;
 
-const percent = (bps: number) =>
-  `${(bps / 100).toLocaleString("es-AR", { maximumFractionDigits: 2 })}%`;
-
-// Galicia says "ahorro" without telling discount from cashback: never guess.
-const PERCENT_MODE = {
-  discount: "de descuento",
-  cashback: "de reintegro",
-  unspecified: "de ahorro",
-};
-
-function offerText(offer: CampaignOffer): string {
-  if (offer.kind === "percent")
-    return `${percent(offer.percentageBps)} ${PERCENT_MODE[offer.mode]}`;
-  return `${offer.upTo ? "hasta " : ""}${offer.count} cuotas sin interés`;
-}
-
-export const offersText = (terms: CampaignTerms | null) =>
-  terms ? listJoin(terms.offers.map(offerText), "y") : "Condiciones sin leer";
-
-function listJoin(items: string[], word: "y" | "o"): string {
-  if (items.length < 2) return items.join("");
-  return `${items.slice(0, -1).join(", ")} ${word} ${items.at(-1)}`;
-}
+export const termsOffersText = (terms: CampaignTerms | null) =>
+  terms ? formatOffers(terms.offers) : "Condiciones sin leer";
 
 const minorToArs = (minor: number) =>
   formatMoney({ amount: (minor / 100).toFixed(2), currency: "ARS" });
@@ -220,16 +204,4 @@ export function campaignStatus(
   if (!c.terms || c.terms.eligibilityCompleteness !== "complete")
     return "incomplete";
   return "available";
-}
-
-export function safeHttpUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:"
-      ? parsed.href
-      : null;
-  } catch {
-    return null;
-  }
 }

@@ -13,6 +13,6 @@ class DatabaseShutdownService implements OnApplicationShutdown {
 
 @Module({
   providers: [...databaseProviders, DatabaseShutdownService],
-  exports: [DATABASE_CONNECTION],
+  exports: [DATABASE_CONNECTION, DATABASE_POOL],
 })
 export class DatabaseModule {}

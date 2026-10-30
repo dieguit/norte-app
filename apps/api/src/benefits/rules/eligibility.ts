@@ -4,7 +4,17 @@ import type {
   ProviderFacts,
   Requirement,
 } from '@repo/shared-types';
-import type { Instrument } from '../catalog/types';
+type Instrument = {
+  slug: string;
+  label: string;
+  type: (typeof import('@repo/shared-types').INSTRUMENT_TYPES)[number];
+  network?: (typeof import('@repo/shared-types').CARD_NETWORKS)[number];
+  issuerProviderSlug?: string;
+  issuerCountry?: string;
+  productLevel?: string;
+  segment?: string;
+  evidenceUrl: string;
+};
 
 export type HeldInstrument = Instrument & { providerSlug: string };
 export type EligibilityProfile = {

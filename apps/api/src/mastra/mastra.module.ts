@@ -38,7 +38,6 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { BenefitsModule } from '../benefits/benefits.module';
 import { BenefitsService } from '../benefits/benefits.service';
 import { NotificationsCron } from './notifications.cron';
-import { BenefitsHarvestCron } from './benefits-harvest.cron';
 import { createMastra } from './index';
 import { ProfileModule } from '../profile/profile.module';
 import { ProfileService } from '../profile/profile.service';
@@ -197,7 +196,7 @@ export function stripClientRequestContext(
 
 @Module({
   imports: [mastraModule, WhatsappModule, NotificationsModule, BenefitsModule],
-  providers: [MastraLifecycle, NotificationsCron, BenefitsHarvestCron],
+  providers: [MastraLifecycle, NotificationsCron],
   exports: [mastraModule],
 })
 export class MastraIntegrationModule implements NestModule {

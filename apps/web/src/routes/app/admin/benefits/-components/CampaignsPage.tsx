@@ -10,7 +10,7 @@ import {
   campaignStatus,
   categoryLabel,
   formatDateTime,
-  offersText,
+  termsOffersText,
   SOURCE_LABELS,
 } from "./explorer-format";
 import {
@@ -195,7 +195,7 @@ export function CampaignsPage({
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col gap-1 sm:items-end sm:text-right">
                       <span className="text-[15px] font-semibold">
-                        {offersText(c.terms)}
+                        {termsOffersText(c.terms)}
                       </span>
                       <span className="text-caption">
                         Visto: {formatDateTime(c.lastSeenAt)}

@@ -39,8 +39,12 @@ export {
   SavingsTransferSchema,
   SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema,
-} from './savings-place.schema';
-export { deriveUsdPurchase, type UsdPurchaseDerivation, type UsdPurchaseInput } from './usd-purchase';
+} from "./savings-place.schema";
+export {
+  deriveUsdPurchase,
+  type UsdPurchaseDerivation,
+  type UsdPurchaseInput,
+} from "./usd-purchase";
 export {
   ContributionDraftWireBaseSchema,
   SavingContributionDraftWireSchema,
@@ -66,18 +70,18 @@ export {
   type SavingContributionPreview,
   type SavingContributionEditPreview,
   type SavingContributionConfirmation,
-} from './contribution.schema';
+} from "./contribution.schema";
 export {
   FinancesWorkspaceSchema,
   type FinancesWorkspace,
   isExpenseIncludedInMonth,
   isIncomeIncludedInMonth,
-} from './finances.schema';
+} from "./finances.schema";
 export {
   FinancialOnboardingResponseSchema,
   FinancialOnboardingSchema,
   type FinancialOnboardingInput,
-} from './financial-onboarding.schema';
+} from "./financial-onboarding.schema";
 export {
   GoalsWorkspaceSchema,
   GoalsWorkspaceMissingSchema,
@@ -166,7 +170,7 @@ export {
   type GoalLifecyclePreviewResult,
   type AllocationChangePreviewResult,
   type GoalCompletionPreviewResult,
-} from './goals.schema';
+} from "./goals.schema";
 export {
   HomeQuerySchema,
   RoadmapIncomeSchema,
@@ -186,7 +190,7 @@ export {
   type HomeRoadmapResponse,
   type HomeRoadmapPresent,
   type HomeRoadmapMissing,
-} from './home.schema';
+} from "./home.schema";
 export {
   allocationEntrySchema,
   confirmGoalCreationSchema,
@@ -207,7 +211,7 @@ export {
   type GoalCreationDraft,
   type GoalEditRequestInput,
   type PreviewGoalEditInput,
-} from './goal-creation.schema';
+} from "./goal-creation.schema";
 export {
   type EligibleGoal,
   type InvestmentContributionCurrencyState,
@@ -218,7 +222,7 @@ export {
   type SavingDraft,
   type SavingDraftInput,
   type SavingPreviewResult,
-} from './saving-contribution.types';
+} from "./saving-contribution.types";
 
 export {
   NOTIFICATION_TYPES,
@@ -233,26 +237,10 @@ export {
 } from "./notification.schema";
 
 export {
-  BENEFIT_CATEGORIES,
-  BenefitCategorySchema,
-  type BenefitCategory,
-  BENEFIT_CATEGORY_LABELS,
-  BENEFIT_KINDS,
-  type BenefitKind,
-  BENEFIT_CAP_PERIODS,
-  type BenefitCapPeriod,
-  PROVIDER_KINDS,
   INSTRUMENT_TYPES,
   CARD_NETWORKS,
-  BenefitCatalogResponseSchema,
-  type BenefitCatalogResponse,
-  UpdateBenefitPreferencesSchema,
-  type UpdateBenefitPreferences,
-  BenefitPreferencesSchema,
-  type BenefitPreferences,
   CardNetworkSchema,
   CARD_TYPES,
-  MEMBERSHIP_USAGES,
   CardSelectorSchema,
   type CardSelector,
   PROVIDER_FACT_KEYS,
@@ -270,15 +258,10 @@ export {
   CAP_PERIODS,
   CAP_SCOPES,
   TRI_STATE,
-  BENEFIT_LIFECYCLE,
   BenefitCapSchema,
   type BenefitCap,
-  BenefitRulesSchema,
-  type BenefitRules,
-  BenefitMatchSchema,
-  type BenefitMatch,
 } from "./benefits.schema";
-
 
 export * from "./benefits-catalog.schema";
 export * from "./benefits-explorer.schema";
+export * from "./benefits-consumer.schema";

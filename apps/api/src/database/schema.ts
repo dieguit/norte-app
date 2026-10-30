@@ -36,14 +36,7 @@ import {
   notificationSettings,
   notifications,
 } from '../notifications/notifications.schema';
-import {
-  benefitUserPreferences,
-  benefits,
-  benefitRevisions,
-  benefitSources,
-  benefitSourceRuns,
-  benefitSourcePolicies,
-} from '../benefits/benefits.schema';
+import { benefitUserPreferences } from '../benefits/benefits.schema';
 
 export const schema = {
   benefitDetailCache,
@@ -53,10 +46,6 @@ export const schema = {
   benefitCampaignBanks,
   benefitIngestRuns,
   benefitCategoryMappings,
-  benefitRevisions,
-  benefitSources,
-  benefitSourceRuns,
-  benefitSourcePolicies,
   onboardingDrafts,
   financialProfiles,
   incomes,
@@ -81,7 +70,6 @@ export const schema = {
   notificationSettings,
   notifications,
   benefitUserPreferences,
-  benefits,
 };
 
 export type Schema = typeof schema;
@@ -93,10 +81,6 @@ export {
   benefitCampaignBanks,
   benefitIngestRuns,
   benefitCategoryMappings,
-  benefitRevisions,
-  benefitSources,
-  benefitSourceRuns,
-  benefitSourcePolicies,
   allocationPlanEntries,
   allocationPlanSnapshots,
   expenses,
@@ -121,5 +105,4 @@ export {
   notificationSettings,
   notifications,
   benefitUserPreferences,
-  benefits,
 };

@@ -1,327 +1,148 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
-  BENEFIT_CATEGORIES,
-  BENEFIT_CATEGORY_LABELS,
-  type BenefitCatalogResponse,
-  type BenefitPreferences,
-  type BenefitProfileFacts,
-  type UpdateBenefitPreferences,
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  BenefitProfileSchema,
+  UpdateBenefitProfileSchema,
+  type BenefitProfile,
+  type UpdateBenefitProfile,
+  type BenefitBankList,
+  type BenefitSearchQuery,
+  type BenefitSearchResult,
+  type BenefitDetail,
 } from '@repo/shared-types';
-import { eq } from 'drizzle-orm';
-import { DAY_MS, todayInArgentina } from '../argentina-time';
+import { and, eq, isNull, inArray, or, isNotNull, sql, gte } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../database/database.constants';
 import type { Database } from '../database/database.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { benefitUserPreferences } from './benefits.schema';
-import type { Extract, MatchedBenefit, CommitSummary } from './benefits.types';
-import { CATALOG, INSTRUMENTS } from './catalog';
-import { formatDigest } from './digest';
-import { runHarvest } from './harvest';
-import { evaluateBenefit, rankMatches } from './rules';
 import {
-  commitSourceRun,
-  expireBenefits,
-  loadMatchableBenefits,
-  loadSourcePolicies,
-} from './store';
-
-export type BenefitProfilePatch = Partial<BenefitProfileFacts> & {
-  addInstrumentSlugs?: string[];
-  removeInstrumentSlugs?: string[];
-};
+  benefitBanks,
+  benefitBrands,
+  benefitCampaigns,
+  benefitCampaignBanks,
+  benefitIngestRuns,
+} from './ingest/schema';
+import { BANK_TIERS } from './ingest/tiers';
+import { buildResults, groupResults, rankResults } from './consumer';
+import { formatDigest } from './digest';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class BenefitsService {
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly notifications: NotificationsService,
+    private readonly config: ConfigService,
   ) {}
 
-  async harvestNightly(extract: Extract, now = new Date()) {
-    const policies = await loadSourcePolicies(this.db);
-    const results = await runHarvest({
-      providers: CATALOG,
-      includeDisabled: false,
-      policies,
-      extract,
-      now,
-    });
-    const summaries: {
-      sourceId: string;
-      summary?: CommitSummary;
-      error?: string;
-    }[] = [];
-    for (const result of results) {
-      if (!result.llm || result.provenance !== 'live') continue;
-      try {
-        const source = CATALOG.flatMap((p) => p.sources).find(
-          (s) => s.id === result.sourceId,
-        );
-        if (!source) throw new Error(`Fuente desconocida: ${result.sourceId}`);
-        summaries.push({
-          sourceId: result.sourceId,
-          summary: await commitSourceRun(this.db, result, source, {
-            now,
-            actor: 'nightly',
-          }),
-        });
-      } catch (error) {
-        summaries.push({
-          sourceId: result.sourceId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-    const expired = await expireBenefits(this.db, todayInArgentina(now).today);
-    return { results, summaries, expired };
+  async banks(now = new Date()): Promise<BenefitBankList> {
+    const [banks, runs] = await Promise.all([
+      this.db
+        .select()
+        .from(benefitBanks)
+        .where(
+          or(
+            isNotNull(benefitBanks.playdigitalId),
+            eq(benefitBanks.ownCatalog, true),
+          ),
+        ),
+      this.db
+        .select()
+        .from(benefitIngestRuns)
+        .where(
+          and(
+            eq(benefitIngestRuns.outcome, 'ok'),
+            eq(benefitIngestRuns.complete, true),
+            gte(
+              benefitIngestRuns.completedAt,
+              new Date(now.getTime() - 48 * 3600000),
+            ),
+          ),
+        ),
+    ]);
+    return {
+      banks: banks
+        .map((bank): BenefitBankList['banks'][number] => ({
+          slug: bank.slug,
+          name: bank.name,
+          coverage: bank.ownCatalog ? 'modo_and_own' : 'modo',
+          ownCatalogScope: bank.ownCatalogScope,
+          tiers: BANK_TIERS[bank.slug] ?? [],
+          // Every source we advertise for the bank must be fresh.
+          stale: [
+            bank.playdigitalId ? 'playdigital' : null,
+            bank.slug === 'galicia' ? 'galicia' : null,
+          ].some(
+            (source) =>
+              source &&
+              !runs.some(
+                (run) =>
+                  run.source === source &&
+                  (run.bankSlug === bank.slug ||
+                    (run.bankSlug === null && source === 'galicia')),
+              ),
+          ),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    };
   }
 
-  private async loadPreferences(userId: string) {
+  async getPreferences(userId: string): Promise<BenefitProfile> {
     const [row] = await this.db
       .select()
       .from(benefitUserPreferences)
       .where(eq(benefitUserPreferences.userId, userId));
-    return row;
-  }
-
-  async findMatching(
-    userId: string,
-    now = new Date(),
-    opts?: { purchase?: { amountMinor: number } },
-  ): Promise<MatchedBenefit[]> {
-    const prefs = await this.loadPreferences(userId);
-    if (!prefs?.instrumentSlugs.length || !prefs.categories.length) return [];
-    const instruments = prefs.instrumentSlugs.flatMap((slug) => {
-      const instrument = INSTRUMENTS.get(slug);
-      return instrument ? [instrument] : [];
-    });
-    if (!instruments.length) return [];
-    const rows = await loadMatchableBenefits(
-      this.db,
-      prefs.categories as BenefitPreferences['categories'],
-    );
-    const matches = rows.map((row) => {
-      const candidate = {
-        ...row,
-        rules: row.snapshot.rules,
-        excludeAfterMs: (row.origin === 'manual' ? 90 : 7) * DAY_MS,
-      };
-      return evaluateBenefit(
-        candidate,
-        {
-          instruments,
-          instrumentFacts: prefs.instrumentFacts,
-          providerFacts: prefs.providerFacts,
-        },
-        { now, ...opts },
-      );
-    });
-    return rankMatches(matches).map((match) => {
-      const row = rows.find((row) => row.id === match.benefitId)!;
-      return {
-        match,
-        benefit: {
-          id: row.id,
-          publisherProviderSlug: row.publisherProviderSlug,
-          category: row.category,
-          origin: row.origin,
-          title: row.snapshot.title,
-          merchant: row.snapshot.merchant,
-          rules: row.snapshot.rules,
-          sourceUrl: row.snapshot.evidence.sourceUrl,
-          termsUrl: row.snapshot.evidence.termsUrl,
-        },
-        instrumentLabels: match.matchedInstrumentSlugs.map(
-          (slug) => INSTRUMENTS.get(slug)?.label ?? slug,
-        ),
-      };
-    });
-  }
-
-  async buildDigest(userId: string, now = new Date()): Promise<string | null> {
-    const [matches, prefs] = await Promise.all([
-      this.findMatching(userId, now),
-      this.loadPreferences(userId),
-    ]);
-    return formatDigest(
-      matches.filter(
-        ({ match, benefit }) =>
-          match.eligibility === 'eligible' &&
-          match.availability === 'available' &&
-          !match.stale &&
-          (benefit.rules.recurrence !== 'ongoing' ||
-            match.matchedInstrumentSlugs.some((slug) => {
-              const declared = Date.parse(prefs?.declaredAt[slug] ?? '');
-              return (
-                declared <= now.getTime() && declared > now.getTime() - DAY_MS
-              );
-            })),
-      ),
-    );
-  }
-
-  catalog(): BenefitCatalogResponse {
-    return {
-      providers: CATALOG.filter((p) => p.instruments.length).map(
-        ({ slug, name, kind, instruments, sources }) => ({
-          slug,
-          name,
-          kind,
-          // Any active source wins; degraded coverage is partial, everything else pending.
-          coverage: sources.some((s) => s.status === 'active')
-            ? 'active'
-            : sources.some((s) => s.status === 'degraded')
-              ? 'partial'
-              : 'pending',
-          instruments: instruments.map((i) => ({
-            slug: i.slug,
-            label: i.label,
-            network: i.network ?? null,
-            type: i.type,
-            tier: i.tier ?? null,
-            issuerProviderSlug:
-              i.issuerProviderSlug ?? (kind === 'bank' ? slug : null),
-            segment: i.segment ?? null,
-            productLevel: i.productLevel ?? null,
-            usage: i.usage ?? null,
-          })),
-        }),
-      ),
-      categories: BENEFIT_CATEGORIES.map((slug) => ({
-        slug,
-        label: BENEFIT_CATEGORY_LABELS[slug],
-      })),
-    };
-  }
-
-  async getPreferences(userId: string): Promise<BenefitPreferences> {
-    const row = (await this.loadPreferences(userId)) ?? {
-      instrumentSlugs: [],
-      categories: [],
-      instrumentFacts: {},
-      providerFacts: {},
-    };
     const settings = await this.notifications.listSettings(userId);
-    return {
-      instrumentSlugs: row.instrumentSlugs,
-      categories: row.categories as BenefitPreferences['categories'],
-      instrumentFacts: row.instrumentFacts,
-      providerFacts: row.providerFacts,
+    return BenefitProfileSchema.parse({
+      banks: row?.banks ?? [],
+      usesModo: row?.usesModo ?? false,
+      categories: row?.categories ?? [],
       enabled:
         settings.find((s) => s.type === 'savings_digest')?.enabled ?? false,
-    };
+    });
   }
 
-  async savePreferences(
-    userId: string,
-    input: UpdateBenefitPreferences,
-  ): Promise<BenefitPreferences> {
+  savePreferences(userId: string, input: UpdateBenefitProfile) {
     return this.writePreferences(userId, input, true);
   }
 
-  async updateProfile(
-    userId: string,
-    patch: BenefitProfilePatch,
-  ): Promise<BenefitPreferences> {
+  async updateProfile(userId: string, patch: Partial<UpdateBenefitProfile>) {
     const current = await this.getPreferences(userId);
-    const removed = new Set(patch.removeInstrumentSlugs ?? []);
-    const unknown = [...(patch.addInstrumentSlugs ?? []), ...removed].filter(
-      (slug) => !INSTRUMENTS.has(slug),
-    );
-    if (unknown.length)
-      throw new BadRequestException(
-        `Instrumentos desconocidos: ${unknown.join(', ')}`,
-      );
-    const instrumentSlugs = [
-      ...new Set([
-        ...current.instrumentSlugs,
-        ...(patch.addInstrumentSlugs ?? []),
-      ]),
-    ].filter((slug) => !removed.has(slug));
-    return this.writePreferences(
-      userId,
-      {
-        instrumentSlugs,
-        categories: current.categories,
-        instrumentFacts: {
-          ...Object.fromEntries(
-            Object.entries(current.instrumentFacts).filter(([slug]) =>
-              instrumentSlugs.includes(slug),
-            ),
-          ),
-          ...Object.fromEntries(
-            Object.entries(patch.instrumentFacts ?? {}).map(([slug, facts]) => [
-              slug,
-              { ...current.instrumentFacts[slug], ...facts },
-            ]),
-          ),
-        },
-        providerFacts: {
-          ...current.providerFacts,
-          ...Object.fromEntries(
-            Object.entries(patch.providerFacts ?? {}).map(([slug, facts]) => [
-              slug,
-              { ...current.providerFacts[slug], ...facts },
-            ]),
-          ),
-        },
-      },
-      false,
-    );
+    const { enabled: _, ...profile } = current;
+    return this.writePreferences(userId, { ...profile, ...patch }, false);
   }
 
   private async writePreferences(
     userId: string,
-    input: UpdateBenefitPreferences,
+    input: UpdateBenefitProfile,
     enableDigest: boolean,
-  ): Promise<BenefitPreferences> {
-    const unknown = input.instrumentSlugs.filter(
-      (slug) => !INSTRUMENTS.has(slug),
-    );
-    if (unknown.length)
-      throw new BadRequestException(
-        `Instrumentos desconocidos: ${unknown.join(', ')}`,
-      );
-    const instrumentSlugs = [...new Set(input.instrumentSlugs)];
-    await this.db.transaction(async (tx) => {
-      const [previous] = await tx
-        .select()
-        .from(benefitUserPreferences)
-        .where(eq(benefitUserPreferences.userId, userId));
-      const facts = previous ?? {
-        instrumentFacts: {},
-        providerFacts: {},
-        declaredAt: {} as Record<string, string>,
-      };
-      const instrumentFacts =
-        input.instrumentFacts ??
-        Object.fromEntries(
-          Object.entries(facts.instrumentFacts).filter(([slug]) =>
-            instrumentSlugs.includes(slug),
-          ),
-        );
-      const providerFacts = input.providerFacts ?? facts.providerFacts;
+  ) {
+    const parsed = (
+      enableDigest
+        ? UpdateBenefitProfileSchema
+        : BenefitProfileSchema.omit({ enabled: true })
+    ).safeParse(input);
+    if (!parsed.success) throw new BadRequestException(parsed.error.issues);
+    const available = await this.banks();
+    for (const bank of parsed.data.banks) {
+      const option = available.banks.find((b) => b.slug === bank.slug);
       if (
-        Object.keys(instrumentFacts).some(
-          (slug) => !instrumentSlugs.includes(slug),
-        ) ||
-        Object.keys(providerFacts).some(
-          (slug) => !CATALOG.some((p) => p.slug === slug),
-        )
+        !option ||
+        (bank.tier !== null && !option.tiers.some((t) => t.code === bank.tier))
       )
         throw new BadRequestException(
-          'Los datos deben pertenecer a instrumentos declarados y proveedores del catálogo.',
+          `Banco o nivel desconocido: ${bank.slug}`,
         );
-      const now = new Date().toISOString();
-      const values = {
-        instrumentSlugs,
-        categories: [...new Set(input.categories)],
-        instrumentFacts,
-        providerFacts,
-        declaredAt: Object.fromEntries(
-          instrumentSlugs.map((slug) => [slug, facts.declaredAt[slug] ?? now]),
-        ),
-      };
+    }
+    const values = {
+      ...parsed.data,
+      categories: [...new Set(parsed.data.categories)],
+    };
+    await this.db.transaction(async (tx) => {
       await tx
         .insert(benefitUserPreferences)
         .values({ userId, ...values })
@@ -338,5 +159,169 @@ export class BenefitsService {
         );
     });
     return this.getPreferences(userId);
+  }
+
+  private candidates(
+    bankSlugs: string[],
+    q?: string,
+    id?: string,
+    related?: { brandId: string | null; title: string },
+  ) {
+    return this.db
+      .select({
+        campaign: benefitCampaigns,
+        presence: benefitCampaignBanks,
+        brand: benefitBrands,
+      })
+      .from(benefitCampaigns)
+      .innerJoin(
+        benefitCampaignBanks,
+        eq(benefitCampaignBanks.campaignId, benefitCampaigns.id),
+      )
+      .leftJoin(benefitBrands, eq(benefitBrands.id, benefitCampaigns.brandId))
+      .where(
+        and(
+          eq(benefitCampaigns.hidden, false),
+          isNull(benefitCampaigns.withdrawnAt),
+          isNull(benefitCampaignBanks.withdrawnAt),
+          sql`${benefitCampaignBanks.terms}->>'eligibilityCompleteness' = 'complete'`,
+          related
+            ? related.brandId
+              ? eq(benefitCampaigns.brandId, related.brandId)
+              : eq(benefitCampaigns.title, related.title)
+            : id
+              ? eq(benefitCampaigns.id, id)
+              : inArray(benefitCampaignBanks.bankSlug, bankSlugs),
+          q
+            ? sql`(${benefitCampaigns.title} ilike ${'%' + q.replace(/[\\%_]/g, '\\$&') + '%'} or ${benefitBrands.name} ilike ${'%' + q.replace(/[\\%_]/g, '\\$&') + '%'} or exists (select 1 from unnest(${benefitBrands.aliases}) alias where alias ilike ${'%' + q.replace(/[\\%_]/g, '\\$&') + '%'}))`
+            : undefined,
+        ),
+      );
+  }
+
+  async search(
+    userId: string,
+    query: BenefitSearchQuery,
+    now = new Date(),
+  ): Promise<BenefitSearchResult> {
+    const [profile, banks] = await Promise.all([
+      this.getPreferences(userId),
+      this.banks(now),
+    ]);
+    const slugs = profile.banks
+      .filter((b) => !query.bank || b.slug === query.bank)
+      .map((b) => b.slug);
+    const rows = slugs.length ? await this.candidates(slugs, query.q) : [];
+    const grouped = groupResults(
+      buildResults(rows, profile, banks.banks, query.day, now),
+    );
+    const countsByCategory: Record<string, number> = {};
+    for (const item of grouped)
+      for (const category of item.categories)
+        countsByCategory[category] = (countsByCategory[category] ?? 0) + 1;
+    const items = grouped.filter((item) =>
+      query.category
+        ? item.categories.includes(query.category)
+        : item.categories.some((c) => profile.categories.includes(c as never)),
+    );
+    return {
+      profileConfigured: profile.banks.length > 0,
+      items: items.slice(
+        (query.page - 1) * query.pageSize,
+        query.page * query.pageSize,
+      ),
+      total: items.length,
+      page: query.page,
+      pageSize: query.pageSize,
+      countsByCategory,
+      staleBanks: banks.banks
+        .filter((b) => b.stale && profile.banks.some((p) => p.slug === b.slug))
+        .map((b) => b.slug),
+    };
+  }
+
+  async detail(
+    userId: string,
+    id: string,
+    now = new Date(),
+  ): Promise<BenefitDetail> {
+    const [profile, banks, rows] = await Promise.all([
+      this.getPreferences(userId),
+      this.banks(now),
+      this.candidates([], undefined, id),
+    ]);
+    const results = buildResults(
+      rows,
+      profile,
+      banks.banks,
+      'available',
+      now,
+      true,
+    );
+    const item = results.sort(
+      (a, b) =>
+        Number(a.match === 'ineligible') - Number(b.match === 'ineligible') ||
+        Number(a.match === 'needs_tier') - Number(b.match === 'needs_tier') ||
+        rankResults(a, b),
+    )[0];
+    if (!item) throw new NotFoundException('Beneficio no disponible');
+    const grouped = groupResults(
+      results.filter((result) => result.match !== 'ineligible'),
+    )[0];
+    const campaign = rows[0]!.campaign;
+    const related = buildResults(
+      await this.candidates([], undefined, undefined, campaign),
+      profile,
+      banks.banks,
+      'available',
+      now,
+      true,
+    );
+    return {
+      ...item,
+      usableWith: grouped?.usableWith ?? item.usableWith,
+      variants: [
+        ...new Map(
+          related
+            .filter(
+              (other) =>
+                other.id !== id && other.validity.to === item.validity.to,
+            )
+            .map((other) => [
+              other.id,
+              {
+                id: other.id,
+                offers: other.offers,
+                tierLabels: other.tierLabels,
+              },
+            ]),
+        ).values(),
+      ],
+    };
+  }
+
+  async buildDigest(userId: string, now = new Date()): Promise<string | null> {
+    const profile = await this.getPreferences(userId);
+    const result = await this.search(
+      userId,
+      { day: 'today', page: 1, pageSize: 50 },
+      now,
+    );
+    // Fetch all groups: a category's overflow count must not depend on API pagination.
+    const items = [...result.items];
+    for (let page = 2; items.length < result.total; page++) {
+      const next = await this.search(
+        userId,
+        { day: 'today', page, pageSize: 50 },
+        now,
+      );
+      if (!next.items.length) break;
+      items.push(...next.items);
+    }
+    return formatDigest(
+      items.filter((i) => i.match === 'eligible'),
+      profile.categories,
+      this.config.get<string>('WEB_APP_URL') ?? '',
+    );
   }
 }

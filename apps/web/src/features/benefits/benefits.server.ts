@@ -1,30 +1,78 @@
-import '@tanstack/react-start/server-only'
+import "@tanstack/react-start/server-only";
 import {
-  BenefitCatalogResponseSchema,
-  BenefitPreferencesSchema,
-  type BenefitPreferences,
-  type UpdateBenefitPreferences,
-} from '@repo/shared-types'
-import { callFinancialApi, mutateFinancialApi, throwFinancialApiError } from '../financial/financial.server'
+  BenefitBankListSchema,
+  BenefitProfileSchema,
+  BenefitSearchResultSchema,
+  BenefitDetailSchema,
+  type UpdateBenefitProfile,
+  type BenefitSearchQuery,
+} from "@repo/shared-types";
+import {
+  callFinancialApi,
+  mutateFinancialApi,
+  throwFinancialApiError,
+} from "../financial/financial.server";
 
-export async function getBenefitsPageServer() {
-  const [catalog, preferences] = await Promise.all([
-    callFinancialApi('/benefits/catalog'),
-    callFinancialApi('/me/benefits/preferences'),
-  ])
-  if (!catalog.ok) await throwFinancialApiError(catalog, 'No pudimos cargar los beneficios.')
-  if (!preferences.ok) await throwFinancialApiError(preferences, 'No pudimos cargar tus beneficios.')
+async function get(path: string) {
+  const response = await callFinancialApi(path);
+  if (!response.ok)
+    await throwFinancialApiError(response, "No pudimos cargar los beneficios.");
+  return response.json();
+}
+
+export async function getBenefitSettingsServer() {
+  const [banks, profile] = await Promise.all([
+    get("/benefits/banks"),
+    get("/me/benefits/preferences"),
+  ]);
   return {
-    catalog: BenefitCatalogResponseSchema.parse(await catalog.json()),
-    preferences: BenefitPreferencesSchema.parse(await preferences.json()),
-  }
+    banks: BenefitBankListSchema.parse(banks).banks,
+    profile: BenefitProfileSchema.parse(profile),
+  };
 }
 
-export async function saveBenefitPreferencesServer({ data }: { data: UpdateBenefitPreferences }): Promise<BenefitPreferences> {
-  const response = await mutateFinancialApi('/me/benefits/preferences', 'PUT', data, 'No pudimos guardar tus beneficios.')
-  return BenefitPreferencesSchema.parse(await response.json())
+export async function saveBenefitProfileServer({
+  data,
+}: {
+  data: UpdateBenefitProfile;
+}) {
+  const response = await mutateFinancialApi(
+    "/me/benefits/preferences",
+    "PUT",
+    data,
+    "No pudimos guardar tus beneficios.",
+  );
+  return BenefitProfileSchema.parse(await response.json());
 }
 
-export async function setBenefitDigestEnabledServer({ data }: { data: { enabled: boolean } }): Promise<void> {
-  await mutateFinancialApi('/me/notifications/savings_digest', 'PATCH', data, 'No pudimos cambiar los avisos.')
+export async function setBenefitDigestEnabledServer({
+  data,
+}: {
+  data: { enabled: boolean };
+}): Promise<void> {
+  await mutateFinancialApi(
+    "/me/notifications/savings_digest",
+    "PATCH",
+    data,
+    "No pudimos cambiar los avisos.",
+  );
+}
+
+export async function searchBenefitsServer({
+  data,
+}: {
+  data: BenefitSearchQuery;
+}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(data))
+    if (value !== undefined) params.set(key, String(value));
+  return BenefitSearchResultSchema.parse(
+    await get(`/me/benefits/search?${params}`),
+  );
+}
+
+export async function getBenefitServer({ data }: { data: { id: string } }) {
+  return BenefitDetailSchema.parse(
+    await get(`/me/benefits/campaigns/${encodeURIComponent(data.id)}`),
+  );
 }

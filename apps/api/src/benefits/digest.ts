@@ -1,86 +1,74 @@
 import {
-  BENEFIT_CATEGORY_LABELS,
-  type BenefitCap,
-  type BenefitRules,
+  CATALOG_CATEGORY_LABELS,
+  type BenefitResult,
+  type DigestCategory,
 } from '@repo/shared-types';
-import type { MatchedBenefit } from './benefits.types';
 
-const money = (minor: number) =>
-  `$${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(minor / 100)}`;
-const periods: Record<BenefitCap['period'], string> = {
-  transaction: 'por compra',
-  day: 'por día',
-  week: 'por semana',
-  month: 'por mes',
-  campaign: 'por campaña',
-};
-const CHANNEL_LABELS: Record<string, string> = {
-  modo: 'MODO',
-  'app-macro': 'App Macro',
-  nfc: 'pago sin contacto',
-  qr: 'QR',
-  instore: 'en el local',
-  online: 'online',
-};
-// Where you buy reads differently from how you pay: "en el local o online" vs "pagando con MODO".
-const PLACES = new Set(['instore', 'online']);
-const channelLabel = (channel: string) =>
-  CHANNEL_LABELS[channel] ?? channel.replace(/[-_]/g, ' ');
+export function offerText(item: Pick<BenefitResult, 'offers'>): string {
+  return item.offers
+    .map((offer) =>
+      offer.kind === 'percent'
+        ? `${offer.percentageBps / 100}% de ${offer.mode === 'discount' ? 'descuento' : offer.mode === 'cashback' ? 'reintegro' : 'ahorro'}`
+        : `${offer.upTo ? 'hasta ' : ''}${offer.count} cuotas sin interés`,
+    )
+    .join(' y ');
+}
 
-function offerLabel(offer: BenefitRules['offer']): string {
-  switch (offer.type) {
-    case 'discount':
-      return `${offer.percentageBps / 100}% de descuento`;
-    case 'cashback':
-      return `${offer.percentageBps / 100}% de reintegro`;
-    case 'installments':
-      return `${offer.installments} cuotas`;
-    default:
-      return offer.description;
+function capText(item: BenefitResult): string {
+  if (item.capState === 'none') return '';
+  if (item.capState === 'unknown') return 'tope sin confirmar';
+  const periods: Record<string, string> = {
+    month: '/mes',
+    week: '/semana',
+    day: '/día',
+    transaction: '/compra',
+    campaign: '/promoción',
+  };
+  return item.caps
+    .map((cap) =>
+      cap.amountMinor === null
+        ? 'tope sin confirmar'
+        : `tope $${(cap.amountMinor / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 })}${periods[cap.period] ?? ''}`,
+    )
+    .join(', ');
+}
+
+export function formatDigest(
+  items: BenefitResult[],
+  categories: DigestCategory[],
+  appUrl: string,
+): string | null {
+  const sections: string[] = [];
+  let first: DigestCategory | undefined;
+  for (const category of categories) {
+    const matches = items.filter(
+      (item) => item.match === 'eligible' && item.categories.includes(category),
+    );
+    if (!matches.length) continue;
+    first ??= category;
+    const label = CATALOG_CATEGORY_LABELS[category];
+    const lines = matches.slice(0, 3).map((item) => {
+      const cards = [
+        ...new Set(
+          item.usableWith.map(
+            (u) =>
+              `${u.bankName}${u.card ? ` ${{ visa: 'Visa', mastercard: 'Mastercard', amex: 'Amex', cabal: 'Cabal' }[u.card.network]} ${{ credit: 'crédito', debit: 'débito', prepaid: 'prepaga' }[u.card.type]}` : ''}`,
+          ),
+        ),
+      ].join(' / ');
+      return `• ${[item.brandName ?? item.title, offerText(item), `${cards}${item.requiresModo ? `${cards ? ' + ' : ''}MODO` : ''}`, capText(item)].filter(Boolean).join(' · ')}`;
+    });
+    sections.push(
+      [
+        label,
+        ...lines,
+        ...(matches.length > 3
+          ? [`y ${matches.length - 3} más en ${label}`]
+          : []),
+      ].join('\n'),
+    );
   }
-}
-
-function capLabels(rules: BenefitRules): string[] {
-  if (rules.capState === 'unknown') return ['tope sin confirmar'];
-  if (rules.capState === 'none') return ['sin tope'];
-  return rules.caps.map(
-    (cap) =>
-      `${cap.amountMinor === null ? 'tope sin confirmar' : `tope ${money(cap.amountMinor)}`} ${periods[cap.period]}`,
-  );
-}
-
-function channelLabels(
-  channels: MatchedBenefit['match']['channels'],
-): string[] {
-  const parts: string[] = [];
-  const places = channels.allowed.filter((c) => PLACES.has(c));
-  const payments = channels.allowed.filter((c) => !PLACES.has(c));
-  if (payments.length)
-    parts.push(`pagando con ${payments.map(channelLabel).join(' o ')}`);
-  if (places.length) parts.push(places.map(channelLabel).join(' o '));
-  if (channels.excluded.length)
-    parts.push(`excluye ${channels.excluded.map(channelLabel).join(', ')}`);
-  return parts;
-}
-
-function digestLine({
-  benefit,
-  match,
-  instrumentLabels,
-}: MatchedBenefit): string {
-  const { rules } = benefit;
-  const parts = [
-    `${offerLabel(rules.offer)} en ${benefit.merchant ?? BENEFIT_CATEGORY_LABELS[benefit.category]}${instrumentLabels.length ? ` con ${instrumentLabels.join(' + ')}` : ''}`,
-  ];
-  parts.push(...channelLabels(match.channels), ...match.requiredActions);
-  if (rules.minimumSpendMinor !== null && rules.minimumSpendMinor > 0)
-    parts.push(`compra mínima ${money(rules.minimumSpendMinor)}`);
-  parts.push(...capLabels(rules));
-  if (rules.validity.to) parts.push(`hasta ${rules.validity.to}`);
-  return `• ${parts.join(' · ')}`;
-}
-
-export function formatDigest(items: MatchedBenefit[]): string | null {
-  if (!items.length) return null;
-  return ['Beneficios de hoy 🧭', ...items.map(digestLine)].join('\n');
+  return first
+    ? `Beneficios de hoy 🧭\n${sections.join('\n')}\nMirá todos en la app o pedime la lista: ${appUrl.replace(/\/$/, '')}/app/finances/benefits?category=${first}`
+    : null;
 }

@@ -1,6 +1,9 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { BenefitProfileFactsSchema } from '@repo/shared-types';
+import {
+  BenefitSearchQuerySchema,
+  UpdateBenefitProfileSchema,
+} from '@repo/shared-types';
 import type { NorteServices } from '../services';
 import { toolResult } from './tool-result';
 import { requireUserId } from './user-context';
@@ -9,47 +12,63 @@ export function createBenefitTools({
   benefits,
 }: Pick<NorteServices, 'benefits'>) {
   return {
-    getTodayBenefits: createTool({
-      id: 'get-today-benefits',
+    searchBenefits: createTool({
+      id: 'search-benefits',
       description:
-        "Today's (Argentina) benefits/discounts matching the user's cards, wallets, memberships and chosen categories, with conditions and sourceUrl. Use for follow-ups to the daily savings digest.",
-      inputSchema: z.object({}),
-      execute: (_input, context) =>
+        'Find verified catalog benefits for the user’s banks and cards. Returns up to 10 ranked results, eligibility, verification links and total. Never invent benefits.',
+      inputSchema: BenefitSearchQuerySchema.pick({
+        q: true,
+        category: true,
+        day: true,
+      }),
+      execute: (input, context) =>
         toolResult(
-          'get-today-benefits',
+          'search-benefits',
           context?.requestContext as never,
           async () => {
-            const matches = await benefits.findMatching(
+            const result = await benefits.search(
               requireUserId(context?.requestContext as never),
+              { ...input, page: 1, pageSize: 10 },
             );
-            const compact = ({
-              benefit,
-              match,
-              instrumentLabels,
-            }: (typeof matches)[number]) => ({
-              id: benefit.id,
-              title: benefit.title,
-              merchant: benefit.merchant,
-              offer: benefit.rules.offer,
-              minimumSpendMinor: benefit.rules.minimumSpendMinor,
-              capState: benefit.rules.capState,
-              caps: benefit.rules.caps,
-              validity: benefit.rules.validity,
-              instrumentLabels,
-              ...match,
-              questions: match.missingFacts.map(
-                (fact) => `¿Podés confirmar ${fact}?`,
-              ),
-              sourceUrl: benefit.sourceUrl,
-              termsUrl: benefit.termsUrl,
-            });
             return {
-              eligible: matches
-                .filter((m) => m.match.eligibility === 'eligible')
-                .map(compact),
-              needs_information: matches
-                .filter((m) => m.match.eligibility === 'needs_information')
-                .map(compact),
+              total: result.total,
+              profileConfigured: result.profileConfigured,
+              staleBanks: result.staleBanks,
+              items: result.items.map(
+                ({
+                  id,
+                  title,
+                  brandName,
+                  offers,
+                  capState,
+                  caps,
+                  minimumSpendMinor,
+                  nextDate,
+                  validity,
+                  usableWith,
+                  requiresModo,
+                  match,
+                  tierLabels,
+                  verifyUrl,
+                  verifyHint,
+                }) => ({
+                  id,
+                  title,
+                  brandName,
+                  offers,
+                  capState,
+                  caps,
+                  minimumSpendMinor,
+                  nextDate,
+                  validity,
+                  usableWith,
+                  requiresModo,
+                  match,
+                  tierLabels,
+                  verifyUrl,
+                  verifyHint,
+                }),
+              ),
             };
           },
         ),
@@ -57,17 +76,8 @@ export function createBenefitTools({
     updateBenefitProfile: createTool({
       id: 'update-benefit-profile',
       description:
-        'Update declared cards, memberships and eligibility facts. Does not activate the digest. Only save facts explicitly confirmed by the user.',
-      inputSchema: z.object({
-        addInstrumentSlugs: z.array(z.string()).max(100).optional(),
-        removeInstrumentSlugs: z.array(z.string()).max(100).optional(),
-        instrumentFacts: BenefitProfileFactsSchema.shape.instrumentFacts
-          .removeDefault()
-          .optional(),
-        providerFacts: BenefitProfileFactsSchema.shape.providerFacts
-          .removeDefault()
-          .optional(),
-      }),
+        'Patch banks, tiers, cards, MODO use or digest categories explicitly confirmed by the user. Does not activate the digest. Get bank slugs and tier codes with getBenefitBanks first.',
+      inputSchema: UpdateBenefitProfileSchema.partial(),
       execute: (input, context) =>
         toolResult(
           'update-benefit-profile',
@@ -79,18 +89,18 @@ export function createBenefitTools({
             ),
         ),
     }),
-    getBenefitCatalog: createTool({
-      id: 'get-benefit-catalog',
+    getBenefitBanks: createTool({
+      id: 'get-benefit-banks',
       description:
-        'Get known provider and instrument labels and slugs before mapping a user declaration to their benefit profile.',
+        'List available banks, honest catalog coverage, and bank-specific tier codes and labels.',
       inputSchema: z.object({}),
       execute: (_input, context) =>
         toolResult(
-          'get-benefit-catalog',
+          'get-benefit-banks',
           context?.requestContext as never,
           () => {
             requireUserId(context?.requestContext as never);
-            return benefits.catalog();
+            return benefits.banks();
           },
         ),
     }),

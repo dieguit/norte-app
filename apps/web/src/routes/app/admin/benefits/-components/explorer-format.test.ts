@@ -4,27 +4,14 @@ import {
   campaignStatus,
   capsText,
   minimumSpendText,
-  offersText,
-  safeHttpUrl,
+  termsOffersText,
 } from "./explorer-format";
 
 const terms = campaign.terms!;
 
 describe("explorer format", () => {
-  it("never invents discount or cashback for unspecified percents and joins combined offers", () => {
-    expect(offersText(terms)).toBe(
-      "20% de ahorro y hasta 18 cuotas sin interés",
-    );
-    expect(
-      offersText({
-        ...terms,
-        offers: [
-          { kind: "percent", percentageBps: 1250, mode: "cashback" },
-          { kind: "installments", count: 6, upTo: false },
-        ],
-      }),
-    ).toBe("12,5% de reintegro y 6 cuotas sin interés");
-    expect(offersText(null)).toBe("Condiciones sin leer");
+  it("shows unread terms", () => {
+    expect(termsOffersText(null)).toBe("Condiciones sin leer");
   });
 
   it("shows unknown caps and minimums as unconfirmed", () => {
@@ -64,14 +51,5 @@ describe("explorer format", () => {
     expect(
       campaignStatus({ ...campaign, hidden: true, withdrawnAt: "x" }),
     ).toBe("hidden");
-  });
-
-  it("only allows http(s) links", () => {
-    expect(safeHttpUrl("https://www.modo.com.ar/promos/x")).toBe(
-      "https://www.modo.com.ar/promos/x",
-    );
-    expect(safeHttpUrl("javascript:alert(1)")).toBeNull();
-    expect(safeHttpUrl("data:text/html,hi")).toBeNull();
-    expect(safeHttpUrl("not a url")).toBeNull();
   });
 });

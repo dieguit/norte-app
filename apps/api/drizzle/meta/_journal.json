@@ -197,6 +197,20 @@
       "when": 1793374127422,
       "tag": "0027_benefits_coverage_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793377471913,
+      "tag": "0028_windy_psynapse",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793378131485,
+      "tag": "0029_glossy_nico_minoru",
+      "breakpoints": true
     }
   ]
 }

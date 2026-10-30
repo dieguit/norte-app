@@ -1,76 +1,48 @@
 import { RequestContext } from '@mastra/core/request-context';
-import { describe, expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { createBenefitTools } from './benefit-tools';
-
-function ctx(userId?: string) {
+const ctx = (userId?: string) => {
   const requestContext = new RequestContext();
   if (userId) requestContext.set('userId', userId);
   return { requestContext } as never;
-}
-
-describe('benefit tools', () => {
-  it('returns today benefits for the context user', async () => {
-    const findMatching = vi.fn().mockResolvedValue([
-      {
-        benefit: { id: 'b', merchant: 'Coto', rules: {} },
-        match: { eligibility: 'eligible', missingFacts: [] },
-        instrumentLabels: [],
-      },
-      {
-        benefit: { id: 'c', rules: {} },
-        match: {
-          eligibility: 'needs_information',
-          missingFacts: ['salaryAccount'],
-        },
-        instrumentLabels: [],
-      },
-    ]);
-    const { getTodayBenefits } = createBenefitTools({
-      benefits: { findMatching } as never,
+};
+it('searches top 10 for context user and preserves verification', async () => {
+  const search = vi
+    .fn()
+    .mockResolvedValue({
+      items: [
+        { id: 'b', verifyUrl: 'https://example.com', verifyHint: 'Buscá Coto' },
+      ],
+      total: 15,
+      profileConfigured: true,
+      staleBanks: [],
     });
-    const result = await getTodayBenefits.execute!({}, ctx('u1'));
-    expect(result).toMatchObject({
-      eligible: [{ merchant: 'Coto' }],
-      needs_information: [{ questions: ['¿Podés confirmar salaryAccount?'] }],
-    });
-    expect(findMatching).toHaveBeenCalledWith('u1');
+  const tools = createBenefitTools({ benefits: { search } as never });
+  const result = await tools.searchBenefits.execute!(
+    { day: 'today' },
+    ctx('u'),
+  );
+  expect(search).toHaveBeenCalledWith('u', {
+    day: 'today',
+    page: 1,
+    pageSize: 10,
   });
-
-  it('updates the context user profile and returns preferences', async () => {
-    const updateProfile = vi
-      .fn()
-      .mockResolvedValue({ instrumentSlugs: ['modo'], enabled: false });
-    const { updateBenefitProfile } = createBenefitTools({
-      benefits: { updateProfile } as never,
-    });
-    await expect(
-      updateBenefitProfile.execute!(
-        { addInstrumentSlugs: ['modo'] },
-        ctx('u1'),
-      ),
-    ).resolves.toEqual({ instrumentSlugs: ['modo'], enabled: false });
-    expect(updateProfile).toHaveBeenCalledWith('u1', {
-      addInstrumentSlugs: ['modo'],
-    });
+  expect(result).toMatchObject({
+    total: 15,
+    profileConfigured: true,
+    items: [{ verifyHint: 'Buscá Coto' }],
   });
-
-  it('provides catalog labels and slugs', async () => {
-    const catalog = vi.fn().mockReturnValue({ providers: [] });
-    const { getBenefitCatalog } = createBenefitTools({
-      benefits: { catalog } as never,
-    });
-    await expect(getBenefitCatalog.execute!({}, ctx('u1'))).resolves.toEqual({
-      providers: [],
-    });
+  await tools.searchBenefits.execute!({ day: 'today' }, ctx());
+  expect(search).toHaveBeenCalledTimes(1);
+});
+it('patches declared facts and gets bank codes', async () => {
+  const updateProfile = vi.fn().mockResolvedValue({});
+  const banks = vi.fn().mockResolvedValue({ banks: [] });
+  const tools = createBenefitTools({
+    benefits: { updateProfile, banks } as never,
   });
-
-  it('refuses without a user in context', async () => {
-    const findMatching = vi.fn();
-    const { getTodayBenefits } = createBenefitTools({
-      benefits: { findMatching } as never,
-    });
-    const result = await getTodayBenefits.execute!({}, ctx());
-    expect(result).toHaveProperty('error');
-    expect(findMatching).not.toHaveBeenCalled();
-  });
+  await tools.updateBenefitProfile.execute!({ usesModo: true }, ctx('u'));
+  expect(updateProfile).toHaveBeenCalledWith('u', { usesModo: true });
+  await tools.getBenefitBanks.execute!({}, ctx('u'));
+  expect(banks).toHaveBeenCalledOnce();
 });

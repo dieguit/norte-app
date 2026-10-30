@@ -11,14 +11,9 @@ const expectedTables = [
   'benefit_campaign_banks',
   'benefit_ingest_runs',
   'benefit_category_mappings',
-  'benefit_revisions',
-  'benefit_sources',
-  'benefit_source_runs',
-  'benefit_source_policies',
   'allocation_plan_entries',
   'allocation_plan_snapshots',
   'benefit_user_preferences',
-  'benefits',
   'expense_sources',
   'expenses',
   'financial_goals',
@@ -50,8 +45,8 @@ describe('canonical schema registry', () => {
     expect(tables.map((table) => getTableConfig(table).name).sort()).toEqual(
       expectedTables,
     );
-    expect(new Set(tables).size).toBe(36);
-    expect(Object.values(registry.schema)).toHaveLength(36);
+    expect(new Set(tables).size).toBe(31);
+    expect(Object.values(registry.schema)).toHaveLength(31);
   });
 
   it('retains application-side timestamp updates', () => {
@@ -62,7 +57,6 @@ describe('canonical schema registry', () => {
       registry.schema.notificationSettings,
       registry.schema.notifications,
       registry.schema.benefitUserPreferences,
-      registry.schema.benefits,
     ]) {
       expect(table.updatedAt.onUpdateFn).toBeTypeOf('function');
     }

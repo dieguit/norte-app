@@ -19,7 +19,7 @@ import {
   channelsText,
   formatDateTime,
   minimumSpendText,
-  offersText,
+  termsOffersText,
   requirementLeafText,
   SOURCE_LABELS,
   validityText,
@@ -103,7 +103,7 @@ function TermsView({ terms }: { terms: CampaignTerms }) {
       <RequirementNode node={terms.eligibility} />
       <Lines
         items={[
-          offersText(terms),
+          termsOffersText(terms),
           minimumSpendText(terms.minimumSpendMinor),
           ...capsText(terms),
           ...validityText(terms.validity),
@@ -291,7 +291,7 @@ export function CampaignDetail({
                 )}
               </h2>
               <p className="m-0 font-serif text-[28px] leading-tight font-semibold tracking-[-0.4px] text-foreground">
-                {offersText(campaign.terms)}
+                {termsOffersText(campaign.terms)}
               </p>
             </div>
             <section
