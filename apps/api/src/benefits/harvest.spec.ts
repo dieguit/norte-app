@@ -97,12 +97,22 @@ describe('fingerprint', () => {
 describe('buildPrompt', () => {
   it('includes instructions, candidate slugs, categories and today', () => {
     const prompt = buildPrompt(
-      { url: 'u', strategy: 'fetch', instructions: 'Mirá la grilla' },
+      {
+        id: 's',
+        enabled: true,
+        autoPublish: false,
+        status: 'active' as const,
+        coverage: 'partial' as const,
+        url: 'u',
+        strategy: 'fetch',
+        instructions: 'Mirá la grilla',
+      },
       [
         {
           slug: 'galicia-visa-credito',
           label: 'Galicia Visa crédito',
           type: 'credit',
+          evidenceUrl: 'https://example.test',
         },
       ],
       '2026-10-21',
@@ -124,7 +134,16 @@ describe('fetchSource', () => {
     const fetchImpl = () =>
       Promise.resolve(new Response('<h1>Title</h1><p>20% off</p>'));
     const text = await fetchSource(
-      { url: 'http://test', strategy: 'fetch', instructions: '' },
+      {
+        id: 's',
+        enabled: true,
+        autoPublish: false,
+        status: 'active' as const,
+        coverage: 'partial' as const,
+        url: 'http://test',
+        strategy: 'fetch',
+        instructions: '',
+      },
       fetchImpl,
     );
     expect(text).toBe('Title 20% off');
@@ -133,7 +152,16 @@ describe('fetchSource', () => {
   it('fetches json as raw text', async () => {
     const fetchImpl = () => Promise.resolve(new Response('{"raw": true}'));
     const text = await fetchSource(
-      { url: 'http://test', strategy: 'json', instructions: '' },
+      {
+        id: 's',
+        enabled: true,
+        autoPublish: false,
+        status: 'active' as const,
+        coverage: 'partial' as const,
+        url: 'http://test',
+        strategy: 'json',
+        instructions: '',
+      },
       fetchImpl,
     );
     expect(text).toBe('{"raw": true}');

@@ -987,6 +987,189 @@ var INSTRUMENT_TYPES = [
   "membership"
 ];
 var CARD_NETWORKS = ["visa", "mastercard", "amex", "cabal"];
+var CardNetworkSchema = z14.enum(CARD_NETWORKS);
+var CARD_TYPES = ["credit", "debit", "prepaid"];
+var MEMBERSHIP_USAGES = [
+  "wallet_access",
+  "account_access",
+  "subscription",
+  "loyalty"
+];
+var slug = z14.string().min(1).max(80);
+var slugList = z14.array(slug).min(1).max(50);
+var CardSelectorSchema = z14.object({
+  instrumentSlugs: slugList.optional(),
+  issuerProviderSlugs: slugList.optional(),
+  excludedIssuerProviderSlugs: slugList.optional(),
+  network: CardNetworkSchema.optional(),
+  types: z14.array(z14.enum(CARD_TYPES)).min(1).optional(),
+  productLevels: slugList.optional(),
+  segments: slugList.optional(),
+  issuerCountries: z14.array(z14.string().length(2)).min(1).optional()
+}).strict().refine((s) => Object.values(s).some((v) => v !== void 0), {
+  message: "CardSelector vac\xEDo"
+});
+var PROVIDER_FACT_KEYS = [
+  "salaryAccount",
+  "plan",
+  "loyaltyLevel"
+];
+var REQUIREMENT_MAX_DEPTH = 5;
+var REQUIREMENT_MAX_NODES = 50;
+var RequirementNodeSchema = z14.lazy(
+  () => z14.union([
+    z14.object({ allOf: z14.array(RequirementNodeSchema).min(1) }).strict(),
+    z14.object({ anyOf: z14.array(RequirementNodeSchema).min(1) }).strict(),
+    z14.object({ card: CardSelectorSchema }).strict(),
+    z14.object({ membership: z14.object({ instrumentSlug: slug }).strict() }).strict(),
+    z14.object({
+      providerFact: z14.object({
+        providerSlug: slug,
+        key: z14.enum(PROVIDER_FACT_KEYS),
+        values: z14.array(z14.union([z14.string().min(1), z14.boolean()])).min(1)
+      }).strict()
+    }).strict()
+  ])
+);
+function requirementShape(r, depth = 1) {
+  const children = "allOf" in r ? r.allOf : "anyOf" in r ? r.anyOf : [];
+  return children.reduce(
+    (acc, child) => {
+      const c = requirementShape(child, depth + 1);
+      return {
+        depth: Math.max(acc.depth, c.depth),
+        nodes: acc.nodes + c.nodes
+      };
+    },
+    { depth, nodes: 1 }
+  );
+}
+var RequirementSchema = RequirementNodeSchema.refine((r) => {
+  const { depth, nodes } = requirementShape(r);
+  return depth <= REQUIREMENT_MAX_DEPTH && nodes <= REQUIREMENT_MAX_NODES;
+}, "\xC1rbol de requisitos demasiado grande");
+var isoDay = z14.iso.date();
+var InstrumentFactsSchema = z14.object({
+  segment: slug.optional(),
+  productLevel: slug.optional(),
+  issuerCountry: z14.string().length(2).optional(),
+  membershipStatus: z14.enum(["active", "inactive", "unknown"]).optional(),
+  membershipValidUntil: isoDay.optional()
+}).strict();
+var ProviderFactsSchema = z14.object({
+  salaryAccount: z14.boolean().optional(),
+  plan: slug.optional(),
+  loyaltyLevel: slug.optional()
+}).strict();
+var BenefitProfileFactsSchema = z14.object({
+  instrumentFacts: z14.record(slug, InstrumentFactsSchema).default({}),
+  providerFacts: z14.record(slug, ProviderFactsSchema).default({})
+});
+var OFFER_TYPES = [
+  "discount",
+  "cashback",
+  "installments",
+  "points",
+  "other"
+];
+var CAP_PERIODS = [
+  "transaction",
+  "day",
+  "week",
+  "month",
+  "campaign"
+];
+var CAP_SCOPES = [
+  "card",
+  "account",
+  "person",
+  "bank",
+  "promotion"
+];
+var TRI_STATE = ["yes", "no", "unknown"];
+var BENEFIT_LIFECYCLE = [
+  "draft",
+  "needs_review",
+  "published",
+  "expired",
+  "withdrawn"
+];
+var BenefitCapSchema = z14.object({
+  amountMinor: z14.number().int().positive().nullable(),
+  // null = cap exists, amount unknown
+  period: z14.enum(CAP_PERIODS),
+  scope: z14.enum(CAP_SCOPES).nullable(),
+  sharedCapGroupId: slug.optional()
+}).strict();
+var BenefitRulesSchema = z14.object({
+  eligibility: RequirementSchema,
+  eligibilityCompleteness: z14.enum(["complete", "incomplete"]),
+  unresolved: z14.array(z14.string().min(1)).default([]),
+  offer: z14.discriminatedUnion("type", [
+    z14.object({
+      type: z14.literal("discount"),
+      percentageBps: z14.number().int().min(1).max(1e4)
+    }),
+    z14.object({
+      type: z14.literal("cashback"),
+      percentageBps: z14.number().int().min(1).max(1e4)
+    }),
+    z14.object({
+      type: z14.literal("installments"),
+      installments: z14.number().int().min(2).max(60)
+    }),
+    z14.object({ type: z14.literal("points"), description: z14.string().min(1) }),
+    z14.object({ type: z14.literal("other"), description: z14.string().min(1) })
+  ]),
+  currency: z14.literal("ARS"),
+  // null = unknown minimum; 0 = no minimum.
+  minimumSpendMinor: z14.number().int().nonnegative().nullable(),
+  capState: z14.enum(["known", "none", "unknown"]),
+  caps: z14.array(BenefitCapSchema).max(5),
+  validity: z14.object({
+    from: isoDay.nullable(),
+    // inclusive, America/Argentina/Buenos_Aires
+    to: isoDay.nullable(),
+    // inclusive; null = unknown end, NOT unlimited
+    weekdays: z14.array(z14.number().int().min(0).max(6)).min(1).nullable(),
+    // 0=Sunday; null = every weekday
+    monthDays: z14.array(z14.number().int().min(1).max(31)).min(1).nullable()
+    // null = every day of month
+  }).strict(),
+  channels: z14.object({
+    allowed: z14.array(slug).default([]),
+    excluded: z14.array(slug).default([])
+  }).strict(),
+  requiredActions: z14.array(z14.string().min(1)).default([]),
+  stackable: z14.enum(TRI_STATE),
+  // ongoing = fixed membership perk; the digest only surfaces it on category match or right after declaring it.
+  recurrence: z14.enum(["campaign", "ongoing"])
+}).strict().superRefine((r, ctx) => {
+  if (r.capState === "known" && !r.caps.length)
+    ctx.addIssue({ code: "custom", message: "capState known requiere caps" });
+  if (r.capState === "none" && r.caps.length)
+    ctx.addIssue({ code: "custom", message: "capState none sin caps" });
+  if (r.validity.from && r.validity.to && r.validity.from > r.validity.to)
+    ctx.addIssue({ code: "custom", message: "vigencia invertida" });
+});
+var BenefitMatchSchema = z14.object({
+  benefitId: z14.string(),
+  eligibility: z14.enum(["eligible", "ineligible", "needs_information"]),
+  availability: z14.enum(["available", "upcoming", "unavailable", "unknown"]),
+  nextDate: isoDay.nullable(),
+  stale: z14.boolean(),
+  // Allowed channels are alternatives, not cumulative required actions.
+  channels: z14.object({
+    allowed: z14.array(z14.string()),
+    excluded: z14.array(z14.string())
+  }),
+  matchedInstrumentSlugs: z14.array(z14.string()),
+  missingFacts: z14.array(z14.string()),
+  reasons: z14.array(z14.string()),
+  requiredActions: z14.array(z14.string()),
+  estimatedSavingMinor: z14.number().int().nonnegative().nullable(),
+  estimateAssumptions: z14.array(z14.string())
+});
 var BenefitCatalogResponseSchema = z14.object({
   providers: z14.array(
     z14.object({
@@ -1029,10 +1212,20 @@ export {
   BENEFIT_CATEGORIES,
   BENEFIT_CATEGORY_LABELS,
   BENEFIT_KINDS,
+  BENEFIT_LIFECYCLE,
+  BenefitCapSchema,
   BenefitCatalogResponseSchema,
   BenefitCategorySchema,
+  BenefitMatchSchema,
   BenefitPreferencesSchema,
+  BenefitProfileFactsSchema,
+  BenefitRulesSchema,
+  CAP_PERIODS,
+  CAP_SCOPES,
   CARD_NETWORKS,
+  CARD_TYPES,
+  CardNetworkSchema,
+  CardSelectorSchema,
   ConfirmAllocationChangeWireSchema,
   ConfirmGoalCompletionWireSchema,
   ConfirmGoalCreationWireSchema,
@@ -1097,19 +1290,27 @@ export {
   IncomeDraftSchema,
   IncomeMutationResponseSchema,
   InitialHomeStateSchema,
+  InstrumentFactsSchema,
+  MEMBERSHIP_USAGES,
   NOTIFICATION_TYPES,
   NotificationSettingSchema,
   NotificationSettingsResponseSchema,
   NotificationTimeSchema,
   NotificationTypeSchema,
+  OFFER_TYPES,
   ONE_TIME_EXPENSE_SOURCES,
+  PROVIDER_FACT_KEYS,
   PROVIDER_KINDS,
   PlaceholderItemListSchema,
   PlaceholderItemSchema,
   PlaceholderStatusSchema,
   ProfileResponseSchema,
+  ProviderFactsSchema,
   RECURRING_EXPENSE_SOURCES,
+  REQUIREMENT_MAX_DEPTH,
+  REQUIREMENT_MAX_NODES,
   RenameSavingsPlaceSchema,
+  RequirementSchema,
   RoadmapDataSchema,
   RoadmapExpenseSchema,
   RoadmapFinancesSchema,
@@ -1131,6 +1332,7 @@ export {
   SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema,
   SavingsTransferSchema,
+  TRI_STATE,
   UpdateBenefitPreferencesSchema,
   UpdateNotificationSettingSchema,
   UpdatePlaceholderItemSchema,

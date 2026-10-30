@@ -12,7 +12,7 @@ import type { Database } from '../database/database.types';
 import { benefits } from './benefits.schema';
 import {
   CATALOG,
-  candidateInstruments,
+  resolveCandidateInstruments,
   type Instrument,
   type Provider,
   type Source,
@@ -236,9 +236,10 @@ export async function runHarvest(
   const today = todayInArgentina(now).today;
   const results: SourceResult[] = [];
   for (const provider of providers) {
-    const candidates = candidateInstruments(provider);
+    const candidates = resolveCandidateInstruments(provider);
     const slugs = new Set(candidates.map((i) => i.slug));
     for (const source of provider.sources) {
+      if (!source.enabled) continue;
       const base = { provider: provider.slug, url: source.url };
       try {
         const content = await fetchSource(source, options.fetchImpl);

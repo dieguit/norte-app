@@ -31,9 +31,15 @@ describeWhenSafe('runHarvest', () => {
         label: 'Visa crédito',
         network: 'visa',
         type: 'credit',
+        evidenceUrl: 'https://example.test',
       },
     ],
-    sources: urls.map((url) => ({
+    sources: urls.map((url, n) => ({
+      id: `${slug}-${n}`,
+      enabled: true,
+      autoPublish: false,
+      status: 'active' as const,
+      coverage: 'partial' as const,
       url,
       strategy: 'fetch' as const,
       instructions: 'x',
