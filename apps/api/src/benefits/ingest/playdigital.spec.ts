@@ -57,6 +57,49 @@ function known(
 }
 
 describe('PlayDigital adapter', () => {
+  it('normalizes numeric category strings and drops non-numeric categories without affecting completeness', async () => {
+    const card = {
+      ...cards[0],
+      payment_flow: null,
+      categories_whitelist: {
+        categories: [
+          { map_category: 12, sub_categories: [3] },
+          { map_category: '012', sub_categories: [3] },
+          { map_category: 'unknown', sub_categories: [4] },
+        ],
+      },
+    };
+    const ctx = context(() => page([card]));
+    ctx.maxDetailFetches = 0;
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(run.complete).toBe(true);
+    expect(run.listings[0].rawCategories).toEqual(['pd:12/3', 'pd:12']);
+    expect(run.anomalies).toContainEqual(
+      expect.objectContaining({
+        kind: 'unmapped_category',
+        detail: 'unknown',
+        externalId: card.promo_id,
+      }),
+    );
+    expect(run.anomalies).not.toContainEqual(
+      expect.objectContaining({ kind: 'shape_changed' }),
+    );
+  });
+
+  it('does not infer eligibility or channels from a null listing payment flow', async () => {
+    const results: unknown[] = [];
+    for (const flow of [null, undefined, 'modo']) {
+      const card = { ...cards[0], payment_flow: flow };
+      const ctx = context(() => page([card]));
+      ctx.knownDetails.set(card.promo_id!, known(card, jetsmart));
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(run.complete).toBe(true);
+      results.push(run.listings[0].terms);
+    }
+    expect(results[0]).not.toBeNull();
+    expect(results[0]).toEqual(results[1]);
+    expect(results[0]).toEqual(results[2]);
+  });
   it.each(['FINISHED', 'FINISHED_FOR_PRODUCT'])(
     'observes %s listings without fetching or reusing detail',
     async (status) => {
@@ -161,7 +204,7 @@ describe('PlayDigital adapter', () => {
       expect(run.listings[0].unpublishableReason).toContain(
         'not running: FINISHED',
       );
-      expect(run.complete).toBe(false);
+      expect(run.complete).toBe(true);
     },
   );
   it.each([
@@ -207,7 +250,7 @@ describe('PlayDigital adapter', () => {
     );
     ctx.saveDetail = vi.fn(async () => {});
     const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
-    expect(run.complete).toBe(false);
+    expect(run.complete).toBe(true);
     expect(run.listings[0].terms).toBeNull();
     expect(ctx.saveDetail).not.toHaveBeenCalled();
     expect(run.anomalies[0].detail).toContain('HTTP 400');
@@ -274,8 +317,18 @@ describe('PlayDigital adapter', () => {
       expect(runs[1].listings[0].detailFetchedAt).toEqual(
         scenario === 'refresh' ? now : cached.fetchedAt,
       );
-      expect(runs[1].listings[0].terms).not.toBeNull();
-      expect(runs[1].complete).toBe(scenario === 'refresh');
+      expect(runs[1].listings[0].terms === null).toBe(scenario !== 'refresh');
+      if (scenario !== 'refresh') {
+        expect(runs[1].listings[0].unpublishableReason).toBe('detail outdated');
+        expect(runs[1].observedExternalIds).toContain(cards[0].promo_id);
+        expect(runs[1].anomalies).toContainEqual(
+          expect.objectContaining({
+            kind: 'unparsed_offer',
+            detail: 'detail outdated',
+          }),
+        );
+      }
+      expect(runs[1].complete).toBe(true);
       expect(
         vi
           .mocked(ctx.fetchImpl)
@@ -308,6 +361,8 @@ describe('PlayDigital adapter', () => {
     expect(runs[0].listings[0].detailStale).toBe(false);
     expect(runs[1].listings[0].detailStale).toBe(true);
     expect(runs[1].listings[0].detailFetchedAt).toEqual(now);
+    expect(runs[1].listings[0].terms).toBeNull();
+    expect(runs[1].listings[0].unpublishableReason).toBe('detail outdated');
     expect(
       vi
         .mocked(ctx.fetchImpl)
@@ -491,9 +546,7 @@ describe('PlayDigital adapter', () => {
     expect(runs[0].listings[0].detailFetchedAt).toEqual(cached.fetchedAt);
     expect(runs[0].listings[1].terms).toBeNull();
     expect(runs[0].listings[1].unpublishableReason).toBe('detail pending');
-    expect(runs.every((r) => r.outcome === 'partial' && !r.complete)).toBe(
-      true,
-    );
+    expect(runs.every((r) => r.outcome === 'ok' && r.complete)).toBe(true);
   });
 
   it('shares a positive detail budget across banks, not once per bank', async () => {
@@ -509,7 +562,7 @@ describe('PlayDigital adapter', () => {
     ).toHaveLength(1);
     expect(
       runs.every(
-        (r) => r.listings[0].terms && !r.listings[1].terms && !r.complete,
+        (r) => r.listings[0].terms && !r.listings[1].terms && r.complete,
       ),
     ).toBe(true);
   });
@@ -522,27 +575,50 @@ describe('PlayDigital adapter', () => {
     const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
     expect(run.listings[0].terms).toBeNull();
     expect(run.listings[0].detailFetchedAt).toBeNull();
-    expect(run.outcome).toBe('partial');
-    expect(run.complete).toBe(false);
+    expect(run.outcome).toBe('ok');
+    expect(run.complete).toBe(true);
+    expect(run.observedExternalIds).toEqual([cards[0].promo_id]);
     expect(run.anomalies[0].kind).toBe('detail_failed');
   });
 
-  it('retains previous detail and successful timestamp on failed refresh', async () => {
-    const ctx = context((url) => {
-      if (url.includes('/benefit/')) throw new Error('offline');
-      return page([cards[0]]);
-    });
-    const cached = known(cards[0], jetsmart, 8 * 86400_000);
-    ctx.knownDetails.set(cards[0].promo_id!, cached);
+  it('keeps listing completeness when detail schema is invalid', async () => {
+    const ctx = context((url) =>
+      url.includes('/benefit/') ? { id: cards[0].promo_id } : page([cards[0]]),
+    );
     const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
-    expect(run.listings[0].terms).not.toBeNull();
-    expect(run.listings[0].raw.detail).toEqual(jetsmart);
-    expect(run.listings[0].detailFetchedAt).toEqual(cached.fetchedAt);
-    expect(run.listings[0].detailStale).toBe(true);
+    expect(run).toMatchObject({
+      outcome: 'ok',
+      complete: true,
+      observedExternalIds: [cards[0].promo_id],
+    });
+    expect(run.listings[0].terms).toBeNull();
     expect(run.anomalies).toContainEqual(
       expect.objectContaining({ kind: 'detail_failed' }),
     );
   });
+
+  it.each(['failure', 'budget'])(
+    'retains unchanged expired detail on %s',
+    async (scenario) => {
+      const ctx = context((url) => {
+        if (url.includes('/benefit/')) throw new Error('offline');
+        return page([cards[0]]);
+      });
+      ctx.maxDetailFetches = scenario === 'budget' ? 0 : 1;
+      const cached = known(cards[0], jetsmart, 8 * 86400_000);
+      ctx.knownDetails.set(cards[0].promo_id!, cached);
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(run.listings[0].terms).not.toBeNull();
+      expect(run.listings[0].raw.detail).toEqual(jetsmart);
+      expect(run.listings[0].detailFetchedAt).toEqual(cached.fetchedAt);
+      expect(run.listings[0].detailStale).toBe(true);
+      if (scenario === 'failure')
+        expect(run.anomalies).toContainEqual(
+          expect.objectContaining({ kind: 'detail_failed' }),
+        );
+      expect(run.complete).toBe(true);
+    },
+  );
 
   it('refuses complete status for mismatched pagination totals or page numbers', async () => {
     for (const data of [page([cards[0]], 1, 1, 2), page([], 2, 2, 0)]) {

@@ -60,6 +60,7 @@ describe('ingestion CLI', () => {
           observed: 19,
           mapped: 18,
           unpublishable: 5,
+          detailsMissing: 5,
           anomalies: 2,
           error: null,
         },
@@ -69,5 +70,6 @@ describe('ingestion CLI', () => {
       'raw=20 total=100 observed=19 mapped=18 unpublishable=5 anomalies=2 complete=false',
     );
     expect(report).toContain('WARNING: partial coverage');
+    expect(report).toContain('details missing: 5');
   });
 });

@@ -6,6 +6,8 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { schema } from '../src/database/schema';
 import { CampaignTermsSchema, type CampaignTerms } from '@repo/shared-types';
 import { evaluateEligibility } from '../src/benefits/rules/eligibility';
+import { BenefitsService } from '../src/benefits/benefits.service';
+import { playdigitalAdapter } from '../src/benefits/ingest/playdigital';
 import {
   benefitCampaigns as campaigns,
   benefitCampaignBanks as presence,
@@ -454,6 +456,63 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       .from(presence)
       .where(eq(presence.campaignId, restored.id));
     expect(p).toBeDefined();
+  });
+
+  it('withdraws absent listings and stays fresh when listed details fail', async () => {
+    const absent = listing();
+    const keeper = listing();
+    await upsertBanks(db, [
+      { slug: 'macro', name: 'Macro', playdigitalId: 'macro-id' },
+    ]);
+    await commit(run([absent, keeper]));
+    const fetchImpl: typeof fetch = async (input) =>
+      String(input).includes('/benefit/')
+        ? new Response(null, { status: 404 })
+        : Response.json({
+            data: { cards: [{ promo_id: keeper.externalId }] },
+            metadata: {
+              pagination: { page: 1, total_pages: 1, total_results: 1 },
+            },
+          });
+    const ctx = {
+      now: date(1),
+      fetchImpl,
+      knownDetails: new Map([
+        [
+          keeper.externalId,
+          { listingHash: 'old', fetchedAt: start, detail: {} },
+        ],
+      ]),
+      pacing: { minIntervalMs: 0, timeoutMs: 1000, retries: 0 },
+    };
+    const bank = { slug: 'macro', name: 'Macro', playdigitalId: 'macro-id' };
+    const [first] = await playdigitalAdapter.run(ctx, [bank]);
+    expect(first).toMatchObject({
+      outcome: 'ok',
+      complete: true,
+      observedExternalIds: [keeper.externalId],
+    });
+    expect(first.anomalies).toContainEqual(
+      expect.objectContaining({ kind: 'detail_failed' }),
+    );
+    expect(first.listings[0].unpublishableReason).toBe('detail outdated');
+    first.completedAt = date(1);
+    first.startedAt = date(1);
+    await commit(first);
+    const [second] = await playdigitalAdapter.run(ctx, [bank]);
+    second.completedAt = date(2);
+    second.startedAt = date(2);
+    expect((await commit(second)).withdrawnBanks).toBe(1);
+    const service = new BenefitsService(db, null as never, null as never);
+    expect(
+      (await service.banks(date(2))).banks.find((b) => b.slug === 'macro')
+        ?.stale,
+    ).toBe(false);
+    const [row] = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.externalId, keeper.externalId));
+    expect(row.terms).toBeNull();
   });
 
   it.each([

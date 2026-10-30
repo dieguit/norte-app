@@ -61,7 +61,7 @@ export function formatIngestReport(
     result.dryRun ? 'DRY RUN — no database writes' : 'COMMIT',
     ...result.runs.map(
       (run) =>
-        `${run.source}/${run.bankSlug ?? '*'}: ${run.outcome}; raw=${run.rawRowCount} total=${run.totalReported ?? 'unknown'} observed=${run.observed} mapped=${run.mapped} unpublishable=${run.unpublishable} anomalies=${run.anomalies} complete=${run.complete}${run.complete ? '' : ' — WARNING: partial coverage, not a full catalog'}${run.error ? `; ${run.error}` : ''}`,
+        `${run.source}/${run.bankSlug ?? '*'}: ${run.outcome}; raw=${run.rawRowCount} total=${run.totalReported ?? 'unknown'} observed=${run.observed} mapped=${run.mapped} unpublishable=${run.unpublishable} anomalies=${run.anomalies} complete=${run.complete}${run.source === 'playdigital' ? `; details missing: ${run.detailsMissing}` : ''}${run.complete ? '' : ' — WARNING: partial coverage, not a full catalog'}${run.error ? `; ${run.error}` : ''}`,
     ),
     ...result.errors.map((error) => `${error.source}: ${error.error}`),
   ].join('\n');

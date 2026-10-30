@@ -29,6 +29,13 @@ function summarizeRun(run: AdapterRun) {
     observed: new Set(run.observedExternalIds).size,
     mapped: run.listings.length,
     unpublishable: run.listings.filter((listing) => !listing.terms).length,
+    detailsMissing:
+      run.source === 'playdigital'
+        ? run.listings.filter(
+            (listing) =>
+              !listing.terms && listing.unpublishableReason !== 'finished',
+          ).length
+        : 0,
     anomalies: run.anomalies.length,
     error: run.error,
   };

@@ -77,7 +77,7 @@ export type AdapterContext = {
   saveDetail?: (externalId: string, detail: KnownDetail) => Promise<void>;
   // Optional narrowing for CLI runs.
   bankSlugs?: string[];
-  // Run-wide budget; remaining details stay unfetched (listing unpublishable or stale) and the run is partial.
+  // Run-wide budget; remaining details stay unfetched (listing unpublishable or stale).
   maxDetailFetches?: number;
   // Global pacing for every request of the run.
   pacing?: { minIntervalMs: number; timeoutMs: number; retries: number };

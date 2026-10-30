@@ -36,7 +36,7 @@ const promotionSchema = z
     title: z.string().optional(),
     slug: z.string().optional(),
     search_tags: z.string().nullish(),
-    payment_flow: z.string().optional(),
+    payment_flow: z.string().nullish(),
     where: z.string().nullish(),
     start_date: z.string().optional(),
     stop_date: z.string().nullish().catch(undefined),
@@ -61,7 +61,7 @@ const cardSchema = promotionSchema.extend({
     .object({
       categories: z.array(
         z.object({
-          map_category: z.number(),
+          map_category: z.union([z.number(), z.string()]),
           sub_categories: z.array(z.number()).optional(),
         }),
       ),
@@ -168,15 +168,31 @@ function macroTier(signal: string) {
   return { codes, rawTierSignal, unresolved };
 }
 
-function rawCategories(card: Card): string[] {
+function rawCategories(
+  card: Card,
+  run: AdapterRun,
+  externalId: string,
+): string[] {
   return [
     ...new Set(
-      (card.categories_whitelist?.categories ?? []).flatMap((cat) => [
-        ...(cat.sub_categories ?? []).map(
-          (sub) => `pd:${cat.map_category}/${sub}`,
-        ),
-        `pd:${cat.map_category}`,
-      ]),
+      (card.categories_whitelist?.categories ?? []).flatMap((cat) => {
+        if (
+          typeof cat.map_category === 'string' &&
+          !/^\d+$/.test(cat.map_category)
+        ) {
+          run.anomalies.push({
+            kind: 'unmapped_category',
+            externalId,
+            detail: cat.map_category,
+          });
+          return [];
+        }
+        const category = Number(cat.map_category);
+        return [
+          ...(cat.sub_categories ?? []).map((sub) => `pd:${category}/${sub}`),
+          `pd:${category}`,
+        ];
+      }),
     ),
   ];
 }
@@ -224,7 +240,7 @@ function mapListing(
     title,
     brandName: brandName(card, title),
     sourceBrandId: null,
-    rawCategories: rawCategories(card),
+    rawCategories: rawCategories(card, run, externalId),
     tiers: codes ? { bankSlug: bank.slug, codes } : null,
     rawTierSignal,
     terms: null,
@@ -239,6 +255,15 @@ function mapListing(
     detailStale: stale,
   };
   if (!known) return listing;
+  if (known.listingHash !== listing.listingHash) {
+    listing.unpublishableReason = 'detail outdated';
+    run.anomalies.push({
+      kind: 'unparsed_offer',
+      externalId,
+      detail: listing.unpublishableReason,
+    });
+    return listing;
+  }
   applyDetail(listing, known, bank, unresolved, codes, run);
   return listing;
 }
@@ -458,6 +483,8 @@ async function appendCard(
   } catch (error) {
     listing = invalidListing(raw, externalId, bank.slug);
     listing.unpublishableReason = `listing mapping failed: ${String(error)}`;
+    run.complete = false;
+    run.outcome = 'partial';
     run.anomalies.push({
       kind: 'shape_changed',
       detail: listing.unpublishableReason,
@@ -466,13 +493,12 @@ async function appendCard(
   }
   listing.raw.listing = raw;
   run.listings.push(listing);
-  if (
-    (!listing.terms && listing.unpublishableReason !== 'finished') ||
-    result.stale
-  ) {
-    run.complete = false;
-    run.outcome = 'partial';
-  }
+  if (listing.unpublishableReason === 'detail pending' && !result.failed)
+    run.anomalies.push({
+      kind: 'detail_failed',
+      externalId,
+      detail: 'detail pending',
+    });
 }
 
 function listingFinished(card: Card, today: string) {
