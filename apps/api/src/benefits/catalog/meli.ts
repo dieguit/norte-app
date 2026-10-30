@@ -26,12 +26,12 @@ export const meli: Provider = {
       url: 'https://www.mercadolibre.com.ar/suscripciones/melimas',
       strategy: 'fetch',
       instructions:
-        'Beneficios fijos Meli+: distinguí planes Esencial y Total y sus condiciones.',
+        'Beneficios fijos Meli+: recurrence ongoing; eligibility membership meli-plus-esencial o meli-plus-total por beneficio, sin mezclar planes. No extraigas beneficios del título, navegación o publicidad sin términos de cada plan.',
       status: 'pending_validation',
       enabled: false,
       autoPublish: false,
       coverage: 'partial',
-      note: 'HTTP 200; beneficios fijos y HTML extenso; falta validar extracción.',
+      note: 'validado 30/10/2026: 0 válidos; HTTP 200, app shell con navegación y error; sin términos Esencial/Total legibles.',
     },
   ],
 };

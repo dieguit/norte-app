@@ -1,0 +1,69 @@
+{
+  "benefits": [
+    {
+      "title": "Hasta 6 cuotas sin interés en Decathlon Plan Ultra",
+      "merchant": "Decathlon",
+      "category": "indumentaria",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"providerFact\":{\"providerSlug\":\"brubank\",\"key\":\"plan\",\"values\":[\"Ultra\"]}},{\"card\":{\"issuerProviderSlugs\":[\"brubank\"],\"types\":[\"credit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"offer: 'Hasta 6 cuotas' no garantiza 6 cuotas fijas\"],\"offer\":{\"type\":\"installments\",\"installments\":6},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[\"in_store\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 6 cuotas sin interés"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Con tu Plan Ultra, todos los días, de forma presencial comprando con tu tarjeta de crédito Brubank"
+        }
+      ]
+    },
+    {
+      "title": "Hasta 6 cuotas sin interés en Decathlon Plan Plus",
+      "merchant": "Decathlon",
+      "category": "indumentaria",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"providerFact\":{\"providerSlug\":\"brubank\",\"key\":\"plan\",\"values\":[\"Plus\"]}},{\"card\":{\"issuerProviderSlugs\":[\"brubank\"],\"types\":[\"credit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"offer: 'Hasta 6 cuotas' no garantiza 6 cuotas fijas\"],\"offer\":{\"type\":\"installments\",\"installments\":6},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[\"in_store\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 6 cuotas sin interés"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Con tu Plan Plus, todos los días, de forma presencial comprando con tu tarjeta de crédito Brubank"
+        }
+      ]
+    },
+    {
+      "title": "30% descuento COTO Plan Ultra",
+      "merchant": "COTO",
+      "category": "supermercado",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"providerFact\":{\"providerSlug\":\"brubank\",\"key\":\"plan\",\"values\":[\"Ultra\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"card: medio de pago no especificado\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":3000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"none\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":[4],\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "30% descuento"
+        },
+        {
+          "field": "caps",
+          "quote": "Sin tope"
+        },
+        {
+          "field": "validity",
+          "quote": "Todos los jueves"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Plan Ultra"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="es" xmlns:mso="urn:schemas-microsoft-com:office:office"
+  xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882">
+
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PFXMDHC');</script>
+<!-- End Google Tag Manager -->
+
+  <!-- Meta -->
+  <title>YPF ServiClub | El programa de beneficios más grande del país</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <meta name="keywords"
+    content="YPF,precio de la nafta,Shell,ypf cerca,Axion,estacion servicio,estacion de servicio,precio nafta super ypf,estacion de servicio cerca de mi,ypf cerca de mi ubicación,ypf full,app ypf,ypf extranet,gas envasado,combustible,gas granel,estacion de servicio ypf,precio combustible hoy,vaca muerta,descuentos ypf,nafta precio,ypf precios,surtidores de combustible,ypf en ruta,serviclub ypf,garrafa de gas,puntos serviclub,precio combustible,precio nafta ypf,precio nafta argentina hoy,nafta hoy,garrafas de gas,estación de servicio cerca,lubricantes,YPF Luz,ROD,ypf gas" />
+  <meta name="description" content="Sumate a ServiClub y empezá a sumare puntos. Todos tus consumos en YPF cuentan." />
+
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.ico" />
+  <link rel="canonical" href="https://serviclub.com.ar" />
+
+  <meta property="og:title" content="YPF ServiClub | El programa de beneficios más grande del país" />
+  <meta property="og:type" content="image" />
+  <meta property="og:url" content="https://serviclub.com.ar" />
+  <meta property="og:image" content="https://serviclub.com.ar/assets/share.jpg" />
+
+  <meta name="twitter:title" content="YPF ServiClub | El programa de beneficios más grande del país" />
+  <meta name="twitter:description"
+    content="Sumate a ServiClub y empezá a sumare puntos. Todos tus consumos en YPF cuentan." />
+  <meta name="twitter:image" content="https://serviclub.com.ar/assets/share.jpg" />
+  <meta name="twitter:card" content="photo" />
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="public/css/app.css?4" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+
+  <!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:Control msdt:dt="string">2026-10-05T14:16:00Z</mso:Control>
+<mso:Edited msdt:dt="string">2026-09-02T15:19:00Z</mso:Edited>
+<mso:Status msdt:dt="string">Editado</mso:Status>
+<mso:EditedBy msdt:dt="string">Steibel, Silvia</mso:EditedBy>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+</head>
+
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PFXMDHC"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+  <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
+    <div class="container-fluid">
+      <!-- Logo -->
+      <a class="navbar-brand" href="#">
+        <img src="assets/logo.svg" alt="Servi Club" />
+      </a>
+
+      <!-- Botón hamburguesa -->
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Menú -->
+      <div class="collapse navbar-collapse justify-content-end" id="mainNavbar">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="https://mapa.ypf.com/?filter=serviclub" target="_blank">Estaciones de servicio</a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="https://app.ypf.com/" target="_blank">Descargá App YPF</a>
+          </li>
+
+          <li class="nav-item">
+            <ul href="" class="btn btn-light btnAgenteChat"> Hablar con un agente </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <!-- Imagen real -->
+    <img src="assets/hero.png" alt="Hero" class="hero-img d-none d-md-block" />
+    <img src="assets/hero-mobile.png" alt="Hero" class="hero-img d-md-none" />
+
+    <!-- Contenido centrado -->
+    <div class="hero-content text-center text-white">
+      <h1 class="display-4 fw-bold text-uppercase">
+        El programa de beneficios <br />más grande del país
+      </h1>
+      <p class="lead">Todos tus consumos en YPF suman puntos.</p>
+
+      <a data-delay="1s" href="#programa" data-animate="fadeInUp" class="animate-on-screen text-decoration-none text-white position-absolute mb-4 bottom-0 more" data-delay="1250ms" data-animate="fadeIn">Conocé más<br><i class="bi bi-chevron-down"></i></a>
+    </div>
+  </section>
+
+  <div class="container py-3 py-md-5 mt-5" id="programa">
+    <h2 class="text-center text-primary mb-5 pb-3 fw-700 text-uppercase">
+      Sumate al programa ServiClub
+    </h2>
+    <div class="row steps">
+      <div class="col-md-12 mb-5">
+        <div class="card step border-primary">
+          <div class="card-body py-0">
+            <div class="row">
+              <div class="col-md-6 d-flex flex-column align-items-center justify-content-center">
+                <div class="step-number bg-success">1</div>
+                <h3 class="step-title">Registrate</h3>
+                <p>Descargá APP YPF en tu celular</p>
+
+                <div class="d-none d-md-block">
+                  <a target="_blank" href="https://app.ypf.com/" class="mt-2 btn btn-primary">Descargá APP YPF</a>
+                </div>
+
+                <div class="d-flex d-md-none flex-column flex-md-row mt-2">
+                  <div>
+                    <a class="mx-1 mb-1 mb-md-0 btn btn-brand d-flex"
+                      href="https://apps.apple.com/ar/app/ypf-app/id1401504810 " target="_blank"><img class="me-2"
+                        src="assets/apple.svg" alt="Descarga en Apple" />Descargar para iOS</a>
+                  </div>
+                  <div>
+                    <a class="mx-1 mb-1 mb-md-0 btn btn-brand d-flex"
+                      href="https://play.google.com/store/apps/details?id=com.ypf.jpm " target="_blank"><img
+                        class="me-2" src="assets/google_play.svg" alt="Descargar para Android" />Descargar para
+                      Android</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 text-center iphone">
+                <img src="assets/iphone.png" class="pt-3" alt="Iphone" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 mb-5">
+        <div class="card step step-2 border-primary">
+          <div class="card-body px-5 d-flex flex-column align-items-center justify-content-start">
+            <div class="step-number bg-info">2</div>
+            <h3 class="step-title">Sumá puntos</h3>
+            <p class="text-center">
+              Cargando combustible o comprando productos en nuestras +1.500
+              Estaciones de Servicio en todo el país.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 mb-5">
+        <div class="card step step-3 border-primary">
+          <div class="card-body px-5 d-flex flex-column align-items-center justify-content-start">
+            <div class="step-number bg-danger">3</div>
+            <h3 class="step-title">Canjeá puntos</h3>
+            <p class="text-center">
+              Por descuentos en estaciones de servicio y tiendas Full o por
+              productos exclusivos.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container pt-3 mb-md-5 pb-5" id="beneficios">
+    <h2 class="text-center text-primary md-3 mb-md-5 pb-3 fw-700 text-uppercase">
+      Algunos de nuestros beneficios ServiClub
+    </h2>
+
+    <div class="row">
+      <div class="col-md-3 mb-4">
+        <div class="card beneficio">
+          <div class="card-body">
+            <!-- <div class="image">
+                            <img src="assets/beneficio-1.png" alt="Beneficio 1">
+                        </div> -->
+            <h2>🎭 Beneficios en Espectáculos</h2>
+            <p>Canjeá tus puntos ServiClub y disfrutá de entradas y promociones especiales en shows y espectáculos.
+              <br>Más cultura y entretenimiento canjeando tus puntos.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-4">
+        <div class="card beneficio">
+          <div class="card-body">
+            <!-- <div class="image">
+                            <img src="assets/beneficio-2.png" alt="Beneficio 2">
+                        </div> -->
+            <h2>✈️ Beneficios en Viajes</h2>
+            <p>Tus puntos ServiClub te acercan a experiencias de viaje, descuentos y beneficios para disfrutar más cada
+              escapada. <br>Canjeá fácil y viajá mejor.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-4">
+        <div class="card beneficio">
+          <div class="card-body">
+            <!-- <div class="image">
+                            <img src="assets/beneficio-3.png" alt="Beneficio 3">
+                        </div> -->
+            <h2>⛽ Beneficios en Combustibles</h2>
+            <p>Canjea tus puntos ServiClub para acceder a descuentos en combustible y ahorrar en cada carga. <br>Tus
+              puntos, más kilómetros.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-4">
+        <div class="card beneficio">
+          <div class="card-body">
+            <!-- <div class="image">
+                            <img src="assets/beneficio-3.png" alt="Beneficio 3">
+                        </div> -->
+            <h2>⭐ Beneficios Full</h2>
+            <p>Canjeá tus puntos ServiClub y accede a beneficios exclusivos Full, experiencias divertidas y descuentos
+              especiales.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-none d-md-block">
+      <br><br>
+    </div>
+  </div>
+
+  <div
+    class="d-flex flex-column px-4 flex-md-row position-relative align-items-center justify-content-center container-fluid bg-primary py-5 text-light"
+    id="ayuda">
+    <div>
+      <img src="assets/bot.svg" alt="Bot">
+    </div>
+    <div class="ms-md-5 ps-md-3">
+      <h2 class="fw-700 mb-5 mb-md-0">¿Necesitás cambiar tu <br class="d-md-none">correo?</h2>
+      <h6 class="mt-3 mb-3 mb-5 mb-md-0 fw-400">Nuestro agente está disponible para ayudarte</h6>
+      <ul href="" class="mt-4 btn btn-light-primary btnAgenteChat">Hablar con un agente</ul>
+    </div>
+
+    <p class="mb-0 text-center w-100 mt-5 text-white"><small>Por cualquier consulta comunicate al <br
+          class="d-md-none"><b class="text-white">0800-122-2973</b> o <b class="text-white">*973</b> (YPF) desde tu
+        celular.</small></p>
+  </div>
+
+  <footer class="container-fluid text-light py-5">
+    <div class="container">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+        <div>
+          <img class="mb-4" src="assets/logo.svg" alt="Servi Club">
+          <span class="links d-none d-md-block">
+            <p class="mb-0">© YPF</p>
+            <a target="_blank" href="https://www.ypf.com/terminos-y-condiciones.html" class="">Términos y condiciones</a> |
+            <a target="_blank" href="https://app.ypf.com/pdf/tyc_serviclub.pdf" class="">Reglamento Programa YPF ServiClub</a>
+          </span>
+        </div>
+
+        <div class="social">
+          <p class="text-center mb-2"><small>Seguinos en</small></p>
+          <div class="d-flex gap-3">
+            <a href="https://www.instagram.com/ypfserviclub/ " class="social-btn" target="_blank"
+              aria-label="Instagram">
+              <i class="bi bi-instagram"></i>
+            </a>
+            <a href="https://www.facebook.com/YPFServiClub/ " class="social-btn" target="_blank" aria-label="Facebook">
+              <i class="bi bi-facebook"></i>
+            </a>
+            <a href="https://x.com/YPFServiclub " class="social-btn" target="_blank" aria-label="X">
+              <i class="bi bi-twitter-x"></i>
+            </a>
+          </div>
+        </div>
+
+        <div class="d-md-none">
+          <span class="links">
+            <p class="mb-0">© YPF</p>
+            <a target="_blank" href="https://www.ypf.com/terminos-y-condiciones.html" class="">Términos y condiciones</a> |
+            <a target="_blank" href="https://app.ypf.com/pdf/tyc_serviclub.pdf" class="">Reglamento Programa YPF ServiClub</a> 
+          </span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script type='text/javascript'>
+    (function () {
+      var isTst = window.location.href.includes('test');
+
+      var orgId = isTst ? '00DV90000051Rkr' : '00D4x0000018sSt';
+      var deploymentName = 'AgenteServiClub';
+      var siteUrl = isTst
+        ? 'https://ypfargentinasa--uat.sandbox.my.site.com/ESWAgenteServiClubUAY1772656852562'
+        : 'https://ypfargentinasa.my.site.com/ESWAgenteServiClub1768860419456';
+      var scrt2Url = isTst
+        ? 'https://ypfargentinasa--uat.sandbox.my.salesforce-scrt.com'
+        : 'https://ypfargentinasa.my.salesforce-scrt.com';
+      var bootstrapUrl = siteUrl + '/assets/js/bootstrap.min.js';
+
+      function initEmbeddedMessaging() {
+        try {
+          embeddedservice_bootstrap.settings.language = 'es';
+          embeddedservice_bootstrap.init(orgId, deploymentName, siteUrl, { scrt2URL: scrt2Url });
+        } catch (err) {
+          console.error('Error loading Embedded Messaging: ', err);
+        }
+      }
+
+      var script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = bootstrapUrl;
+      script.onload = initEmbeddedMessaging;
+      document.body.appendChild(script);
+    })();
+  </script>
+
+
+  <script>
+    // Abrir chat de Salesforce al hacer click en el botón
+    document.querySelectorAll(".btnAgenteChat").forEach(el => {
+      el.addEventListener("click", function () {
+        try {
+        // Buscar el botón de Salesforce por su clase
+        const sfButton = document.querySelector('.slds-button.minimizedButton');
+
+        console.log("Botón encontrado:", sfButton);
+
+        if (sfButton) {
+          // Mostrar temporalmente el botón
+          sfButton.style.display = 'block';
+          sfButton.style.visibility = 'visible';
+
+          // Hacer click
+          sfButton.click();
+
+          // Volver a ocultar después de un pequeño delay
+          setTimeout(() => {
+            sfButton.style.display = 'none';
+          }, 20);
+
+        } else if (window.embeddedservice_bootstrap && window.embeddedservice_bootstrap.utilAPI) {
+          // Alternativa: usar la API de Salesforce
+          console.log('else if');
+          window.embeddedservice_bootstrap.utilAPI.launchChat();
+        } else {
+          console.error("Chat de Salesforce no disponible");
+        }
+      } catch (e) {
+        console.error("Error al abrir el chat:", e);
+      }
+      })
+    });
+
+  </script>
+
+
+  <!-- jQuery -->
+  <script src="js/jquery/dist/jquery.min.js"></script>
+
+  <!-- Bootstrap JS -->
+  <script src="js/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Tu JS -->
+  <script src="js/app.js"></script>
+</body>
+
+</html>

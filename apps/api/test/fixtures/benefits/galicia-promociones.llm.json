@@ -1,0 +1,165 @@
+{
+  "benefits": [
+    {
+      "title": "STARBUCKS - Hasta 25% de ahorro",
+      "merchant": "Starbucks",
+      "category": "gastronomia",
+      "upstreamId": "verticalsecondarymodule-b7c91f8f37",
+      "detailUrl": "https://www.galicia.ar/personas/buscador-de-promociones?path=/marca%2f1459%7cstarbucks%20coffee%7cmarca",
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"issuerProviderSlugs\":[\"galicia\"],\"types\":[\"credit\",\"debit\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"card types or tiers from detailed promo terms\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":2500},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 25% de ahorro."
+        },
+        {
+          "field": "validity",
+          "quote": "Todos los días"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjetas Galicia"
+        }
+      ]
+    },
+    {
+      "title": "MIMO & CO. - Hasta 25% de ahorro y 3 cuotas sin interés",
+      "merchant": "Mimo & Co.",
+      "category": "indumentaria",
+      "upstreamId": "verticalsecondarymodule-410d55ee69",
+      "detailUrl": "https://galicia.ar/personas/buscador-de-promociones?path=/promocion/171409%7Cmimo%2526amp%253bco%7Cmarca%7C",
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"issuerProviderSlugs\":[\"galicia\"],\"types\":[\"credit\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"card types or tiers from detailed promo terms\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":2500},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":[5],\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 25% de ahorro y 3 cuotas sin interés."
+        },
+        {
+          "field": "validity",
+          "quote": "Viernes"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjetas Galicia"
+        }
+      ]
+    },
+    {
+      "title": "JUMBO - Hasta 20% de ahorro",
+      "merchant": "Jumbo",
+      "category": "supermercado",
+      "upstreamId": "verticalsecondarymodule-949099052f",
+      "detailUrl": "https://galicia.ar/personas/buscador-de-promociones?path=/promocion/185881%7CJumbo%7CMarca%7C",
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"issuerProviderSlugs\":[\"galicia\"],\"types\":[\"credit\",\"debit\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"card types or tiers from detailed promo terms\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":[2,4],\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 20% de ahorro."
+        },
+        {
+          "field": "validity",
+          "quote": "Martes y jueves"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjetas Galicia"
+        }
+      ]
+    },
+    {
+      "title": "BRIDGESTONE - Hasta 12 cuotas sin interés",
+      "merchant": "Bridgestone",
+      "category": "otros",
+      "upstreamId": "verticalsecondarymodule-000f3f0d60",
+      "detailUrl": "https://galicia.ar/personas/buscador-de-promociones?path=/promocion/170463%7Cbridgestone%7Cmarca%7C",
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"issuerProviderSlugs\":[\"galicia\"],\"types\":[\"credit\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"card types or tiers from detailed promo terms\"],\"offer\":{\"type\":\"installments\",\"installments\":12},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 12 cuotas sin interés."
+        },
+        {
+          "field": "validity",
+          "quote": "Todos los días"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjetas Galicia"
+        }
+      ]
+    },
+    {
+      "title": "REX - Hasta 18 cuotas sin interés",
+      "merchant": "Rex",
+      "category": "otros",
+      "upstreamId": "verticalsecondarymodule-152e32610e",
+      "detailUrl": "https://galicia.ar/personas/buscador-de-promociones?path=/promocion/186357%7Crex%7Cmarca%7C",
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"issuerProviderSlugs\":[\"galicia\"],\"types\":[\"credit\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"card types or tiers from detailed promo terms\"],\"offer\":{\"type\":\"installments\",\"installments\":18},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 18 cuotas sin interés."
+        },
+        {
+          "field": "validity",
+          "quote": "Todos los días"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjetas Galicia"
+        }
+      ]
+    },
+    {
+      "title": "CCKONEX - Hasta 20% de ahorro",
+      "merchant": "CCKonex",
+      "category": "otros",
+      "upstreamId": "verticalsecondarymodule-f456186c2a",
+      "detailUrl": "https://www.galicia.ar/personas/buscador-de-promociones?path=/marca%2f123259%7ccckonex%20entradas%7cmarca",
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"issuerProviderSlugs\":[\"galicia\"],\"types\":[\"credit\",\"debit\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"card types or tiers from detailed promo terms\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 20% de ahorro."
+        },
+        {
+          "field": "validity",
+          "quote": "Todos los días"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjetas Galicia"
+        }
+      ]
+    },
+    {
+      "title": "Hasta 15% de ahorro en combustible",
+      "merchant": null,
+      "category": "combustible",
+      "upstreamId": "promotionalbanner-330cb819e5",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"card\":{\"issuerProviderSlugs\":[\"galicia\"],\"network\":\"mastercard\",\"types\":[\"credit\",\"debit\",\"prepaid\"]}},{\"membership\":{\"instrumentSlug\":\"modo\"}}]},\"eligibilityCompleteness\":\"complete\",\"unresolved\":[],\"offer\":{\"type\":\"discount\",\"percentageBps\":1500},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":[10]},\"channels\":{\"allowed\":[\"modo\",\"app\"],\"excluded\":[]},\"requiredActions\":[\"pagando con MODO desde la App Galicia\"],\"stackable\":\"unknown\",\"recurrence\":\"monthly\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "Hasta 15% de ahorro en combustible"
+        },
+        {
+          "field": "validity",
+          "quote": "Los días 10 de cada mes"
+        },
+        {
+          "field": "eligibility",
+          "quote": "pagando con MODO desde la App Galicia, con tu tarjeta Mastercard."
+        }
+      ]
+    }
+  ]
+}

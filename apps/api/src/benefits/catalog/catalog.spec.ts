@@ -55,17 +55,18 @@ describe('benefits catalog', () => {
     });
   });
 
-  it('enables only active sources and documents pending or blocked ones', () => {
+  it('enables only active or degraded sources, auto-publishes only active ones', () => {
     for (const p of CATALOG) {
       expect(p.sources.length).toBeGreaterThan(0);
       expect(resolveCandidateInstruments(p).length).toBeGreaterThan(0);
       for (const source of p.sources) {
         expect(source.id).toBeTruthy();
         expect(new URL(source.url).protocol).toBe('https:');
-        if (source.enabled) expect(source.status).toBe('active');
+        if (source.enabled)
+          expect(['active', 'degraded']).toContain(source.status);
+        if (source.autoPublish) expect(source.status).toBe('active');
         if (source.autoPublish) expect(source.enabled).toBe(true);
-        if (source.status === 'blocked' || source.status.startsWith('pending_'))
-          expect(source.note).toBeTruthy();
+        if (source.status !== 'active') expect(source.note).toBeTruthy();
       }
     }
   });
@@ -76,10 +77,10 @@ describe('benefits catalog', () => {
       expect(
         resolveCandidateInstruments(p).every(
           (i) =>
-            i.type !== 'membership' &&
-            p.appliesTo &&
-            'network' in p.appliesTo &&
-            i.network === p.appliesTo.network,
+            i.usage === 'wallet_access' ||
+            (p.appliesTo &&
+              'network' in p.appliesTo &&
+              i.network === p.appliesTo.network),
         ),
       ).toBe(true);
     }
@@ -91,7 +92,7 @@ describe('benefits catalog', () => {
     expect(slugs).not.toContain('galicia-mastercard-credito');
   });
 
-  it('MODO targets bank cards and itself but no other memberships', () => {
+  it('MODO targets bank cards and wallets but no subscriptions', () => {
     const candidates = resolveCandidateInstruments(provider('modo'));
     expect(candidates.map((i) => i.slug)).toEqual(
       expect.arrayContaining([
@@ -101,8 +102,16 @@ describe('benefits catalog', () => {
       ]),
     );
     expect(
-      candidates.filter((i) => i.type === 'membership').map((i) => i.slug),
-    ).toEqual(['modo']);
+      candidates
+        .filter((i) => i.type === 'membership')
+        .every((i) => i.usage === 'wallet_access'),
+    ).toBe(true);
+  });
+
+  it('bank sources can require paying with MODO', () => {
+    expect(
+      resolveCandidateInstruments(provider('macro')).map((i) => i.slug),
+    ).toContain('modo');
   });
 
   it('uses the supplied catalog, preserves own instruments and deduplicates by slug', () => {
@@ -123,7 +132,9 @@ describe('benefits catalog', () => {
       'galicia-eminent-visa-credito',
     ]);
     expect(
-      resolveCandidateInstruments({ ...p, appliesTo: undefined }, CATALOG),
+      resolveCandidateInstruments({ ...p, appliesTo: undefined }, [
+        provider('galicia'),
+      ]),
     ).toEqual([own]);
   });
 });

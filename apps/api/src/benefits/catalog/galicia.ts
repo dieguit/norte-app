@@ -53,13 +53,14 @@ export const galicia: Provider = {
       id: 'galicia-promociones',
       enabled: true,
       autoPublish: false,
-      status: 'active',
+      status: 'degraded',
       coverage: 'partial',
-      note: 'JSON validado en los dry runs del PR #63.',
+      note: 'validado 30/10/2026: 6 válidos en respuesta grabada; 1 rechazado por recurrence inválida. Replays posteriores fallaron o quedaron vacíos; máximos hasta y tipos requieren legales, publicación manual.',
       url: 'https://www.galicia.ar/personas/promociones/_jcr_content/root/responsivegrid.model.json',
       strategy: 'json',
       instructions:
-        'Página de promociones de Banco Galicia en formato JSON (AEM). Cada promoción incluye comercio, % de ahorro o cuotas sin interés, días y medios de pago. "Éminent" aplica sólo a galicia-eminent-visa-credito.',
+        'Cada beneficio DEBE incluir quote field eligibility con valor literal "Tarjetas Galicia" presente en el contenido; no omitas esa evidencia aunque elegibilidad sea incomplete. Para citas de oferta usá fragmentos literales sin decodificar HTML. ' +
+        'Página de promociones de Banco Galicia en formato JSON (AEM). Cada promoción incluye comercio, % de ahorro o cuotas sin interés, días y medios de pago. "Éminent" requiere segmento eminent y emisor galicia; no inventes red Visa si no consta. recurrence siempre campaign. "Hasta X%" no garantiza X%: conservá el máximo en offer pero marcá incomplete y unresolved por porcentaje/segmento pendiente de legales. Tarjetas Galicia sin tipos explícitos: no adivines crédito/débito, usá issuerProviderSlugs galicia y unresolved por tipos pendientes. Topes y fechas ausentes quedan desconocidos. quotes.field sólo eligibility, offer, caps, validity, minimumSpend, channels.',
     },
   ],
 };

@@ -8,12 +8,12 @@ Reemplazar el matching por lista plana de instrumentos con reglas de elegibilida
 
 ## Alcance
 
-| Tipo        | Proveedores (slug)                                                        |
-| ----------- | ------------------------------------------------------------------------- |
-| Bancos      | `galicia`, `macro` (Selecta = segmento), `santander` (+ `santander-sorpresa`), `bbva`, `brubank` |
-| Billeteras  | `modo`, `naranjax` (+ planes Turbo/Épico), `personalpay`, `uala`, `mercadopago` |
-| Membresías  | `ypf` (`ypf-serviclub`), `shell` (`shell-box`), `meli` (`meli-plus`), `uber` (`uber-one`), `pedidosya` (`pedidosya-plus`) |
-| Redes       | `visa`, `mastercard`                                                      |
+| Tipo       | Proveedores (slug)                                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Bancos     | `galicia`, `macro` (Selecta = segmento), `santander` (+ `santander-sorpresa`), `bbva`, `brubank`                          |
+| Billeteras | `modo`, `naranjax` (+ planes Turbo/Épico), `personalpay`, `uala`, `mercadopago`                                           |
+| Membresías | `ypf` (`ypf-serviclub`), `shell` (`shell-box`), `meli` (`meli-plus`), `uber` (`uber-one`), `pedidosya` (`pedidosya-plus`) |
+| Redes      | `visa`, `mastercard`                                                                                                      |
 
 Enums `amex`/`cabal` se conservan (p. ej. Macro Selecta Amex Icon) sin proveedor propio.
 
@@ -60,11 +60,11 @@ Cada pasada termina con suite completa, gate de @oracle, commit (con tu OK) y re
 
 Antes de despachar: el orquestador escribe los contratos compartidos en `packages/shared-types/src/benefits.schema.ts` (borrador en el stash) y los tipos de catálogo.
 
-| Lane | Agente   | Scope de escritura                                   | Entregable / evidencia |
-| ---- | -------- | ---------------------------------------------------- | ---------------------- |
-| R    | explorer | ninguno (reporte)                                    | Por proveedor: instrumentos con `evidenceUrl`, URLs/endpoints de fuentes candidatas, observaciones (bloqueos, paginación) |
-| E    | fixer    | `apps/api/src/benefits/rules/**`                     | `eligibility.ts`, `availability.ts`, `estimate.ts` + specs: matriz §12 en alcance y los 6 casos §4 como fixtures de test (nunca seeds) |
-| C    | fixer    | `apps/api/src/benefits/catalog/**`                   | 17 proveedores, instrumentos con evidencia (de R), fuentes `pending_*` salvo las 3 actuales, `resolveCandidateInstruments`; spec de unicidad, referencias y "sólo `active` puede estar `enabled`" |
+| Lane | Agente   | Scope de escritura                 | Entregable / evidencia                                                                                                                                                                            |
+| ---- | -------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R    | explorer | ninguno (reporte)                  | Por proveedor: instrumentos con `evidenceUrl`, URLs/endpoints de fuentes candidatas, observaciones (bloqueos, paginación)                                                                         |
+| E    | fixer    | `apps/api/src/benefits/rules/**`   | `eligibility.ts`, `availability.ts`, `estimate.ts` + specs: matriz §12 en alcance y los 6 casos §4 como fixtures de test (nunca seeds)                                                            |
+| C    | fixer    | `apps/api/src/benefits/catalog/**` | 17 proveedores, instrumentos con evidencia (de R), fuentes `pending_*` salvo las 3 actuales, `resolveCandidateInstruments`; spec de unicidad, referencias y "sólo `active` puede estar `enabled`" |
 
 R corre primero; E en paralelo con R; C después de R.
 
@@ -72,12 +72,12 @@ R corre primero; E en paralelo con R; C después de R.
 
 @oracle revisa el diseño antes de despachar (estado persistente, dinero, retiros).
 
-| Lane | Scope de escritura | Entregable |
-| ---- | ------------------ | ---------- |
-| P | `benefits.schema.ts`, `drizzle/**`, `database/schema*` | Recrear `benefits` (reglas jsonb, evidencia, lifecycle, revisión, protectedFields, origin `harvest | manual`); `benefit_source_runs` (métricas por corrida); facts en preferencias; migración idempotente |
-| H | `harvest.ts`, extractor agent, `manual/**` | Controles de contenido, truncado → parcial, prompt y schema hacia `BenefitRules` + evidencia, estrategia `file`, política de publicación, ciclo de vida |
-| T | `*.script.ts`, `package.json` scripts | `benefits:verify` y `benefits:review` |
-| S | `benefits.service.ts`, controller/dto, `digest.ts`, `mastra/tools/benefit-tools.ts`, `domains.ts` | `findMatching` con el evaluador, digest con todos los requisitos, catálogo extendido, preferencias con facts, tool de facts para WhatsApp |
+| Lane | Scope de escritura                                                                                | Entregable                                                                                                                                              |
+| ---- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P    | `benefits.schema.ts`, `drizzle/**`, `database/schema*`                                            | Recrear `benefits` (reglas jsonb, evidencia, lifecycle, revisión, protectedFields, origin `harvest                                                      | manual`); `benefit_source_runs` (métricas por corrida); facts en preferencias; migración idempotente |
+| H    | `harvest.ts`, extractor agent, `manual/**`                                                        | Controles de contenido, truncado → parcial, prompt y schema hacia `BenefitRules` + evidencia, estrategia `file`, política de publicación, ciclo de vida |
+| T    | `*.script.ts`, `package.json` scripts                                                             | `benefits:verify` y `benefits:review`                                                                                                                   |
+| S    | `benefits.service.ts`, controller/dto, `digest.ts`, `mastra/tools/benefit-tools.ts`, `domains.ts` | `findMatching` con el evaluador, digest con todos los requisitos, catálogo extendido, preferencias con facts, tool de facts para WhatsApp               |
 
 Interfaces entre lanes fijadas por el orquestador antes del despacho (funciones de persistencia y forma de `SourceResult`).
 
@@ -90,7 +90,20 @@ Interfaces entre lanes fijadas por el orquestador antes del despacho (funciones 
 
 ## Definición de terminado
 
-- 17 proveedores: cada fuente `active` con fixture y test, o `blocked`/`pending` con motivo registrado.
+- 17 proveedores: cada fuente `active` con fixture y test, `degraded` (corre de noche, todo va a revisión; aceptado 30/10/2026) o `blocked`/`pending` con motivo registrado.
+
+## Estado al cierre (30/10/2026)
+
+| Estado               | Fuentes                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| active + autoPublish | visa-offers, naranjax-plan-turbo, naranjax-plan-epico                                   |
+| degraded (revisión)  | galicia, modo ×3, macro-beneficios, macro-selecta, brubank, personalpay, uala, uber-one |
+| pending              | ypf-serviclub, meli-plus, naranjax-promociones, shell-descuentos                        |
+| blocked              | santander (timeout), bbva / pedidosya / mastercard (403), mercadopago (login)           |
+| manual               | shell-box (perk por `benefits:review add`)                                              |
+
+Pendientes conocidos: recuperación de beneficios retirados; historial de eventos de revisión (actor/motivo en add/edit/reverify/reject); registrar corridas bloqueadas/fallidas separado de la certificación; guard de `--commit` con allowlist explícita; DNS rebinding; exclusiones de adquirente y contradicciones en MODO; selección de colecciones JSON heurística; corrección semántica del LLM no certificada (las citas prueban presencia, no significado).
+
 - App (sólo preferencias), digest y WhatsApp usan el mismo evaluador.
 - Ningún beneficio con dato esencial desconocido aparece como garantizado; ningún caso de §4 se publica por copiarlo.
 - Un beneficio se puede explicar: por qué le corresponde al usuario, cómo usarlo y de dónde sale cada condición.

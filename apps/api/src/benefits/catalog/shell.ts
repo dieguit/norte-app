@@ -24,7 +24,7 @@ export const shell: Provider = {
       enabled: false,
       autoPublish: false,
       coverage: 'partial',
-      note: 'HTTP 200; contenido débil (degraded); términos en https://shellbox.shell.com.ar/assets/terminos-y-condiciones.pdf; falta validar extracción.',
+      note: '30/10/2026: landing débil; PDF oficial legible por GET https://shellbox.shell.com.ar/assets/terminos-y-condiciones.pdf; perk de puntos en manual/perks: cargar por entorno con benefits:review add.',
     },
   ],
 };

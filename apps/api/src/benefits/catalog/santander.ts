@@ -40,7 +40,7 @@ export const santander: Provider = {
       enabled: false,
       autoPublish: false,
       coverage: 'unknown',
-      note: 'Timeout al consultar la página; requiere reintento y validación.',
+      note: '30/10/2026: timeout; /personas/beneficios/sorpresa también excede 30s por GET; sin perk manual por falta de términos legibles.',
     },
   ],
 };

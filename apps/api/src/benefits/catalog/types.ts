@@ -43,7 +43,7 @@ export type Source = {
   url: string;
   strategy: 'fetch' | 'json' | 'file'; // file: url is a path under benefits/manual/
   instructions: string;
-  enabled: boolean; // only `active` sources may be enabled
+  enabled: boolean; // active or degraded only; degraded runs nightly but never auto-publishes
   autoPublish: boolean; // false until the source is validated; everything goes to needs_review
   status: (typeof SOURCE_STATUSES)[number];
   coverage: (typeof SOURCE_COVERAGES)[number];

@@ -59,9 +59,13 @@ export function resolveCandidateInstruments(
             ('anyCard' in appliesTo || i.network === appliesTo.network),
         )
     : [];
+  // Bank and network promos often require paying through a wallet (e.g. "con MODO").
+  const wallets = catalog
+    .flatMap((p) => p.instruments)
+    .filter((i) => i.usage === 'wallet_access');
   return [
     ...new Map(
-      [...provider.instruments, ...others].map((i) => [i.slug, i]),
+      [...provider.instruments, ...others, ...wallets].map((i) => [i.slug, i]),
     ).values(),
   ];
 }

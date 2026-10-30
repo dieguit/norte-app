@@ -171,7 +171,9 @@ async function insertHarvestBenefit(
     })
     .returning();
   const benefitId = inserted.id;
+  // staged = waiting for review, whether a new row or a revision of a published one.
   if (lifecycle === 'published') summary.published++;
+  else summary.staged++;
 
   return benefitId;
 }

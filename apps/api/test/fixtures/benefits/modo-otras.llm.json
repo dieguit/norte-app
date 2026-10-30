@@ -1,0 +1,358 @@
+{
+  "benefits": [
+    {
+      "title": "20% en Americars y 6 cuotas sin interés",
+      "merchant": "Americars",
+      "category": "otros",
+      "upstreamId": "49754af8-3d98-455e-8571-0024ca220635",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos adheridos no especificados\",\"networks no representables sin pérdida: dinners_club, maestro, confiable\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":500000,\"period\":\"week\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-06-19\",\"to\":\"2026-12-31\",\"weekdays\":[1,5],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"online\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro y 6 cuotas sin interés "
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "5000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-12-31"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-06-19"
+        },
+        {
+          "field": "channels",
+          "quote": "online"
+        }
+      ]
+    },
+    {
+      "title": "20% de reintegro en MODO Electro Naldo",
+      "merchant": "Naldo",
+      "category": "tecnologia",
+      "upstreamId": "77986f1f-02c6-496d-be9c-567b452b0cea",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos adheridos no especificados\",\"networks no representables sin pérdida: confiable, dinners_club, maestro\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":2000000,\"period\":\"campaign\",\"scope\":\"person\"}],\"validity\":{\"from\":\"2026-10-23\",\"to\":\"2026-10-31\",\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"online\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "20000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-23"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        },
+        {
+          "field": "channels",
+          "quote": "online"
+        }
+      ]
+    },
+    {
+      "title": "30% de reintegro en Farmacity, Get The Look, Simplicity con BBVA",
+      "merchant": "Farmacity",
+      "category": "farmacia",
+      "upstreamId": "4e38b4b0-bc88-4cd8-bf76-bc006303acd1",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"issuerProviderSlugs\":[\"bbva\"],\"network\":\"mastercard\",\"types\":[\"credit\"]}}]},\"eligibilityCompleteness\":\"complete\",\"unresolved\":[],\"offer\":{\"type\":\"cashback\",\"percentageBps\":3000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":1500000,\"period\":\"month\",\"scope\":\"person\"}],\"validity\":{\"from\":\"2026-10-26\",\"to\":\"2026-11-30\",\"weekdays\":[1],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\",\"online\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "30% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "BBVA"
+        },
+        {
+          "field": "caps",
+          "quote": "15000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-26"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-11-30"
+        },
+        {
+          "field": "channels",
+          "quote": "instore"
+        },
+        {
+          "field": "channels",
+          "quote": "online"
+        }
+      ]
+    },
+    {
+      "title": "20% de reintegro en Supermercado Bono Max",
+      "merchant": "Supermercado Bono Max",
+      "category": "supermercado",
+      "upstreamId": "60e4442d-46f6-44c7-be4a-b9c7a721385b",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos adheridos no especificados\",\"networks no representables sin pérdida: dinners_club, confiable, maestro\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":600000,\"period\":\"week\",\"scope\":\"person\"}],\"validity\":{\"from\":\"2026-10-05\",\"to\":\"2026-10-29\",\"weekdays\":[1,2,3,4],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "6000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-05"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-29"
+        },
+        {
+          "field": "channels",
+          "quote": "instore"
+        }
+      ]
+    },
+    {
+      "title": "25% de reintegro en El Tunel",
+      "merchant": "El Tunel",
+      "category": "supermercado",
+      "upstreamId": "9d449a05-c710-4ae5-95cd-ffc7c34a08a9",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos adheridos no especificados\",\"networks no representables sin pérdida: confiable, dinners_club, maestro\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2500},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":500000,\"period\":\"week\",\"scope\":\"person\"}],\"validity\":{\"from\":\"2026-10-10\",\"to\":\"2026-10-31\",\"weekdays\":[6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "25% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "5000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-10"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        },
+        {
+          "field": "channels",
+          "quote": "instore"
+        }
+      ]
+    },
+    {
+      "title": "20% de reintegro en Octaviano",
+      "merchant": "Octaviano",
+      "category": "supermercado",
+      "upstreamId": "08706e65-1f9e-4ad2-8883-f9d213171df1",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos participantes no identificados (MODO)\",\"networks no representables sin pérdida: dinners_club, maestro, confiable\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":400000,\"period\":\"week\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-09-01\",\"to\":\"2026-10-29\",\"weekdays\":[4],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "MODO"
+        },
+        {
+          "field": "caps",
+          "quote": "4000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-09-01"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-29"
+        },
+        {
+          "field": "channels",
+          "quote": "instore"
+        }
+      ]
+    },
+    {
+      "title": "15% de reintegro en Autoshop",
+      "merchant": "Autoshop",
+      "category": "otros",
+      "upstreamId": "e27135ee-3b20-4adb-b961-728029e4f63c",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos adheridos no especificados\",\"networks no representables sin pérdida: dinners_club, maestro, confiable\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":1500},\"currency\":\"ARS\",\"minimumSpendMinor\":8000000,\"capState\":\"known\",\"caps\":[{\"amountMinor\":1500000,\"period\":\"month\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-08-06\",\"to\":\"2026-10-31\",\"weekdays\":[4,5,6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "15% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "15000"
+        },
+        {
+          "field": "minimumSpend",
+          "quote": "80000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-08-06"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        },
+        {
+          "field": "channels",
+          "quote": "instore"
+        }
+      ]
+    },
+    {
+      "title": "20% de reintegro en Coop de Trabajo Distribuidora Popular",
+      "merchant": "Coop de Trabajo Distribuidora Popular",
+      "category": "supermercado",
+      "upstreamId": "89690ea7-5f1f-4c4f-a355-7987b8a601cb",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos adheridos no especificados\",\"networks no representables sin pérdida: confiable, dinners_club, maestro\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":1500000,\"period\":\"week\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-09-03\",\"to\":\"2026-10-31\",\"weekdays\":[4,5,6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro "
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "15000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-09-03"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        },
+        {
+          "field": "channels",
+          "quote": "instore"
+        }
+      ]
+    },
+    {
+      "title": "2x1 en entradas en Cinemark con BBVA",
+      "merchant": "Cinemark",
+      "category": "cine",
+      "upstreamId": "d4794ad8-5409-48d9-b565-d96b7991ee13",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"issuerProviderSlugs\":[\"bbva\"],\"types\":[\"credit\"]}}]},\"eligibilityCompleteness\":\"complete\",\"unresolved\":[],\"offer\":{\"type\":\"other\",\"description\":\"2x1 en entradas\"},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"none\",\"caps\":[],\"validity\":{\"from\":\"2026-07-01\",\"to\":\"2026-12-31\",\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"online\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "2x1 en entradas"
+        },
+        {
+          "field": "eligibility",
+          "quote": "BBVA"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-07-01"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-12-31"
+        },
+        {
+          "field": "channels",
+          "quote": "online"
+        }
+      ]
+    },
+    {
+      "title": "20% de reintegro en Hiperplaca",
+      "merchant": "Hiperplaca",
+      "category": "otros",
+      "upstreamId": "836ac001-4c3c-493c-a2ac-596b1bcd7cb8",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos adheridos no especificados\",\"networks no representables sin pérdida: dinners_club, confiable, maestro, naranja\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":12000000,\"period\":\"campaign\",\"scope\":\"person\"}],\"validity\":{\"from\":\"2026-08-03\",\"to\":\"2026-10-31\",\"weekdays\":[1,2,3,4],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "120000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-08-03"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        },
+        {
+          "field": "channels",
+          "quote": "instore"
+        }
+      ]
+    }
+  ]
+}

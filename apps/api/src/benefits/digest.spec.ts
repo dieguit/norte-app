@@ -57,6 +57,13 @@ describe('formatDigest', () => {
       'Beneficios de hoy 🧭\n• 25% de reintegro en Coto con Macro Selecta Visa Signature + MODO · pagando con App Macro o MODO · excluye efectivo · compra mínima $10.000 · tope $5.000 por mes · hasta 2026-10-31',
     );
   });
+  it('separates where to buy from how to pay', () => {
+    const base = item();
+    const channels = { allowed: ['instore', 'online', 'nfc'], excluded: [] };
+    expect(
+      formatDigest([{ ...base, match: { ...base.match, channels } }]),
+    ).toContain('pagando con pago sin contacto · en el local o online');
+  });
   it('never calls an unknown cap unlimited', () => {
     const benefit = item();
     benefit.benefit.rules.capState = 'unknown';

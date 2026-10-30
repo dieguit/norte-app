@@ -14,8 +14,18 @@ const periods: Record<BenefitCap['period'], string> = {
   month: 'por mes',
   campaign: 'por campaña',
 };
+const CHANNEL_LABELS: Record<string, string> = {
+  modo: 'MODO',
+  'app-macro': 'App Macro',
+  nfc: 'pago sin contacto',
+  qr: 'QR',
+  instore: 'en el local',
+  online: 'online',
+};
+// Where you buy reads differently from how you pay: "en el local o online" vs "pagando con MODO".
+const PLACES = new Set(['instore', 'online']);
 const channelLabel = (channel: string) =>
-  ({ modo: 'MODO', 'app-macro': 'App Macro' })[channel] ?? channel;
+  CHANNEL_LABELS[channel] ?? channel.replace(/[-_]/g, ' ');
 
 function offerLabel(offer: BenefitRules['offer']): string {
   switch (offer.type) {
@@ -43,8 +53,11 @@ function channelLabels(
   channels: MatchedBenefit['match']['channels'],
 ): string[] {
   const parts: string[] = [];
-  if (channels.allowed.length)
-    parts.push(`pagando con ${channels.allowed.map(channelLabel).join(' o ')}`);
+  const places = channels.allowed.filter((c) => PLACES.has(c));
+  const payments = channels.allowed.filter((c) => !PLACES.has(c));
+  if (payments.length)
+    parts.push(`pagando con ${payments.map(channelLabel).join(' o ')}`);
+  if (places.length) parts.push(places.map(channelLabel).join(' o '));
   if (channels.excluded.length)
     parts.push(`excluye ${channels.excluded.map(channelLabel).join(', ')}`);
   return parts;

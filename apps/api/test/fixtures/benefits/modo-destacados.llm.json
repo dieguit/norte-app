@@ -1,0 +1,314 @@
+{
+  "benefits": [
+    {
+      "title": "20% en La Anónima",
+      "merchant": "La Anónima",
+      "category": "supermercado",
+      "upstreamId": "efbf8985-6694-4235-beeb-657ce71703bd",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos participantes no identificados\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":5000000,\"capState\":\"known\",\"caps\":[{\"amountMinor\":1500000,\"period\":\"month\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-05-01\",\"to\":\"2026-10-31\",\"weekdays\":[5,6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "15000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-05-01"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        }
+      ]
+    },
+    {
+      "title": "20% en transporte",
+      "merchant": null,
+      "category": "viajes",
+      "upstreamId": "7c30e898-7aca-4859-a1b2-2e26305a4c98",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"pct: dinero en cuenta de Banco Macro sin instrumento de cuenta en catálogo\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":1000000,\"period\":\"month\",\"scope\":\"person\"}],\"validity\":{\"from\":\"2026-07-01\",\"to\":\"2026-12-31\",\"weekdays\":[0,1,2,3,4,5,6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"trip\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Macro"
+        },
+        {
+          "field": "caps",
+          "quote": "10000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-07-01"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-12-31"
+        }
+      ]
+    },
+    {
+      "title": "20% en Basualdo",
+      "merchant": "Basualdo",
+      "category": "supermercado",
+      "upstreamId": "c4149d6d-8352-447b-b3bc-e71e156519ba",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos participantes no identificados\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":2000000,\"period\":\"month\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-06-01\",\"to\":\"2026-10-31\",\"weekdays\":[4],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "20000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-06-01"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        }
+      ]
+    },
+    {
+      "title": "20% Supers de Jujuy",
+      "merchant": null,
+      "category": "supermercado",
+      "upstreamId": "a02201d6-92e8-41c6-accd-dc057c70bdc9",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos participantes no identificados\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":1500000,\"period\":\"month\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-08-07\",\"to\":\"2026-10-30\",\"weekdays\":[5],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "15000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-08-07"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-30"
+        }
+      ]
+    },
+    {
+      "title": "Samsung Lanzamiento Tab S12",
+      "merchant": "Samsung",
+      "category": "tecnologia",
+      "upstreamId": "12707690-b517-4f80-a0e8-a36794ab7d89",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos participantes no identificados\"],\"offer\":{\"type\":\"other\",\"description\":\"$160.000 de reintegro fijo\"},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":16000000,\"period\":\"campaign\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-10-21\",\"to\":\"2026-10-31\",\"weekdays\":[0,1,2,3,4,5,6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"online\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "160000"
+        },
+        {
+          "field": "eligibility",
+          "quote": "MODO"
+        },
+        {
+          "field": "caps",
+          "quote": "160000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-21"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        }
+      ]
+    },
+    {
+      "title": "15% en Central Oeste",
+      "merchant": "Central Oeste",
+      "category": "farmacia",
+      "upstreamId": "95f76899-21b5-4abe-8c53-e38d3e59fe4c",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos participantes no identificados\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":1500},\"currency\":\"ARS\",\"minimumSpendMinor\":6000000,\"capState\":\"known\",\"caps\":[{\"amountMinor\":900000,\"period\":\"campaign\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-10-01\",\"to\":\"2026-10-29\",\"weekdays\":[4],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"online\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "15% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "9000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-01"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-29"
+        }
+      ]
+    },
+    {
+      "title": "20% en ELETON",
+      "merchant": "ELETON",
+      "category": "viajes",
+      "upstreamId": "8af13860-b5fd-4a85-a9d3-e0c4303718f5",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"issuerProviderSlugs\":[\"macro\"],\"types\":[\"credit\"],\"productLevels\":[\"platinum\"]}}]},\"eligibilityCompleteness\":\"complete\",\"unresolved\":[],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":2000000,\"period\":\"month\",\"scope\":\"person\"}],\"validity\":{\"from\":\"2026-07-01\",\"to\":\"2027-03-31\",\"weekdays\":[0,1,2,3,4,5,6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Macro Platinum"
+        },
+        {
+          "field": "caps",
+          "quote": "20000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-07-01"
+        },
+        {
+          "field": "validity",
+          "quote": "2027-03-31"
+        }
+      ]
+    },
+    {
+      "title": "20% en EXTY",
+      "merchant": "EXTY",
+      "category": "farmacia",
+      "upstreamId": "3325f4e9-082b-4111-b376-f11d348173d2",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos participantes no identificados\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":2000000,\"period\":\"week\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-09-19\",\"to\":\"2026-12-27\",\"weekdays\":[0,6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"online\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "20000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-09-19"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-12-27"
+        }
+      ]
+    },
+    {
+      "title": "60% en Transporte",
+      "merchant": null,
+      "category": "viajes",
+      "upstreamId": "93bf446f-e112-43f9-8dfd-db8b55a3f045",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"pct: dinero en cuenta de bancos adheridos sin nombres catalogados\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":6000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":1000000,\"period\":\"month\",\"scope\":\"person\"}],\"validity\":{\"from\":\"2026-10-01\",\"to\":\"2026-10-31\",\"weekdays\":[0,1,2,3,4,5,6],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"trip\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "60% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "10000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-01"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-31"
+        }
+      ]
+    },
+    {
+      "title": "20% en Supers de Córdoba",
+      "merchant": null,
+      "category": "supermercado",
+      "upstreamId": "86b67480-037f-4941-982a-a5212fb71037",
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"allOf\":[{\"membership\":{\"instrumentSlug\":\"modo\"}},{\"card\":{\"types\":[\"credit\",\"debit\"]}}]},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"issuerProviderSlugs: bancos participantes no identificados\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":0,\"capState\":\"known\",\"caps\":[{\"amountMinor\":1500000,\"period\":\"month\",\"scope\":\"bank\"}],\"validity\":{\"from\":\"2026-08-07\",\"to\":\"2026-10-30\",\"weekdays\":[5],\"monthDays\":null},\"channels\":{\"allowed\":[\"modo\",\"instore\"],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Bancos adheridos"
+        },
+        {
+          "field": "caps",
+          "quote": "15000"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-08-07"
+        },
+        {
+          "field": "validity",
+          "quote": "2026-10-30"
+        }
+      ]
+    }
+  ]
+}

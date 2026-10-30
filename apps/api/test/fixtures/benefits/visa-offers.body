@@ -1,0 +1,728 @@
+{
+  "jcr:content": {
+    "cq:ctNeedTMUpdate": false,
+    "jcr:title": "Descuentos y ofertas ",
+    "cq:propertyInheritanceCancelled": [
+      "jcr:language",
+      "primarytags",
+      "audienceTag",
+      "pageTypeContent",
+      "cq:tags"
+    ],
+    "showInRelatedLinks": "disable",
+    "pageTypeContent": [
+      "PageType:Servicepage"
+    ],
+    "jcr:language": "es_ar",
+    "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+    "primarytags": [
+      "Services:VisaOffersPerks"
+    ],
+    "businesspriority": [
+      "Cards:Debit",
+      "Cards:Credit"
+    ],
+    "msmcomponent": "/content/VISA/lac/argentinaspanishlanguagemaster/es_AR/offers-admin/controlofferlisting/jcr:content/mainIntroSubHeader",
+    "userMotivation": "Learn about a Visa product",
+    "pageType": "Content",
+    "audienceTag": [
+      "Audience:Consumer"
+    ],
+    "cq:tags": [
+      "visa-aem-rest:content-type/offers",
+      "navigation:default",
+      "navigation:editorial"
+    ],
+    "cq:lastRolledoutBy": "siddharth",
+    "seodescription": "Solo tenés que usar tu tarjeta Visa para disfrutar de ofertas, descuentos e incentivos increíbles. ¡Obtené más información acá!",
+    "image": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "cq:lastRolledoutBy": "siddharth",
+      "imageRotate": "0"
+    },
+    "mainSlides": {
+      "cq:isCancelledForChildren": true,
+      "slideImage2": "/content/dam/VCOM/regional/lac/SPA/argentina/promociones/coto-promocion-1600x900.jpg",
+      "slideImage3": "/content/dam/VCOM/regional/lac/SPA/Mexico/Pague con Visa/Promocion Starbucks/promocion-starbucks-1600x900.jpg",
+      "cq:lastRolledout": "Fri Jul 12 2024 16:14:44 GMT+0000",
+      "offerId1": "179236",
+      "offerId2": "0",
+      "offerId3": "0",
+      "offerId4": "0",
+      "offerId5": "0",
+      "slideImageLinkUrl2": "https://www.visa.com.ar/es_ar/promociones/supermercados-coto/175150",
+      "slideImageLinkUrl3": "https://www.visa.com.ar/es_ar/promociones/starbucks/162542?search=star",
+      "slideTeaserDescription2": "30% OFF en Coto pagando con Visa Débito NFC todos los jueves.",
+      "slideTeaserDescription3": "Disfrutá 20% de descuento en Mocha Latte y Mocha Frappucino pagando con Visa desde el celu sin contacto en Starbucks. Pagá con Visa!",
+      "slideMobileImage2": "/content/dam/VCOM/regional/lac/SPA/argentina/promociones/coto-promocion-1600x900.jpg",
+      "slideType1": "none1",
+      "slideType2": "none2",
+      "slideType3": "custom3",
+      "slideType4": "none4",
+      "slideType5": "none5",
+      "slideImageHeading2": "Supermercados COTO",
+      "slideImageHeading3": "Starbucks",
+      "cq:lastRolledoutBy": "v70ydytv",
+      "commercialOffers": {
+        "cq:lastRolledout": "Fri Jul 12 2024 16:14:44 GMT+0000",
+        "offerId1": "0",
+        "offerId2": "0",
+        "offerId3": "0",
+        "offerId4": "0",
+        "offerId5": "0",
+        "slideType1": "custom1",
+        "slideType2": "offerId2",
+        "slideType3": "offerId3",
+        "slideType4": "offerId4",
+        "slideType5": "offerId5",
+        "cq:lastRolledoutBy": "v70ydytv"
+      }
+    },
+    "mainIntroHeader": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Promociones y beneficios Visa<br>\n<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainIntroSubHeader": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p style=\"text-align: center;\">Descubrí los mejores descuentos al pagar con Visa, incluyendo descuentos en seguros de viaje, compras en línea, suscripciones a servicios de streaming y acceso exclusivo a los mejores restaurantes de Argentina.<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainFilterAllCategories": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Categorías de comercios<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSortBy": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Ordenar por<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSortMerchantNameAZ": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Nombre del comercio (A-Z)<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSortMerchantNameZA": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Nombre del comercio (Z-A)<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainVisaSignature": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainBackground": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "accurateTargeting": "false",
+      "cq:lastRolledoutBy": "siddharth",
+      "location": "content-VISA-lac-argentinaspanishlanguagemaster-es-offers-admin-controlofferlisting-mainBackground",
+      "default": {
+        "fileReference": "/content/dam/VCOM/regional/lac/SPA/argentina/promociones/vmorc/woman-surfing-on-beach-1600x1600.jpg",
+        "height": "400",
+        "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+        "alt": "Hola",
+        "width": "900",
+        "cq:lastRolledoutBy": "siddharth",
+        "imageRotate": "0"
+      }
+    },
+    "featuredOffers": {
+      "cq:isCancelledForChildren": true,
+      "offerId": [
+        "162542",
+        "175150",
+        "167152",
+        "179236",
+        "169302",
+        "169298",
+        "169296",
+        "162478",
+        "169300",
+        "169292",
+        "169294"
+      ],
+      "cq:lastRolledout": "Fri Jul 12 2024 18:42:00 GMT+0000",
+      "cq:lastRolledoutBy": "v70ydytv"
+    },
+    "mainPageLocation": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Países en donde puede canjearse la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainOfferValidForCardText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Oferta válida para:<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSortConditionRecentlyAddedText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Agregada recientemente<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSortConditionEndingSoonText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Finaliza pronto<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainMoreOptionsText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Mostrar más<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainFewerOptionsText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Mostrar menos<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainValidCardTypesText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Tipos de tarjetas válidas:<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainRedemptionChannelText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Canal de canjeo de la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSearchByText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Buscar por comercio:&nbsp;<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSectionTitleOffersIntroduction": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Introducción de ofertas<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSectionTitleOffersFilters": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Filtros de ofertas<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSectionTitleOffersList": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Lista de ofertas<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainAriaFilterCategories": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Filtro por categorías<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainAriaFilterRedemptionCountries": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Filtro por país en donde puede canjearse la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainMetaDescription": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Simplemente usá tu tarjeta Visa y disfrutá de descuentos, promociones y ofertas exclusivas. Disfrutá viajes, entretenimiento, cenas y más. ¡Conocé mas!<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainMetaKeywords": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>ofertas de tarjetas de crédito, incentivos de visa, ofertas de visa<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainMetaSearchDescription": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Marcador principal de descripción de metabúsqueda<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainMetaThumbnail": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>marcador principal meta miniatura<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "merchantLogoAltTag": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Logo del comercio<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "offerImageAltTag": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Imagen de la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsLinkGetNow": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Saber más<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsLinkRedeemNow": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Saber más<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderDetails": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Detalles<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderTermsAndConditions": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Términos y condiciones<a id=\"1\"><\/a><\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderRedeemHow": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>¿Cómo canjear?<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderRedeemNow": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderRedeemPhone": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Forma de canje: por teléfono.<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderRedeemInStore": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Canjealo de forma presencial.<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsTextOfferValidFrom": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Válido desde<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsTextRedeemNow": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Canjealo de forma online. Para saber más, hacé clic en el siguiente botón.&nbsp;<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsTextRedeemPhone": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Llamá y usá tu tarjeta Visa para canjear esta oferta.<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainFeaturedOfferLabel": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Destacada<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsTextRedeemCode": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Para canjear esta oferta en la tienda, mostrá una copia de esta oferta (ya sea impresa o electrónica) y facilitá el código en la caja registradora.<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsTextRedeemBarcode": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Para canjear esta oferta en la tienda, mostrá una copia de esta oferta (ya sea impresa o electrónica) con este código de barras:<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsTextRedeemQRCode": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Para canjear esta oferta en la tienda, mostrá una copia de esta oferta (ya sea impresa o electrónica) con este código QR:<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "barcodeImageAltTag": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Código de barras para canjear la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "qrCodeImageAltTag": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Código QR para canjear la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainFilterAllRedemptionChannels": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Formas de canje<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainAriaFilterRedemptionChannels": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Filtro por canal de canjeo<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainNoOffers": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>No pudimos encontrar ninguna oferta que coincida con tu criterio de búsqueda. Modificá tu selección y volvé a intentarlo.<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsSectionTitleOfferHeader": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>encabezado de la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsSectionTitleDescription": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>obtener ahora<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsSectionTitleOfferDetails": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>detalles de la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsSectionTitleRedeem": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>canjear<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsSectionTitleTerms": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>términos de la oferta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsSectionTitleRecommended": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>ofertas recomendadas<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderRedeemLocations": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Lugares<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsLinkRedeemGetDirections": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Obtener indicaciones<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsLinkLocationsGetDirections": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Obtener indicaciones<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderLocations": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Lugares<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsHeaderRecommended": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Promociones y beneficios relacionados<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "cardProductType": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "cardProductTypes": [
+        "17",
+        "16",
+        "15",
+        "65",
+        "125"
+      ],
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "cardPaymentType": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "cardPaymentTypes": [
+        "9",
+        "10",
+        "11"
+      ],
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainFilterAllCardProducts": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Tipos de tarjetas<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainFilterAllPaymentTypes": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Tipos de pagos<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainFilterSearchPlaceholder": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Buscar por<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainSortFeatured": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Agregada recientemente<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainAriaFilterCardProducts": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Filtro por producto de tarjeta<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainAriaFilterPaymentTypes": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Filtro por tipo de pago<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainAriaFilterSearch": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Buscar<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainTitle": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Promociones y Descuentos | Visa<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsMetaKeywords": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>ofertas de tarjetas de crédito, incentivos de visa, ofertas de visa, promociones, cupones<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsMetaThumbnail": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>marcador de la vista en miniatura<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "offersFilters": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "filters": [
+        "category",
+        "cardProductType",
+        "cardPaymentType",
+        "redemptionCountry",
+        "redemptionChannel",
+        "merchantCity",
+        "sortBy",
+        "freeFormSearch"
+      ],
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "colorPalette": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "colorPalette": "white",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "myCategories": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:25 GMT+0000",
+      "text": "<p>Texto de Mis categorías<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "auth": {
+      "loginText": "Log in",
+      "signUpText": "Sign up now",
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "signupTileSignupText": "Sign up",
+      "logoutText": "Log out",
+      "signupTileLoginText": "Already have an account? Log in",
+      "profileText": "View your profile",
+      "loggedInSubheading": "Hi {{firstName}}, welcome back to Visa Offers - your place for personalized deals on food + wine, sports, entertainment, and more.",
+      "signupTileDescription": "Save on dining, entertainment and more.",
+      "signupTileEmailLabel": "email address",
+      "loggedOutSubheading": "Sign up to get personalized deals on travel, food + wine, shopping, sports, entertainment and more.",
+      "cq:lastRolledoutBy": "siddharth",
+      "myCategoriesText": "My categories",
+      "signupTileTitle": "Get personalized offers"
+    },
+    "mainFilterAllRedemptionCountries": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "text": "<p>Países de redención<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsLinkViewDetails": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "text": "<p>Saber más<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "detailsLinkViewAllOffers": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "text": "<p>Ver todas las promociones y beneficios<\/p>\n",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "excludedOffers": {
+      "cq:isCancelledForChildren": true,
+      "offerId": [
+        "153047",
+        "153045",
+        "153046",
+        "153027"
+      ],
+      "cq:lastRolledout": "Wed May 15 2024 13:13:39 GMT+0000",
+      "cq:lastRolledoutBy": "vmea44d1",
+      "commercialOffers": {
+        "cq:lastRolledout": "Wed May 15 2024 13:13:39 GMT+0000",
+        "cq:lastRolledoutBy": "vmea44d1"
+      }
+    },
+    "mobileMainBackground": {
+      "fileReference": "/content/dam/VCOM/regional/lac/SPA/argentina/Vmorc/hombre-en-aeropuerto-640x640.jpg",
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "consumerMainBackground": {
+      "cq:isCancelledForChildren": true,
+      "fileReference": "/content/dam/VCOM/regional/lac/SPA/argentina/Vmorc/man-with-suitcase-at-airport-1600x600.jpg",
+      "cq:lastRolledout": "Wed May 15 2024 13:13:39 GMT+0000",
+      "cq:lastRolledoutBy": "vmea44d1",
+      "imageRotate": "0"
+    },
+    "consumerMobileMainBackground": {
+      "fileReference": "/content/dam/VCOM/regional/lac/SPA/argentina/Vmorc/hombre-en-aeropuerto-640x640.jpg",
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "offerCardConfig": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "logoOrImageOnCard": "image",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "cardBadges": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "key": [
+        "65",
+        "15",
+        "16",
+        "17",
+        "126"
+      ],
+      "value": [
+        "Visa Signature",
+        "Visa Platinum",
+        "Visa Gold",
+        "Visa Classic",
+        "Visa Prepaga"
+      ],
+      "cardBadges": [
+        "{\"key\":\"65\",\"value\":\"Visa Signature\",\"backgroundColor\":\"#332F2C\",\"textColor\":\"#FFFFFF\"}",
+        "{\"key\":\"15\",\"value\":\"Visa Platinum\",\"backgroundColor\":\"#96918C\",\"textColor\":\"#FFFFFF\"}",
+        "{\"key\":\"16\",\"value\":\"Visa Gold\",\"backgroundColor\":\"#C2A161\",\"textColor\":\"#FFFFFF\"}",
+        "{\"key\":\"17\",\"value\":\"Visa Classic\",\"backgroundColor\":\"#1434cb\",\"textColor\":\"#FFFFFF\"}",
+        "{\"key\":\"126\",\"value\":\"Visa Prepaga\",\"backgroundColor\":\"#1434cb\",\"textColor\":\"#FFFFFF\"}"
+      ],
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "mainIntroHeaderCommercialOffers": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "merchantModalOpenButtonText": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "consumerBackgroundColour": {
+      "cq:lastRolledout": "Tue Apr 01 2025 11:16:26 GMT+0000",
+      "textIsRich": "true",
+      "cq:lastRolledoutBy": "siddharth"
+    },
+    "timeZone": {
+      "cq:isCancelledForChildren": true,
+      "cq:lastRolledout": "Fri Jun 14 2024 22:14:13 GMT+0000",
+      "timeZoneList": "GMT-03:00",
+      "cq:lastRolledoutBy": "v70ydytv"
+    },
+    "customSpecialOffers": {
+      "cq:isCancelledForChildren": true,
+      "cq:lastRolledout": "Fri Jul 12 2024 18:42:01 GMT+0000",
+      "specialOfferType1": "none1",
+      "specialOfferType2": "none2",
+      "specialOfferType3": "none3",
+      "specialOfferType4": "none4",
+      "specialOfferType5": "none5",
+      "specialOfferType6": "none6",
+      "specialOfferType7": "none7",
+      "specialOfferType8": "none8",
+      "specialOfferType9": "none9",
+      "specialOfferType10": "none10",
+      "cq:lastRolledoutBy": "v70ydytv",
+      "commercialOffers": {
+        "cq:lastRolledout": "Fri Jul 12 2024 18:42:01 GMT+0000",
+        "specialOfferType1": "none1",
+        "specialOfferType2": "none2",
+        "specialOfferType3": "none3",
+        "specialOfferType4": "none4",
+        "specialOfferType5": "none5",
+        "specialOfferType6": "none6",
+        "specialOfferType7": "none7",
+        "specialOfferType8": "none8",
+        "specialOfferType9": "none9",
+        "specialOfferType10": "none10",
+        "cq:lastRolledoutBy": "v70ydytv"
+      }
+    },
+    "offersListingViewMoreButtonText": {
+      "text": "<p>Ver más promociones<\/p>\n",
+      "textIsRich": "true"
+    },
+    "detailsMainTitle": {
+      "text": "<p>Promociones<\/p>\n",
+      "textIsRich": "true"
+    },
+    "detailsCreateProfileText": {
+      "text": "<p>Regístrate<\/p>\n",
+      "textIsRich": "true"
+    },
+    "detailsLoginText": {
+      "text": "<p>¿Ya tienes una cuenta? Ingresa ahora<\/p>\n",
+      "textIsRich": "true"
+    }
+  }
+}

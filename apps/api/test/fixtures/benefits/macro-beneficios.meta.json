@@ -1,0 +1,32 @@
+{
+  "validatedOn": "2026-10-30",
+  "recording": "Normalized LLM output reconstructed losslessly from benefits:verify --json candidates; rules have passed postProcess.",
+  "runs": [
+    { "detected": 1, "valid": 1, "rejected": 0, "source": "HTML" },
+    {
+      "detected": 20,
+      "valid": 0,
+      "rejected": 20,
+      "reason": "invalid membership instrument"
+    },
+    {
+      "detected": 20,
+      "valid": 15,
+      "rejected": 5,
+      "reason": "3 missing caps evidence; 2 unknown issuer provider"
+    },
+    { "detected": 20, "valid": 20, "rejected": 0 }
+  ],
+  "replay": {
+    "today": "2026-10-30",
+    "valid": 19,
+    "rejected": 1,
+    "reason": "expired: Supermercado Bono Max ended 2026-10-29 Argentina; live CLI clock was still 2026-10-29 Argentina"
+  },
+  "limitations": [
+    "20-result endpoint, not full coverage",
+    "MODO membership absent from bank candidate instruments",
+    "Unknown cap periods and bank slugs",
+    "Americars text says 18 June while structured validity starts 19 June; manual review required"
+  ]
+}

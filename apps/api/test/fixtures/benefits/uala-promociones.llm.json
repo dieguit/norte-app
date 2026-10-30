@@ -1,0 +1,175 @@
+{
+  "benefits": [
+    {
+      "title": "10% de reintegro en combustible",
+      "merchant": null,
+      "category": "combustible",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-credito\",\"uala-mastercard-prepaga\"],\"types\":[\"credit\",\"prepaid\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (topes, vigencia, comercios adheridos)\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":1000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "10% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjeta de Crédito Tarjeta Prepaga"
+        }
+      ]
+    },
+    {
+      "title": "100% de reintegro en colectivos pagando con Contactless",
+      "merchant": null,
+      "category": "otros",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-credito\",\"uala-mastercard-prepaga\"],\"types\":[\"credit\",\"prepaid\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (topes, vigencia, líneas participantes)\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":10000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[\"contactless\"],\"excluded\":[]},\"requiredActions\":[\"Pagar con Contactless\"],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "100% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "pagando con Contactless Métodos de pago: Tarjeta Prepaga Tarjeta de Crédito"
+        }
+      ]
+    },
+    {
+      "title": "25% de reintegro en las sección Mascotas de PedidosYa",
+      "merchant": "PedidosYa Mascotas",
+      "category": "gastronomia",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-credito\"],\"types\":[\"credit\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (topes, vigencia)\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2500},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "25% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjeta de Crédito"
+        }
+      ]
+    },
+    {
+      "title": "25% de reintegro en tus compras",
+      "merchant": null,
+      "category": "otros",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-prepaga\"],\"types\":[\"prepaid\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (comercio, topes, vigencia)\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":2500},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "25% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjeta Prepaga"
+        }
+      ]
+    },
+    {
+      "title": "90% de descuento en tus primeros 3 meses de RappiPro",
+      "merchant": "RappiPro",
+      "category": "gastronomia",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-credito\",\"uala-mastercard-prepaga\"],\"types\":[\"credit\",\"prepaid\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (vigencia, topes, elegibilidad de nuevos usuarios)\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":9000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "90% de descuento"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjeta Prepaga Tarjeta de Crédito"
+        }
+      ]
+    },
+    {
+      "title": "100% de descuento en dos viajes",
+      "merchant": null,
+      "category": "viajes",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-credito\",\"uala-mastercard-prepaga\"],\"types\":[\"credit\",\"prepaid\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (comercio/plataforma de viajes, topes, vigencia)\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":10000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "100% de descuento en dos viajes"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjeta Prepaga Tarjeta de Crédito"
+        }
+      ]
+    },
+    {
+      "title": "10% de reintegro en tu estacionamiento",
+      "merchant": null,
+      "category": "otros",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-credito\",\"uala-mastercard-prepaga\"],\"types\":[\"credit\",\"prepaid\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (topes, vigencia, comercios adheridos)\"],\"offer\":{\"type\":\"cashback\",\"percentageBps\":1000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "10% de reintegro"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjeta Prepaga Tarjeta de Crédito"
+        }
+      ]
+    },
+    {
+      "title": "50% de descuento en tus primeros 5 viajes",
+      "merchant": null,
+      "category": "viajes",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-credito\",\"uala-mastercard-prepaga\"],\"types\":[\"credit\",\"prepaid\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (comercio/plataforma de viajes, topes, vigencia)\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":5000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "50% de descuento en tus primeros 5 viajes"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjeta de Crédito Tarjeta Prepaga"
+        }
+      ]
+    },
+    {
+      "title": "20% de descuento en el Plan Anual",
+      "merchant": null,
+      "category": "otros",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"instrumentSlugs\":[\"uala-mastercard-credito\",\"uala-mastercard-prepaga\"],\"types\":[\"credit\",\"prepaid\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"Faltan términos y condiciones esenciales (servicio/comercio adherido, vigencia, topes)\"],\"offer\":{\"type\":\"discount\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de descuento en el Plan Anual"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Tarjeta Prepaga Tarjeta de Crédito"
+        }
+      ]
+    }
+  ]
+}

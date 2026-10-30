@@ -1,0 +1,23 @@
+{
+  "benefits": [
+    {
+      "title": "Hoteles Boutique 6 cuotas sin interés",
+      "merchant": null,
+      "category": "viajes",
+      "upstreamId": null,
+      "detailUrl": null,
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"issuerProviderSlugs\":[\"macro\"],\"segments\":[\"selecta\"]}},\"eligibilityCompleteness\":\"incomplete\",\"unresolved\":[\"types: no especifica si aplica a crédito o débito\"],\"offer\":{\"type\":\"installments\",\"installments\":6},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[],\"excluded\":[]},\"requiredActions\":[],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "6 cuotas sin inter&eacute;s"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Macro Selecta"
+        }
+      ]
+    }
+  ]
+}

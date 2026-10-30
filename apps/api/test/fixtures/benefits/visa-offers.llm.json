@@ -1,0 +1,54 @@
+{
+  "benefits": [
+    {
+      "title": "30% OFF en Coto pagando con Visa Débito NFC todos los jueves.",
+      "merchant": "COTO",
+      "category": "supermercado",
+      "upstreamId": "175150",
+      "detailUrl": "https://www.visa.com.ar/es_ar/promociones/supermercados-coto/175150",
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"network\":\"visa\",\"types\":[\"debit\"]}},\"eligibilityCompleteness\":\"complete\",\"unresolved\":[],\"offer\":{\"type\":\"discount\",\"percentageBps\":3000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":[4],\"monthDays\":null},\"channels\":{\"allowed\":[\"instore\"],\"excluded\":[]},\"requiredActions\":[\"pago contactless/NFC\"],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "30% OFF"
+        },
+        {
+          "field": "eligibility",
+          "quote": "Visa Débito"
+        },
+        {
+          "field": "validity",
+          "quote": "jueves"
+        },
+        {
+          "field": "channels",
+          "quote": "NFC"
+        }
+      ]
+    },
+    {
+      "title": "Disfrutá 20% de descuento en Mocha Latte y Mocha Frappucino pagando con Visa desde el celu sin contacto en Starbucks. Pagá con Visa!",
+      "merchant": "Starbucks",
+      "category": "gastronomia",
+      "upstreamId": "162542",
+      "detailUrl": "https://www.visa.com.ar/es_ar/promociones/starbucks/162542?search=star",
+      "termsUrl": null,
+      "rulesJson": "{\"eligibility\":{\"card\":{\"network\":\"visa\",\"types\":[\"credit\",\"debit\",\"prepaid\"]}},\"eligibilityCompleteness\":\"complete\",\"unresolved\":[],\"offer\":{\"type\":\"discount\",\"percentageBps\":2000},\"currency\":\"ARS\",\"minimumSpendMinor\":null,\"capState\":\"unknown\",\"caps\":[],\"validity\":{\"from\":null,\"to\":null,\"weekdays\":null,\"monthDays\":null},\"channels\":{\"allowed\":[\"instore\"],\"excluded\":[]},\"requiredActions\":[\"Mocha Latte y Mocha Frappucino\",\"pago sin contacto desde el celular\"],\"stackable\":\"unknown\",\"recurrence\":\"campaign\"}",
+      "quotes": [
+        {
+          "field": "offer",
+          "quote": "20% de descuento"
+        },
+        {
+          "field": "eligibility",
+          "quote": "pagando con Visa"
+        },
+        {
+          "field": "channels",
+          "quote": "sin contacto"
+        }
+      ]
+    }
+  ]
+}

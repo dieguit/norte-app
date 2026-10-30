@@ -37,11 +37,6 @@ export class BenefitsService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  // Retained for the existing cron caller; the nightly path owns persistence.
-  async harvest(extract: Extract, now = new Date()) {
-    return (await this.harvestNightly(extract, now)).results;
-  }
-
   async harvestNightly(extract: Extract, now = new Date()) {
     const policies = await loadSourcePolicies(this.db);
     const results = await runHarvest({

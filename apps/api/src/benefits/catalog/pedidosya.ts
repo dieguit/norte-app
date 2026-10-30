@@ -24,7 +24,7 @@ export const pedidosya: Provider = {
       enabled: false,
       autoPublish: false,
       coverage: 'unknown',
-      note: 'HTTP 403 de Cloudflare; acceso bloqueado.',
+      note: '30/10/2026: promociones bloqueadas; GET de /about/tyc_plus devuelve HTTP 403, sin perk manual por falta de términos legibles.',
     },
   ],
 };
