@@ -210,36 +210,22 @@ describe('PlayDigital adapter', () => {
       expect(run.complete).toBe(true);
     },
   );
-  it.each([
-    ['Selecta Nivel 2', ['selecta-2']],
-    ['YPF Selecta', ['selecta-1', 'selecta-2', 'selecta-3', 'selecta-4']],
-    ['macroplatinum', ['platinum']],
-    ['Private Bank Black', ['private-black']],
-    ['Private Bank Infinite', ['private-infinite']],
-    ['signature', null],
-  ])(
-    'preserves listing tier restrictions with v2 detail: %s',
-    async (signal, codes) => {
-      const card = {
-        ...cards[0],
-        title: String(signal),
-        slug: String(signal),
-        search_tags: '',
-      };
-      const ctx = context(() => page([card]));
-      ctx.knownDetails.set(card.promo_id!, known(card, jetsmart));
-      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
-      expect(run.listings[0].tiers?.codes ?? null).toEqual(codes);
-      if (codes)
-        expect(JSON.stringify(run.listings[0].terms?.eligibility)).toContain(
-          'providerFact',
-        );
-      else
-        expect(run.listings[0].terms?.unresolved).toContain(
-          'unknown tier signal',
-        );
-    },
-  );
+  it('ignores listing tier signals and reports unknown detail audiences', async () => {
+    const card = { ...cards[0], title: 'Selecta Nivel 2' };
+    const detail = structuredClone(jetsmart);
+    detail.offers[0].segmentations = { audiences: ['private-nivel-5'] };
+    const ctx = context(() => page([card]));
+    ctx.knownDetails.set(card.promo_id!, known(card, detail));
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(run.listings[0].tiers).toBeNull();
+    expect(run.listings[0].terms?.eligibilityCompleteness).toBe('complete');
+    expect(run.anomalies).toContainEqual(
+      expect.objectContaining({
+        kind: 'unknown_audience',
+        detail: 'private-nivel-5',
+      }),
+    );
+  });
 
   it('never treats an unavailable HTTP 400 detail as successful', async () => {
     const ctx = context(() => page([cards[0]]));

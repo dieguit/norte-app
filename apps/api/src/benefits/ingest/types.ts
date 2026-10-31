@@ -36,6 +36,7 @@ export type AdapterAnomaly = {
   kind:
     | 'unmapped_category'
     | 'unknown_tier_signal'
+    | 'unknown_audience'
     | 'unparsed_offer'
     | 'unparsed_days'
     | 'missing_field'

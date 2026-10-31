@@ -2,10 +2,11 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { todayInArgentina } from '../../argentina-time';
 import { createPacedJsonFetch } from './http';
-import { ALLOWED_BANKS, BANK_TIERS } from './tiers';
+import { ALLOWED_BANKS } from './tiers';
 import {
   playdigitalDetailSchema,
   mapPlaydigitalDetail,
+  playdigitalAudiences,
   detailError,
 } from './playdigital-detail';
 import type {
@@ -120,54 +121,6 @@ export function playdigitalListingHash(card: Card): string {
     .digest('hex');
 }
 
-function selectaTier(signal: string) {
-  const level = /nivel[\s_-]*([1-4])\b/.exec(signal);
-  return {
-    codes: level
-      ? [`selecta-${level[1]}`]
-      : BANK_TIERS.macro
-          .filter((tier) => tier.code.startsWith('selecta-'))
-          .map((tier) => tier.code),
-    rawTierSignal: level?.[0] ?? 'selecta',
-    unresolved:
-      /nivel[\s_-]*\d/.test(signal) && !level ? ['unknown Selecta level'] : [],
-  };
-}
-
-function macroTier(signal: string) {
-  let codes: string[] | null = null;
-  let rawTierSignal: string | null = null;
-  const unresolved: string[] = [];
-  if (/selecta/.test(signal)) {
-    const selecta = selectaTier(signal);
-    codes = selecta.codes;
-    rawTierSignal = selecta.rawTierSignal;
-    unresolved.push(...selecta.unresolved);
-  } else if (/macroplatinum/.test(signal)) {
-    codes = ['platinum'];
-    rawTierSignal = 'macroplatinum';
-  } else if (
-    /private[\s_-]*(?:bank)?/.test(signal) &&
-    /(black|infinite)/.test(signal)
-  ) {
-    rawTierSignal = /(black|infinite)/.exec(signal)![1];
-    codes = [`private-${rawTierSignal}`];
-  } else if (
-    /black|signature|infinite|platinum|nivel|premium|select/.test(signal)
-  ) {
-    unresolved.push('unknown tier signal');
-    rawTierSignal = signal;
-  }
-  const residual = signal.replace(/macroplatinum/g, '');
-  if (
-    codes &&
-    !codes[0].startsWith('private-') &&
-    /black|signature|infinite|platinum/.test(residual)
-  )
-    unresolved.push('unknown tier signal');
-  return { codes, rawTierSignal, unresolved };
-}
-
 function rawCategories(
   card: Card,
   run: AdapterRun,
@@ -209,9 +162,7 @@ function brandName(card: Card, title: string): string | null {
 function listingIdentity(card: Card) {
   const externalId = card.promo_id ?? card.extra_params?.promo_id ?? card.id!;
   const title = card.title ?? card.content?.row[0]?.text ?? externalId;
-  const signal =
-    `${card.slug ?? ''} ${title} ${card.search_tags ?? ''}`.toLowerCase();
-  return { externalId, title, signal };
+  return { externalId, title };
 }
 
 function mapListing(
@@ -221,17 +172,7 @@ function mapListing(
   stale: boolean,
   run: AdapterRun,
 ): NormalizedListing {
-  const { externalId, title, signal } = listingIdentity(card);
-  const { codes, rawTierSignal, unresolved } =
-    bank.slug === 'macro'
-      ? macroTier(signal)
-      : { codes: null, rawTierSignal: null, unresolved: [] as string[] };
-  if (unresolved.length)
-    run.anomalies.push({
-      kind: 'unknown_tier_signal',
-      detail: signal,
-      externalId,
-    });
+  const { externalId, title } = listingIdentity(card);
   const { detail = null, fetchedAt = null } = known ?? {};
   const listing: NormalizedListing = {
     source: 'playdigital',
@@ -241,8 +182,8 @@ function mapListing(
     brandName: brandName(card, title),
     sourceBrandId: null,
     rawCategories: rawCategories(card, run, externalId),
-    tiers: codes ? { bankSlug: bank.slug, codes } : null,
-    rawTierSignal,
+    tiers: null,
+    rawTierSignal: null,
     terms: null,
     unpublishableReason: 'detail pending',
     verify: {
@@ -264,7 +205,7 @@ function mapListing(
     });
     return listing;
   }
-  applyDetail(listing, known, bank, unresolved, codes, run);
+  applyDetail(listing, known, bank, run);
   return listing;
 }
 
@@ -272,13 +213,20 @@ function applyDetail(
   listing: NormalizedListing,
   known: KnownDetail,
   bank: BankRef,
-  unresolved: string[],
-  codes: string[] | null,
   run: AdapterRun,
 ) {
   try {
     validateDetail(known.detail, listing.externalId);
-    listing.terms = mapPlaydigitalDetail(known.detail, bank, unresolved, codes);
+    listing.terms = mapPlaydigitalDetail(known.detail, bank);
+    const { codes, unknown } = playdigitalAudiences(known.detail, bank);
+    listing.tiers = codes.length ? { bankSlug: bank.slug, codes } : null;
+    listing.rawTierSignal = [...codes, ...unknown].join(', ') || null;
+    if (unknown.length)
+      run.anomalies.push({
+        kind: 'unknown_audience',
+        externalId: listing.externalId,
+        detail: unknown.join(', '),
+      });
     listing.unpublishableReason = null;
   } catch (error) {
     listing.unpublishableReason = String(error).slice(0, 1200);
