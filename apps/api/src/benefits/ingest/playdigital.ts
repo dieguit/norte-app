@@ -238,23 +238,18 @@ function applyDetail(
   }
 }
 
+export const DETAIL_TTL_MS = 7 * 86400_000;
+
 function detailNeedsRefresh(
   known: KnownDetail | undefined,
-  externalId: string,
   listingHash: string,
   now: Date,
 ): boolean {
   return (
     !known ||
-    !cachedDetailMatches(known.detail, externalId) ||
     known.listingHash !== listingHash ||
-    now.getTime() - known.fetchedAt.getTime() > 7 * 86400_000
+    now.getTime() - known.fetchedAt.getTime() > DETAIL_TTL_MS
   );
-}
-
-function cachedDetailMatches(detail: unknown, externalId: string): boolean {
-  const parsed = playdigitalDetailSchema.safeParse(detail);
-  return parsed.success && parsed.data.id === externalId;
 }
 
 function validateDetail(detail: unknown, externalId: string) {
@@ -272,7 +267,6 @@ async function fetchDetail(
   const detail = await client(ctx)(
     `https://www.modo.com.ar/promos/api/rewards/v2/benefit/${encodeURIComponent(externalId)}`,
   );
-  validateDetail(detail, externalId);
   const refreshed = { listingHash, fetchedAt: ctx.now, detail };
   await ctx.saveDetail?.(externalId, refreshed);
   return refreshed;
@@ -297,7 +291,7 @@ function detailCache(ctx: AdapterContext) {
       if (existing.attemptedHash === listingHash) return existing;
       if (existing.known) known = existing.known;
     }
-    let stale = detailNeedsRefresh(known, externalId, listingHash, ctx.now);
+    let stale = detailNeedsRefresh(known, listingHash, ctx.now);
     let failed: string | undefined;
     if (stale && fetched < (ctx.maxDetailFetches ?? 2000)) {
       fetched++;
@@ -393,6 +387,10 @@ async function appendPage(
   run.rawRowCount += rows.length;
   for (const raw of rows) {
     const externalId = observedId(raw);
+    const status = z
+      .object({ calculated_status: z.string().nullish().catch(undefined) })
+      .safeParse(raw);
+    if (status.success && status.data.calculated_status !== 'RUNNING') continue;
     const parsed = cardSchema.safeParse(raw);
     if (parsed.success && listingFinished(parsed.data, today)) continue;
     const card = parseObservedCard(raw, externalId, run);
@@ -422,11 +420,38 @@ async function appendCard(
       detail: result.failed,
       externalId,
     });
-  let listing: NormalizedListing;
+  const listing = mapCardSafely(card, bank, raw, result, run);
+  listing.raw.listing = raw;
+  if (
+    !result.failed &&
+    result.known &&
+    result.known.listingHash === listing.listingHash &&
+    !listing.terms
+  ) {
+    (run.rejectedExternalIds ??= []).push(externalId);
+    return;
+  }
+  run.listings.push(listing);
+  if (listing.unpublishableReason === 'detail pending' && !result.failed)
+    run.anomalies.push({
+      kind: 'detail_failed',
+      externalId,
+      detail: 'detail pending',
+    });
+}
+
+function mapCardSafely(
+  card: Card,
+  bank: BankRef,
+  raw: unknown,
+  result: Awaited<ReturnType<ReturnType<typeof detailCache>>>,
+  run: AdapterRun,
+) {
   try {
-    listing = mapListing(card, bank, result.known, result.stale, run);
+    return mapListing(card, bank, result.known, result.stale, run);
   } catch (error) {
-    listing = invalidListing(raw, externalId, bank.slug);
+    const externalId = listingIdentity(card).externalId;
+    const listing = invalidListing(raw, externalId, bank.slug);
     listing.unpublishableReason = `listing mapping failed: ${String(error)}`;
     run.complete = false;
     run.outcome = 'partial';
@@ -435,15 +460,8 @@ async function appendCard(
       detail: listing.unpublishableReason,
       externalId,
     });
+    return listing;
   }
-  listing.raw.listing = raw;
-  run.listings.push(listing);
-  if (listing.unpublishableReason === 'detail pending' && !result.failed)
-    run.anomalies.push({
-      kind: 'detail_failed',
-      externalId,
-      detail: 'detail pending',
-    });
 }
 
 export function listingFinished(

@@ -18,7 +18,10 @@ function fixture(name: string) {
   );
 }
 type Card = Parameters<typeof playdigitalListingHash>[0];
-const cards: Card[] = fixture('cards');
+const cards: Card[] = fixture('cards').map((card: Card) => ({
+  ...card,
+  calculated_status: 'RUNNING',
+}));
 const jetsmart = fixture('v2-jetsmart');
 jetsmart.offers[0].requirements.banks.list = ['macro-id', 'galicia-id'];
 const banks: BankRef[] = [
@@ -137,7 +140,7 @@ describe('PlayDigital adapter', () => {
   );
 
   it.each(['NEXT_FOR_PRODUCT', 'AWAITING', 'UNKNOWN', 'unexpected', null])(
-    'fetches status %s and does not spend budget on finished rows',
+    'ignores status %s without fetching details',
     async (status) => {
       const finished = {
         ...cards[0],
@@ -154,9 +157,9 @@ describe('PlayDigital adapter', () => {
       );
       ctx.maxDetailFetches = 1;
       const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
-      expect(ctx.fetchImpl).toHaveBeenCalledTimes(2);
-      expect(run.listings[0].terms).not.toBeNull();
-      expect(run.observedExternalIds).toEqual([active.promo_id]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
+      expect(run.listings).toEqual([]);
+      expect(run.observedExternalIds).toEqual([]);
       expect(run.complete).toBe(true);
     },
   );
@@ -164,7 +167,7 @@ describe('PlayDigital adapter', () => {
   it.each([null, 'not-a-date', '2026-02-30', 42])(
     'fetches when stop_date is missing or malformed: %s',
     async (stop_date) => {
-      const card = { ...cards[0], stop_date, calculated_status: 42 };
+      const card = { ...cards[0], stop_date, calculated_status: 'RUNNING' };
       const ctx = context((url) =>
         url.includes('/benefit/') ? jetsmart : page([card]),
       );
@@ -173,27 +176,8 @@ describe('PlayDigital adapter', () => {
       expect(run.listings[0].terms).not.toBeNull();
     },
   );
-  it.each([0, 1])(
-    'never reuses a wrong-ID same-hash cache; refresh budget %s',
-    async (budget) => {
-      const ctx = context((url) =>
-        url.includes('/benefit/') ? jetsmart : page([cards[0]]),
-      );
-      ctx.knownDetails.set(
-        cards[0].promo_id!,
-        known(cards[0], { ...jetsmart, id: 'wrong' }),
-      );
-      ctx.maxDetailFetches = budget;
-      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
-      expect(run.listings[0].terms === null).toBe(budget === 0);
-      expect(run.listings[0].detailStale).toBe(budget === 0);
-      if (!budget)
-        expect(run.listings[0].unpublishableReason).toContain('id mismatch');
-    },
-  );
-
   it.each(['fetched', 'cached'])(
-    'keeps inactive %s details visible but unpublishable',
+    'rejects inactive %s details',
     async (source) => {
       const detail = { ...jetsmart, real_status: 'FINISHED' };
       const ctx = context((url) =>
@@ -202,12 +186,34 @@ describe('PlayDigital adapter', () => {
       if (source === 'cached')
         ctx.knownDetails.set(cards[0].promo_id!, known(cards[0], detail));
       const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
-      expect(run.listings).toHaveLength(1);
-      expect(run.listings[0].terms).toBeNull();
-      expect(run.listings[0].unpublishableReason).toContain(
-        'not running: FINISHED',
-      );
+      expect(run.listings).toEqual([]);
+      expect(run.rejectedExternalIds).toEqual([cards[0].promo_id]);
       expect(run.complete).toBe(true);
+    },
+  );
+  it.each([
+    { ...jetsmart, id: 'wrong' },
+    { ...jetsmart, conditions: null },
+  ])(
+    'caches and rejects invalid details without refetching until stale',
+    async (detail) => {
+      const ctx = context((url) =>
+        url.includes('/benefit/') ? detail : page([cards[0]]),
+      );
+      ctx.saveDetail = vi.fn(async () => {});
+      const [first] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(first.rejectedExternalIds).toEqual([cards[0].promo_id]);
+      expect(ctx.saveDetail).toHaveBeenCalledOnce();
+      ctx.knownDetails.set(cards[0].promo_id!, known(cards[0], detail));
+      const [cached] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(cached.rejectedExternalIds).toEqual([cards[0].promo_id]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(3);
+      ctx.knownDetails.set(
+        cards[0].promo_id!,
+        known(cards[0], detail, 8 * 86400_000),
+      );
+      await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(5);
     },
   );
   it('ignores listing tier signals and reports unknown detail audiences', async () => {
@@ -243,47 +249,6 @@ describe('PlayDigital adapter', () => {
     expect(run.listings[0].terms).toBeNull();
     expect(ctx.saveDetail).not.toHaveBeenCalled();
     expect(run.anomalies[0].detail).toContain('HTTP 400');
-  });
-  it('invalidates same-hash legacy cache within budget and persists only v2', async () => {
-    for (const budget of [0, 1]) {
-      const ctx = context((url) =>
-        url.includes('/benefit/') ? jetsmart : page([cards[0]]),
-      );
-      ctx.knownDetails.set(
-        cards[0].promo_id!,
-        known(cards[0], fixture('jetsmart-detail')),
-      );
-      ctx.maxDetailFetches = budget;
-      ctx.saveDetail = vi.fn(async () => {});
-      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
-      expect(ctx.saveDetail).toHaveBeenCalledTimes(budget);
-      expect(run.listings[0].detailStale).toBe(budget === 0);
-      expect(run.listings[0].terms === null).toBe(budget === 0);
-    }
-  });
-
-  it('rejects wrong v2 detail identity and reports concise schema paths', async () => {
-    for (const detail of [
-      { ...jetsmart, id: 'wrong' },
-      {
-        ...jetsmart,
-        conditions: {
-          ...jetsmart.conditions,
-          schedule: { ...jetsmart.conditions.schedule, days_of_week: 42 },
-        },
-      },
-    ]) {
-      const ctx = context((url) =>
-        url.includes('/benefit/') ? detail : page([cards[0]]),
-      );
-      ctx.saveDetail = vi.fn(async () => {});
-      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
-      expect(ctx.saveDetail).not.toHaveBeenCalled();
-      expect(run.listings[0].terms).toBeNull();
-      expect(run.anomalies[0].detail).toMatch(
-        /id mismatch|conditions.schedule.days_of_week/,
-      );
-    }
   });
   it.each(['refresh', 'budget', 'failure'])(
     'reassesses a later bank hash: %s',
@@ -361,10 +326,10 @@ describe('PlayDigital adapter', () => {
 
   it('emits raw placeholders for malformed stable IDs, never invented IDs', async () => {
     const rows = [
-      { promo_id: 'broken', title: 42 },
-      { id: 'fallback', credit_list: 42 },
-      { promo_id: '', title: 42 },
-      { title: 42 },
+      { promo_id: 'broken', title: 42, calculated_status: 'RUNNING' },
+      { id: 'fallback', credit_list: 42, calculated_status: 'RUNNING' },
+      { promo_id: '', title: 42, calculated_status: 'RUNNING' },
+      { title: 42, calculated_status: 'RUNNING' },
     ];
     const ctx = context(() => page(rows));
     const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
@@ -442,7 +407,12 @@ describe('PlayDigital adapter', () => {
       if (query.get('banks') === 'galicia-id') return page([cards[0]]);
       return query.get('page') === '1'
         ? page([cards[0], cards[0]], 1, 2, 3)
-        : page([{ id: 'unmapped', title: 42 }], 2, 2, 3);
+        : page(
+            [{ id: 'unmapped', title: 42, calculated_status: 'RUNNING' }],
+            2,
+            2,
+            3,
+          );
     });
     ctx.saveDetail = vi.fn(async () => {});
     const runs = await playdigitalAdapter.run(ctx, banks);
@@ -580,9 +550,10 @@ describe('PlayDigital adapter', () => {
       complete: true,
       observedExternalIds: [cards[0].promo_id],
     });
-    expect(run.listings[0].terms).toBeNull();
+    expect(run.listings).toEqual([]);
+    expect(run.rejectedExternalIds).toEqual([cards[0].promo_id]);
     expect(run.anomalies).toContainEqual(
-      expect.objectContaining({ kind: 'detail_failed' }),
+      expect.objectContaining({ kind: 'unparsed_offer' }),
     );
   });
 

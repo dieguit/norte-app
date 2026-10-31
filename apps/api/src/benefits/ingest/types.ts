@@ -58,6 +58,7 @@ export type AdapterRun = {
   rawRowCount: number; // rows actually read, before dedupe (Macro has legit duplicate rows)
   // Every non-finished external id seen, mapped or not, is used for absence checks.
   observedExternalIds: string[];
+  rejectedExternalIds?: string[];
   listings: NormalizedListing[];
   anomalies: AdapterAnomaly[];
   error: string | null;

@@ -74,7 +74,10 @@ describe.skipIf(!url)('benefits explorer HTTP', () => {
     unpublishableReason: null,
     verify: { url: 'https://example.test/verify', hint: null },
     listingHash: 'hash',
-    raw: { listing: { ref: externalId }, detail: { legal: 'raw detail' } },
+    raw: {
+      listing: { ref: externalId, calculated_status: 'RUNNING' },
+      detail: { legal: 'raw detail' },
+    },
     detailFetchedAt: now,
     detailStale: false,
   });

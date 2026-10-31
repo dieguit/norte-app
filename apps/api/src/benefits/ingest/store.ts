@@ -19,7 +19,7 @@ import {
 } from 'drizzle-orm';
 import { todayInArgentina } from '../../argentina-time';
 import { z } from 'zod';
-import { listingFinished } from './playdigital';
+import { DETAIL_TTL_MS, listingFinished } from './playdigital';
 import { ALLOWED_BANKS } from './tiers';
 import type { Database, Executor } from '../../database/database.types';
 import {
@@ -29,6 +29,7 @@ import {
   benefitIngestRuns as runs,
   benefitCategoryMappings as mappings,
   benefitDetailCache as details,
+  benefitBrands as brands,
 } from './schema';
 import { upsertBrand } from './brands';
 import type {
@@ -384,7 +385,7 @@ function invalidateObservedSnapshot(p: typeof presence.$inferSelect) {
     rawTierSignal: null,
     unpublishableReason: 'observed_without_listing',
     verify: p.snapshot.verify,
-    raw: { listing: null, detail: null },
+    raw: { listing: p.snapshot.raw.listing, detail: null },
     listingHash: '',
     detailFetchedAt: null,
     detailStale: true,
@@ -529,7 +530,16 @@ async function pruneCampaigns(
       or(
         notInArray(presence.bankSlug, ALLOWED_BANKS),
         isNotNull(presence.withdrawnAt),
-        sql`${presence.snapshot}->>'unpublishableReason' = 'finished'`,
+        and(
+          inArray(
+            presence.campaignId,
+            tx
+              .select({ id: campaigns.id })
+              .from(campaigns)
+              .where(eq(campaigns.source, 'playdigital')),
+          ),
+          sql`(${presence.snapshot}->>'unpublishableReason' = 'finished' or ${presence.snapshot}->>'unpublishableReason' like 'Error: %')`,
+        ),
       ),
     )
     .returning({ campaignId: presence.campaignId });
@@ -547,11 +557,9 @@ async function pruneCampaigns(
   const ended = legacy
     .filter((row) => {
       const parsed = legacyFields.safeParse(row.listing);
-      if (!parsed.success) return false;
-      const status = parsed.data.calculated_status;
       return (
-        (!status ||
-          ['RUNNING', 'FINISHED', 'FINISHED_FOR_PRODUCT'].includes(status)) &&
+        !parsed.success ||
+        parsed.data.calculated_status !== 'RUNNING' ||
         listingFinished(parsed.data, todayInArgentina(now).today)
       );
     })
@@ -577,11 +585,47 @@ async function pruneCampaigns(
         sql`${campaigns.terms}->'validity'->>'to' < ${todayInArgentina(now).today}`,
       ),
     );
+  // Keep fresh orphan details for listings rejected by another bank's run.
   await tx
     .delete(details)
     .where(
-      sql`not exists (select 1 from ${campaigns} where ${campaigns.source} = ${details.source} and ${campaigns.externalId} = ${details.externalId})`,
+      and(
+        sql`${details.fetchedAt} < ${new Date(now.getTime() - DETAIL_TTL_MS)}`,
+        sql`not exists (select 1 from ${campaigns} where ${campaigns.source} = ${details.source} and ${campaigns.externalId} = ${details.externalId})`,
+      ),
     );
+  await tx
+    .delete(brands)
+    .where(
+      and(
+        sql`cardinality(${brands.aliases}) = 0`,
+        sql`not exists (select 1 from ${campaigns} where ${campaigns.brandId} = ${brands.id})`,
+      ),
+    );
+}
+
+async function removeRejected(tx: Executor, run: AdapterRun, bankSlug: string) {
+  if (!run.rejectedExternalIds?.length) return [];
+  return tx
+    .delete(presence)
+    .where(
+      and(
+        eq(presence.bankSlug, bankSlug),
+        inArray(
+          presence.campaignId,
+          tx
+            .select({ id: campaigns.id })
+            .from(campaigns)
+            .where(
+              and(
+                eq(campaigns.source, run.source),
+                inArray(campaigns.externalId, run.rejectedExternalIds),
+              ),
+            ),
+        ),
+      ),
+    )
+    .returning({ campaignId: presence.campaignId });
 }
 
 export async function commitRun(
@@ -611,7 +655,11 @@ export async function commitRun(
     const mapping = new Map(
       (await tx.select().from(mappings)).map((m) => [m.sourceKey, m.category]),
     );
-    const affected = new Set<string>();
+    const affected = new Set(
+      (await removeRejected(tx, run, bankSlug)).map(
+        ({ campaignId }) => campaignId,
+      ),
+    );
     for (const listing of run.listings)
       affected.add(
         await saveListing(

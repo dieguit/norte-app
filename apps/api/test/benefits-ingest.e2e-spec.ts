@@ -66,7 +66,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     unpublishableReason: null,
     verify: { url: 'https://www.modo.com.ar/promos/cafe', hint: null },
     listingHash: 'hash',
-    raw: { listing: {}, detail: { value: 1 } },
+    raw: { listing: { calculated_status: 'RUNNING' }, detail: { value: 1 } },
     detailFetchedAt: start,
     detailStale: false,
   });
@@ -101,6 +101,51 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     ]);
   });
   afterAll(() => pool.end());
+
+  it('prunes rejected bank presence while keeping cached detail and other banks', async () => {
+    const a = listing();
+    await commit(run([a]));
+    await commit(run([a], 0, 'galicia'));
+    await saveDetail(db, 'playdigital', a.externalId, {
+      listingHash: 'hash',
+      fetchedAt: start,
+      detail: { status: 'draft' },
+    });
+    await commit(
+      run([], 1, 'macro', {
+        rawRowCount: 1,
+        totalReported: 1,
+        observedExternalIds: [a.externalId],
+        rejectedExternalIds: [a.externalId],
+      }),
+    );
+    expect((await db.select().from(presence)).map((p) => p.bankSlug)).toEqual([
+      'galicia',
+    ]);
+    await commit(
+      run([], 1, 'galicia', {
+        rawRowCount: 1,
+        totalReported: 1,
+        observedExternalIds: [a.externalId],
+        rejectedExternalIds: [a.externalId],
+      }),
+    );
+    expect(await db.select().from(campaigns)).toHaveLength(0);
+    expect(await db.select().from(details)).toHaveLength(1);
+  });
+
+  it('prunes orphan brands without aliases but retains referenced and curated brands', async () => {
+    const a = listing();
+    await commit(run([a]));
+    await db.insert(brands).values([
+      { name: 'Orphan', normalized: 'orphan' },
+      { name: 'Curated', normalized: 'curated', aliases: ['Alias'] },
+    ]);
+    await commit(run([a], 1));
+    expect(
+      (await db.select().from(brands)).map((b) => b.normalized).sort(),
+    ).toEqual(['cafe', 'curated']);
+  });
 
   it('materializes old stored defaults without upgrading incomplete bank terms', async () => {
     const a = listing();
@@ -465,7 +510,11 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       String(input).includes('/benefit/')
         ? new Response(null, { status: 404 })
         : Response.json({
-            data: { cards: [{ promo_id: keeper.externalId }] },
+            data: {
+              cards: [
+                { promo_id: keeper.externalId, calculated_status: 'RUNNING' },
+              ],
+            },
             metadata: {
               pagination: { page: 1, total_pages: 1, total_results: 1 },
             },
@@ -521,7 +570,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
         data: {
           cards: [
             { promo_id: ended.externalId, calculated_status: 'FINISHED' },
-            { promo_id: keeper.externalId },
+            { promo_id: keeper.externalId, calculated_status: 'RUNNING' },
           ],
         },
         metadata: { pagination: { page: 1, total_pages: 1, total_results: 2 } },
@@ -554,7 +603,7 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     }
   });
 
-  it('immediately prunes legacy finished snapshots and ended raw listings, but keeps upcoming and unknown statuses', async () => {
+  it('immediately prunes non-running legacy listings and rejected details, retaining pending details', async () => {
     const placeholder = listing(),
       past = listing(),
       finished = listing(),
@@ -562,7 +611,17 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
       upcoming = listing(),
       awaiting = listing(),
       unknown = listing(),
+      rejected = listing(),
+      pending = listing(),
+      outdated = listing(),
       keeper = listing();
+    const galicia = {
+      ...listing(),
+      source: 'galicia' as const,
+      raw: { listing: { calculated_status: 'AWAITING' }, detail: null },
+      terms: null,
+      unpublishableReason: 'Error: invalid detail',
+    };
     await commit(
       run([
         placeholder,
@@ -572,17 +631,33 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
         upcoming,
         awaiting,
         unknown,
+        rejected,
+        pending,
+        outdated,
         keeper,
       ]),
     );
+    await commit(run([galicia], 0, 'galicia', { source: 'galicia' }));
     const rows = await db.select().from(campaigns);
     const byId = (id: string) => rows.find((row) => row.externalId === id)!;
     await db
       .update(presence)
       .set({ snapshot: { ...placeholder, unpublishableReason: 'finished' } })
       .where(eq(presence.campaignId, byId(placeholder.externalId).id));
+    for (const [item, reason] of [
+      [rejected, 'Error: invalid v2 detail'],
+      [pending, 'detail pending'],
+      [outdated, 'detail outdated'],
+    ] as const)
+      await db
+        .update(presence)
+        .set({
+          snapshot: { ...item, terms: null, unpublishableReason: reason },
+          terms: null,
+        })
+        .where(eq(presence.campaignId, byId(item.externalId).id));
     for (const [item, raw] of [
-      [past, { stop_date: '2026-09-30' }],
+      [past, { calculated_status: 'RUNNING', stop_date: '2026-09-30' }],
       [finished, { calculated_status: 'FINISHED' }],
       [finishedProduct, { calculated_status: 'FINISHED_FOR_PRODUCT' }],
       [
@@ -607,7 +682,16 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     const survivors = (await db.select().from(campaigns)).map(
       (row) => row.externalId,
     );
-    for (const item of [placeholder, past, finished, finishedProduct]) {
+    for (const item of [
+      placeholder,
+      past,
+      finished,
+      finishedProduct,
+      upcoming,
+      awaiting,
+      unknown,
+      rejected,
+    ]) {
       expect(survivors).not.toContain(item.externalId);
       expect(
         await db
@@ -615,14 +699,8 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
           .from(presence)
           .where(eq(presence.campaignId, byId(item.externalId).id)),
       ).toHaveLength(0);
-      expect(
-        await db
-          .select()
-          .from(details)
-          .where(eq(details.externalId, item.externalId)),
-      ).toHaveLength(0);
     }
-    for (const item of [upcoming, awaiting, unknown, keeper])
+    for (const item of [pending, outdated, keeper, galicia])
       expect(survivors).toContain(item.externalId);
     expect(
       await db
@@ -669,6 +747,15 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
         fetchedAt: start,
         detail: {},
       });
+    for (const [id, fetchedAt] of [
+      ['fresh-orphan', date(30)],
+      ['ttl-boundary', date(24)],
+    ] as const)
+      await saveDetail(db, 'playdigital', id, {
+        listingHash: 'hash',
+        fetchedAt,
+        detail: {},
+      });
     try {
       const second = await commit(run([keeper], 31));
       expect(
@@ -684,8 +771,8 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
           .where(eq(presence.bankSlug, 'unwanted-test')),
       ).toHaveLength(0);
       expect(
-        (await db.select().from(details)).map((row) => row.externalId),
-      ).toEqual([keeper.externalId]);
+        (await db.select().from(details)).map((row) => row.externalId).sort(),
+      ).toEqual([keeper.externalId, 'fresh-orphan', 'ttl-boundary'].sort());
       expect(
         await db.select().from(brands).where(eq(brands.id, keeperRow.brandId!)),
       ).toHaveLength(1);
@@ -741,7 +828,11 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     const fetchImpl: typeof fetch = async (input) =>
       new URL(String(input)).searchParams.get('page') === '1'
         ? Response.json({
-            data: { cards: [{ promo_id: keeper.externalId }] },
+            data: {
+              cards: [
+                { promo_id: keeper.externalId, calculated_status: 'RUNNING' },
+              ],
+            },
             metadata: {
               pagination: { page: 1, total_pages: 2, total_results: 2 },
             },
@@ -840,7 +931,10 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
         terms: null,
         tiers: null,
         unpublishableReason: 'malformed_record',
-        raw: { listing: { id: a.externalId }, detail: null },
+        raw: {
+          listing: { id: a.externalId, calculated_status: 'RUNNING' },
+          detail: null,
+        },
       };
       await commit(
         run(mode === 'placeholder' ? [malformed] : [], 1, 'macro', {
