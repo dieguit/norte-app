@@ -126,13 +126,23 @@ describe("financesLog", () => {
       label: "Ahorro registrado",
       category: "Aporte · Mercado Pago · a tus objetivos",
     });
-    expect(items.find((i) => i.id === "i1")).toMatchObject({ tone: "positive", sign: "always" });
+    expect(items.find((i) => i.id === "i1")).toMatchObject({
+      tone: "positive",
+      sign: "always",
+    });
     expect(items.find((i) => i.id === "e1")?.amount.amount).toBe("-18000.00");
     expect(items.find((i) => i.id === "e1")?.category).toMatch(/^Gasto · /);
   });
 
   it("filters by kind and returns [] when nothing matches", () => {
-    expect(financesLog(workspace, "income").flatMap((d) => d.items.map((i) => i.id))).toEqual(["i1"]);
-    expect(financesLog({ ...workspace, incomes: { ...workspace.incomes, incomes: [] } }, "income")).toEqual([]);
+    expect(
+      financesLog(workspace, "income").flatMap((d) => d.items.map((i) => i.id)),
+    ).toEqual(["i1"]);
+    expect(
+      financesLog(
+        { ...workspace, incomes: { ...workspace.incomes, incomes: [] } },
+        "income",
+      ),
+    ).toEqual([]);
   });
 });

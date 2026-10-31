@@ -10631,15 +10631,17 @@ interface PreviousMonthShortfall {
     amount: Money;
 }
 
-declare const NOTIFICATION_TYPES: readonly ["day_close_checkin"];
+declare const NOTIFICATION_TYPES: readonly ["day_close_checkin", "savings_digest"];
 declare const NotificationTypeSchema: z.ZodEnum<{
     day_close_checkin: "day_close_checkin";
+    savings_digest: "savings_digest";
 }>;
 type NotificationType = z.infer<typeof NotificationTypeSchema>;
 declare const NotificationTimeSchema: z.ZodString;
 declare const NotificationSettingSchema: z.ZodObject<{
     type: z.ZodEnum<{
         day_close_checkin: "day_close_checkin";
+        savings_digest: "savings_digest";
     }>;
     enabled: z.ZodBoolean;
     frequency: z.ZodLiteral<"daily">;
@@ -10650,6 +10652,7 @@ declare const NotificationSettingsResponseSchema: z.ZodObject<{
     settings: z.ZodArray<z.ZodObject<{
         type: z.ZodEnum<{
             day_close_checkin: "day_close_checkin";
+            savings_digest: "savings_digest";
         }>;
         enabled: z.ZodBoolean;
         frequency: z.ZodLiteral<"daily">;
@@ -10662,4 +10665,1062 @@ declare const UpdateNotificationSettingSchema: z.ZodObject<{
 }, z.core.$strip>;
 type UpdateNotificationSetting = z.infer<typeof UpdateNotificationSettingSchema>;
 
-export { type AllocationChangeConfirmation, AllocationChangeConfirmationSchema, type AllocationChangeContext, AllocationChangeContextSchema, type AllocationChangeContextState, AllocationChangeContextStateSchema, type AllocationChangeDraftWire, AllocationChangeDraftWireSchema, type AllocationChangePreview, type AllocationChangePreviewResult, AllocationChangePreviewSchema, AllocationChangeStaleSchema, AllocationChangeUpdatedSchema, ConfirmAllocationChangeWireSchema, ConfirmGoalCompletionWireSchema, type ConfirmGoalCreationInput, ConfirmGoalCreationWireSchema, type ConfirmGoalEditInput, ConfirmGoalLifecycleWireSchema, type ConfirmSavingContributionWire, ConfirmSavingContributionWireSchema, type ContributionAllocationSummary, ContributionDraftWireBaseSchema, ContributionIdPathWireSchema, type ContributionKind, type ContributionSummary, ContributionSummarySchema, type CreatePlaceholderItem, CreatePlaceholderItemSchema, CreateSavingsPlaceSchema, type DeletePlaceholderItemResponse, DeletePlaceholderItemResponseSchema, type EligibleGoal, type ExpenseDraft, ExpenseDraftSchema, ExpenseMutationResponseSchema, FIXED_EXPENSE_SOURCES, FIXED_INCOME_SOURCES, type FinancesWorkspace, FinancesWorkspaceSchema, type FinancialOnboardingInput, FinancialOnboardingResponseSchema, FinancialOnboardingSchema, GoalCompletionCompletedSchema, type GoalCompletionConfirmation, GoalCompletionConfirmationSchema, type GoalCompletionContext, GoalCompletionContextPresentSchema, GoalCompletionContextSchema, type GoalCompletionContextState, GoalCompletionContextStateSchema, GoalCompletionInvalidSchema, type GoalCompletionPreview, type GoalCompletionPreviewResult, GoalCompletionPreviewSchema, GoalCompletionPreviewWireSchema, GoalCompletionStaleSchema, type GoalCompletionWithdrawalSummary, type GoalCreationConfirmation, GoalCreationConfirmationSchema, type GoalCreationContext, GoalCreationContextMissingSchema, GoalCreationContextPresentSchema, type GoalCreationContextState, GoalCreationContextStateSchema, GoalCreationContextWireSchema, GoalCreationCreatedSchema, type GoalCreationDraft, type GoalCreationDraftWire, GoalCreationDraftWireSchema, type GoalCreationPreview, type GoalCreationPreviewResult, GoalCreationPreviewSchema, GoalCreationStaleSchema, GoalEditConfirmWireSchema, GoalEditConfirmationSchema, type GoalEditRequestInput, GoalEditStaleSchema, GoalEditUpdatedSchema, type GoalFundingRow, GoalIdPathWireSchema, GoalLifecycleActionSchema, type GoalLifecycleConfirmation, GoalLifecycleConfirmationSchema, type GoalLifecycleContext, GoalLifecycleContextSchema, type GoalLifecyclePreview, type GoalLifecyclePreviewResult, GoalLifecyclePreviewSchema, GoalLifecyclePreviewWireSchema, GoalLifecycleStaleSchema, GoalLifecycleUpdatedSchema, GoalPlanContextPresentSchema, GoalPlanContextStateSchema, GoalPlanEditContextWireSchema, GoalPlanQueryWireSchema, type GoalPriority, type GoalProjection, type GoalStatus, type GoalStrategy, type GoalWorkspaceItem, GoalWorkspaceItemSchema, type GoalsAppState, type GoalsFinancialSummary, type GoalsWorkspace, type GoalsWorkspaceData, GoalsWorkspaceMissingSchema, GoalsWorkspacePresentSchema, GoalsWorkspaceSchema, type HomeQuery, HomeQuerySchema, type HomeRoadmapMissing, HomeRoadmapMissingSchema, type HomeRoadmapPresent, HomeRoadmapPresentSchema, type HomeRoadmapResponse, HomeRoadmapResponseSchema, type IncomeDraft, IncomeDraftSchema, IncomeMutationResponseSchema, type InitialHomeState, InitialHomeStateSchema, type InvestmentAvailability, type InvestmentContributionCurrencyState, type InvestmentContributionDataState, NOTIFICATION_TYPES, type NotificationSetting, NotificationSettingSchema, NotificationSettingsResponseSchema, NotificationTimeSchema, type NotificationType, NotificationTypeSchema, ONE_TIME_EXPENSE_SOURCES, type PlaceholderItem, type PlaceholderItemList, PlaceholderItemListSchema, PlaceholderItemSchema, type PlaceholderStatus, PlaceholderStatusSchema, type PreviewGoalEditInput, type PreviousMonthShortfall, type ProfileResponse, ProfileResponseSchema, RECURRING_EXPENSE_SOURCES, RenameSavingsPlaceSchema, type RoadmapData, RoadmapDataSchema, type RoadmapExpense, RoadmapExpenseSchema, type RoadmapFinances, RoadmapFinancesSchema, type RoadmapIncome, RoadmapIncomeSchema, type RoadmapMonth, RoadmapMonthSchema, type SavingAllocationPreview, type SavingContributionConfirmation, SavingContributionConfirmationSchema, type SavingContributionContext, SavingContributionContextMissingSchema, SavingContributionContextPresentSchema, SavingContributionContextSchema, type SavingContributionContextState, SavingContributionContextStateSchema, SavingContributionCreatedSchema, SavingContributionDeletedSchema, type SavingContributionDraftWire, SavingContributionDraftWireSchema, type SavingContributionEditPreview, SavingContributionEditPreviewSchema, type SavingContributionPreview, type SavingContributionPreviewResult, SavingContributionPreviewSchema, SavingContributionStaleSchema, type SavingContributionSummary, SavingContributionUpdatedSchema, type SavingDraft, type SavingDraftInput, type SavingPreviewResult, SavingsPlaceIdParamsSchema, SavingsPlaceMutationResponseSchema, SavingsTransferResponseSchema, SavingsTransferSchema, type UpdateNotificationSetting, UpdateNotificationSettingSchema, type UpdatePlaceholderItem, UpdatePlaceholderItemSchema, type UpdateSavingContributionWire, UpdateSavingContributionWireSchema, type UsdPurchaseDerivation, type UsdPurchaseInput, allocationEntrySchema, confirmGoalCreationSchema, confirmGoalEditSchema, createObjectiveSchema, deriveUsdPurchase, goalCreationDraftSchema, goalEditRequestSchema, goalImpactSchema, goalPlanSchema, goalPrioritySchema, goalStrategySchema, goalTypeSchema, investmentAvailabilitySchema, isExpenseIncludedInMonth, isIncomeIncludedInMonth, parseGoalCreationSubmission, previewGoalEditSchema };
+declare const BENEFIT_CATEGORIES: readonly ["supermercado", "combustible", "gastronomia", "cine", "farmacia", "indumentaria", "viajes", "tecnologia", "otros"];
+declare const BenefitCategorySchema: z.ZodEnum<{
+    supermercado: "supermercado";
+    combustible: "combustible";
+    gastronomia: "gastronomia";
+    cine: "cine";
+    farmacia: "farmacia";
+    indumentaria: "indumentaria";
+    viajes: "viajes";
+    tecnologia: "tecnologia";
+    otros: "otros";
+}>;
+type BenefitCategory = z.infer<typeof BenefitCategorySchema>;
+declare const BENEFIT_CATEGORY_LABELS: Record<BenefitCategory, string>;
+declare const BENEFIT_KINDS: readonly ["discount", "cashback", "installments", "nxm"];
+type BenefitKind = (typeof BENEFIT_KINDS)[number];
+declare const BENEFIT_CAP_PERIODS: readonly ["transaction", "day", "week", "month"];
+type BenefitCapPeriod = (typeof BENEFIT_CAP_PERIODS)[number];
+declare const PROVIDER_KINDS: readonly ["bank", "network", "wallet", "membership"];
+declare const INSTRUMENT_TYPES: readonly ["credit", "debit", "prepaid", "membership"];
+declare const CARD_NETWORKS: readonly ["visa", "mastercard", "amex", "cabal"];
+declare const CardNetworkSchema: z.ZodEnum<{
+    visa: "visa";
+    mastercard: "mastercard";
+    amex: "amex";
+    cabal: "cabal";
+}>;
+declare const CARD_TYPES: readonly ["credit", "debit", "prepaid"];
+declare const MEMBERSHIP_USAGES: readonly ["wallet_access", "account_access", "subscription", "loyalty"];
+declare const CardSelectorSchema: z.ZodObject<{
+    instrumentSlugs: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    issuerProviderSlugs: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    excludedIssuerProviderSlugs: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    network: z.ZodOptional<z.ZodEnum<{
+        visa: "visa";
+        mastercard: "mastercard";
+        amex: "amex";
+        cabal: "cabal";
+    }>>;
+    types: z.ZodOptional<z.ZodArray<z.ZodEnum<{
+        credit: "credit";
+        debit: "debit";
+        prepaid: "prepaid";
+    }>>>;
+    productLevels: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    segments: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    issuerCountries: z.ZodOptional<z.ZodArray<z.ZodString>>;
+}, z.core.$strict>;
+type CardSelector = z.infer<typeof CardSelectorSchema>;
+declare const PROVIDER_FACT_KEYS: readonly ["salaryAccount", "plan", "loyaltyLevel", "tier"];
+type Requirement = {
+    allOf: Requirement[];
+} | {
+    anyOf: Requirement[];
+} | {
+    card: CardSelector;
+} | {
+    membership: {
+        instrumentSlug: string;
+    };
+} | {
+    providerFact: {
+        providerSlug: string;
+        key: (typeof PROVIDER_FACT_KEYS)[number];
+        values: (string | boolean)[];
+    };
+};
+declare const REQUIREMENT_MAX_DEPTH = 5;
+declare const REQUIREMENT_MAX_NODES = 50;
+declare const RequirementSchema: z.ZodType<Requirement, unknown, z.core.$ZodTypeInternals<Requirement, unknown>>;
+declare const InstrumentFactsSchema: z.ZodObject<{
+    segment: z.ZodOptional<z.ZodString>;
+    productLevel: z.ZodOptional<z.ZodString>;
+    issuerCountry: z.ZodOptional<z.ZodString>;
+    membershipStatus: z.ZodOptional<z.ZodEnum<{
+        unknown: "unknown";
+        active: "active";
+        inactive: "inactive";
+    }>>;
+    membershipValidUntil: z.ZodOptional<z.ZodISODate>;
+}, z.core.$strict>;
+type InstrumentFacts = z.infer<typeof InstrumentFactsSchema>;
+declare const ProviderFactsSchema: z.ZodObject<{
+    salaryAccount: z.ZodOptional<z.ZodBoolean>;
+    plan: z.ZodOptional<z.ZodString>;
+    loyaltyLevel: z.ZodOptional<z.ZodString>;
+    tier: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+type ProviderFacts = z.infer<typeof ProviderFactsSchema>;
+declare const BenefitProfileFactsSchema: z.ZodObject<{
+    instrumentFacts: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
+        segment: z.ZodOptional<z.ZodString>;
+        productLevel: z.ZodOptional<z.ZodString>;
+        issuerCountry: z.ZodOptional<z.ZodString>;
+        membershipStatus: z.ZodOptional<z.ZodEnum<{
+            unknown: "unknown";
+            active: "active";
+            inactive: "inactive";
+        }>>;
+        membershipValidUntil: z.ZodOptional<z.ZodISODate>;
+    }, z.core.$strict>>>;
+    providerFacts: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
+        salaryAccount: z.ZodOptional<z.ZodBoolean>;
+        plan: z.ZodOptional<z.ZodString>;
+        loyaltyLevel: z.ZodOptional<z.ZodString>;
+        tier: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
+}, z.core.$strip>;
+type BenefitProfileFacts = z.infer<typeof BenefitProfileFactsSchema>;
+declare const OFFER_TYPES: readonly ["discount", "cashback", "installments", "points", "other"];
+declare const CAP_PERIODS: readonly ["transaction", "day", "week", "month", "campaign"];
+declare const CAP_SCOPES: readonly ["card", "account", "person", "bank", "promotion"];
+declare const TRI_STATE: readonly ["yes", "no", "unknown"];
+declare const BENEFIT_LIFECYCLE: readonly ["draft", "needs_review", "published", "expired", "withdrawn"];
+declare const BenefitCapSchema: z.ZodObject<{
+    amountMinor: z.ZodNullable<z.ZodNumber>;
+    period: z.ZodEnum<{
+        month: "month";
+        transaction: "transaction";
+        day: "day";
+        week: "week";
+        campaign: "campaign";
+    }>;
+    scope: z.ZodNullable<z.ZodEnum<{
+        bank: "bank";
+        card: "card";
+        account: "account";
+        person: "person";
+        promotion: "promotion";
+    }>>;
+    sharedCapGroupId: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+type BenefitCap = z.infer<typeof BenefitCapSchema>;
+declare const BenefitRulesSchema: z.ZodObject<{
+    eligibility: z.ZodType<Requirement, unknown, z.core.$ZodTypeInternals<Requirement, unknown>>;
+    eligibilityCompleteness: z.ZodEnum<{
+        incomplete: "incomplete";
+        complete: "complete";
+    }>;
+    unresolved: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    offer: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        type: z.ZodLiteral<"discount">;
+        percentageBps: z.ZodNumber;
+    }, z.core.$strip>, z.ZodObject<{
+        type: z.ZodLiteral<"cashback">;
+        percentageBps: z.ZodNumber;
+    }, z.core.$strip>, z.ZodObject<{
+        type: z.ZodLiteral<"installments">;
+        installments: z.ZodNumber;
+    }, z.core.$strip>, z.ZodObject<{
+        type: z.ZodLiteral<"points">;
+        description: z.ZodString;
+    }, z.core.$strip>, z.ZodObject<{
+        type: z.ZodLiteral<"other">;
+        description: z.ZodString;
+    }, z.core.$strip>], "type">;
+    currency: z.ZodLiteral<"ARS">;
+    minimumSpendMinor: z.ZodNullable<z.ZodNumber>;
+    capState: z.ZodEnum<{
+        unknown: "unknown";
+        known: "known";
+        none: "none";
+    }>;
+    caps: z.ZodArray<z.ZodObject<{
+        amountMinor: z.ZodNullable<z.ZodNumber>;
+        period: z.ZodEnum<{
+            month: "month";
+            transaction: "transaction";
+            day: "day";
+            week: "week";
+            campaign: "campaign";
+        }>;
+        scope: z.ZodNullable<z.ZodEnum<{
+            bank: "bank";
+            card: "card";
+            account: "account";
+            person: "person";
+            promotion: "promotion";
+        }>>;
+        sharedCapGroupId: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    validity: z.ZodObject<{
+        from: z.ZodNullable<z.ZodISODate>;
+        to: z.ZodNullable<z.ZodISODate>;
+        weekdays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+        monthDays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strict>;
+    channels: z.ZodObject<{
+        allowed: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        excluded: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    }, z.core.$strict>;
+    requiredActions: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    stackable: z.ZodEnum<{
+        unknown: "unknown";
+        yes: "yes";
+        no: "no";
+    }>;
+    recurrence: z.ZodEnum<{
+        campaign: "campaign";
+        ongoing: "ongoing";
+    }>;
+}, z.core.$strict>;
+type BenefitRules = z.infer<typeof BenefitRulesSchema>;
+declare const BenefitMatchSchema: z.ZodObject<{
+    benefitId: z.ZodString;
+    eligibility: z.ZodEnum<{
+        eligible: "eligible";
+        ineligible: "ineligible";
+        needs_information: "needs_information";
+    }>;
+    availability: z.ZodEnum<{
+        unknown: "unknown";
+        available: "available";
+        upcoming: "upcoming";
+        unavailable: "unavailable";
+    }>;
+    nextDate: z.ZodNullable<z.ZodISODate>;
+    stale: z.ZodBoolean;
+    channels: z.ZodObject<{
+        allowed: z.ZodArray<z.ZodString>;
+        excluded: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>;
+    matchedInstrumentSlugs: z.ZodArray<z.ZodString>;
+    missingFacts: z.ZodArray<z.ZodString>;
+    reasons: z.ZodArray<z.ZodString>;
+    requiredActions: z.ZodArray<z.ZodString>;
+    estimatedSavingMinor: z.ZodNullable<z.ZodNumber>;
+    estimateAssumptions: z.ZodArray<z.ZodString>;
+}, z.core.$strip>;
+type BenefitMatch = z.infer<typeof BenefitMatchSchema>;
+declare const BenefitCatalogResponseSchema: z.ZodObject<{
+    providers: z.ZodArray<z.ZodObject<{
+        slug: z.ZodString;
+        name: z.ZodString;
+        kind: z.ZodEnum<{
+            bank: "bank";
+            network: "network";
+            wallet: "wallet";
+            membership: "membership";
+        }>;
+        coverage: z.ZodEnum<{
+            active: "active";
+            pending: "pending";
+            partial: "partial";
+        }>;
+        instruments: z.ZodArray<z.ZodObject<{
+            slug: z.ZodString;
+            label: z.ZodString;
+            network: z.ZodNullable<z.ZodEnum<{
+                visa: "visa";
+                mastercard: "mastercard";
+                amex: "amex";
+                cabal: "cabal";
+            }>>;
+            type: z.ZodEnum<{
+                membership: "membership";
+                credit: "credit";
+                debit: "debit";
+                prepaid: "prepaid";
+            }>;
+            tier: z.ZodNullable<z.ZodString>;
+            issuerProviderSlug: z.ZodNullable<z.ZodString>;
+            segment: z.ZodNullable<z.ZodString>;
+            productLevel: z.ZodNullable<z.ZodString>;
+            usage: z.ZodNullable<z.ZodEnum<{
+                wallet_access: "wallet_access";
+                account_access: "account_access";
+                subscription: "subscription";
+                loyalty: "loyalty";
+            }>>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    categories: z.ZodArray<z.ZodObject<{
+        slug: z.ZodEnum<{
+            supermercado: "supermercado";
+            combustible: "combustible";
+            gastronomia: "gastronomia";
+            cine: "cine";
+            farmacia: "farmacia";
+            indumentaria: "indumentaria";
+            viajes: "viajes";
+            tecnologia: "tecnologia";
+            otros: "otros";
+        }>;
+        label: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+type BenefitCatalogResponse = z.infer<typeof BenefitCatalogResponseSchema>;
+declare const UpdateBenefitPreferencesSchema: z.ZodObject<{
+    instrumentFacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        segment: z.ZodOptional<z.ZodString>;
+        productLevel: z.ZodOptional<z.ZodString>;
+        issuerCountry: z.ZodOptional<z.ZodString>;
+        membershipStatus: z.ZodOptional<z.ZodEnum<{
+            unknown: "unknown";
+            active: "active";
+            inactive: "inactive";
+        }>>;
+        membershipValidUntil: z.ZodOptional<z.ZodISODate>;
+    }, z.core.$strict>>>;
+    providerFacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        salaryAccount: z.ZodOptional<z.ZodBoolean>;
+        plan: z.ZodOptional<z.ZodString>;
+        loyaltyLevel: z.ZodOptional<z.ZodString>;
+        tier: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
+    instrumentSlugs: z.ZodArray<z.ZodString>;
+    categories: z.ZodArray<z.ZodEnum<{
+        supermercado: "supermercado";
+        combustible: "combustible";
+        gastronomia: "gastronomia";
+        cine: "cine";
+        farmacia: "farmacia";
+        indumentaria: "indumentaria";
+        viajes: "viajes";
+        tecnologia: "tecnologia";
+        otros: "otros";
+    }>>;
+}, z.core.$strip>;
+type UpdateBenefitPreferences = z.infer<typeof UpdateBenefitPreferencesSchema>;
+declare const BenefitPreferencesSchema: z.ZodObject<{
+    instrumentSlugs: z.ZodArray<z.ZodString>;
+    categories: z.ZodArray<z.ZodEnum<{
+        supermercado: "supermercado";
+        combustible: "combustible";
+        gastronomia: "gastronomia";
+        cine: "cine";
+        farmacia: "farmacia";
+        indumentaria: "indumentaria";
+        viajes: "viajes";
+        tecnologia: "tecnologia";
+        otros: "otros";
+    }>>;
+    enabled: z.ZodBoolean;
+    instrumentFacts: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
+        segment: z.ZodOptional<z.ZodString>;
+        productLevel: z.ZodOptional<z.ZodString>;
+        issuerCountry: z.ZodOptional<z.ZodString>;
+        membershipStatus: z.ZodOptional<z.ZodEnum<{
+            unknown: "unknown";
+            active: "active";
+            inactive: "inactive";
+        }>>;
+        membershipValidUntil: z.ZodOptional<z.ZodISODate>;
+    }, z.core.$strict>>>;
+    providerFacts: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
+        salaryAccount: z.ZodOptional<z.ZodBoolean>;
+        plan: z.ZodOptional<z.ZodString>;
+        loyaltyLevel: z.ZodOptional<z.ZodString>;
+        tier: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
+}, z.core.$strip>;
+type BenefitPreferences = z.infer<typeof BenefitPreferencesSchema>;
+
+declare const BenefitLifecycleSchema: z.ZodEnum<{
+    draft: "draft";
+    needs_review: "needs_review";
+    published: "published";
+    expired: "expired";
+    withdrawn: "withdrawn";
+}>;
+declare const BenefitEvidenceSchema: z.ZodObject<{
+    sourceUrl: z.ZodString;
+    detailUrl: z.ZodNullable<z.ZodString>;
+    termsUrl: z.ZodNullable<z.ZodString>;
+    quotes: z.ZodArray<z.ZodObject<{
+        field: z.ZodString;
+        quote: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+declare const AdminBenefitListQuerySchema: z.ZodObject<{
+    status: z.ZodOptional<z.ZodEnum<{
+        draft: "draft";
+        needs_review: "needs_review";
+        published: "published";
+        expired: "expired";
+        withdrawn: "withdrawn";
+    }>>;
+    source: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+type AdminBenefitListQuery = z.infer<typeof AdminBenefitListQuerySchema>;
+declare const AdminBenefitListItemSchema: z.ZodObject<{
+    id: z.ZodString;
+    lifecycle: z.ZodEnum<{
+        draft: "draft";
+        needs_review: "needs_review";
+        published: "published";
+        expired: "expired";
+        withdrawn: "withdrawn";
+    }>;
+    origin: z.ZodEnum<{
+        harvest: "harvest";
+        manual: "manual";
+    }>;
+    publisherProviderSlug: z.ZodString;
+    category: z.ZodEnum<{
+        supermercado: "supermercado";
+        combustible: "combustible";
+        gastronomia: "gastronomia";
+        cine: "cine";
+        farmacia: "farmacia";
+        indumentaria: "indumentaria";
+        viajes: "viajes";
+        tecnologia: "tecnologia";
+        otros: "otros";
+    }>;
+    title: z.ZodString;
+    merchant: z.ZodNullable<z.ZodString>;
+    rules: z.ZodObject<{
+        eligibility: z.ZodType<Requirement, unknown, z.core.$ZodTypeInternals<Requirement, unknown>>;
+        eligibilityCompleteness: z.ZodEnum<{
+            incomplete: "incomplete";
+            complete: "complete";
+        }>;
+        unresolved: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        offer: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            type: z.ZodLiteral<"discount">;
+            percentageBps: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"cashback">;
+            percentageBps: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"installments">;
+            installments: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"points">;
+            description: z.ZodString;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"other">;
+            description: z.ZodString;
+        }, z.core.$strip>], "type">;
+        currency: z.ZodLiteral<"ARS">;
+        minimumSpendMinor: z.ZodNullable<z.ZodNumber>;
+        capState: z.ZodEnum<{
+            unknown: "unknown";
+            known: "known";
+            none: "none";
+        }>;
+        caps: z.ZodArray<z.ZodObject<{
+            amountMinor: z.ZodNullable<z.ZodNumber>;
+            period: z.ZodEnum<{
+                month: "month";
+                transaction: "transaction";
+                day: "day";
+                week: "week";
+                campaign: "campaign";
+            }>;
+            scope: z.ZodNullable<z.ZodEnum<{
+                bank: "bank";
+                card: "card";
+                account: "account";
+                person: "person";
+                promotion: "promotion";
+            }>>;
+            sharedCapGroupId: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>;
+        validity: z.ZodObject<{
+            from: z.ZodNullable<z.ZodISODate>;
+            to: z.ZodNullable<z.ZodISODate>;
+            weekdays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+            monthDays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strict>;
+        channels: z.ZodObject<{
+            allowed: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            excluded: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        }, z.core.$strict>;
+        requiredActions: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        stackable: z.ZodEnum<{
+            unknown: "unknown";
+            yes: "yes";
+            no: "no";
+        }>;
+        recurrence: z.ZodEnum<{
+            campaign: "campaign";
+            ongoing: "ongoing";
+        }>;
+    }, z.core.$strict>;
+    hasPendingRevision: z.ZodBoolean;
+    lastVerifiedAt: z.ZodNullable<z.ZodString>;
+}, z.core.$strip>;
+type AdminBenefitListItem = z.infer<typeof AdminBenefitListItemSchema>;
+declare const AdminBenefitListSchema: z.ZodObject<{
+    benefits: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        lifecycle: z.ZodEnum<{
+            draft: "draft";
+            needs_review: "needs_review";
+            published: "published";
+            expired: "expired";
+            withdrawn: "withdrawn";
+        }>;
+        origin: z.ZodEnum<{
+            harvest: "harvest";
+            manual: "manual";
+        }>;
+        publisherProviderSlug: z.ZodString;
+        category: z.ZodEnum<{
+            supermercado: "supermercado";
+            combustible: "combustible";
+            gastronomia: "gastronomia";
+            cine: "cine";
+            farmacia: "farmacia";
+            indumentaria: "indumentaria";
+            viajes: "viajes";
+            tecnologia: "tecnologia";
+            otros: "otros";
+        }>;
+        title: z.ZodString;
+        merchant: z.ZodNullable<z.ZodString>;
+        rules: z.ZodObject<{
+            eligibility: z.ZodType<Requirement, unknown, z.core.$ZodTypeInternals<Requirement, unknown>>;
+            eligibilityCompleteness: z.ZodEnum<{
+                incomplete: "incomplete";
+                complete: "complete";
+            }>;
+            unresolved: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            offer: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                type: z.ZodLiteral<"discount">;
+                percentageBps: z.ZodNumber;
+            }, z.core.$strip>, z.ZodObject<{
+                type: z.ZodLiteral<"cashback">;
+                percentageBps: z.ZodNumber;
+            }, z.core.$strip>, z.ZodObject<{
+                type: z.ZodLiteral<"installments">;
+                installments: z.ZodNumber;
+            }, z.core.$strip>, z.ZodObject<{
+                type: z.ZodLiteral<"points">;
+                description: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                type: z.ZodLiteral<"other">;
+                description: z.ZodString;
+            }, z.core.$strip>], "type">;
+            currency: z.ZodLiteral<"ARS">;
+            minimumSpendMinor: z.ZodNullable<z.ZodNumber>;
+            capState: z.ZodEnum<{
+                unknown: "unknown";
+                known: "known";
+                none: "none";
+            }>;
+            caps: z.ZodArray<z.ZodObject<{
+                amountMinor: z.ZodNullable<z.ZodNumber>;
+                period: z.ZodEnum<{
+                    month: "month";
+                    transaction: "transaction";
+                    day: "day";
+                    week: "week";
+                    campaign: "campaign";
+                }>;
+                scope: z.ZodNullable<z.ZodEnum<{
+                    bank: "bank";
+                    card: "card";
+                    account: "account";
+                    person: "person";
+                    promotion: "promotion";
+                }>>;
+                sharedCapGroupId: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>>;
+            validity: z.ZodObject<{
+                from: z.ZodNullable<z.ZodISODate>;
+                to: z.ZodNullable<z.ZodISODate>;
+                weekdays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+                monthDays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+            }, z.core.$strict>;
+            channels: z.ZodObject<{
+                allowed: z.ZodDefault<z.ZodArray<z.ZodString>>;
+                excluded: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            }, z.core.$strict>;
+            requiredActions: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            stackable: z.ZodEnum<{
+                unknown: "unknown";
+                yes: "yes";
+                no: "no";
+            }>;
+            recurrence: z.ZodEnum<{
+                campaign: "campaign";
+                ongoing: "ongoing";
+            }>;
+        }, z.core.$strict>;
+        hasPendingRevision: z.ZodBoolean;
+        lastVerifiedAt: z.ZodNullable<z.ZodString>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+type AdminBenefitList = z.infer<typeof AdminBenefitListSchema>;
+declare const AdminBenefitRevisionSchema: z.ZodObject<{
+    id: z.ZodString;
+    baseVersion: z.ZodNumber;
+    category: z.ZodEnum<{
+        supermercado: "supermercado";
+        combustible: "combustible";
+        gastronomia: "gastronomia";
+        cine: "cine";
+        farmacia: "farmacia";
+        indumentaria: "indumentaria";
+        viajes: "viajes";
+        tecnologia: "tecnologia";
+        otros: "otros";
+    }>;
+    title: z.ZodString;
+    merchant: z.ZodNullable<z.ZodString>;
+    rules: z.ZodObject<{
+        eligibility: z.ZodType<Requirement, unknown, z.core.$ZodTypeInternals<Requirement, unknown>>;
+        eligibilityCompleteness: z.ZodEnum<{
+            incomplete: "incomplete";
+            complete: "complete";
+        }>;
+        unresolved: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        offer: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            type: z.ZodLiteral<"discount">;
+            percentageBps: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"cashback">;
+            percentageBps: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"installments">;
+            installments: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"points">;
+            description: z.ZodString;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"other">;
+            description: z.ZodString;
+        }, z.core.$strip>], "type">;
+        currency: z.ZodLiteral<"ARS">;
+        minimumSpendMinor: z.ZodNullable<z.ZodNumber>;
+        capState: z.ZodEnum<{
+            unknown: "unknown";
+            known: "known";
+            none: "none";
+        }>;
+        caps: z.ZodArray<z.ZodObject<{
+            amountMinor: z.ZodNullable<z.ZodNumber>;
+            period: z.ZodEnum<{
+                month: "month";
+                transaction: "transaction";
+                day: "day";
+                week: "week";
+                campaign: "campaign";
+            }>;
+            scope: z.ZodNullable<z.ZodEnum<{
+                bank: "bank";
+                card: "card";
+                account: "account";
+                person: "person";
+                promotion: "promotion";
+            }>>;
+            sharedCapGroupId: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>;
+        validity: z.ZodObject<{
+            from: z.ZodNullable<z.ZodISODate>;
+            to: z.ZodNullable<z.ZodISODate>;
+            weekdays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+            monthDays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strict>;
+        channels: z.ZodObject<{
+            allowed: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            excluded: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        }, z.core.$strict>;
+        requiredActions: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        stackable: z.ZodEnum<{
+            unknown: "unknown";
+            yes: "yes";
+            no: "no";
+        }>;
+        recurrence: z.ZodEnum<{
+            campaign: "campaign";
+            ongoing: "ongoing";
+        }>;
+    }, z.core.$strict>;
+    evidence: z.ZodObject<{
+        sourceUrl: z.ZodString;
+        detailUrl: z.ZodNullable<z.ZodString>;
+        termsUrl: z.ZodNullable<z.ZodString>;
+        quotes: z.ZodArray<z.ZodObject<{
+            field: z.ZodString;
+            quote: z.ZodString;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+    actor: z.ZodString;
+    createdAt: z.ZodString;
+    changedFields: z.ZodArray<z.ZodString>;
+}, z.core.$strip>;
+declare const AdminBenefitDetailSchema: z.ZodObject<{
+    id: z.ZodString;
+    lifecycle: z.ZodEnum<{
+        draft: "draft";
+        needs_review: "needs_review";
+        published: "published";
+        expired: "expired";
+        withdrawn: "withdrawn";
+    }>;
+    origin: z.ZodEnum<{
+        harvest: "harvest";
+        manual: "manual";
+    }>;
+    publisherProviderSlug: z.ZodString;
+    category: z.ZodEnum<{
+        supermercado: "supermercado";
+        combustible: "combustible";
+        gastronomia: "gastronomia";
+        cine: "cine";
+        farmacia: "farmacia";
+        indumentaria: "indumentaria";
+        viajes: "viajes";
+        tecnologia: "tecnologia";
+        otros: "otros";
+    }>;
+    title: z.ZodString;
+    merchant: z.ZodNullable<z.ZodString>;
+    rules: z.ZodObject<{
+        eligibility: z.ZodType<Requirement, unknown, z.core.$ZodTypeInternals<Requirement, unknown>>;
+        eligibilityCompleteness: z.ZodEnum<{
+            incomplete: "incomplete";
+            complete: "complete";
+        }>;
+        unresolved: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        offer: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            type: z.ZodLiteral<"discount">;
+            percentageBps: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"cashback">;
+            percentageBps: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"installments">;
+            installments: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"points">;
+            description: z.ZodString;
+        }, z.core.$strip>, z.ZodObject<{
+            type: z.ZodLiteral<"other">;
+            description: z.ZodString;
+        }, z.core.$strip>], "type">;
+        currency: z.ZodLiteral<"ARS">;
+        minimumSpendMinor: z.ZodNullable<z.ZodNumber>;
+        capState: z.ZodEnum<{
+            unknown: "unknown";
+            known: "known";
+            none: "none";
+        }>;
+        caps: z.ZodArray<z.ZodObject<{
+            amountMinor: z.ZodNullable<z.ZodNumber>;
+            period: z.ZodEnum<{
+                month: "month";
+                transaction: "transaction";
+                day: "day";
+                week: "week";
+                campaign: "campaign";
+            }>;
+            scope: z.ZodNullable<z.ZodEnum<{
+                bank: "bank";
+                card: "card";
+                account: "account";
+                person: "person";
+                promotion: "promotion";
+            }>>;
+            sharedCapGroupId: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>;
+        validity: z.ZodObject<{
+            from: z.ZodNullable<z.ZodISODate>;
+            to: z.ZodNullable<z.ZodISODate>;
+            weekdays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+            monthDays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strict>;
+        channels: z.ZodObject<{
+            allowed: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            excluded: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        }, z.core.$strict>;
+        requiredActions: z.ZodDefault<z.ZodArray<z.ZodString>>;
+        stackable: z.ZodEnum<{
+            unknown: "unknown";
+            yes: "yes";
+            no: "no";
+        }>;
+        recurrence: z.ZodEnum<{
+            campaign: "campaign";
+            ongoing: "ongoing";
+        }>;
+    }, z.core.$strict>;
+    hasPendingRevision: z.ZodBoolean;
+    lastVerifiedAt: z.ZodNullable<z.ZodString>;
+    evidence: z.ZodObject<{
+        sourceUrl: z.ZodString;
+        detailUrl: z.ZodNullable<z.ZodString>;
+        termsUrl: z.ZodNullable<z.ZodString>;
+        quotes: z.ZodArray<z.ZodObject<{
+            field: z.ZodString;
+            quote: z.ZodString;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+    protectedFields: z.ZodArray<z.ZodString>;
+    version: z.ZodNumber;
+    pendingRevision: z.ZodNullable<z.ZodObject<{
+        id: z.ZodString;
+        baseVersion: z.ZodNumber;
+        category: z.ZodEnum<{
+            supermercado: "supermercado";
+            combustible: "combustible";
+            gastronomia: "gastronomia";
+            cine: "cine";
+            farmacia: "farmacia";
+            indumentaria: "indumentaria";
+            viajes: "viajes";
+            tecnologia: "tecnologia";
+            otros: "otros";
+        }>;
+        title: z.ZodString;
+        merchant: z.ZodNullable<z.ZodString>;
+        rules: z.ZodObject<{
+            eligibility: z.ZodType<Requirement, unknown, z.core.$ZodTypeInternals<Requirement, unknown>>;
+            eligibilityCompleteness: z.ZodEnum<{
+                incomplete: "incomplete";
+                complete: "complete";
+            }>;
+            unresolved: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            offer: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                type: z.ZodLiteral<"discount">;
+                percentageBps: z.ZodNumber;
+            }, z.core.$strip>, z.ZodObject<{
+                type: z.ZodLiteral<"cashback">;
+                percentageBps: z.ZodNumber;
+            }, z.core.$strip>, z.ZodObject<{
+                type: z.ZodLiteral<"installments">;
+                installments: z.ZodNumber;
+            }, z.core.$strip>, z.ZodObject<{
+                type: z.ZodLiteral<"points">;
+                description: z.ZodString;
+            }, z.core.$strip>, z.ZodObject<{
+                type: z.ZodLiteral<"other">;
+                description: z.ZodString;
+            }, z.core.$strip>], "type">;
+            currency: z.ZodLiteral<"ARS">;
+            minimumSpendMinor: z.ZodNullable<z.ZodNumber>;
+            capState: z.ZodEnum<{
+                unknown: "unknown";
+                known: "known";
+                none: "none";
+            }>;
+            caps: z.ZodArray<z.ZodObject<{
+                amountMinor: z.ZodNullable<z.ZodNumber>;
+                period: z.ZodEnum<{
+                    month: "month";
+                    transaction: "transaction";
+                    day: "day";
+                    week: "week";
+                    campaign: "campaign";
+                }>;
+                scope: z.ZodNullable<z.ZodEnum<{
+                    bank: "bank";
+                    card: "card";
+                    account: "account";
+                    person: "person";
+                    promotion: "promotion";
+                }>>;
+                sharedCapGroupId: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>>;
+            validity: z.ZodObject<{
+                from: z.ZodNullable<z.ZodISODate>;
+                to: z.ZodNullable<z.ZodISODate>;
+                weekdays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+                monthDays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+            }, z.core.$strict>;
+            channels: z.ZodObject<{
+                allowed: z.ZodDefault<z.ZodArray<z.ZodString>>;
+                excluded: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            }, z.core.$strict>;
+            requiredActions: z.ZodDefault<z.ZodArray<z.ZodString>>;
+            stackable: z.ZodEnum<{
+                unknown: "unknown";
+                yes: "yes";
+                no: "no";
+            }>;
+            recurrence: z.ZodEnum<{
+                campaign: "campaign";
+                ongoing: "ongoing";
+            }>;
+        }, z.core.$strict>;
+        evidence: z.ZodObject<{
+            sourceUrl: z.ZodString;
+            detailUrl: z.ZodNullable<z.ZodString>;
+            termsUrl: z.ZodNullable<z.ZodString>;
+            quotes: z.ZodArray<z.ZodObject<{
+                field: z.ZodString;
+                quote: z.ZodString;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+        actor: z.ZodString;
+        createdAt: z.ZodString;
+        changedFields: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+type AdminBenefitDetail = z.infer<typeof AdminBenefitDetailSchema>;
+declare const AdminBenefitActionSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    action: z.ZodLiteral<"approve">;
+    reason: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>, z.ZodObject<{
+    action: z.ZodLiteral<"reject">;
+    reason: z.ZodString;
+}, z.core.$strip>, z.ZodObject<{
+    action: z.ZodLiteral<"reverify">;
+}, z.core.$strip>], "action">;
+type AdminBenefitAction = z.infer<typeof AdminBenefitActionSchema>;
+declare const AdminBenefitActionResultSchema: z.ZodObject<{
+    benefitId: z.ZodString;
+    lifecycle: z.ZodEnum<{
+        draft: "draft";
+        needs_review: "needs_review";
+        published: "published";
+        expired: "expired";
+        withdrawn: "withdrawn";
+    }>;
+    version: z.ZodNumber;
+}, z.core.$strip>;
+type AdminBenefitActionResult = z.infer<typeof AdminBenefitActionResultSchema>;
+declare const AdminSourceSchema: z.ZodObject<{
+    sourceId: z.ZodString;
+    providerSlug: z.ZodString;
+    url: z.ZodString;
+    status: z.ZodString;
+    coverage: z.ZodString;
+    note: z.ZodNullable<z.ZodString>;
+    enabled: z.ZodBoolean;
+    autoPublish: z.ZodBoolean;
+    lastRun: z.ZodNullable<z.ZodObject<{
+        outcome: z.ZodEnum<{
+            partial: "partial";
+            ok: "ok";
+            blocked: "blocked";
+            failed: "failed";
+        }>;
+        complete: z.ZodBoolean;
+        detected: z.ZodNumber;
+        valid: z.ZodNumber;
+        rejected: z.ZodNumber;
+        diagnostics: z.ZodArray<z.ZodString>;
+        startedAt: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+type AdminSource = z.infer<typeof AdminSourceSchema>;
+declare const AdminSourceListSchema: z.ZodObject<{
+    sources: z.ZodArray<z.ZodObject<{
+        sourceId: z.ZodString;
+        providerSlug: z.ZodString;
+        url: z.ZodString;
+        status: z.ZodString;
+        coverage: z.ZodString;
+        note: z.ZodNullable<z.ZodString>;
+        enabled: z.ZodBoolean;
+        autoPublish: z.ZodBoolean;
+        lastRun: z.ZodNullable<z.ZodObject<{
+            outcome: z.ZodEnum<{
+                partial: "partial";
+                ok: "ok";
+                blocked: "blocked";
+                failed: "failed";
+            }>;
+            complete: z.ZodBoolean;
+            detected: z.ZodNumber;
+            valid: z.ZodNumber;
+            rejected: z.ZodNumber;
+            diagnostics: z.ZodArray<z.ZodString>;
+            startedAt: z.ZodString;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+type AdminSourceList = z.infer<typeof AdminSourceListSchema>;
+declare const AdminSourcePolicyPatchSchema: z.ZodObject<{
+    enabled: z.ZodOptional<z.ZodBoolean>;
+    autoPublish: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strip>;
+type AdminSourcePolicyPatch = z.infer<typeof AdminSourcePolicyPatchSchema>;
+
+declare const CATALOG_CATEGORIES: readonly ["supermercados", "gastronomia", "indumentaria", "hogar", "electronica", "salud-belleza", "viajes", "transporte", "combustible-autos", "entretenimiento", "ninos-libreria", "mascotas-servicios", "otros"];
+declare const CatalogCategorySchema: z.ZodEnum<{
+    gastronomia: "gastronomia";
+    indumentaria: "indumentaria";
+    viajes: "viajes";
+    otros: "otros";
+    supermercados: "supermercados";
+    hogar: "hogar";
+    electronica: "electronica";
+    "salud-belleza": "salud-belleza";
+    transporte: "transporte";
+    "combustible-autos": "combustible-autos";
+    entretenimiento: "entretenimiento";
+    "ninos-libreria": "ninos-libreria";
+    "mascotas-servicios": "mascotas-servicios";
+}>;
+type CatalogCategory = z.infer<typeof CatalogCategorySchema>;
+declare const CATALOG_CATEGORY_LABELS: Record<CatalogCategory, string>;
+declare const CampaignOfferSchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    kind: z.ZodLiteral<"percent">;
+    percentageBps: z.ZodNumber;
+    mode: z.ZodEnum<{
+        discount: "discount";
+        cashback: "cashback";
+        unspecified: "unspecified";
+    }>;
+}, z.core.$strict>, z.ZodObject<{
+    kind: z.ZodLiteral<"installments">;
+    count: z.ZodNumber;
+    upTo: z.ZodBoolean;
+}, z.core.$strict>], "kind">;
+type CampaignOffer = z.infer<typeof CampaignOfferSchema>;
+declare const CampaignTermsSchema: z.ZodObject<{
+    offers: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+        kind: z.ZodLiteral<"percent">;
+        percentageBps: z.ZodNumber;
+        mode: z.ZodEnum<{
+            discount: "discount";
+            cashback: "cashback";
+            unspecified: "unspecified";
+        }>;
+    }, z.core.$strict>, z.ZodObject<{
+        kind: z.ZodLiteral<"installments">;
+        count: z.ZodNumber;
+        upTo: z.ZodBoolean;
+    }, z.core.$strict>], "kind">>;
+    eligibility: z.ZodType<Requirement, unknown, z.core.$ZodTypeInternals<Requirement, unknown>>;
+    eligibilityCompleteness: z.ZodEnum<{
+        incomplete: "incomplete";
+        complete: "complete";
+    }>;
+    unresolved: z.ZodArray<z.ZodString>;
+    capState: z.ZodEnum<{
+        unknown: "unknown";
+        known: "known";
+        none: "none";
+    }>;
+    caps: z.ZodArray<z.ZodObject<{
+        amountMinor: z.ZodNullable<z.ZodNumber>;
+        period: z.ZodEnum<{
+            month: "month";
+            transaction: "transaction";
+            day: "day";
+            week: "week";
+            campaign: "campaign";
+        }>;
+        scope: z.ZodNullable<z.ZodEnum<{
+            bank: "bank";
+            card: "card";
+            account: "account";
+            person: "person";
+            promotion: "promotion";
+        }>>;
+        sharedCapGroupId: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    minimumSpendMinor: z.ZodNullable<z.ZodNumber>;
+    validity: z.ZodObject<{
+        from: z.ZodNullable<z.ZodISODate>;
+        to: z.ZodNullable<z.ZodISODate>;
+        weekdays: z.ZodNullable<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strict>;
+    channels: z.ZodArray<z.ZodString>;
+    where: z.ZodNullable<z.ZodString>;
+    legalText: z.ZodNullable<z.ZodString>;
+    warnings: z.ZodArray<z.ZodString>;
+}, z.core.$strict>;
+type CampaignTerms = z.infer<typeof CampaignTermsSchema>;
+
+export { type AdminBenefitAction, type AdminBenefitActionResult, AdminBenefitActionResultSchema, AdminBenefitActionSchema, type AdminBenefitDetail, AdminBenefitDetailSchema, type AdminBenefitList, type AdminBenefitListItem, AdminBenefitListItemSchema, type AdminBenefitListQuery, AdminBenefitListQuerySchema, AdminBenefitListSchema, AdminBenefitRevisionSchema, type AdminSource, type AdminSourceList, AdminSourceListSchema, type AdminSourcePolicyPatch, AdminSourcePolicyPatchSchema, AdminSourceSchema, type AllocationChangeConfirmation, AllocationChangeConfirmationSchema, type AllocationChangeContext, AllocationChangeContextSchema, type AllocationChangeContextState, AllocationChangeContextStateSchema, type AllocationChangeDraftWire, AllocationChangeDraftWireSchema, type AllocationChangePreview, type AllocationChangePreviewResult, AllocationChangePreviewSchema, AllocationChangeStaleSchema, AllocationChangeUpdatedSchema, BENEFIT_CAP_PERIODS, BENEFIT_CATEGORIES, BENEFIT_CATEGORY_LABELS, BENEFIT_KINDS, BENEFIT_LIFECYCLE, type BenefitCap, type BenefitCapPeriod, BenefitCapSchema, type BenefitCatalogResponse, BenefitCatalogResponseSchema, type BenefitCategory, BenefitCategorySchema, BenefitEvidenceSchema, type BenefitKind, BenefitLifecycleSchema, type BenefitMatch, BenefitMatchSchema, type BenefitPreferences, BenefitPreferencesSchema, type BenefitProfileFacts, BenefitProfileFactsSchema, type BenefitRules, BenefitRulesSchema, CAP_PERIODS, CAP_SCOPES, CARD_NETWORKS, CARD_TYPES, CATALOG_CATEGORIES, CATALOG_CATEGORY_LABELS, type CampaignOffer, CampaignOfferSchema, type CampaignTerms, CampaignTermsSchema, CardNetworkSchema, type CardSelector, CardSelectorSchema, type CatalogCategory, CatalogCategorySchema, ConfirmAllocationChangeWireSchema, ConfirmGoalCompletionWireSchema, type ConfirmGoalCreationInput, ConfirmGoalCreationWireSchema, type ConfirmGoalEditInput, ConfirmGoalLifecycleWireSchema, type ConfirmSavingContributionWire, ConfirmSavingContributionWireSchema, type ContributionAllocationSummary, ContributionDraftWireBaseSchema, ContributionIdPathWireSchema, type ContributionKind, type ContributionSummary, ContributionSummarySchema, type CreatePlaceholderItem, CreatePlaceholderItemSchema, CreateSavingsPlaceSchema, type DeletePlaceholderItemResponse, DeletePlaceholderItemResponseSchema, type EligibleGoal, type ExpenseDraft, ExpenseDraftSchema, ExpenseMutationResponseSchema, FIXED_EXPENSE_SOURCES, FIXED_INCOME_SOURCES, type FinancesWorkspace, FinancesWorkspaceSchema, type FinancialOnboardingInput, FinancialOnboardingResponseSchema, FinancialOnboardingSchema, GoalCompletionCompletedSchema, type GoalCompletionConfirmation, GoalCompletionConfirmationSchema, type GoalCompletionContext, GoalCompletionContextPresentSchema, GoalCompletionContextSchema, type GoalCompletionContextState, GoalCompletionContextStateSchema, GoalCompletionInvalidSchema, type GoalCompletionPreview, type GoalCompletionPreviewResult, GoalCompletionPreviewSchema, GoalCompletionPreviewWireSchema, GoalCompletionStaleSchema, type GoalCompletionWithdrawalSummary, type GoalCreationConfirmation, GoalCreationConfirmationSchema, type GoalCreationContext, GoalCreationContextMissingSchema, GoalCreationContextPresentSchema, type GoalCreationContextState, GoalCreationContextStateSchema, GoalCreationContextWireSchema, GoalCreationCreatedSchema, type GoalCreationDraft, type GoalCreationDraftWire, GoalCreationDraftWireSchema, type GoalCreationPreview, type GoalCreationPreviewResult, GoalCreationPreviewSchema, GoalCreationStaleSchema, GoalEditConfirmWireSchema, GoalEditConfirmationSchema, type GoalEditRequestInput, GoalEditStaleSchema, GoalEditUpdatedSchema, type GoalFundingRow, GoalIdPathWireSchema, GoalLifecycleActionSchema, type GoalLifecycleConfirmation, GoalLifecycleConfirmationSchema, type GoalLifecycleContext, GoalLifecycleContextSchema, type GoalLifecyclePreview, type GoalLifecyclePreviewResult, GoalLifecyclePreviewSchema, GoalLifecyclePreviewWireSchema, GoalLifecycleStaleSchema, GoalLifecycleUpdatedSchema, GoalPlanContextPresentSchema, GoalPlanContextStateSchema, GoalPlanEditContextWireSchema, GoalPlanQueryWireSchema, type GoalPriority, type GoalProjection, type GoalStatus, type GoalStrategy, type GoalWorkspaceItem, GoalWorkspaceItemSchema, type GoalsAppState, type GoalsFinancialSummary, type GoalsWorkspace, type GoalsWorkspaceData, GoalsWorkspaceMissingSchema, GoalsWorkspacePresentSchema, GoalsWorkspaceSchema, type HomeQuery, HomeQuerySchema, type HomeRoadmapMissing, HomeRoadmapMissingSchema, type HomeRoadmapPresent, HomeRoadmapPresentSchema, type HomeRoadmapResponse, HomeRoadmapResponseSchema, INSTRUMENT_TYPES, type IncomeDraft, IncomeDraftSchema, IncomeMutationResponseSchema, type InitialHomeState, InitialHomeStateSchema, type InstrumentFacts, InstrumentFactsSchema, type InvestmentAvailability, type InvestmentContributionCurrencyState, type InvestmentContributionDataState, MEMBERSHIP_USAGES, NOTIFICATION_TYPES, type NotificationSetting, NotificationSettingSchema, NotificationSettingsResponseSchema, NotificationTimeSchema, type NotificationType, NotificationTypeSchema, OFFER_TYPES, ONE_TIME_EXPENSE_SOURCES, PROVIDER_FACT_KEYS, PROVIDER_KINDS, type PlaceholderItem, type PlaceholderItemList, PlaceholderItemListSchema, PlaceholderItemSchema, type PlaceholderStatus, PlaceholderStatusSchema, type PreviewGoalEditInput, type PreviousMonthShortfall, type ProfileResponse, ProfileResponseSchema, type ProviderFacts, ProviderFactsSchema, RECURRING_EXPENSE_SOURCES, REQUIREMENT_MAX_DEPTH, REQUIREMENT_MAX_NODES, RenameSavingsPlaceSchema, type Requirement, RequirementSchema, type RoadmapData, RoadmapDataSchema, type RoadmapExpense, RoadmapExpenseSchema, type RoadmapFinances, RoadmapFinancesSchema, type RoadmapIncome, RoadmapIncomeSchema, type RoadmapMonth, RoadmapMonthSchema, type SavingAllocationPreview, type SavingContributionConfirmation, SavingContributionConfirmationSchema, type SavingContributionContext, SavingContributionContextMissingSchema, SavingContributionContextPresentSchema, SavingContributionContextSchema, type SavingContributionContextState, SavingContributionContextStateSchema, SavingContributionCreatedSchema, SavingContributionDeletedSchema, type SavingContributionDraftWire, SavingContributionDraftWireSchema, type SavingContributionEditPreview, SavingContributionEditPreviewSchema, type SavingContributionPreview, type SavingContributionPreviewResult, SavingContributionPreviewSchema, SavingContributionStaleSchema, type SavingContributionSummary, SavingContributionUpdatedSchema, type SavingDraft, type SavingDraftInput, type SavingPreviewResult, SavingsPlaceIdParamsSchema, SavingsPlaceMutationResponseSchema, SavingsTransferResponseSchema, SavingsTransferSchema, TRI_STATE, type UpdateBenefitPreferences, UpdateBenefitPreferencesSchema, type UpdateNotificationSetting, UpdateNotificationSettingSchema, type UpdatePlaceholderItem, UpdatePlaceholderItemSchema, type UpdateSavingContributionWire, UpdateSavingContributionWireSchema, type UsdPurchaseDerivation, type UsdPurchaseInput, allocationEntrySchema, confirmGoalCreationSchema, confirmGoalEditSchema, createObjectiveSchema, deriveUsdPurchase, goalCreationDraftSchema, goalEditRequestSchema, goalImpactSchema, goalPlanSchema, goalPrioritySchema, goalStrategySchema, goalTypeSchema, investmentAvailabilitySchema, isExpenseIncludedInMonth, isIncomeIncludedInMonth, parseGoalCreationSubmission, previewGoalEditSchema };

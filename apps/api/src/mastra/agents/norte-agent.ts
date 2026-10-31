@@ -58,7 +58,8 @@ function linksSection(webAppUrl?: string) {
   return `Links a la app (usalos cuando la respuesta sea larga o el usuario quiera ver el detalle):
 - Inicio y hoja de ruta: ${webAppUrl}/app
 - Finanzas: ${webAppUrl}/app/finances
-- Objetivos: ${webAppUrl}/app/goals`;
+- Objetivos: ${webAppUrl}/app/goals
+- Beneficios (elegir tarjetas y activar el resumen diario): ${webAppUrl}/app/finances/benefits`;
 }
 
 export function buildInstructions(webAppUrl?: string): string {

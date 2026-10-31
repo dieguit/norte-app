@@ -4,6 +4,7 @@ import { createFinanceTools } from '../tools/finance-tools';
 import { createContributionTools, createGoalTools } from '../tools/goal-tools';
 import { createRoadmapTools } from '../tools/roadmap-tools';
 import { createNotificationTools } from '../tools/notification-tools';
+import { createBenefitTools } from '../tools/benefit-tools';
 import { sourcesText } from '../sources';
 
 const FINANCES_RULES = `Gastos e ingresos:
@@ -57,14 +58,18 @@ const ATTACHMENT_RULES = `Varios movimientos, tickets, facturas y resúmenes de 
 - Concepto: nombre legible del comercio ("MERPAGO*KIOSCO LUNA" → "Kiosco Luna").
 - Comprobante de ingreso (recibo de sueldo, transferencia recibida): recordIncome con el neto.`;
 
-const NOTIFICATIONS_RULES = `Ajustes y chequeo diario (day_close_checkin, el único aviso que existe):
+const NOTIFICATIONS_RULES = `Ajustes y chequeo diario (day_close_checkin):
 - Activar, desactivar o cambiar horario: updateNotificationSetting en UNA llamada, directo y sin confirmar (devuelve cómo quedó; no consultes antes). Horario en hora de Argentina, en punto o y media ("a las 9 de la noche" → 21:00). Otro horario (ej. 21:15): no escribas, proponé el más cercano (21:00 o 21:30) y esperá. Si lo activa sin horario, mandá sólo enabled y decile el horario que quedó. Pedir un horario implica que lo quiere activo: mandá time con enabled: true.
 - "¿A qué hora me llega?", "¿lo tengo activado?": getNotificationSettings.
 - Respuesta al chequeo diario ("Paso por nuestro chequeo diario 🧭"):
   - Si manda movimientos (texto, foto o captura), registralos con las reglas de gastos e ingresos y respondé: "🫡, te paso resumen del día?".
   - Si responde "Listo" o que no hubo nada más, respondé: "Cerramos el día. Hasta mañana!🧭".
 - Resumen del día ("¿qué anoté hoy?", o acepta que se lo pases): getDailySummary y resumí en pocas líneas ingresos, gastos y aportes de hoy con totales por moneda. Para un mes entero es getFinancesSummary.
-- No se puede desde el chat: vincular o desvincular la cuenta, cerrar sesión, cambiar email o datos de la cuenta, ni editar el perfil financiero del onboarding. Decilo en una línea y, si hay link, mandá a la app.`;
+- No se puede desde el chat: vincular o desvincular la cuenta, cerrar sesión, cambiar email o datos de la cuenta, ni editar el perfil financiero del onboarding. Decilo en una línea y, si hay link, mandá a la app.
+
+Beneficios (savings_digest, resumen diario "Beneficios de hoy 🧭" con descuentos de sus tarjetas, billeteras y membresías):
+- Para activarlo, el usuario elige tarjetas y categorías en la app: mandale el link a Beneficios. Desactivar o cambiar horario: updateNotificationSetting.
+- Beneficios: usá searchBenefits (q, category, day) y sólo respondé con sus resultados, nunca inventes promociones. Para "ropa hoy", buscá indumentaria hoy; para una marca, buscá q y day=week. Ofrecé la lista completa si total supera los resultados. Si profileConfigured=false, ayudá a configurar bancos con getBenefitBanks. Compatibilidad con el perfil no garantiza acceso al beneficio. Explicitá purchaseConditions, canales, locales, mínimo y topes; no omitas restricciones ni conviertas valores desconocidos en ausencia de requisitos. Cada variante tiene su propio match y purchaseConditions: no transfieras elegibilidad entre variantes. Si match=needs_tier, preguntá el nivel una sola vez y no presentes esa variante como confirmada. Usá los nombres de nivel del banco y updateBenefitProfile sólo con datos explícitos; no activa el aviso diario. Siempre incluí verifyUrl y verifyHint cuando exista, y decí "verificá las condiciones en la fuente antes de pagar". Mostrá advertencias de topes y bancos desactualizados, sin prometer ahorros garantizados.`;
 
 const SOURCES_RULES = `Consejos y explicaciones (las fuentes de Norte están abajo, completas; no hay que buscarlas):
 - "¿Qué podés hacer?", "¿cómo hago X?": respondé con "Qué hace Norte" en pocas líneas, con lo relevante a la pregunta (no copies la lista entera).
@@ -106,10 +111,14 @@ export function createDomains(
     notifications: {
       skill: createSkill({
         name: 'notifications',
-        description: 'Ajustes, chequeo diario, resumen del día y cuenta',
+        description:
+          'Ajustes, chequeo diario, resumen del día, beneficios y cuenta',
         instructions: NOTIFICATIONS_RULES,
       }),
-      tools: { ...createNotificationTools(services) },
+      tools: {
+        ...createNotificationTools(services),
+        ...createBenefitTools(services),
+      },
     },
     advice: {
       skill: createSkill({

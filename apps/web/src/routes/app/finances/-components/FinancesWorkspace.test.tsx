@@ -218,7 +218,9 @@ describe("FinancesWorkspace", () => {
       const summary = screen.getByRole("region", { name: "Resumen del mes" });
       expect(summary).toHaveTextContent("$ 200.000,00");
       expect(summary).toHaveTextContent("Disponible este mes");
-      expect(screen.queryByText("Gastos", { selector: "dt" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Gastos", { selector: "dt" }),
+      ).not.toBeInTheDocument();
       expect(legendValue("Objetivos 90%")).toHaveTextContent("$ 180.000,00");
       expect(legendValue("Queda")).toHaveTextContent("$ 20.000,00");
       expect(
@@ -835,6 +837,27 @@ describe("FinancesWorkspace", () => {
       expect(
         screen.getByRole("heading", { name: "Editar gasto" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("benefits view", () => {
+    it("renders the benefits slot without month controls", () => {
+      render(
+        <FinancesWorkspace
+          workspace={sampleWorkspace as never}
+          initialMonth="2026-08"
+          view="benefits"
+        >
+          <p>slot</p>
+        </FinancesWorkspace>,
+      );
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Beneficios" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("slot")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Mes de finanzas"),
+      ).not.toBeInTheDocument();
     });
   });
 });

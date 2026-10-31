@@ -20,6 +20,7 @@
     "test:debug": "vitest --inspect-brk --pool forks --poolOptions.forks.singleFork",
     "test:e2e": "NODE_ENV=test vitest run test --no-file-parallelism",
     "check-types": "tsc --noEmit",
+    "benefits:ingest": "tsx --env-file=.env src/benefits/ingest/ingest.script.ts",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config drizzle.config.ts",

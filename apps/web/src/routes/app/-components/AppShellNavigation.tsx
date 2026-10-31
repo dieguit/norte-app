@@ -13,6 +13,7 @@ const NAV_ITEMS = [
       { to: "/app/finances/incomes", label: "Ingresos" },
       { to: "/app/finances/expenses", label: "Gastos" },
       { to: "/app/finances/savings", label: "Ahorros" },
+      { to: "/app/finances/benefits", label: "Beneficios" },
     ],
   },
 ] as const;
@@ -44,8 +45,15 @@ export function AppNavigation({
           : `flex min-h-11 items-center gap-3 rounded-md px-3 text-sm no-underline transition-colors motion-reduce:transition-none ${active ? "bg-background font-semibold text-foreground shadow-[var(--shadow-card)]" : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"}`;
         return (
           <Fragment key={to}>
-            <Link to={to} aria-current={active ? "page" : undefined} className={className}>
-              <Icon className={mobile ? "size-[22px]" : "size-[18px]"} aria-hidden="true" />
+            <Link
+              to={to}
+              aria-current={active ? "page" : undefined}
+              className={className}
+            >
+              <Icon
+                className={mobile ? "size-[22px]" : "size-[18px]"}
+                aria-hidden="true"
+              />
               <span>{label}</span>
             </Link>
             {!mobile && "children" in item && (

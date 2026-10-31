@@ -1,52 +1,68 @@
-import { useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
-import { useRouter } from '@tanstack/react-router'
-import { Button } from '../../../../components/ui/button'
-import { Field, FieldError, FieldGroup, FieldLabel } from '../../../../components/ui/field'
-import { Input } from '../../../../components/ui/input'
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useRouter } from "@tanstack/react-router";
+import { Button } from "../../../../components/ui/button";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "../../../../components/ui/field";
+import { Input } from "../../../../components/ui/input";
 import {
   Sheet,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '../../../../components/ui/sheet'
-import { SidePanelContent } from '../../../../components/norte/SidePanel'
+} from "../../../../components/ui/sheet";
+import { SidePanelContent } from "../../../../components/norte/SidePanel";
 import {
   createSavingsPlace,
   renameSavingsPlace,
   deleteSavingsPlace,
-} from '../../../../features/savings-places/savings-places.functions'
-import type { SavingsPlaceSummary } from '../../../../features/savings-places/savings-places'
+} from "../../../../features/savings-places/savings-places.functions";
+import type { SavingsPlaceSummary } from "../../../../features/savings-places/savings-places";
 
 interface SavingsPlaceSheetProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  place?: SavingsPlaceSummary
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  place?: SavingsPlaceSummary;
 }
 
-function refreshAfterMutation(router: ReturnType<typeof useRouter>, errorMessage: string) {
-  void router.invalidate().catch(() => toast.error(errorMessage))
+function refreshAfterMutation(
+  router: ReturnType<typeof useRouter>,
+  errorMessage: string,
+) {
+  void router.invalidate().catch(() => toast.error(errorMessage));
 }
 
-async function savePlace({ place, name, onSuccess }: { place?: SavingsPlaceSummary; name: string; onSuccess: () => void }) {
+async function savePlace({
+  place,
+  name,
+  onSuccess,
+}: {
+  place?: SavingsPlaceSummary;
+  name: string;
+  onSuccess: () => void;
+}) {
   if (place) {
-    await renameSavingsPlace({ data: { placeId: place.id, name } })
-    toast.success('Lugar renombrado.')
+    await renameSavingsPlace({ data: { placeId: place.id, name } });
+    toast.success("Lugar renombrado.");
   } else {
-    await createSavingsPlace({ data: { name } })
-    toast.success('Lugar creado.')
+    await createSavingsPlace({ data: { name } });
+    toast.success("Lugar creado.");
   }
-  onSuccess()
+  onSuccess();
 }
 
 async function deletePlace(placeId: string, onSuccess: () => void) {
-  await deleteSavingsPlace({ data: { placeId } })
-  toast.success('Lugar eliminado.')
-  onSuccess()
+  await deleteSavingsPlace({ data: { placeId } });
+  toast.success("Lugar eliminado.");
+  onSuccess();
 }
 
 function getSavingsPlaceNameError(name: string) {
-  return name.trim() ? null : 'Escribí un nombre para el lugar.'
+  return name.trim() ? null : "Escribí un nombre para el lugar.";
 }
 
 export function SavingsPlaceSheet({
@@ -54,86 +70,96 @@ export function SavingsPlaceSheet({
   onOpenChange,
   place,
 }: SavingsPlaceSheetProps) {
-  const router = useRouter()
-  const isEdit = Boolean(place)
+  const router = useRouter();
+  const isEdit = Boolean(place);
 
-  const [name, setName] = useState('')
-  const [nameError, setNameError] = useState<string | null>(null)
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [isPending, setIsPending] = useState(false)
-  const mutationCompleted = useRef(false)
+  const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
+  const mutationCompleted = useRef(false);
 
   useEffect(() => {
-    if (!open) return
-    setName(place?.name ?? '')
-    setNameError(null)
-    setServerError(null)
-    mutationCompleted.current = false
-  }, [open, place?.id, place?.name])
+    if (!open) return;
+    setName(place?.name ?? "");
+    setNameError(null);
+    setServerError(null);
+    mutationCompleted.current = false;
+  }, [open, place?.id, place?.name]);
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && isPending) return
-    onOpenChange(nextOpen)
-  }
+    if (!nextOpen && isPending) return;
+    onOpenChange(nextOpen);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmedName = name.trim()
-    if (mutationCompleted.current) return
-    const error = getSavingsPlaceNameError(trimmedName)
+    e.preventDefault();
+    const trimmedName = name.trim();
+    if (mutationCompleted.current) return;
+    const error = getSavingsPlaceNameError(trimmedName);
     if (error) {
-      setNameError(error)
-      return
+      setNameError(error);
+      return;
     }
 
-    setIsPending(true)
-    setNameError(null)
-    setServerError(null)
+    setIsPending(true);
+    setNameError(null);
+    setServerError(null);
 
     void savePlace({
-        place,
-        name: trimmedName,
-        onSuccess: () => {
-          mutationCompleted.current = true
-          onOpenChange(false)
-          setName('')
-          refreshAfterMutation(router, 'El lugar se guardó, pero no pudimos actualizar la vista.')
-        },
-      }).catch(() => setServerError('No pudimos guardar el lugar.'))
-        .finally(() => setIsPending(false))
-  }
+      place,
+      name: trimmedName,
+      onSuccess: () => {
+        mutationCompleted.current = true;
+        onOpenChange(false);
+        setName("");
+        refreshAfterMutation(
+          router,
+          "El lugar se guardó, pero no pudimos actualizar la vista.",
+        );
+      },
+    })
+      .catch(() => setServerError("No pudimos guardar el lugar."))
+      .finally(() => setIsPending(false));
+  };
 
   const handleDelete = async () => {
-    if (!place || mutationCompleted.current) return
-    if (!window.confirm('¿Eliminar este lugar?')) return
+    if (!place || mutationCompleted.current) return;
+    if (!window.confirm("¿Eliminar este lugar?")) return;
 
-    setIsPending(true)
-    setNameError(null)
-    setServerError(null)
+    setIsPending(true);
+    setNameError(null);
+    setServerError(null);
 
     void deletePlace(place.id, () => {
-      mutationCompleted.current = true
-      onOpenChange(false)
-      refreshAfterMutation(router, 'El lugar se eliminó, pero no pudimos actualizar la vista.')
-    }).catch(() => setServerError('No pudimos eliminar el lugar.'))
-      .finally(() => setIsPending(false))
-  }
+      mutationCompleted.current = true;
+      onOpenChange(false);
+      refreshAfterMutation(
+        router,
+        "El lugar se eliminó, pero no pudimos actualizar la vista.",
+      );
+    })
+      .catch(() => setServerError("No pudimos eliminar el lugar."))
+      .finally(() => setIsPending(false));
+  };
 
-  return <SavingsPlaceSheetView
-    open={open}
-    onOpenChange={handleOpenChange}
-    isEdit={isEdit}
-    name={name}
-    nameError={nameError}
-    serverError={serverError}
-    isPending={isPending}
-    onSubmit={handleSubmit}
-    onNameChange={(val) => {
-      setName(val)
-      if (nameError) setNameError(null)
-    }}
-    onDelete={handleDelete}
-  />
+  return (
+    <SavingsPlaceSheetView
+      open={open}
+      onOpenChange={handleOpenChange}
+      isEdit={isEdit}
+      name={name}
+      nameError={nameError}
+      serverError={serverError}
+      isPending={isPending}
+      onSubmit={handleSubmit}
+      onNameChange={(val) => {
+        setName(val);
+        if (nameError) setNameError(null);
+      }}
+      onDelete={handleDelete}
+    />
+  );
 }
 
 function SavingsPlaceSheetView({
@@ -148,16 +174,16 @@ function SavingsPlaceSheetView({
   onNameChange,
   onDelete,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  isEdit: boolean
-  name: string
-  nameError: string | null
-  serverError: string | null
-  isPending: boolean
-  onSubmit: (event: React.FormEvent) => void
-  onNameChange: (name: string) => void
-  onDelete: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  isEdit: boolean;
+  name: string;
+  nameError: string | null;
+  serverError: string | null;
+  isPending: boolean;
+  onSubmit: (event: React.FormEvent) => void;
+  onNameChange: (name: string) => void;
+  onDelete: () => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -176,22 +202,92 @@ function SavingsPlaceSheetView({
               {serverError}
             </div>
           )}
-          <SavingsPlaceSheetFields name={name} error={nameError} isPending={isPending} onNameChange={onNameChange} />
-          <SavingsPlaceSheetActions isEdit={isEdit} isPending={isPending} onDelete={onDelete} />
+          <SavingsPlaceSheetFields
+            name={name}
+            error={nameError}
+            isPending={isPending}
+            onNameChange={onNameChange}
+          />
+          <SavingsPlaceSheetActions
+            isEdit={isEdit}
+            isPending={isPending}
+            onDelete={onDelete}
+          />
         </form>
       </SidePanelContent>
     </Sheet>
-  )
+  );
 }
 
 function SavingsPlaceSheetHeader({ isEdit }: { isEdit: boolean }) {
-  return <SheetHeader className="border-b border-border px-6 py-5"><SheetTitle className="font-serif text-2xl font-bold text-foreground">{isEdit ? 'Editar lugar' : 'Nuevo lugar'}</SheetTitle><SheetDescription>{isEdit ? 'Modificá el nombre del lugar de ahorro.' : 'Creá un lugar para empezar a registrar dónde guardás tu dinero.'}</SheetDescription></SheetHeader>
+  return (
+    <SheetHeader className="border-b border-border px-6 py-5">
+      <SheetTitle className="font-serif text-2xl font-bold text-foreground">
+        {isEdit ? "Editar lugar" : "Nuevo lugar"}
+      </SheetTitle>
+      <SheetDescription>
+        {isEdit
+          ? "Modificá el nombre del lugar de ahorro."
+          : "Creá un lugar para empezar a registrar dónde guardás tu dinero."}
+      </SheetDescription>
+    </SheetHeader>
+  );
 }
 
-function SavingsPlaceSheetFields({ name, error, isPending, onNameChange }: { name: string; error: string | null; isPending: boolean; onNameChange: (name: string) => void }) {
-  return <FieldGroup><Field data-invalid={!!error}><FieldLabel htmlFor="place-name">Nombre del lugar</FieldLabel><Input id="place-name" aria-invalid={!!error} aria-describedby={error ? 'place-name-error' : undefined} value={name} onChange={(e) => onNameChange(e.target.value)} placeholder="Ej: Banco Nación" disabled={isPending} />{error && <FieldError id="place-name-error">{error}</FieldError>}</Field></FieldGroup>
+function SavingsPlaceSheetFields({
+  name,
+  error,
+  isPending,
+  onNameChange,
+}: {
+  name: string;
+  error: string | null;
+  isPending: boolean;
+  onNameChange: (name: string) => void;
+}) {
+  return (
+    <FieldGroup>
+      <Field data-invalid={!!error}>
+        <FieldLabel htmlFor="place-name">Nombre del lugar</FieldLabel>
+        <Input
+          id="place-name"
+          aria-invalid={!!error}
+          aria-describedby={error ? "place-name-error" : undefined}
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+          placeholder="Ej: Banco Nación"
+          disabled={isPending}
+        />
+        {error && <FieldError id="place-name-error">{error}</FieldError>}
+      </Field>
+    </FieldGroup>
+  );
 }
 
-function SavingsPlaceSheetActions({ isEdit, isPending, onDelete }: { isEdit: boolean; isPending: boolean; onDelete: () => void }) {
-  return <div className="mt-auto flex gap-3 pt-4">{isEdit && <Button type="button" variant="destructive" onClick={onDelete} disabled={isPending}>Eliminar</Button>}<Button type="submit" disabled={isPending} className="flex-1">{isPending ? 'Guardando...' : 'Guardar'}</Button></div>
+function SavingsPlaceSheetActions({
+  isEdit,
+  isPending,
+  onDelete,
+}: {
+  isEdit: boolean;
+  isPending: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="mt-auto flex gap-3 pt-4">
+      {isEdit && (
+        <Button
+          type="button"
+          variant="destructive"
+          onClick={onDelete}
+          disabled={isPending}
+        >
+          Eliminar
+        </Button>
+      )}
+      <Button type="submit" disabled={isPending} className="flex-1">
+        {isPending ? "Guardando..." : "Guardar"}
+      </Button>
+    </div>
+  );
 }

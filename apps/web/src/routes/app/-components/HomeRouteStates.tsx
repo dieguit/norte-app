@@ -13,10 +13,7 @@ export function HomeLoading() {
 export function HomeError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="w-full px-5 py-12">
-      <div
-        role="alert"
-        className="rounded-lg bg-negative-soft p-6 text-center"
-      >
+      <div role="alert" className="rounded-lg bg-negative-soft p-6 text-center">
         <h1 className="text-title text-foreground">
           No pudimos cargar tu hoja de ruta
         </h1>

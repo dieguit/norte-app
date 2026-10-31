@@ -39,8 +39,12 @@ export {
   SavingsTransferSchema,
   SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema,
-} from './savings-place.schema';
-export { deriveUsdPurchase, type UsdPurchaseDerivation, type UsdPurchaseInput } from './usd-purchase';
+} from "./savings-place.schema";
+export {
+  deriveUsdPurchase,
+  type UsdPurchaseDerivation,
+  type UsdPurchaseInput,
+} from "./usd-purchase";
 export {
   ContributionDraftWireBaseSchema,
   SavingContributionDraftWireSchema,
@@ -66,18 +70,18 @@ export {
   type SavingContributionPreview,
   type SavingContributionEditPreview,
   type SavingContributionConfirmation,
-} from './contribution.schema';
+} from "./contribution.schema";
 export {
   FinancesWorkspaceSchema,
   type FinancesWorkspace,
   isExpenseIncludedInMonth,
   isIncomeIncludedInMonth,
-} from './finances.schema';
+} from "./finances.schema";
 export {
   FinancialOnboardingResponseSchema,
   FinancialOnboardingSchema,
   type FinancialOnboardingInput,
-} from './financial-onboarding.schema';
+} from "./financial-onboarding.schema";
 export {
   GoalsWorkspaceSchema,
   GoalsWorkspaceMissingSchema,
@@ -166,7 +170,7 @@ export {
   type GoalLifecyclePreviewResult,
   type AllocationChangePreviewResult,
   type GoalCompletionPreviewResult,
-} from './goals.schema';
+} from "./goals.schema";
 export {
   HomeQuerySchema,
   RoadmapIncomeSchema,
@@ -186,7 +190,7 @@ export {
   type HomeRoadmapResponse,
   type HomeRoadmapPresent,
   type HomeRoadmapMissing,
-} from './home.schema';
+} from "./home.schema";
 export {
   allocationEntrySchema,
   confirmGoalCreationSchema,
@@ -207,7 +211,7 @@ export {
   type GoalCreationDraft,
   type GoalEditRequestInput,
   type PreviewGoalEditInput,
-} from './goal-creation.schema';
+} from "./goal-creation.schema";
 export {
   type EligibleGoal,
   type InvestmentContributionCurrencyState,
@@ -218,7 +222,7 @@ export {
   type SavingDraft,
   type SavingDraftInput,
   type SavingPreviewResult,
-} from './saving-contribution.types';
+} from "./saving-contribution.types";
 
 export {
   NOTIFICATION_TYPES,
@@ -232,4 +236,32 @@ export {
   type UpdateNotificationSetting,
 } from "./notification.schema";
 
+export {
+  INSTRUMENT_TYPES,
+  CARD_NETWORKS,
+  CardNetworkSchema,
+  CARD_TYPES,
+  CardSelectorSchema,
+  type CardSelector,
+  PROVIDER_FACT_KEYS,
+  type Requirement,
+  REQUIREMENT_MAX_DEPTH,
+  REQUIREMENT_MAX_NODES,
+  RequirementSchema,
+  InstrumentFactsSchema,
+  type InstrumentFacts,
+  ProviderFactsSchema,
+  type ProviderFacts,
+  BenefitProfileFactsSchema,
+  type BenefitProfileFacts,
+  OFFER_TYPES,
+  CAP_PERIODS,
+  CAP_SCOPES,
+  TRI_STATE,
+  BenefitCapSchema,
+  type BenefitCap,
+} from "./benefits.schema";
 
+export * from "./benefits-catalog.schema";
+export * from "./benefits-explorer.schema";
+export * from "./benefits-consumer.schema";

@@ -3,11 +3,15 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { MASTRA } from '@mastra/nestjs';
 import type { Mastra } from '@mastra/core/mastra';
-import { NOTIFICATION_DEFINITIONS } from '../notifications/notification-definitions';
+import {
+  definitionOf,
+  NOTIFICATION_DEFINITIONS,
+} from '../notifications/notification-definitions';
 import {
   NotificationsService,
   type NotificationDelivery,
 } from '../notifications/notifications.service';
+import { BenefitsService } from '../benefits/benefits.service';
 import {
   WHATSAPP_ADAPTER,
   type ChatChannel,
@@ -21,6 +25,7 @@ export class NotificationsCron {
     @Inject(MASTRA) private readonly mastra: Mastra,
     @Inject(WHATSAPP_ADAPTER) private readonly channel: ChatChannel | null,
     private readonly notifications: NotificationsService,
+    private readonly benefits: BenefitsService,
   ) {}
 
   // ponytail: assumes a single API instance (like pending actions); claims are unique-key safe, add row locks or pg-boss before scaling out.
@@ -37,12 +42,9 @@ export class NotificationsCron {
     const channel = this.channel;
     if (!channel) return;
     for (const delivery of await this.notifications.closeExpired(now)) {
-      await this.send(
-        channel,
-        delivery,
-        NOTIFICATION_DEFINITIONS[delivery.type].timeoutMessage,
-        now,
-      ).catch((error: unknown) =>
+      const text = definitionOf(delivery.type).reply?.timeoutMessage;
+      if (!text) continue;
+      await this.send(channel, delivery, text, now).catch((error: unknown) =>
         this.logger.error(
           `Timeout message ${delivery.id} failed: ${String(error)}`,
         ),
@@ -50,12 +52,9 @@ export class NotificationsCron {
     }
     for (const delivery of await this.notifications.claimDue(now)) {
       try {
-        await this.send(
-          channel,
-          delivery,
-          NOTIFICATION_DEFINITIONS[delivery.type].message,
-          now,
-        );
+        const text = await this.messageFor(delivery, now);
+        if (!text) continue; // row was claimed 'closed'; stays unsent so catch-up won't retry it
+        await this.send(channel, delivery, text, now);
         await this.notifications.markSent(delivery.id, now);
       } catch (error) {
         this.logger.error(
@@ -69,6 +68,20 @@ export class NotificationsCron {
             ),
           );
       }
+    }
+  }
+
+  private messageFor(
+    { type, userId }: NotificationDelivery,
+    now: Date,
+  ): Promise<string | null> {
+    switch (type) {
+      case 'day_close_checkin':
+        return Promise.resolve(
+          NOTIFICATION_DEFINITIONS.day_close_checkin.message,
+        );
+      case 'savings_digest':
+        return this.benefits.buildDigest(userId, now);
     }
   }
 

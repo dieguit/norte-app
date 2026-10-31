@@ -1,42 +1,41 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-} from '../../../../components/ui/field'
-import { Input } from '../../../../components/ui/input'
+import { useEffect, useState, type ReactNode } from "react";
+import { Field, FieldError, FieldLabel } from "../../../../components/ui/field";
+import { Input } from "../../../../components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../../../components/ui/select'
-import { Sheet } from '../../../../components/ui/sheet'
-import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
-import { Switch } from '../../../../components/ui/switch'
-import { getArsEquivalent } from '../../../../features/financial/financial'
-import { formatMoneyInput, type CurrencyCode } from '../../../../lib/money'
+} from "../../../../components/ui/select";
+import { Sheet } from "../../../../components/ui/sheet";
+import {
+  SidePanelContent,
+  SidePanelHeader,
+} from "../../../../components/norte/SidePanel";
+import { Switch } from "../../../../components/ui/switch";
+import { getArsEquivalent } from "../../../../features/financial/financial";
+import { formatMoneyInput, type CurrencyCode } from "../../../../lib/money";
 
-type ArsEquivalent = { toFixed: (fractionDigits: number) => string } | null
+type ArsEquivalent = { toFixed: (fractionDigits: number) => string } | null;
 
 export type FinancialDraftState<TDraft> = {
-  draft: TDraft
-  error: string | null
-  validationErrors: Record<string, string>
-  saving: boolean
-  setDraft: (draft: TDraft) => void
-  setError: (error: string | null) => void
-  setValidationErrors: (errors: Record<string, string>) => void
-  setSaving: (saving: boolean) => void
-  arsEquivalent: ArsEquivalent
-}
+  draft: TDraft;
+  error: string | null;
+  validationErrors: Record<string, string>;
+  saving: boolean;
+  setDraft: (draft: TDraft) => void;
+  setError: (error: string | null) => void;
+  setValidationErrors: (errors: Record<string, string>) => void;
+  setSaving: (saving: boolean) => void;
+  arsEquivalent: ArsEquivalent;
+};
 
 export type FinancialSourceValue = {
-  kind: string
-  sourceId?: string | null
-  name?: string
-}
+  kind: string;
+  sourceId?: string | null;
+  name?: string;
+};
 
 function getFinancialSourceOptions(
   fixedSources: Record<string, string>,
@@ -45,12 +44,15 @@ function getFinancialSourceOptions(
   const fixedOptions = Object.entries(fixedSources).map(([kind, label]) => ({
     value: `fixed:${kind}`,
     label,
-  }))
+  }));
   return [
-    ...fixedOptions.filter(({ value }) => value !== 'fixed:uncategorized'),
-    ...sources.map((source) => ({ value: `custom:${source.id}`, label: source.name })),
-    ...fixedOptions.filter(({ value }) => value === 'fixed:uncategorized'),
-  ]
+    ...fixedOptions.filter(({ value }) => value !== "fixed:uncategorized"),
+    ...sources.map((source) => ({
+      value: `custom:${source.id}`,
+      label: source.name,
+    })),
+    ...fixedOptions.filter(({ value }) => value === "fixed:uncategorized"),
+  ];
 }
 
 function getFinancialSourcePickerState<TSource extends FinancialSourceValue>(
@@ -60,12 +62,14 @@ function getFinancialSourcePickerState<TSource extends FinancialSourceValue>(
 ) {
   return {
     options: getFinancialSourceOptions(fixedSources, sources),
-    isOtherSource: value?.kind === 'custom' && value.name !== undefined,
+    isOtherSource: value?.kind === "custom" && value.name !== undefined,
     selectedValue: getFinancialSourceValue(value),
-  }
+  };
 }
 
-export function buildFinancialSourcePickerProps<TSource extends FinancialSourceValue>({
+export function buildFinancialSourcePickerProps<
+  TSource extends FinancialSourceValue,
+>({
   fixedSources,
   sources,
   value,
@@ -80,25 +84,22 @@ export function buildFinancialSourcePickerProps<TSource extends FinancialSourceV
   onChange,
   onNewSourceNameChange,
 }: {
-  fixedSources: Record<string, string>
-  sources: Array<{ id: string; name: string }>
-  value: TSource | undefined
-  label: string
-  triggerId: string
-  errorId: string
-  newSourceId: string
-  error?: string
-  showPersistenceHint: boolean
-  disabled: boolean
-  getSource: (value: string | null) => TSource | undefined
-  onChange: (source: TSource) => void
-  onNewSourceNameChange: (name: string) => void
+  fixedSources: Record<string, string>;
+  sources: Array<{ id: string; name: string }>;
+  value: TSource | undefined;
+  label: string;
+  triggerId: string;
+  errorId: string;
+  newSourceId: string;
+  error?: string;
+  showPersistenceHint: boolean;
+  disabled: boolean;
+  getSource: (value: string | null) => TSource | undefined;
+  onChange: (source: TSource) => void;
+  onNewSourceNameChange: (name: string) => void;
 }) {
-  const { options, isOtherSource, selectedValue } = getFinancialSourcePickerState(
-    fixedSources,
-    sources,
-    value,
-  )
+  const { options, isOtherSource, selectedValue } =
+    getFinancialSourcePickerState(fixedSources, sources, value);
   return {
     label,
     triggerId,
@@ -107,45 +108,49 @@ export function buildFinancialSourcePickerProps<TSource extends FinancialSourceV
     options,
     selectedValue,
     isOtherSource,
-    newSourceName: value?.name ?? '',
+    newSourceName: value?.name ?? "",
     error,
     showPersistenceHint,
     disabled,
     onValueChange: (nextValue: string | null) => {
-      const source = getSource(nextValue)
-      if (source) onChange(source)
+      const source = getSource(nextValue);
+      if (source) onChange(source);
     },
     onNewSourceNameChange,
-  }
+  };
 }
 
 function getFinancialSourceValue(value: FinancialSourceValue | undefined) {
-  if (!value) return null
-  if (value.kind === 'custom' && value.name !== undefined) return 'other'
-  if (value.kind === 'custom') return `custom:${value.sourceId}`
-  return `fixed:${value.kind}`
+  if (!value) return null;
+  if (value.kind === "custom" && value.name !== undefined) return "other";
+  if (value.kind === "custom") return `custom:${value.sourceId}`;
+  return `fixed:${value.kind}`;
 }
 
-export function useFinancialDraftState<TDraft extends { amount: string; currency: CurrencyCode }>({
+export function useFinancialDraftState<
+  TDraft extends { amount: string; currency: CurrencyCode },
+>({
   open,
   initialDraft,
   resetKey,
 }: {
-  open: boolean
-  initialDraft: TDraft
-  resetKey: string
+  open: boolean;
+  initialDraft: TDraft;
+  resetKey: string;
 }): FinancialDraftState<TDraft> {
-  const [draft, setDraft] = useState(initialDraft)
-  const [error, setError] = useState<string | null>(null)
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
+  const [draft, setDraft] = useState(initialDraft);
+  const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open) return
-    setError(null)
-    setValidationErrors({})
-    setDraft(initialDraft)
-  }, [open, resetKey])
+    if (!open) return;
+    setError(null);
+    setValidationErrors({});
+    setDraft(initialDraft);
+  }, [open, resetKey]);
 
   return {
     draft,
@@ -157,10 +162,12 @@ export function useFinancialDraftState<TDraft extends { amount: string; currency
     setValidationErrors,
     setSaving,
     arsEquivalent: getArsEquivalent(draft.amount, draft.currency),
-  }
+  };
 }
 
-export function FinancialAmountFields<TDraft extends { amount: string; currency: CurrencyCode }>({
+export function FinancialAmountFields<
+  TDraft extends { amount: string; currency: CurrencyCode },
+>({
   kind,
   draft,
   amountError,
@@ -168,15 +175,15 @@ export function FinancialAmountFields<TDraft extends { amount: string; currency:
   saving,
   onDraftChange,
 }: {
-  kind: 'income' | 'expense'
-  draft: TDraft
-  amountError?: string
-  arsEquivalent: ArsEquivalent
-  saving: boolean
-  onDraftChange: (draft: TDraft) => void
+  kind: "income" | "expense";
+  draft: TDraft;
+  amountError?: string;
+  arsEquivalent: ArsEquivalent;
+  saving: boolean;
+  onDraftChange: (draft: TDraft) => void;
 }) {
-  const amountId = `${kind}-amount`
-  const currencyId = `${kind}-currency-trigger`
+  const amountId = `${kind}-amount`;
+  const currencyId = `${kind}-currency-trigger`;
 
   return (
     <>
@@ -192,23 +199,34 @@ export function FinancialAmountFields<TDraft extends { amount: string; currency:
             placeholder="0"
             value={draft.amount}
             disabled={saving}
-            onChange={(event) => onDraftChange({ ...draft, amount: formatMoneyInput(event.target.value) })}
+            onChange={(event) =>
+              onDraftChange({
+                ...draft,
+                amount: formatMoneyInput(event.target.value),
+              })
+            }
           />
-          {amountError && <FieldError id={`${amountId}-error`}>{amountError}</FieldError>}
+          {amountError && (
+            <FieldError id={`${amountId}-error`}>{amountError}</FieldError>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor={currencyId}>Moneda</FieldLabel>
           <Select
-            items={{ ARS: 'Pesos (ARS)', USD: 'Dólares (USD)' }}
+            items={{ ARS: "Pesos (ARS)", USD: "Dólares (USD)" }}
             value={draft.currency}
             disabled={saving}
             onValueChange={(nextCurrency) => {
-              if (nextCurrency === 'ARS' || nextCurrency === 'USD') {
-                onDraftChange({ ...draft, currency: nextCurrency })
+              if (nextCurrency === "ARS" || nextCurrency === "USD") {
+                onDraftChange({ ...draft, currency: nextCurrency });
               }
             }}
           >
-            <SelectTrigger id={currencyId} aria-label="Moneda" className="w-full">
+            <SelectTrigger
+              id={currencyId}
+              aria-label="Moneda"
+              className="w-full"
+            >
               <SelectValue placeholder="Seleccionar moneda" />
             </SelectTrigger>
             <SelectContent>
@@ -224,7 +242,7 @@ export function FinancialAmountFields<TDraft extends { amount: string; currency:
         </p>
       )}
     </>
-  )
+  );
 }
 
 export function FinancialRecurrenceField({
@@ -234,18 +252,23 @@ export function FinancialRecurrenceField({
   saving,
   onCheckedChange,
 }: {
-  id: string
-  checked: boolean
-  label: string
-  saving: boolean
-  onCheckedChange: (checked: boolean) => void
+  id: string;
+  checked: boolean;
+  label: string;
+  saving: boolean;
+  onCheckedChange: (checked: boolean) => void;
 }) {
   return (
     <Field orientation="horizontal">
-      <Switch id={id} checked={checked} disabled={saving} onCheckedChange={onCheckedChange} />
+      <Switch
+        id={id}
+        checked={checked}
+        disabled={saving}
+        onCheckedChange={onCheckedChange}
+      />
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
     </Field>
-  )
+  );
 }
 
 export function FinancialSheetFrame({
@@ -256,17 +279,17 @@ export function FinancialSheetFrame({
   description,
   children,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  saving: boolean
-  title: string
-  description: string
-  children: ReactNode
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  saving: boolean;
+  title: string;
+  description: string;
+  children: ReactNode;
 }) {
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && saving) return
-    onOpenChange(nextOpen)
-  }
+    if (!nextOpen && saving) return;
+    onOpenChange(nextOpen);
+  };
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -275,5 +298,5 @@ export function FinancialSheetFrame({
         {children}
       </SidePanelContent>
     </Sheet>
-  )
+  );
 }

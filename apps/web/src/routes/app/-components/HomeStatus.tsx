@@ -31,10 +31,17 @@ export function PreviousMonthAlerts({
             key={`${shortfall.kind}-${shortfall.currency}`}
             className="flex items-center gap-2.5 rounded-md bg-negative-soft px-3 py-2.5"
           >
-            <CircleAlert className="size-4 shrink-0 text-negative" aria-hidden="true" />
+            <CircleAlert
+              className="size-4 shrink-0 text-negative"
+              aria-hidden="true"
+            />
             <span className="min-w-0 flex-1 text-body-sm text-foreground">
-              {label}: faltó {shortfall.kind === "investment" ? "invertir" : "ahorrar"} {shortMoney(shortfall.amount)}
-              {index === visible.length - 1 && hidden > 0 ? ` y ${hidden} más` : ""}
+              {label}: faltó{" "}
+              {shortfall.kind === "investment" ? "invertir" : "ahorrar"}{" "}
+              {shortMoney(shortfall.amount)}
+              {index === visible.length - 1 && hidden > 0
+                ? ` y ${hidden} más`
+                : ""}
             </span>
             <button
               type="button"

@@ -9,13 +9,16 @@ import {
 import { Input } from "../../../../components/ui/input";
 import { MonthPickerInput } from "../../../../components/MonthPicker";
 import type { IncomeDraftInput } from "../../../../features/financial/incomes.schema";
-import { FinancialAmountFields, FinancialRecurrenceField } from "./FinancialFormPrimitives";
+import {
+  FinancialAmountFields,
+  FinancialRecurrenceField,
+} from "./FinancialFormPrimitives";
 import { IncomeSourcePicker } from "./IncomeSourcePicker";
 import { FinancialSheetFooter } from "./FinancialSheetFooter";
 
 type IncomeSheetFormProps = {
-  sources: Array<{ id: string; name: string }>
-  recurringOnly: boolean
+  sources: Array<{ id: string; name: string }>;
+  recurringOnly: boolean;
   draft: IncomeDraftInput;
   error: string | null;
   validationErrors: Record<string, string>;
@@ -25,11 +28,17 @@ type IncomeSheetFormProps = {
   onDraftChange: (draft: IncomeDraftInput) => void;
   onSave: () => void;
   onRemove?: () => void;
-}
+};
 
 type IncomeSheetFieldsProps = Pick<
   IncomeSheetFormProps,
-  'draft' | 'error' | 'validationErrors' | 'saving' | 'arsEquivalent' | 'showPersistenceHint' | 'onDraftChange'
+  | "draft"
+  | "error"
+  | "validationErrors"
+  | "saving"
+  | "arsEquivalent"
+  | "showPersistenceHint"
+  | "onDraftChange"
 >;
 
 function IncomeRecurrenceField({
@@ -45,11 +54,13 @@ function IncomeRecurrenceField({
       saving={saving}
       onCheckedChange={(recurring) => {
         const source =
-          !draft.source || draft.source.kind === 'custom' || draft.source.kind === 'uncategorized'
+          !draft.source ||
+          draft.source.kind === "custom" ||
+          draft.source.kind === "uncategorized"
             ? draft.source
-            : undefined
+            : undefined;
 
-        onDraftChange({ ...draft, recurring, source })
+        onDraftChange({ ...draft, recurring, source });
       }}
     />
   );
@@ -60,7 +71,9 @@ function IncomeConceptField({
   error,
   onDraftChange,
   saving,
-}: Pick<IncomeSheetFormProps, "draft" | "onDraftChange" | "saving"> & { error?: string }) {
+}: Pick<IncomeSheetFormProps, "draft" | "onDraftChange" | "saving"> & {
+  error?: string;
+}) {
   return (
     <Field data-invalid={!!error}>
       <FieldLabel htmlFor="income-concept">Concepto (opcional)</FieldLabel>
@@ -70,12 +83,14 @@ function IncomeConceptField({
         aria-invalid={!!error}
         aria-describedby={
           error
-            ? 'income-concept-description income-concept-error'
-            : 'income-concept-description'
+            ? "income-concept-description income-concept-error"
+            : "income-concept-description"
         }
         disabled={saving}
-        value={draft.concept ?? ''}
-        onChange={(event) => onDraftChange({ ...draft, concept: event.target.value })}
+        value={draft.concept ?? ""}
+        onChange={(event) =>
+          onDraftChange({ ...draft, concept: event.target.value })
+        }
       />
       <FieldDescription id="income-concept-description">
         Agregá una descripción para diferenciar este ingreso.
@@ -104,7 +119,9 @@ function IncomeMonthField({
         aria-describedby={error ? "income-month-error" : undefined}
         disabled={saving}
         value={draft.effectiveMonth}
-        onValueChange={(effectiveMonth) => onDraftChange({ ...draft, effectiveMonth })}
+        onValueChange={(effectiveMonth) =>
+          onDraftChange({ ...draft, effectiveMonth })
+        }
       />
       {error && <FieldError id="income-month-error">{error}</FieldError>}
     </Field>
@@ -121,7 +138,8 @@ function IncomeSheetFields({
   onDraftChange,
   sources,
   recurringOnly,
-}: IncomeSheetFieldsProps & Pick<IncomeSheetFormProps, 'sources' | 'recurringOnly'>) {
+}: IncomeSheetFieldsProps &
+  Pick<IncomeSheetFormProps, "sources" | "recurringOnly">) {
   return (
     <FieldGroup>
       <FieldSet>
@@ -134,7 +152,11 @@ function IncomeSheetFields({
           onDraftChange={onDraftChange}
         />
         {!recurringOnly && (
-          <IncomeRecurrenceField draft={draft} onDraftChange={onDraftChange} saving={saving} />
+          <IncomeRecurrenceField
+            draft={draft}
+            onDraftChange={onDraftChange}
+            saving={saving}
+          />
         )}
         <IncomeSourcePicker
           recurring={draft.recurring}

@@ -59,6 +59,7 @@ describe('norte agent', () => {
     const text = buildInstructions('https://app.norte.test');
     expect(text).toContain('confirmPendingAction');
     expect(text).toContain('https://app.norte.test/app/goals');
+    expect(text).toContain('https://app.norte.test/app/finances/benefits');
     expect(text).not.toContain('Todavía no tenés acceso');
     expect(text).not.toContain('(monto, concepto, categoría');
     expect(text).toContain('fecha de hoy');

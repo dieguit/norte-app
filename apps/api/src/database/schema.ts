@@ -1,5 +1,14 @@
 import { onboardingDrafts } from './legacy.schema';
 import {
+  benefitBanks,
+  benefitBrands,
+  benefitCampaigns,
+  benefitCampaignBanks,
+  benefitIngestRuns,
+  benefitCategoryMappings,
+  benefitDetailCache,
+} from '../benefits/ingest/schema';
+import {
   allocationPlanEntries,
   allocationPlanSnapshots,
   expenses,
@@ -27,8 +36,16 @@ import {
   notificationSettings,
   notifications,
 } from '../notifications/notifications.schema';
+import { benefitUserPreferences } from '../benefits/benefits.schema';
 
 export const schema = {
+  benefitDetailCache,
+  benefitBanks,
+  benefitBrands,
+  benefitCampaigns,
+  benefitCampaignBanks,
+  benefitIngestRuns,
+  benefitCategoryMappings,
   onboardingDrafts,
   financialProfiles,
   incomes,
@@ -52,10 +69,18 @@ export const schema = {
   whatsappLinkTokens,
   notificationSettings,
   notifications,
+  benefitUserPreferences,
 };
 
 export type Schema = typeof schema;
 export {
+  benefitDetailCache,
+  benefitBanks,
+  benefitBrands,
+  benefitCampaigns,
+  benefitCampaignBanks,
+  benefitIngestRuns,
+  benefitCategoryMappings,
   allocationPlanEntries,
   allocationPlanSnapshots,
   expenses,
@@ -79,4 +104,5 @@ export {
   whatsappLinkTokens,
   notificationSettings,
   notifications,
+  benefitUserPreferences,
 };

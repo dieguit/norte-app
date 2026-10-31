@@ -21,12 +21,14 @@ import { useFinancesMonth } from "./useFinancesMonth";
 
 export type FinancesWorkspaceData = FinancesWorkspace;
 
-export type FinancesView = "summary" | "incomes" | "expenses" | "savings";
+export type FinancesView =
+  "summary" | "incomes" | "expenses" | "savings" | "benefits";
 
 const TITLES = {
   incomes: "Ingresos",
   expenses: "Gastos",
   savings: "Ahorros",
+  benefits: "Beneficios",
 } as const;
 
 function MonthStatus({ loading, error }: { loading: boolean; error: boolean }) {
@@ -163,10 +165,12 @@ export function FinancesWorkspace({
   workspace,
   initialMonth = new Date().toISOString().slice(0, 7),
   view,
+  children,
 }: {
   workspace: FinancesWorkspaceData;
   initialMonth?: string;
   view: FinancesView;
+  children?: React.ReactNode;
 }) {
   const { selectedMonth, selectMonth, current, loadingMonth, loadError } =
     useFinancesMonth(workspace, initialMonth);
@@ -229,32 +233,38 @@ export function FinancesWorkspace({
           )
         }
       />
-      {status}
-      <SubPageContent
-        view={view}
-        current={current}
-        month={selectedMonth}
-        incomeProps={{
-          createOpen: isCreateOpen,
-          editingId: editingIncomeId,
-          groupBy: incomeGroupBy,
-          onCreateOpenChange: setIsCreateOpen,
-          onEditingIdChange: setEditingIncomeId,
-          onGroupByChange: setIncomeGroupBy,
-        }}
-        expenseProps={{
-          createOpen: isCreateExpenseOpen,
-          editingId: editingExpenseId,
-          groupBy: expenseGroupBy,
-          onCreateOpenChange: setIsCreateExpenseOpen,
-          onEditingIdChange: setEditingExpenseId,
-          onGroupByChange: setExpenseGroupBy,
-        }}
-        savingsProps={{
-          createOpen: isCreatePlaceOpen,
-          onCreateOpenChange: setIsCreatePlaceOpen,
-        }}
-      />
+      {view === "benefits" ? (
+        children
+      ) : (
+        <>
+          {status}
+          <SubPageContent
+            view={view}
+            current={current}
+            month={selectedMonth}
+            incomeProps={{
+              createOpen: isCreateOpen,
+              editingId: editingIncomeId,
+              groupBy: incomeGroupBy,
+              onCreateOpenChange: setIsCreateOpen,
+              onEditingIdChange: setEditingIncomeId,
+              onGroupByChange: setIncomeGroupBy,
+            }}
+            expenseProps={{
+              createOpen: isCreateExpenseOpen,
+              editingId: editingExpenseId,
+              groupBy: expenseGroupBy,
+              onCreateOpenChange: setIsCreateExpenseOpen,
+              onEditingIdChange: setEditingExpenseId,
+              onGroupByChange: setExpenseGroupBy,
+            }}
+            savingsProps={{
+              createOpen: isCreatePlaceOpen,
+              onCreateOpenChange: setIsCreatePlaceOpen,
+            }}
+          />
+        </>
+      )}
     </Page>
   );
 }

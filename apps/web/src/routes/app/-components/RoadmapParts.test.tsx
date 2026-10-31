@@ -29,7 +29,12 @@ const goal: GoalWorkspaceItem = {
 
 describe("GoalNode", () => {
   it("shows progress, today amounts and an on-time badge", () => {
-    render(<GoalNode goal={{ ...goal, desiredDateDeltaMonths: 0 }} currentMonth="2025-10" />);
+    render(
+      <GoalNode
+        goal={{ ...goal, desiredDateDeltaMonths: 0 }}
+        currentMonth="2025-10"
+      />,
+    );
 
     expect(screen.getByText(/· En 4 años y 5 meses$/)).toBeVisible();
     expect(screen.getByText("18%")).toBeVisible();
@@ -41,7 +46,12 @@ describe("GoalNode", () => {
   it("flags late goals and hides progress when there is no target", () => {
     render(
       <GoalNode
-        goal={{ ...goal, targetAmount: undefined, progressPercentage: undefined, desiredDateDeltaMonths: 2 }}
+        goal={{
+          ...goal,
+          targetAmount: undefined,
+          progressPercentage: undefined,
+          desiredDateDeltaMonths: 2,
+        }}
         currentMonth="2025-10"
       />,
     );

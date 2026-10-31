@@ -17,12 +17,9 @@ import {
   todayInArgentina,
 } from '../argentina-time';
 import { DATABASE_CONNECTION } from '../database/database.constants';
-import type { Database } from '../database/database.types';
+import type { Database, Executor } from '../database/database.types';
 import { whatsappLinks } from '../whatsapp/whatsapp.schema';
-import {
-  DEFAULT_NOTIFICATION_TIME,
-  NOTIFICATION_DEFINITIONS,
-} from './notification-definitions';
+import { definitionOf } from './notification-definitions';
 import { notificationSettings, notifications } from './notifications.schema';
 
 const CATCH_UP_MS = 2 * 60 * 60 * 1000;
@@ -42,7 +39,7 @@ const toSetting = (
   type,
   enabled: row?.enabled ?? false,
   frequency: 'daily',
-  time: row?.time ?? DEFAULT_NOTIFICATION_TIME,
+  time: row?.time ?? definitionOf(type).defaultTime,
 });
 
 @Injectable()
@@ -66,18 +63,19 @@ export class NotificationsService {
     userId: string,
     type: NotificationType,
     patch: UpdateNotificationSetting,
+    executor: Executor = this.db,
   ): Promise<NotificationSetting> {
     if (patch.enabled === undefined && patch.time === undefined)
       throw new BadRequestException(
         'Indicá si activar/desactivar o el horario.',
       );
-    const [row] = await this.db
+    const [row] = await executor
       .insert(notificationSettings)
       .values({
         userId,
         type,
         enabled: patch.enabled ?? false,
-        time: patch.time ?? DEFAULT_NOTIFICATION_TIME,
+        time: patch.time ?? definitionOf(type).defaultTime,
       })
       .onConflictDoUpdate({
         target: [notificationSettings.userId, notificationSettings.type],
@@ -109,6 +107,8 @@ export class NotificationsService {
     const periods = [today, previousDay(today)];
     const claimed: NotificationDelivery[] = [];
     for (const candidate of candidates) {
+      const type = candidate.type as NotificationType;
+      const status = definitionOf(type).reply ? 'open' : 'closed';
       for (const period of periods) {
         const scheduledAt = argentinaInstant(period, candidate.time);
         const lateMs = now.getTime() - scheduledAt.getTime();
@@ -121,7 +121,7 @@ export class NotificationsService {
               type: candidate.type,
               period,
               scheduledAt,
-              status: 'open',
+              status,
             })
             .onConflictDoNothing()
             .returning({ id: notifications.id });
@@ -129,7 +129,7 @@ export class NotificationsService {
             claimed.push({
               id: row.id,
               userId: candidate.userId,
-              type: candidate.type as NotificationType,
+              type,
               jid: candidate.jid,
             });
         } catch (error: unknown) {
@@ -149,10 +149,10 @@ export class NotificationsService {
       type: string;
       sentAt: Date | null;
     }[] = [];
-    for (const [type, { replyWindowMinutes }] of Object.entries(
-      NOTIFICATION_DEFINITIONS,
-    )) {
-      const cutoff = new Date(now.getTime() - replyWindowMinutes * 60_000);
+    for (const type of NOTIFICATION_TYPES) {
+      const reply = definitionOf(type).reply;
+      if (!reply) continue;
+      const cutoff = new Date(now.getTime() - reply.windowMinutes * 60_000);
       closed.push(
         ...(await this.db
           .update(notifications)

@@ -25,12 +25,16 @@ function SidebarUser() {
   const { user } = useUser();
   return (
     <div className="mt-auto flex items-center gap-3 pt-4">
-      <UserButton appearance={{ elements: { userButtonAvatarBox: "!size-8" } }} />
+      <UserButton
+        appearance={{ elements: { userButtonAvatarBox: "!size-8" } }}
+      />
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-sm font-semibold text-foreground">
           {user?.firstName ?? user?.username ?? "Cuenta"}
         </span>
-        <span className="text-caption text-muted-foreground">Configuración</span>
+        <span className="text-caption text-muted-foreground">
+          Configuración
+        </span>
       </div>
     </div>
   );
@@ -61,7 +65,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="relative isolate flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
         <MapGrid />
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col xl:has-[[data-wide]]:max-w-none">{children}</div>
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col xl:has-[[data-wide]]:max-w-none">
+          {children}
+        </div>
       </main>
       <AppNavigation pathname={pathname} mobile />
     </div>

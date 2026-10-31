@@ -1,0 +1,132 @@
+{
+  "id": "bf4cb5fb-0e60-49b5-814e-1d101455acf3",
+  "name": "20% en Manso",
+  "description": "Pagando con tus TC Platinum de Macro",
+  "type": "cashback",
+  "reward_type": "cash",
+  "scope": "Bancaria",
+  "status": "active",
+  "real_status": "RUNNING",
+  "is_engine_active": true,
+  "created_at": "2026-07-16T19:23:51.438Z",
+  "updated_at": "2026-09-30T15:07:52.632Z",
+  "deleted_at": null,
+  "short_description": "2604-MacroPlatinum-Manso-Presencial-20off",
+  "publication_description": "Pagando con tus TC Platinum de Macro",
+  "slug": "20off-manso-macroplatinum-abr26",
+  "display_start_date": "2026-04-10T03:00:00.000Z",
+  "display_stop_date": "2026-12-01T02:59:59.999Z",
+  "search_tags": "manso,reintegro,presencial,macro,platinum,gastronomia,SEG_P",
+  "conditions": {
+    "schedule": {
+      "stop_date": "2026-10-31",
+      "start_date": "2026-04-10",
+      "days_of_week": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "daily_stop_time": "23:59:00",
+      "daily_start_time": "00:00:00"
+    },
+    "acquirers": {
+      "list": ["MERCADOLIBRE"],
+      "segmentation_mode": "by_blacklist"
+    },
+    "payment_flow": {
+      "flows": ["instore"]
+    },
+    "exclusiveness": "all",
+    "payment_methods": {
+      "methods": [
+        {
+          "type": "credit_card",
+          "issuer": "master"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "american_express"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "visa"
+        }
+      ]
+    },
+    "has_differential_amount": false
+  },
+  "offers": [
+    {
+      "id": "bf4cb5fb-0e60-49b5-814e-1d101455acf3",
+      "benefit_id": "bf4cb5fb-0e60-49b5-814e-1d101455acf3",
+      "name": ".",
+      "priority": 0,
+      "segmentations": {
+        "whitelist": ["bin", "store_cuit"],
+        "categories": [
+          {
+            "category_id": 2,
+            "subcategory_ids": [12, 30]
+          }
+        ]
+      },
+      "requirements": {
+        "banks": {
+          "list": ["6a089c91-a7d3-4199-a578-2132a3733f69"]
+        },
+        "amount_range": {
+          "min": 0
+        }
+      },
+      "outcomes": {
+        "cashback": {
+          "amount": 20,
+          "amount_type": "percent",
+          "cashback_mode": "cashback_bancario"
+        },
+        "financing": {
+          "installments": []
+        }
+      },
+      "limits": {
+        "transaction_cap": {
+          "amount_by_transaction": 20000
+        }
+      },
+      "categories": ["2"],
+      "sub_categories": ["12", "30"],
+      "preselected": false,
+      "created_at": "2026-07-16T19:23:50.103Z",
+      "updated_at": "2026-07-16T19:23:50.103Z",
+      "deleted_at": null,
+      "offer_caps": [],
+      "offer_transaction_cap": 20000
+    }
+  ],
+  "debit_list": [],
+  "credit_list": ["master", "american_express", "visa"],
+  "terms_and_conditions": "<p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">CARTERA DE CONSUMO. BENEFICIO CON TARJETAS DE CRÉDITO VISA, MASTERCARD Y AMERICAN EXPRESS PLATINUM DE BANCO MACRO S.A., PAGANDO A TRAVÉS DE MODO POR APP MACRO/APP MODO, EXCLUSIVAMENTE TODOS LOS DÍAS DEL 10/04/2026 AL 30/09/2026, PARA CLIENTES /USUARIOS REGISTRADOS EN MODO. 20% DE AHORRO CON TOPE DE DEVOLUCIÓN DE $20.000 POR TRANSACCIÓN, VÁLIDO PARA COMPRAS EN UN PAGO CON QR. APLICA EN LOCALES ADHERIDOS DE MANSO. MODO: SERVICIO PRESTADO POR EL PROVEEDOR DE SERVICIOS TECNOLÓGICOS PLAY DIGITAL S.A. CUIT 30716829436, AV. DEL LIBERTADOR 7208 TORRE II P.4 CABA., SIENDO LA MARCA \"MODO\" DE SU PROPIEDAD. APLICA PARA CONSUMO PERSONAL-FAMILIAR. NO VÁLIDO TARJETA DE CRÉDITO EMPRESA O AGRO. NO ACUMULA CON OTRA PROMOCIÓN. NO APLICA PARA PAGO A TRAVES DE MERCADO PAGO, OTRO PAGO ELECTRÓNICO INMEDIATO, TRANSFERENCIA 3.0. REINTEGRO A REALIZARSE EN EL MOMENTO DE LA COMPRA, EN LA CAJA DE AHORRO O CUENTA CORRIENTE DE BANCO MACRO REGISTRADA EN MODO. ESTABLECMIENTOS /PRODUCTOS /SERVICIOS NO SON PROMOCIONADOS /GARANTIZADOS POR BANCO MACRO, NI RESULTA RESPONSABLE POR LA PRESENTACIÓN DE CUPÓN FUERA DE TÉRMINO. INFORMACIÓN DE LOS TÉRMINOS Y CONDICIONES AL 0810-555-2355, EN HTTP://www.macro.com.ar/modo-promos O EN SUCURSALES MACRO. MANSO - 30716230704</span></p>",
+  "terms_and_conditions_url": null,
+  "coupon": null,
+  "card": {
+    "benefit": "20% de reintegro",
+    "validity_place": "Manso",
+    "cashback_cap": "20000",
+    "participating_bank": "Macro",
+    "image": "https://assets.mobile.playdigital.com.ar/promotions_dynamics/f611d624-a5e0-4c5b-9c05-44f6a0bcbf54/primary_image.jpg?v=1776102604171",
+    "banner_image": "https://assets.mobile.playdigital.com.ar/images/promotions/hub/default_banner.png",
+    "banner_image_portrait": "https://assets.mobile.playdigital.com.ar/images/promotions/hub/default_new_banner.png"
+  },
+  "details": {
+    "name": "Manso con Macro Platinum",
+    "faq": "<p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><b><strong class=\"editor-text-bold\" style=\"white-space:pre-wrap\">¿Cómo puedo acceder al beneficio?</strong></b></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><span style=\"white-space:pre-wrap\">Realizando una compra con tus tarjetas de crédito Platinum Visa, Mastercard y/o American Express Macro, a través de MODO.</span></p><p class=\"editor-paragraph\" style=\"text-align:start\"><br /></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><b><strong class=\"editor-text-bold\" style=\"white-space:pre-wrap\">¿Cómo es la modalidad de uso?</strong></b></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><span style=\"white-space:pre-wrap\">En sucursales físicas adheridas.</span></p><p class=\"editor-paragraph\" style=\"text-align:start\"><br /></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><b><strong class=\"editor-text-bold\" style=\"white-space:pre-wrap\">¿Dónde veo el descuento aplicado?</strong></b></p><p class=\"editor-paragraph\" dir=\"ltr\" style=\"text-align:start\"><span style=\"white-space:pre-wrap\">El reintegro lo verás acreditado en tu cuenta del Banco Macro.</span></p>",
+    "applicability_description": "Manso",
+    "primary_button": null,
+    "secondary_button": null,
+    "download_button": null
+  }
+}

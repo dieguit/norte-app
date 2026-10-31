@@ -14,15 +14,28 @@ function TargetRow({ target }: { target: MonthTarget }) {
       <span
         className={cn(
           "flex size-9 shrink-0 items-center justify-center rounded-full",
-          saving ? "bg-muted text-foreground" : "bg-accent-brand-soft text-accent-brand",
+          saving
+            ? "bg-muted text-foreground"
+            : "bg-accent-brand-soft text-accent-brand",
         )}
       >
         <Icon className="size-[18px]" aria-hidden="true" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="text-[15px] font-semibold text-foreground">{target.label}</span>
-        <span aria-hidden="true" className="h-1 overflow-hidden rounded-xs bg-muted">
-          <span className={cn("block h-full rounded-xs", done ? "bg-positive" : "bg-foreground")} style={{ width: `${target.share * 100}%` }} />
+        <span className="text-[15px] font-semibold text-foreground">
+          {target.label}
+        </span>
+        <span
+          aria-hidden="true"
+          className="h-1 overflow-hidden rounded-xs bg-muted"
+        >
+          <span
+            className={cn(
+              "block h-full rounded-xs",
+              done ? "bg-positive" : "bg-foreground",
+            )}
+            style={{ width: `${target.share * 100}%` }}
+          />
         </span>
         <span className="text-caption text-muted-foreground">
           {shortMoney(target.contributed)} de {shortMoney(target.target)}
@@ -43,11 +56,25 @@ function TargetRow({ target }: { target: MonthTarget }) {
   );
 }
 
-export function HomeTargets({ month, targets, onRegister }: { month: string; targets: MonthTarget[]; onRegister: () => void }) {
+export function HomeTargets({
+  month,
+  targets,
+  onRegister,
+}: {
+  month: string;
+  targets: MonthTarget[];
+  onRegister: () => void;
+}) {
   return (
-    <section aria-labelledby="home-targets-heading" className="flex flex-col gap-1">
+    <section
+      aria-labelledby="home-targets-heading"
+      className="flex flex-col gap-1"
+    >
       <div className="flex items-center justify-between gap-3 pb-1">
-        <h2 id="home-targets-heading" className="m-0 text-heading text-foreground">
+        <h2
+          id="home-targets-heading"
+          className="m-0 text-heading text-foreground"
+        >
           Metas de {formatMonthName(month)}
         </h2>
         <Button
@@ -66,7 +93,10 @@ export function HomeTargets({ month, targets, onRegister }: { month: string; tar
       ) : (
         <ul className="m-0 flex list-none flex-col p-0">
           {targets.map((target) => (
-            <TargetRow key={`${target.kind}-${target.currency}`} target={target} />
+            <TargetRow
+              key={`${target.kind}-${target.currency}`}
+              target={target}
+            />
           ))}
         </ul>
       )}

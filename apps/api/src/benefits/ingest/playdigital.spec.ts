@@ -1,0 +1,592 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
+import { CampaignTermsSchema } from '@repo/shared-types';
+import {
+  playdigitalAdapter,
+  playdigitalBankSlug,
+  playdigitalListingHash,
+} from './playdigital';
+import type { AdapterContext, BankRef, KnownDetail } from './types';
+
+function fixture(name: string) {
+  return JSON.parse(
+    readFileSync(
+      resolve('test/fixtures/benefits-v3/playdigital', `${name}.json`),
+      'utf8',
+    ),
+  );
+}
+type Card = Parameters<typeof playdigitalListingHash>[0];
+const cards: Card[] = fixture('cards').map((card: Card) => ({
+  ...card,
+  calculated_status: 'RUNNING',
+}));
+const jetsmart = fixture('v2-jetsmart');
+jetsmart.offers[0].requirements.banks.list = ['macro-id', 'galicia-id'];
+const banks: BankRef[] = [
+  { slug: 'macro', name: 'Macro', playdigitalId: 'macro-id' },
+  { slug: 'galicia', name: 'Galicia', playdigitalId: 'galicia-id' },
+];
+const now = new Date('2026-10-31T12:00:00Z');
+function page(rows: unknown[], n = 1, pages = 1, total = rows.length) {
+  return {
+    data: { cards: rows },
+    metadata: {
+      pagination: { page: n, total_pages: pages, total_results: total },
+    },
+  };
+}
+function context(
+  handler: (url: string) => unknown | Promise<unknown>,
+): AdapterContext {
+  return {
+    now,
+    knownDetails: new Map(),
+    pacing: { minIntervalMs: 0, timeoutMs: 1000, retries: 0 },
+    fetchImpl: vi.fn(async (url) => Response.json(await handler(String(url)))),
+  };
+}
+function known(
+  card = cards[0],
+  detail: unknown = jetsmart,
+  age = 0,
+): KnownDetail {
+  return {
+    detail,
+    listingHash: playdigitalListingHash(card),
+    fetchedAt: new Date(now.getTime() - age),
+  };
+}
+
+describe('PlayDigital adapter', () => {
+  it('does not fetch banks outside the allowlist', async () => {
+    const ctx = context(() => page([]));
+    expect(
+      await playdigitalAdapter.run(ctx, [
+        { slug: 'other', name: 'Other', playdigitalId: 'other' },
+      ]),
+    ).toEqual([]);
+    expect(ctx.fetchImpl).not.toHaveBeenCalled();
+  });
+  it('normalizes numeric category strings and drops non-numeric categories without affecting completeness', async () => {
+    const card = {
+      ...cards[0],
+      payment_flow: null,
+      categories_whitelist: {
+        categories: [
+          { map_category: 12, sub_categories: [3] },
+          { map_category: '012', sub_categories: [3] },
+          { map_category: 'unknown', sub_categories: [4] },
+        ],
+      },
+    };
+    const ctx = context(() => page([card]));
+    ctx.maxDetailFetches = 0;
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(run.complete).toBe(true);
+    expect(run.listings[0].rawCategories).toEqual(['pd:12/3', 'pd:12']);
+    expect(run.anomalies).toContainEqual(
+      expect.objectContaining({
+        kind: 'unmapped_category',
+        detail: 'unknown',
+        externalId: card.promo_id,
+      }),
+    );
+    expect(run.anomalies).not.toContainEqual(
+      expect.objectContaining({ kind: 'shape_changed' }),
+    );
+  });
+
+  it('does not infer eligibility or channels from a null listing payment flow', async () => {
+    const results: unknown[] = [];
+    for (const flow of [null, undefined, 'modo']) {
+      const card = { ...cards[0], payment_flow: flow };
+      const ctx = context(() => page([card]));
+      ctx.knownDetails.set(card.promo_id!, known(card, jetsmart));
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(run.complete).toBe(true);
+      results.push(run.listings[0].terms);
+    }
+    expect(results[0]).not.toBeNull();
+    expect(results[0]).toEqual(results[1]);
+    expect(results[0]).toEqual(results[2]);
+  });
+  it.each(['FINISHED', 'FINISHED_FOR_PRODUCT'])(
+    'ignores %s listings without fetching detail',
+    async (status) => {
+      const card = { ...cards[0], calculated_status: status };
+      const ctx = context(() => page([card]));
+      ctx.knownDetails.set(card.promo_id!, known(card));
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
+      expect(run.observedExternalIds).toEqual([]);
+      expect(run.listings).toEqual([]);
+      expect(run.complete).toBe(true);
+      expect(run.outcome).toBe('ok');
+    },
+  );
+
+  it.each(['2026-10-30', '2026-10-31T02:59:59Z'])(
+    'skips a running listing with past Argentina stop date %s',
+    async (stop_date) => {
+      const card = { ...cards[0], calculated_status: 'RUNNING', stop_date };
+      const ctx = context(() => page([card]));
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
+      expect(run.listings).toEqual([]);
+      expect(run.complete).toBe(true);
+    },
+  );
+
+  it.each(['NEXT_FOR_PRODUCT', 'AWAITING', 'UNKNOWN', 'unexpected', null])(
+    'ignores status %s without fetching details',
+    async (status) => {
+      const finished = {
+        ...cards[0],
+        promo_id: 'finished',
+        calculated_status: 'FINISHED',
+      };
+      const active = {
+        ...cards[0],
+        calculated_status: status,
+        stop_date: '2026-10-31',
+      };
+      const ctx = context((url) =>
+        url.includes('/benefit/') ? jetsmart : page([finished, active]),
+      );
+      ctx.maxDetailFetches = 1;
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
+      expect(run.listings).toEqual([]);
+      expect(run.observedExternalIds).toEqual([]);
+      expect(run.complete).toBe(true);
+    },
+  );
+
+  it.each([null, 'not-a-date', '2026-02-30', 42])(
+    'fetches when stop_date is missing or malformed: %s',
+    async (stop_date) => {
+      const card = { ...cards[0], stop_date, calculated_status: 'RUNNING' };
+      const ctx = context((url) =>
+        url.includes('/benefit/') ? jetsmart : page([card]),
+      );
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(2);
+      expect(run.listings[0].terms).not.toBeNull();
+    },
+  );
+  it.each(['fetched', 'cached'])(
+    'rejects inactive %s details',
+    async (source) => {
+      const detail = { ...jetsmart, real_status: 'FINISHED' };
+      const ctx = context((url) =>
+        url.includes('/benefit/') ? detail : page([cards[0]]),
+      );
+      if (source === 'cached')
+        ctx.knownDetails.set(cards[0].promo_id!, known(cards[0], detail));
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(run.listings).toEqual([]);
+      expect(run.rejectedExternalIds).toEqual([cards[0].promo_id]);
+      expect(run.complete).toBe(true);
+    },
+  );
+  it.each([
+    { ...jetsmart, id: 'wrong' },
+    { ...jetsmart, conditions: null },
+  ])(
+    'caches and rejects invalid details without refetching until stale',
+    async (detail) => {
+      const ctx = context((url) =>
+        url.includes('/benefit/') ? detail : page([cards[0]]),
+      );
+      ctx.saveDetail = vi.fn(async () => {});
+      const [first] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(first.rejectedExternalIds).toEqual([cards[0].promo_id]);
+      expect(ctx.saveDetail).toHaveBeenCalledOnce();
+      ctx.knownDetails.set(cards[0].promo_id!, known(cards[0], detail));
+      const [cached] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(cached.rejectedExternalIds).toEqual([cards[0].promo_id]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(3);
+      ctx.knownDetails.set(
+        cards[0].promo_id!,
+        known(cards[0], detail, 8 * 86400_000),
+      );
+      await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(5);
+    },
+  );
+  it('ignores listing tier signals and reports unknown detail audiences', async () => {
+    const card = { ...cards[0], title: 'Selecta Nivel 2' };
+    const detail = structuredClone(jetsmart);
+    detail.offers[0].segmentations = { audiences: ['private-nivel-5'] };
+    const ctx = context(() => page([card]));
+    ctx.knownDetails.set(card.promo_id!, known(card, detail));
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(run.listings[0].tiers).toBeNull();
+    expect(run.listings[0].terms?.eligibilityCompleteness).toBe('complete');
+    expect(run.anomalies).toContainEqual(
+      expect.objectContaining({
+        kind: 'unknown_audience',
+        detail: 'private-nivel-5',
+      }),
+    );
+  });
+
+  it('never treats an unavailable HTTP 400 detail as successful', async () => {
+    const ctx = context(() => page([cards[0]]));
+    ctx.fetchImpl = vi.fn(async (url) =>
+      String(url).includes('/benefit/')
+        ? Response.json(
+            { message: 'promotion unavailable', status: 'undefined' },
+            { status: 400 },
+          )
+        : Response.json(page([cards[0]])),
+    );
+    ctx.saveDetail = vi.fn(async () => {});
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(run.complete).toBe(true);
+    expect(run.listings[0].terms).toBeNull();
+    expect(ctx.saveDetail).not.toHaveBeenCalled();
+    expect(run.anomalies[0].detail).toContain('HTTP 400');
+  });
+  it.each(['refresh', 'budget', 'failure'])(
+    'reassesses a later bank hash: %s',
+    async (scenario) => {
+      const changed = { ...cards[0], title: 'Changed offer' };
+      const ctx = context((url) => {
+        if (url.includes('/benefit/')) {
+          if (scenario === 'failure') throw new Error('offline');
+          return jetsmart;
+        }
+        return page([url.includes('galicia-id') ? changed : cards[0]]);
+      });
+      const cached = known(cards[0], jetsmart, 86400_000);
+      ctx.knownDetails.set(cards[0].promo_id!, cached);
+      ctx.maxDetailFetches = scenario === 'budget' ? 0 : 1;
+      ctx.saveDetail = vi.fn(async () => {});
+      const runs = await playdigitalAdapter.run(ctx, banks);
+      expect(runs[0].listings[0].detailStale).toBe(false);
+      expect(runs[1].listings[0].detailStale).toBe(scenario !== 'refresh');
+      expect(runs[1].listings[0].detailFetchedAt).toEqual(
+        scenario === 'refresh' ? now : cached.fetchedAt,
+      );
+      expect(runs[1].listings[0].terms === null).toBe(scenario !== 'refresh');
+      if (scenario !== 'refresh') {
+        expect(runs[1].listings[0].unpublishableReason).toBe('detail outdated');
+        expect(runs[1].observedExternalIds).toContain(cards[0].promo_id);
+        expect(runs[1].anomalies).toContainEqual(
+          expect.objectContaining({
+            kind: 'unparsed_offer',
+            detail: 'detail outdated',
+          }),
+        );
+      }
+      expect(runs[1].complete).toBe(true);
+      expect(
+        vi
+          .mocked(ctx.fetchImpl)
+          .mock.calls.filter(([url]) => String(url).includes('/benefit/')),
+      ).toHaveLength(scenario === 'budget' ? 0 : 1);
+      if (scenario === 'refresh')
+        expect(ctx.saveDetail).toHaveBeenCalledWith(
+          cards[0].promo_id,
+          expect.objectContaining({
+            listingHash: playdigitalListingHash(changed),
+          }),
+        );
+      if (scenario === 'failure')
+        expect(runs[1].anomalies).toContainEqual(
+          expect.objectContaining({ kind: 'detail_failed' }),
+        );
+    },
+  );
+
+  it('bounds later hash refreshes by the shared budget', async () => {
+    const ctx = context((url) =>
+      url.includes('/benefit/')
+        ? jetsmart
+        : page([
+            { ...cards[0], title: url.includes('galicia-id') ? 'H2' : 'H1' },
+          ]),
+    );
+    ctx.maxDetailFetches = 1;
+    const runs = await playdigitalAdapter.run(ctx, banks);
+    expect(runs[0].listings[0].detailStale).toBe(false);
+    expect(runs[1].listings[0].detailStale).toBe(true);
+    expect(runs[1].listings[0].detailFetchedAt).toEqual(now);
+    expect(runs[1].listings[0].terms).toBeNull();
+    expect(runs[1].listings[0].unpublishableReason).toBe('detail outdated');
+    expect(
+      vi
+        .mocked(ctx.fetchImpl)
+        .mock.calls.filter(([url]) => String(url).includes('/benefit/')),
+    ).toHaveLength(1);
+  });
+
+  it('emits raw placeholders for malformed stable IDs, never invented IDs', async () => {
+    const rows = [
+      { promo_id: 'broken', title: 42, calculated_status: 'RUNNING' },
+      { id: 'fallback', credit_list: 42, calculated_status: 'RUNNING' },
+      { promo_id: '', title: 42, calculated_status: 'RUNNING' },
+      { title: 42, calculated_status: 'RUNNING' },
+    ];
+    const ctx = context(() => page(rows));
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(run.observedExternalIds).toEqual(['broken', 'fallback']);
+    expect(run.listings).toHaveLength(2);
+    expect(run.listings.map((l) => l.raw.listing)).toEqual(rows.slice(0, 2));
+    expect(
+      run.listings.every(
+        (l) => !l.terms && l.unpublishableReason && l.bankSlugs[0] === 'macro',
+      ),
+    ).toBe(true);
+    expect(run.outcome).toBe('partial');
+    expect(run.complete).toBe(false);
+    expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    'totals drift',
+    'pages drift',
+    'empty',
+    'repeated',
+    'wrong page',
+    'limit',
+  ])('stops unsafe pagination: %s', async (scenario) => {
+    const ctx = context((url) => {
+      const n = Number(new URL(url).searchParams.get('page'));
+      if (n === 1)
+        return page([cards[0]], 1, scenario === 'limit' ? 1001 : 3, 3);
+      if (scenario === 'totals drift') return page([cards[1]], 2, 3, 4);
+      if (scenario === 'pages drift') return page([cards[1]], 2, 4, 3);
+      if (scenario === 'empty') return page([], 2, 3, 3);
+      if (scenario === 'wrong page') return page([cards[1]], 1, 3, 3);
+      return page([cards[0]], 2, 3, 3);
+    });
+    ctx.maxDetailFetches = 0;
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(ctx.fetchImpl).toHaveBeenCalledTimes(scenario === 'limit' ? 1 : 2);
+    expect(run.totalReported).toBe(3);
+    expect(run.outcome).toBe('partial');
+    expect(run.complete).toBe(false);
+    expect(run.error).toMatch(/pagination/);
+  });
+
+  it('accepts only genuinely empty catalogs', async () => {
+    for (const total of [0, 1]) {
+      const ctx = context(() => page([], 1, 1, total));
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(run.complete).toBe(total === 0);
+      expect(run.outcome).toBe(total === 0 ? 'ok' : 'partial');
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
+    }
+  });
+  it('lists real bank names with deterministic slugs and explicit overrides', async () => {
+    const ctx = context(() => fixture('banks'));
+    const result = await playdigitalAdapter.listBanks!(ctx);
+    expect(result.find((b) => b.slug === 'macro')?.playdigitalId).toBe(
+      '6a089c91-a7d3-4199-a578-2132a3733f69',
+    );
+    expect(result.find((b) => b.slug === 'galicia')?.playdigitalId).toBe(
+      '88d8705e-2dda-46f9-8411-bb4916af858e',
+    );
+    expect(playdigitalBankSlug('Banco Galicia')).toBe('galicia');
+    expect(playdigitalBankSlug('Banco Macro')).toBe('macro');
+    expect(playdigitalBankSlug(' Banco Nación ')).toBe('banco-nacion');
+  });
+
+  it('paginates, counts before dedupe, observes malformed ids and shares detail across banks', async () => {
+    const ctx = context((url) => {
+      if (url.includes('/benefit/'))
+        return {
+          ...jetsmart,
+          id: decodeURIComponent(new URL(url).pathname.split('/').at(-1)!),
+        };
+      const query = new URL(url).searchParams;
+      if (query.get('banks') === 'galicia-id') return page([cards[0]]);
+      return query.get('page') === '1'
+        ? page([cards[0], cards[0]], 1, 2, 3)
+        : page(
+            [{ id: 'unmapped', title: 42, calculated_status: 'RUNNING' }],
+            2,
+            2,
+            3,
+          );
+    });
+    ctx.saveDetail = vi.fn(async () => {});
+    const runs = await playdigitalAdapter.run(ctx, banks);
+    expect(runs[0].rawRowCount).toBe(3);
+    expect(runs[0].totalReported).toBe(3);
+    expect(runs[0].observedExternalIds).toEqual([
+      cards[0].promo_id,
+      'unmapped',
+    ]);
+    expect(runs[0].listings).toHaveLength(2);
+    expect(runs[0].complete).toBe(false);
+    expect(runs[1].listings[0].bankSlugs).toEqual(['galicia']);
+    expect(JSON.stringify(runs[1].listings[0].terms?.eligibility)).toContain(
+      'galicia',
+    );
+    expect(
+      JSON.stringify(runs[1].listings[0].terms?.eligibility),
+    ).not.toContain('macro');
+    expect(
+      vi
+        .mocked(ctx.fetchImpl)
+        .mock.calls.filter(([url]) => String(url).includes('/benefit/')),
+    ).toHaveLength(1);
+    expect(ctx.saveDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it('hash ignores bank membership and volatile presentation, retains meaningful card changes', () => {
+    const original = cards[0];
+    const changed: Card = {
+      ...original,
+      banks: ['another-bank'],
+      status: 'other',
+      id: 'other',
+      content: {
+        row: original.content!.row.map((r, i) =>
+          i === 5 ? { text: 'Galicia' } : r,
+        ),
+      },
+    };
+    expect(playdigitalListingHash(changed)).toBe(
+      playdigitalListingHash(original),
+    );
+    expect(
+      playdigitalListingHash({ ...original, title: 'different' }),
+    ).not.toBe(playdigitalListingHash(original));
+  });
+
+  it('skips fresh cache and narrows banks', async () => {
+    const ctx = context(() => page([cards[0]]));
+    ctx.knownDetails.set(cards[0].promo_id!, known());
+    ctx.bankSlugs = ['macro'];
+    const runs = await playdigitalAdapter.run(ctx, banks);
+    expect(runs).toHaveLength(1);
+    expect(ctx.fetchImpl).toHaveBeenCalledTimes(1);
+    expect(runs[0].listings[0].detailStale).toBe(false);
+    expect(runs[0].complete).toBe(true);
+  });
+
+  it.each(['age', 'hash'])(
+    'refreshes detail on %s and saves incrementally',
+    async (reason) => {
+      const ctx = context((url) =>
+        url.includes('/benefit/') ? jetsmart : page([cards[0]]),
+      );
+      const cached = known(
+        cards[0],
+        jetsmart,
+        reason === 'age' ? 8 * 86400_000 : 0,
+      );
+      if (reason === 'hash') cached.listingHash = 'old';
+      ctx.knownDetails.set(cards[0].promo_id!, cached);
+      ctx.saveDetail = vi.fn(async () => {});
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(ctx.fetchImpl).toHaveBeenCalledTimes(2);
+      expect(ctx.saveDetail).toHaveBeenCalledTimes(1);
+      expect(run.listings[0].detailFetchedAt).toEqual(now);
+      expect(run.listings[0].detailStale).toBe(false);
+    },
+  );
+
+  it('uses a run-wide budget, retaining stale cache or pending listings', async () => {
+    const ctx = context(() => page([cards[0], cards[1]]));
+    ctx.maxDetailFetches = 0;
+    const cached = known(cards[0], jetsmart, 8 * 86400_000);
+    ctx.knownDetails.set(cards[0].promo_id!, cached);
+    const runs = await playdigitalAdapter.run(ctx, banks);
+    expect(ctx.fetchImpl).toHaveBeenCalledTimes(2);
+    expect(runs[0].listings[0].terms).not.toBeNull();
+    expect(runs[0].listings[0].detailStale).toBe(true);
+    expect(runs[0].listings[0].detailFetchedAt).toEqual(cached.fetchedAt);
+    expect(runs[0].listings[1].terms).toBeNull();
+    expect(runs[0].listings[1].unpublishableReason).toBe('detail pending');
+    expect(runs.every((r) => r.outcome === 'ok' && r.complete)).toBe(true);
+  });
+
+  it('shares a positive detail budget across banks, not once per bank', async () => {
+    const ctx = context((url) =>
+      url.includes('/benefit/') ? jetsmart : page([cards[0], cards[1]]),
+    );
+    ctx.maxDetailFetches = 1;
+    const runs = await playdigitalAdapter.run(ctx, banks);
+    expect(
+      vi
+        .mocked(ctx.fetchImpl)
+        .mock.calls.filter(([url]) => String(url).includes('/benefit/')),
+    ).toHaveLength(1);
+    expect(
+      runs.every(
+        (r) => r.listings[0].terms && !r.listings[1].terms && r.complete,
+      ),
+    ).toBe(true);
+  });
+
+  it('keeps never-fetched details pending after a failed first fetch', async () => {
+    const ctx = context((url) => {
+      if (url.includes('/benefit/')) throw new Error('offline');
+      return page([cards[0]]);
+    });
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(run.listings[0].terms).toBeNull();
+    expect(run.listings[0].detailFetchedAt).toBeNull();
+    expect(run.outcome).toBe('ok');
+    expect(run.complete).toBe(true);
+    expect(run.observedExternalIds).toEqual([cards[0].promo_id]);
+    expect(run.anomalies[0].kind).toBe('detail_failed');
+  });
+
+  it('keeps listing completeness when detail schema is invalid', async () => {
+    const ctx = context((url) =>
+      url.includes('/benefit/') ? { id: cards[0].promo_id } : page([cards[0]]),
+    );
+    const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+    expect(run).toMatchObject({
+      outcome: 'ok',
+      complete: true,
+      observedExternalIds: [cards[0].promo_id],
+    });
+    expect(run.listings).toEqual([]);
+    expect(run.rejectedExternalIds).toEqual([cards[0].promo_id]);
+    expect(run.anomalies).toContainEqual(
+      expect.objectContaining({ kind: 'unparsed_offer' }),
+    );
+  });
+
+  it.each(['failure', 'budget'])(
+    'retains unchanged expired detail on %s',
+    async (scenario) => {
+      const ctx = context((url) => {
+        if (url.includes('/benefit/')) throw new Error('offline');
+        return page([cards[0]]);
+      });
+      ctx.maxDetailFetches = scenario === 'budget' ? 0 : 1;
+      const cached = known(cards[0], jetsmart, 8 * 86400_000);
+      ctx.knownDetails.set(cards[0].promo_id!, cached);
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(run.listings[0].terms).not.toBeNull();
+      expect(run.listings[0].raw.detail).toEqual(jetsmart);
+      expect(run.listings[0].detailFetchedAt).toEqual(cached.fetchedAt);
+      expect(run.listings[0].detailStale).toBe(true);
+      if (scenario === 'failure')
+        expect(run.anomalies).toContainEqual(
+          expect.objectContaining({ kind: 'detail_failed' }),
+        );
+      expect(run.complete).toBe(true);
+    },
+  );
+
+  it('refuses complete status for mismatched pagination totals or page numbers', async () => {
+    for (const data of [page([cards[0]], 1, 1, 2), page([], 2, 2, 0)]) {
+      const ctx = context(() => data);
+      ctx.knownDetails.set(cards[0].promo_id!, known());
+      const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
+      expect(run.complete).toBe(false);
+      expect(run.error).not.toBeNull();
+    }
+  });
+});

@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { RoadmapData, RoadmapMonth } from "@repo/shared-types";
 import type { GoalWorkspaceItem } from "../../../features/goals/goals";
-import { activeGoals, contributedLabel, monthTargets, monthsAway, shortMoney } from "./home-view";
+import {
+  activeGoals,
+  contributedLabel,
+  monthTargets,
+  monthsAway,
+  shortMoney,
+} from "./home-view";
 
-const goal = (overrides: Partial<GoalWorkspaceItem> = {}): GoalWorkspaceItem => ({
+const goal = (
+  overrides: Partial<GoalWorkspaceItem> = {},
+): GoalWorkspaceItem => ({
   id: "g1",
   name: "Zapas",
   type: "purchase",
@@ -22,13 +30,21 @@ const goal = (overrides: Partial<GoalWorkspaceItem> = {}): GoalWorkspaceItem => 
   ...overrides,
 });
 
-const fund = (effectiveMonth: string, amount: string, currency: "ARS" | "USD" = "ARS") => ({
+const fund = (
+  effectiveMonth: string,
+  amount: string,
+  currency: "ARS" | "USD" = "ARS",
+) => ({
   percentage: "40.00",
   allocatedDestinationAmount: { amount, currency },
   effectiveMonth,
 });
 
-const contribution = (kind: "saving" | "investment", amount: string, currency: "ARS" | "USD"): RoadmapMonth["contributions"][number] => ({
+const contribution = (
+  kind: "saving" | "investment",
+  amount: string,
+  currency: "ARS" | "USD",
+): RoadmapMonth["contributions"][number] => ({
   id: `${kind}-${currency}-${amount}`,
   kind,
   amount,
@@ -37,7 +53,10 @@ const contribution = (kind: "saving" | "investment", amount: string, currency: "
   allocations: [],
 });
 
-const month = (value: string, objectives: GoalWorkspaceItem[] = []): RoadmapMonth => ({
+const month = (
+  value: string,
+  objectives: GoalWorkspaceItem[] = [],
+): RoadmapMonth => ({
   month: value,
   objectives,
   oneTimeExpenses: [],
@@ -51,10 +70,24 @@ const month = (value: string, objectives: GoalWorkspaceItem[] = []): RoadmapMont
 describe("monthTargets", () => {
   it("sums the funding active this month per kind and currency and subtracts this month's contributions", () => {
     const goals = [
-      goal({ funding: [fund("2026-01-01", "100000.00"), fund("2026-10-01", "150000.00"), fund("2026-11-01", "999.00")] }),
+      goal({
+        funding: [
+          fund("2026-01-01", "100000.00"),
+          fund("2026-10-01", "150000.00"),
+          fund("2026-11-01", "999.00"),
+        ],
+      }),
       goal({ id: "g2", funding: [fund("2026-09-01", "100000.00")] }),
-      goal({ id: "g3", currency: "USD", funding: [fund("2026-09-01", "628.00", "USD")] }),
-      goal({ id: "g4", strategy: "invest", funding: [fund("2026-09-01", "100000.00")] }),
+      goal({
+        id: "g3",
+        currency: "USD",
+        funding: [fund("2026-09-01", "628.00", "USD")],
+      }),
+      goal({
+        id: "g4",
+        strategy: "invest",
+        funding: [fund("2026-09-01", "100000.00")],
+      }),
     ];
     const targets = monthTargets(
       goals,
@@ -67,7 +100,14 @@ describe("monthTargets", () => {
       "2026-10",
     );
 
-    expect(targets.map((t) => [t.label, t.target.amount, t.contributed.amount, t.missing.amount])).toEqual([
+    expect(
+      targets.map((t) => [
+        t.label,
+        t.target.amount,
+        t.contributed.amount,
+        t.missing.amount,
+      ]),
+    ).toEqual([
       ["Ahorro en pesos", "250000.00", "180000.00", "70000.00"],
       ["Ahorro en dólares", "628.00", "200.00", "428.00"],
       ["Inversión en pesos", "100000.00", "120000.00", "0.00"],
@@ -77,7 +117,13 @@ describe("monthTargets", () => {
   });
 
   it("returns no targets without planned funding", () => {
-    expect(monthTargets([goal()], [contribution("saving", "10.00", "ARS")], "2026-10")).toEqual([]);
+    expect(
+      monthTargets(
+        [goal()],
+        [contribution("saving", "10.00", "ARS")],
+        "2026-10",
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -95,19 +141,34 @@ describe("monthsAway", () => {
 
 describe("labels and goal collection", () => {
   it("formats contributed currencies without zero parts", () => {
-    expect(contributedLabel([contribution("saving", "230000.00", "ARS"), contribution("investment", "600.00", "USD")])).toBe("Aportaste $ 230.000 · US$ 600");
-    expect(contributedLabel([contribution("saving", "20.50", "USD")])).toBe("Aportaste US$ 20,50");
+    expect(
+      contributedLabel([
+        contribution("saving", "230000.00", "ARS"),
+        contribution("investment", "600.00", "USD"),
+      ]),
+    ).toBe("Aportaste $ 230.000 · US$ 600");
+    expect(contributedLabel([contribution("saving", "20.50", "USD")])).toBe(
+      "Aportaste US$ 20,50",
+    );
     expect(contributedLabel([])).toBe("Sin aportes registrados");
-    expect(shortMoney({ amount: "70000.00", currency: "ARS" })).toBe("$ 70.000");
+    expect(shortMoney({ amount: "70000.00", currency: "ARS" })).toBe(
+      "$ 70.000",
+    );
   });
 
   it("collects each non-completed goal once across the roadmap", () => {
     const roadmap: RoadmapData = {
       undatedObjectives: [goal({ id: "undated" })],
       futureMonths: [month("2026-12", [goal()])],
-      currentMonth: month("2026-10", [goal(), goal({ id: "done", status: "completed" })]),
+      currentMonth: month("2026-10", [
+        goal(),
+        goal({ id: "done", status: "completed" }),
+      ]),
       historyMonths: [],
     };
-    expect(activeGoals(roadmap).map((item) => item.id)).toEqual(["g1", "undated"]);
+    expect(activeGoals(roadmap).map((item) => item.id)).toEqual([
+      "g1",
+      "undated",
+    ]);
   });
 });

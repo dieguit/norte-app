@@ -1,0 +1,190 @@
+{
+  "id": "4834fff9-be85-45c9-a5c6-4a0ca85a07c1",
+  "name": "25% JetsMART",
+  "description": "",
+  "type": "cashback",
+  "reward_type": "cash",
+  "scope": "Comercio",
+  "status": "active",
+  "real_status": "RUNNING",
+  "is_engine_active": false,
+  "created_at": "2026-10-28T18:29:06.215Z",
+  "updated_at": "2026-10-29T21:22:10.379Z",
+  "deleted_at": null,
+  "short_description": "2610-JetsMART-Online-25off",
+  "publication_description": "25% en JetsMART",
+  "slug": "jetsmart-2610",
+  "display_start_date": "2026-10-28T03:00:00.000Z",
+  "display_stop_date": "2027-03-01T02:59:59.999Z",
+  "search_tags": "jetsmart,vuelos,cyber,cyberjs,online,reintegro,turismo",
+  "conditions": {
+    "schedule": {
+      "stop_date": "2026-11-06",
+      "start_date": "2026-10-30",
+      "days_of_week": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "daily_stop_time": "23:59:59",
+      "daily_start_time": "00:00:00"
+    },
+    "acquirers": {
+      "list": [],
+      "segmentation_mode": "no_segmentation"
+    },
+    "payment_flow": {
+      "flows": ["online"]
+    },
+    "exclusiveness": "all",
+    "payment_methods": {
+      "methods": [
+        {
+          "type": "credit_card",
+          "issuer": "american_express"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "master"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "visa"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "cabal"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "confiable"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "dinners_club"
+        },
+        {
+          "type": "credit_card",
+          "issuer": "maestro"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "master"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "visa"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "cabal"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "dinners_club"
+        },
+        {
+          "type": "debit_card",
+          "issuer": "maestro"
+        }
+      ]
+    },
+    "exclusiveness_source": ["modo", "banks"],
+    "has_differential_amount": false
+  },
+  "offers": [
+    {
+      "id": "4834fff9-be85-45c9-a5c6-4a0ca85a07c1",
+      "benefit_id": "4834fff9-be85-45c9-a5c6-4a0ca85a07c1",
+      "name": ".",
+      "priority": 0,
+      "segmentations": {
+        "categories": [
+          {
+            "category_id": 14,
+            "subcategory_ids": [7, 31]
+          }
+        ]
+      },
+      "requirements": {
+        "banks": {
+          "list": [
+            "0330e59b-b6e3-43eb-9083-a88fcc61e845",
+            "88d8705e-2dda-46f9-8411-bb4916af858e",
+            "049ad22b-c0f0-4733-be35-e31256801ce8",
+            "167504f6-caaf-4ead-b65b-6e6695ae6209",
+            "6a089c91-a7d3-4199-a578-2132a3733f69",
+            "bcfcac03-6f79-4995-bfab-7b8916b0747a",
+            "f3f5910c-013f-47f7-819e-3d802cf3f7b7",
+            "b59fbc01-420f-4d88-8d53-be17029bc4ba",
+            "2313b643-1a79-4312-a213-98cd9a3942b1",
+            "96d00eb6-7d82-4d41-ae31-4e76da979cf9",
+            "54fdfe50-7b7e-4316-bf88-97923d5a8a8d",
+            "d58d01e9-9411-4f6f-980f-fd469bcef30d",
+            "521bea00-ec3a-49ab-a019-6ae0bddf57c3",
+            "888318e4-0537-457c-9db2-767dbc2f6bd3",
+            "74f9a732-f38f-4e2e-8263-b51e114ce1f3",
+            "ce8aabb1-f663-4832-82ec-de9b5b572aa1",
+            "661d0b0f-556f-4e7b-9c79-823e1cd901a1"
+          ]
+        },
+        "amount_range": {
+          "min": 0
+        }
+      },
+      "outcomes": {
+        "cashback": {
+          "amount": 25,
+          "amount_type": "percent",
+          "cashback_mode": "cashback_por_regla"
+        },
+        "financing": {
+          "installments": []
+        }
+      },
+      "limits": null,
+      "categories": ["14"],
+      "sub_categories": ["31", "7"],
+      "preselected": false,
+      "created_at": "2026-10-28T18:36:56.705Z",
+      "updated_at": "2026-10-28T18:38:53.142Z",
+      "deleted_at": null,
+      "offer_caps": [],
+      "offer_transaction_cap": null
+    }
+  ],
+  "debit_list": ["master", "visa", "cabal", "dinners_club", "maestro"],
+  "credit_list": [
+    "american_express",
+    "master",
+    "visa",
+    "cabal",
+    "confiable",
+    "dinners_club",
+    "maestro"
+  ],
+  "terms_and_conditions": "<p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Vuelos operados por JETSMART Airlines SA (“JetSMART”), directos, en cabina</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">económica. Podrán optar a volar con hasta un 25% de descuento en rutas nacionales</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">(en Argentina) y rutas internacionales (desde/hacia Argentina) usando el código</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">promocional: “CYBERJS” y finaliza la compra pagando a través de MODO. Hasta 25%</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">de descuento aplica en todas las clases tarifarias, alcanzando el porcentaje máximo</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">de descuento en tarifa T (mencionada en cuadro detalle) incluyendo las tarifas</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">promocionales con hasta un 10% de descuento (U, X y W). No aplica para la clase</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">tarifaria promocional V, también denominada \"Promo Flash\". Los pasajes se podrán</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">comprar, en el contexto de esta promoción en www.JetSMART.com/ar/es/ desde las</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">10:00hrs. del 30 de octubre de 2026 y hasta las 10:00hrs. del 6 de noviembre de 2026</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">o hasta agotar stock total, no acumulable con otras promociones y/o descuentos.</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Exclusivo para volar hasta el 16 de junio de 2027. La solicitud de vuelos debe realizarse</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">con una anticipación igual o mayor a 14 días para que aplique el descuento.</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">En las siguientes fechas aplica hasta un 10% de descuento:</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Desde el 20 de noviembre de 2026 al 23 de noviembre de 2026</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Desde el 4 de diciembre de 2026 al 8 de diciembre de 2026</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Desde el 18 de diciembre de 2026 al 24 de enero de 2027</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Desde el 19 de marzo de 2027 al 28 de marzo de 2027</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Desde el 2 de abril de 2027 al 4 de abril de 2027</span></p><p class=\"editor-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">Desde el 21 de mayo de 2027 al 25 de mayo de 2027</span></p>",
+  "terms_and_conditions_url": null,
+  "coupon": null,
+  "card": {
+    "benefit": "Hasta 25% de descuento",
+    "validity_place": "JetsMART",
+    "cashback_cap": "0",
+    "participating_bank": "Bancos adheridos",
+    "image": "https://assets.mobile.playdigital.com.ar/promotions_dynamics/publication-card/0ca1ad5c-8767-4d55-81a0-4b33540650c4_jetsmart.jpg",
+    "banner_image": "https://assets.mobile.playdigital.com.ar/images/promotions/hub/default_banner.png",
+    "banner_image_portrait": "https://assets.mobile.playdigital.com.ar/images/promotions/hub/default_new_banner.png"
+  },
+  "details": {
+    "name": "JetsMART ingresando cupón CYBERJS",
+    "faq": "<p><strong>¿Cómo puedo acceder al beneficio?</strong></p><p>Realizando una compra con tus tarjetas de crédito y/o débito a través de MODO. En vuelos nacionales e internacionales, válido para volar hasta el 16/06/2027, comprando con al menos 14 días de anticipación.</p><p><strong>¿Dónde veo el descuento aplicado?</strong></p><p>El reintegro lo verás acreditado en la cuenta del banco con el que elegiste comprar.</p><p><strong>Restricciones:</strong> en las siguientes fechas aplica hasta un 10% de descuento:</p><p>Desde el 20 de noviembre de 2026 al 23 de noviembre de 2026</p><p>Desde el 4 de diciembre de 2026 al 8 de diciembre de 2026</p><p>Desde el 18 de diciembre de 2026 al 24 de enero de 2027</p><p>Desde el 19 de marzo de 2027 al 28 de marzo de 2027</p><p>Desde el 2 de abril de 2027 al 4 de abril de 2027</p><p>Desde el 21 de mayo de 2027 al 25 de mayo de 2027</p><p><strong>Es acumulable con otras promociones ¡Sí!</strong></p>",
+    "applicability_description": "",
+    "primary_button": null,
+    "secondary_button": null,
+    "download_button": null
+  }
+}

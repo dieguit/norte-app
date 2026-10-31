@@ -2,7 +2,10 @@ import { useState } from "react";
 import type { RoadmapData } from "@repo/shared-types";
 import { HeaderAction, PageHeader } from "../../../components/norte/PageHeader";
 import { Page, SplitLayout } from "../../../components/norte/PageLayout";
-import { getPreviousCalendarMonth, type InitialHomeState } from "../../../features/financial/financial";
+import {
+  getPreviousCalendarMonth,
+  type InitialHomeState,
+} from "../../../features/financial/financial";
 import type { GoalWorkspaceItem } from "../../../features/goals/goals";
 import type { CatchUpContribution } from "./ContributionActionSheet";
 import { HomeDialogs } from "./HomeDialogs";
@@ -20,7 +23,8 @@ export interface HomeProps {
 
 export function Home({ home, roadmap, completionGoals = [], now }: HomeProps) {
   const [isContributionOpen, setIsContributionOpen] = useState(false);
-  const [catchUpContribution, setCatchUpContribution] = useState<CatchUpContribution | null>(null);
+  const [catchUpContribution, setCatchUpContribution] =
+    useState<CatchUpContribution | null>(null);
   const [completionGoalId, setCompletionGoalId] = useState<string | null>(null);
   const closedMonth = getPreviousCalendarMonth(now);
   const shortfalls = home.previousMonthShortfalls ?? [];
@@ -36,7 +40,9 @@ export function Home({ home, roadmap, completionGoals = [], now }: HomeProps) {
       <PageHeader
         eyebrow="Inicio"
         title={monthTitle(month)}
-        action={<HeaderAction label="Registrar aporte" onClick={openContribution} />}
+        action={
+          <HeaderAction label="Registrar aporte" onClick={openContribution} />
+        }
       />
       <SplitLayout
         aside={
@@ -51,7 +57,11 @@ export function Home({ home, roadmap, completionGoals = [], now }: HomeProps) {
             />
             <HomeTargets
               month={month}
-              targets={monthTargets(activeGoals(roadmap), roadmap.currentMonth.contributions, month)}
+              targets={monthTargets(
+                activeGoals(roadmap),
+                roadmap.currentMonth.contributions,
+                month,
+              )}
               onRegister={openContribution}
             />
           </>

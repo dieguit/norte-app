@@ -1,0 +1,350 @@
+[
+  {
+    "id": "4dc38861-52d3-4628-b5e7-eab19f64b515",
+    "promo_id": "4834fff9-be85-45c9-a5c6-4a0ca85a07c1",
+    "extra_params": {
+      "promo_id": "4834fff9-be85-45c9-a5c6-4a0ca85a07c1"
+    },
+    "title": "25% JetsMART",
+    "slug": "jetsmart-2610",
+    "search_tags": "jetsmart,vuelos,cyber,cyberjs,online,reintegro,turismo",
+    "payment_flow": "online",
+    "where": "",
+    "start_date": "2026-10-30T03:00:00.000Z",
+    "stop_date": "2026-11-07T02:59:59.999Z",
+    "days_of_week": "LMXJVSD",
+    "credit_list": [
+      "american_express",
+      "master",
+      "visa",
+      "cabal",
+      "confiable",
+      "dinners_club",
+      "maestro"
+    ],
+    "debit_list": ["master", "visa", "cabal", "dinners_club", "maestro"],
+    "categories_whitelist": {
+      "categories": [
+        {
+          "map_category": 14,
+          "sub_categories": [7, 31]
+        }
+      ]
+    },
+    "short_description": "2610-JetsMART-Online-25off",
+    "content": {
+      "row": [
+        {
+          "text": "JetsMART"
+        },
+        {
+          "text": "Hasta 25% de descuento"
+        },
+        {
+          "text": null
+        },
+        {
+          "text": null
+        },
+        {
+          "text": "0"
+        },
+        {
+          "text": "Bancos adheridos"
+        }
+      ]
+    }
+  },
+  {
+    "id": "1ab3c1b5-1194-4f7e-bb3e-5d13a64905dc",
+    "promo_id": "e5c158fe-9426-45fa-84ee-10f19ffbb595",
+    "extra_params": {
+      "promo_id": "e5c158fe-9426-45fa-84ee-10f19ffbb595"
+    },
+    "title": "Tiendas Naturales Selecta  Nivel 2",
+    "slug": "30off-tiendanaturales2-macroselecta-oct26",
+    "search_tags": "SEG_NS2,LYT01GLL",
+    "payment_flow": "instore,instore_nfc",
+    "where": "Tiendas Naturales",
+    "start_date": "2026-10-01T03:00:00.000Z",
+    "stop_date": "2026-11-01T02:59:59.999Z",
+    "days_of_week": "LMXJVSD",
+    "credit_list": ["american_express", "visa", "master"],
+    "debit_list": [],
+    "categories_whitelist": {
+      "categories": [
+        {
+          "map_category": 2,
+          "sub_categories": [30, 12]
+        }
+      ]
+    },
+    "short_description": "2610-MacroSelecta-Nivel2-TiendasNaturales-Presencial-NFC-30off",
+    "content": {
+      "row": [
+        {
+          "text": "Tiendas Naturales"
+        },
+        {
+          "text": "30% de reintegro Nivel 2"
+        },
+        {
+          "text": null
+        },
+        {
+          "text": null
+        },
+        {
+          "text": "60000"
+        },
+        {
+          "text": "Macro Selecta"
+        }
+      ]
+    }
+  },
+  {
+    "id": "2c0e8531-2d19-4763-8fa3-0b07425a3a93",
+    "promo_id": "bf09d23c-78dd-47cf-8650-8e5b219069c6",
+    "extra_params": {
+      "promo_id": "bf09d23c-78dd-47cf-8650-8e5b219069c6"
+    },
+    "title": "YPF Selecta",
+    "slug": "30off-ypf1-macroselecta-oct26",
+    "search_tags": "ypf,macro,selecta,estaciones de servicio,LYT49GLL,SEG_NS1",
+    "payment_flow": "instore,instore_nfc",
+    "where": "YPF",
+    "start_date": "2026-10-01T03:00:00.000Z",
+    "stop_date": "2027-04-01T02:59:59.999Z",
+    "days_of_week": "X",
+    "credit_list": ["visa"],
+    "debit_list": [],
+    "categories_whitelist": {
+      "categories": [
+        {
+          "map_category": 5,
+          "sub_categories": [28]
+        }
+      ]
+    },
+    "short_description": "2610-MacroSelecta-YPF-Nivel1-Presencial-30off",
+    "content": {
+      "row": [
+        {
+          "text": "YPF"
+        },
+        {
+          "text": "30% de reintegro Nivel 1"
+        },
+        {
+          "text": null
+        },
+        {
+          "text": null
+        },
+        {
+          "text": "15000"
+        },
+        {
+          "text": "Macro Selecta"
+        }
+      ]
+    }
+  },
+  {
+    "id": "f611d624-a5e0-4c5b-9c05-44f6a0bcbf54",
+    "promo_id": "bf4cb5fb-0e60-49b5-814e-1d101455acf3",
+    "extra_params": null,
+    "title": "20% en Manso",
+    "slug": "20off-manso-macroplatinum-abr26",
+    "search_tags": "manso,reintegro,presencial,macro,platinum,gastronomia,SEG_P",
+    "payment_flow": "instore",
+    "where": "Manso",
+    "start_date": "2026-04-10T03:00:00.000Z",
+    "stop_date": "2026-11-01T02:59:59.999Z",
+    "days_of_week": "LMXJVSD",
+    "credit_list": ["master", "american_express", "visa"],
+    "debit_list": [],
+    "categories_whitelist": {
+      "categories": [
+        {
+          "map_category": 2,
+          "sub_categories": [12, 30]
+        }
+      ]
+    },
+    "short_description": "2604-MacroPlatinum-Manso-Presencial-20off",
+    "content": {
+      "row": [
+        {
+          "text": "Manso"
+        },
+        {
+          "text": "20% de reintegro"
+        },
+        {
+          "text": null
+        },
+        {
+          "text": null
+        },
+        {
+          "text": "20000"
+        },
+        {
+          "text": "Macro"
+        }
+      ]
+    }
+  },
+  {
+    "id": "dd318999-4619-4f77-9ee1-2a464e6cd54d",
+    "promo_id": "424a7f2c-38f8-4073-8b26-a93b98e0efb9",
+    "extra_params": null,
+    "title": "MODO Black Week",
+    "slug": "blackfriday-nov22",
+    "search_tags": "",
+    "payment_flow": "online",
+    "where": "Tiendas online adheridas",
+    "start_date": "2022-11-23T03:00:00.000Z",
+    "stop_date": "2022-11-28T02:59:59.999Z",
+    "days_of_week": "LMXJVSD",
+    "credit_list": [
+      "american_express",
+      "cabal",
+      "maestro",
+      "master",
+      "naranja",
+      "visa",
+      "dinners_club",
+      "confiable"
+    ],
+    "debit_list": ["cabal", "maestro", "master", "visa", "dinners_club"],
+    "categories_whitelist": null,
+    "short_description": "MODO Black Week",
+    "content": {
+      "row": [
+        {
+          "text": "MODO Black Week"
+        },
+        {
+          "text": "20% de reintegro"
+        },
+        {
+          "text": "Desde el 23/11 al 27/11"
+        },
+        {
+          "text": "Exclusivo con"
+        }
+      ]
+    }
+  },
+  {
+    "id": "01ece18d-150f-4674-b14f-193eb1d23765",
+    "promo_id": "efbf8985-6694-4235-beeb-657ce71703bd",
+    "extra_params": null,
+    "title": "20% en La Anónima ",
+    "slug": "laanonima-septiembre26",
+    "search_tags": "la anonima,reintegro,presencial,viernes,sabados",
+    "payment_flow": "instore",
+    "where": "",
+    "start_date": "2026-05-01T03:00:00.000Z",
+    "stop_date": "2026-11-01T02:59:59.999Z",
+    "days_of_week": "VS",
+    "credit_list": [
+      "american_express",
+      "cabal",
+      "dinners_club",
+      "confiable",
+      "maestro",
+      "master",
+      "visa"
+    ],
+    "debit_list": ["cabal", "dinners_club", "maestro", "master", "visa"],
+    "categories_whitelist": {
+      "categories": [
+        {
+          "map_category": 1,
+          "sub_categories": [34, 43]
+        }
+      ]
+    },
+    "short_description": "2605-La-Anonima-Supermercados-Landing-Presencial-20off",
+    "content": {
+      "row": [
+        {
+          "text": "La Anónima "
+        },
+        {
+          "text": "20% de reintegro"
+        },
+        {
+          "text": null
+        },
+        {
+          "text": null
+        },
+        {
+          "text": "15000"
+        },
+        {
+          "text": "Bancos adheridos"
+        }
+      ]
+    }
+  },
+  {
+    "id": "08968026-9af7-4834-b140-ba8eb065bd78",
+    "promo_id": "c4149d6d-8352-447b-b3bc-e71e156519ba",
+    "extra_params": null,
+    "title": "20% en Basualdo",
+    "slug": "basualdo-septiembre26",
+    "search_tags": "basualdo,reintegro,presencial,jueves,supermercado",
+    "payment_flow": "instore",
+    "where": null,
+    "start_date": "2026-06-01T03:00:00.000Z",
+    "stop_date": "2026-11-01T02:59:59.999Z",
+    "days_of_week": "J",
+    "credit_list": [
+      "american_express",
+      "cabal",
+      "dinners_club",
+      "confiable",
+      "maestro",
+      "master",
+      "visa"
+    ],
+    "debit_list": ["cabal", "dinners_club", "maestro", "master", "visa"],
+    "categories_whitelist": {
+      "categories": [
+        {
+          "map_category": 1,
+          "sub_categories": [43, 34]
+        }
+      ]
+    },
+    "short_description": "2606-Basualdo-Presencial-20off",
+    "content": {
+      "row": [
+        {
+          "text": "Basualdo"
+        },
+        {
+          "text": "20% de reintegro"
+        },
+        {
+          "text": null
+        },
+        {
+          "text": null
+        },
+        {
+          "text": "20000"
+        },
+        {
+          "text": "Bancos adheridos"
+        }
+      ]
+    }
+  }
+]

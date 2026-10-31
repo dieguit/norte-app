@@ -18,11 +18,21 @@ import { Route as AppGoalsRouteRouteImport } from './routes/app/goals/route'
 import { Route as InformeDeviceIdRouteRouteImport } from './routes/informe/$deviceId/route'
 import { Route as LinkWhatsappRouteImport } from './routes/link/whatsapp'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
+import { Route as AppAdminBenefitsRouteRouteImport } from './routes/app/admin/benefits/route'
 import { Route as AppFinancesIndexRouteImport } from './routes/app/finances/index'
+import { Route as AppFinancesBenefitsRouteRouteImport } from './routes/app/finances/benefits/route'
 import { Route as AppFinancesExpensesRouteImport } from './routes/app/finances/expenses'
 import { Route as AppFinancesIncomesRouteImport } from './routes/app/finances/incomes'
 import { Route as AppFinancesSavingsRouteImport } from './routes/app/finances/savings'
 import { Route as AppGoalsIndexRouteImport } from './routes/app/goals/index'
+import { Route as AppAdminBenefitsIndexRouteImport } from './routes/app/admin/benefits/index'
+import { Route as AppAdminBenefitsIdRouteImport } from './routes/app/admin/benefits/$id'
+import { Route as AppAdminBenefitsBrandsRouteImport } from './routes/app/admin/benefits/brands'
+import { Route as AppAdminBenefitsMappingsRouteImport } from './routes/app/admin/benefits/mappings'
+import { Route as AppAdminBenefitsRunsRouteImport } from './routes/app/admin/benefits/runs'
+import { Route as AppFinancesBenefitsIndexRouteImport } from './routes/app/finances/benefits/index'
+import { Route as AppFinancesBenefitsIdRouteImport } from './routes/app/finances/benefits/$id'
+import { Route as AppFinancesBenefitsSettingsRouteImport } from './routes/app/finances/benefits/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -69,11 +79,22 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
   path: '/sign-in/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAdminBenefitsRouteRoute = AppAdminBenefitsRouteRouteImport.update({
+  id: '/admin/benefits',
+  path: '/admin/benefits',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppFinancesIndexRoute = AppFinancesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppFinancesRouteRoute,
 } as any)
+const AppFinancesBenefitsRouteRoute =
+  AppFinancesBenefitsRouteRouteImport.update({
+    id: '/benefits',
+    path: '/benefits',
+    getParentRoute: () => AppFinancesRouteRoute,
+  } as any)
 const AppFinancesExpensesRoute = AppFinancesExpensesRouteImport.update({
   id: '/expenses',
   path: '/expenses',
@@ -94,6 +115,49 @@ const AppGoalsIndexRoute = AppGoalsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppGoalsRouteRoute,
 } as any)
+const AppAdminBenefitsIndexRoute = AppAdminBenefitsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAdminBenefitsRouteRoute,
+} as any)
+const AppAdminBenefitsIdRoute = AppAdminBenefitsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppAdminBenefitsRouteRoute,
+} as any)
+const AppAdminBenefitsBrandsRoute = AppAdminBenefitsBrandsRouteImport.update({
+  id: '/brands',
+  path: '/brands',
+  getParentRoute: () => AppAdminBenefitsRouteRoute,
+} as any)
+const AppAdminBenefitsMappingsRoute =
+  AppAdminBenefitsMappingsRouteImport.update({
+    id: '/mappings',
+    path: '/mappings',
+    getParentRoute: () => AppAdminBenefitsRouteRoute,
+  } as any)
+const AppAdminBenefitsRunsRoute = AppAdminBenefitsRunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => AppAdminBenefitsRouteRoute,
+} as any)
+const AppFinancesBenefitsIndexRoute =
+  AppFinancesBenefitsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppFinancesBenefitsRouteRoute,
+  } as any)
+const AppFinancesBenefitsIdRoute = AppFinancesBenefitsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppFinancesBenefitsRouteRoute,
+} as any)
+const AppFinancesBenefitsSettingsRoute =
+  AppFinancesBenefitsSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AppFinancesBenefitsRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -105,11 +169,21 @@ export interface FileRoutesByFullPath {
   '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/benefits': typeof AppAdminBenefitsRouteRouteWithChildren
+  '/app/finances/benefits': typeof AppFinancesBenefitsRouteRouteWithChildren
   '/app/finances/expenses': typeof AppFinancesExpensesRoute
   '/app/finances/incomes': typeof AppFinancesIncomesRoute
   '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances/': typeof AppFinancesIndexRoute
   '/app/goals/': typeof AppGoalsIndexRoute
+  '/app/admin/benefits/$id': typeof AppAdminBenefitsIdRoute
+  '/app/admin/benefits/brands': typeof AppAdminBenefitsBrandsRoute
+  '/app/admin/benefits/mappings': typeof AppAdminBenefitsMappingsRoute
+  '/app/admin/benefits/runs': typeof AppAdminBenefitsRunsRoute
+  '/app/finances/benefits/$id': typeof AppFinancesBenefitsIdRoute
+  '/app/finances/benefits/settings': typeof AppFinancesBenefitsSettingsRoute
+  '/app/admin/benefits/': typeof AppAdminBenefitsIndexRoute
+  '/app/finances/benefits/': typeof AppFinancesBenefitsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -123,6 +197,14 @@ export interface FileRoutesByTo {
   '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances': typeof AppFinancesIndexRoute
   '/app/goals': typeof AppGoalsIndexRoute
+  '/app/admin/benefits/$id': typeof AppAdminBenefitsIdRoute
+  '/app/admin/benefits/brands': typeof AppAdminBenefitsBrandsRoute
+  '/app/admin/benefits/mappings': typeof AppAdminBenefitsMappingsRoute
+  '/app/admin/benefits/runs': typeof AppAdminBenefitsRunsRoute
+  '/app/finances/benefits/$id': typeof AppFinancesBenefitsIdRoute
+  '/app/finances/benefits/settings': typeof AppFinancesBenefitsSettingsRoute
+  '/app/admin/benefits': typeof AppAdminBenefitsIndexRoute
+  '/app/finances/benefits': typeof AppFinancesBenefitsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -135,11 +217,21 @@ export interface FileRoutesById {
   '/link/whatsapp': typeof LinkWhatsappRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/benefits': typeof AppAdminBenefitsRouteRouteWithChildren
+  '/app/finances/benefits': typeof AppFinancesBenefitsRouteRouteWithChildren
   '/app/finances/expenses': typeof AppFinancesExpensesRoute
   '/app/finances/incomes': typeof AppFinancesIncomesRoute
   '/app/finances/savings': typeof AppFinancesSavingsRoute
   '/app/finances/': typeof AppFinancesIndexRoute
   '/app/goals/': typeof AppGoalsIndexRoute
+  '/app/admin/benefits/$id': typeof AppAdminBenefitsIdRoute
+  '/app/admin/benefits/brands': typeof AppAdminBenefitsBrandsRoute
+  '/app/admin/benefits/mappings': typeof AppAdminBenefitsMappingsRoute
+  '/app/admin/benefits/runs': typeof AppAdminBenefitsRunsRoute
+  '/app/finances/benefits/$id': typeof AppFinancesBenefitsIdRoute
+  '/app/finances/benefits/settings': typeof AppFinancesBenefitsSettingsRoute
+  '/app/admin/benefits/': typeof AppAdminBenefitsIndexRoute
+  '/app/finances/benefits/': typeof AppFinancesBenefitsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -153,11 +245,21 @@ export interface FileRouteTypes {
     | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
+    | '/app/admin/benefits'
+    | '/app/finances/benefits'
     | '/app/finances/expenses'
     | '/app/finances/incomes'
     | '/app/finances/savings'
     | '/app/finances/'
     | '/app/goals/'
+    | '/app/admin/benefits/$id'
+    | '/app/admin/benefits/brands'
+    | '/app/admin/benefits/mappings'
+    | '/app/admin/benefits/runs'
+    | '/app/finances/benefits/$id'
+    | '/app/finances/benefits/settings'
+    | '/app/admin/benefits/'
+    | '/app/finances/benefits/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -171,6 +273,14 @@ export interface FileRouteTypes {
     | '/app/finances/savings'
     | '/app/finances'
     | '/app/goals'
+    | '/app/admin/benefits/$id'
+    | '/app/admin/benefits/brands'
+    | '/app/admin/benefits/mappings'
+    | '/app/admin/benefits/runs'
+    | '/app/finances/benefits/$id'
+    | '/app/finances/benefits/settings'
+    | '/app/admin/benefits'
+    | '/app/finances/benefits'
   id:
     | '__root__'
     | '/'
@@ -182,11 +292,21 @@ export interface FileRouteTypes {
     | '/link/whatsapp'
     | '/sign-in/$'
     | '/app/'
+    | '/app/admin/benefits'
+    | '/app/finances/benefits'
     | '/app/finances/expenses'
     | '/app/finances/incomes'
     | '/app/finances/savings'
     | '/app/finances/'
     | '/app/goals/'
+    | '/app/admin/benefits/$id'
+    | '/app/admin/benefits/brands'
+    | '/app/admin/benefits/mappings'
+    | '/app/admin/benefits/runs'
+    | '/app/finances/benefits/$id'
+    | '/app/finances/benefits/settings'
+    | '/app/admin/benefits/'
+    | '/app/finances/benefits/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -263,11 +383,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/admin/benefits': {
+      id: '/app/admin/benefits'
+      path: '/admin/benefits'
+      fullPath: '/app/admin/benefits'
+      preLoaderRoute: typeof AppAdminBenefitsRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/finances/': {
       id: '/app/finances/'
       path: '/'
       fullPath: '/app/finances/'
       preLoaderRoute: typeof AppFinancesIndexRouteImport
+      parentRoute: typeof AppFinancesRouteRoute
+    }
+    '/app/finances/benefits': {
+      id: '/app/finances/benefits'
+      path: '/benefits'
+      fullPath: '/app/finances/benefits'
+      preLoaderRoute: typeof AppFinancesBenefitsRouteRouteImport
       parentRoute: typeof AppFinancesRouteRoute
     }
     '/app/finances/expenses': {
@@ -298,10 +432,85 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGoalsIndexRouteImport
       parentRoute: typeof AppGoalsRouteRoute
     }
+    '/app/admin/benefits/': {
+      id: '/app/admin/benefits/'
+      path: '/'
+      fullPath: '/app/admin/benefits/'
+      preLoaderRoute: typeof AppAdminBenefitsIndexRouteImport
+      parentRoute: typeof AppAdminBenefitsRouteRoute
+    }
+    '/app/admin/benefits/$id': {
+      id: '/app/admin/benefits/$id'
+      path: '/$id'
+      fullPath: '/app/admin/benefits/$id'
+      preLoaderRoute: typeof AppAdminBenefitsIdRouteImport
+      parentRoute: typeof AppAdminBenefitsRouteRoute
+    }
+    '/app/admin/benefits/brands': {
+      id: '/app/admin/benefits/brands'
+      path: '/brands'
+      fullPath: '/app/admin/benefits/brands'
+      preLoaderRoute: typeof AppAdminBenefitsBrandsRouteImport
+      parentRoute: typeof AppAdminBenefitsRouteRoute
+    }
+    '/app/admin/benefits/mappings': {
+      id: '/app/admin/benefits/mappings'
+      path: '/mappings'
+      fullPath: '/app/admin/benefits/mappings'
+      preLoaderRoute: typeof AppAdminBenefitsMappingsRouteImport
+      parentRoute: typeof AppAdminBenefitsRouteRoute
+    }
+    '/app/admin/benefits/runs': {
+      id: '/app/admin/benefits/runs'
+      path: '/runs'
+      fullPath: '/app/admin/benefits/runs'
+      preLoaderRoute: typeof AppAdminBenefitsRunsRouteImport
+      parentRoute: typeof AppAdminBenefitsRouteRoute
+    }
+    '/app/finances/benefits/': {
+      id: '/app/finances/benefits/'
+      path: '/'
+      fullPath: '/app/finances/benefits/'
+      preLoaderRoute: typeof AppFinancesBenefitsIndexRouteImport
+      parentRoute: typeof AppFinancesBenefitsRouteRoute
+    }
+    '/app/finances/benefits/$id': {
+      id: '/app/finances/benefits/$id'
+      path: '/$id'
+      fullPath: '/app/finances/benefits/$id'
+      preLoaderRoute: typeof AppFinancesBenefitsIdRouteImport
+      parentRoute: typeof AppFinancesBenefitsRouteRoute
+    }
+    '/app/finances/benefits/settings': {
+      id: '/app/finances/benefits/settings'
+      path: '/settings'
+      fullPath: '/app/finances/benefits/settings'
+      preLoaderRoute: typeof AppFinancesBenefitsSettingsRouteImport
+      parentRoute: typeof AppFinancesBenefitsRouteRoute
+    }
   }
 }
 
+interface AppFinancesBenefitsRouteRouteChildren {
+  AppFinancesBenefitsIdRoute: typeof AppFinancesBenefitsIdRoute
+  AppFinancesBenefitsSettingsRoute: typeof AppFinancesBenefitsSettingsRoute
+  AppFinancesBenefitsIndexRoute: typeof AppFinancesBenefitsIndexRoute
+}
+
+const AppFinancesBenefitsRouteRouteChildren: AppFinancesBenefitsRouteRouteChildren =
+  {
+    AppFinancesBenefitsIdRoute: AppFinancesBenefitsIdRoute,
+    AppFinancesBenefitsSettingsRoute: AppFinancesBenefitsSettingsRoute,
+    AppFinancesBenefitsIndexRoute: AppFinancesBenefitsIndexRoute,
+  }
+
+const AppFinancesBenefitsRouteRouteWithChildren =
+  AppFinancesBenefitsRouteRoute._addFileChildren(
+    AppFinancesBenefitsRouteRouteChildren,
+  )
+
 interface AppFinancesRouteRouteChildren {
+  AppFinancesBenefitsRouteRoute: typeof AppFinancesBenefitsRouteRouteWithChildren
   AppFinancesExpensesRoute: typeof AppFinancesExpensesRoute
   AppFinancesIncomesRoute: typeof AppFinancesIncomesRoute
   AppFinancesSavingsRoute: typeof AppFinancesSavingsRoute
@@ -309,6 +518,7 @@ interface AppFinancesRouteRouteChildren {
 }
 
 const AppFinancesRouteRouteChildren: AppFinancesRouteRouteChildren = {
+  AppFinancesBenefitsRouteRoute: AppFinancesBenefitsRouteRouteWithChildren,
   AppFinancesExpensesRoute: AppFinancesExpensesRoute,
   AppFinancesIncomesRoute: AppFinancesIncomesRoute,
   AppFinancesSavingsRoute: AppFinancesSavingsRoute,
@@ -330,16 +540,39 @@ const AppGoalsRouteRouteWithChildren = AppGoalsRouteRoute._addFileChildren(
   AppGoalsRouteRouteChildren,
 )
 
+interface AppAdminBenefitsRouteRouteChildren {
+  AppAdminBenefitsIdRoute: typeof AppAdminBenefitsIdRoute
+  AppAdminBenefitsBrandsRoute: typeof AppAdminBenefitsBrandsRoute
+  AppAdminBenefitsMappingsRoute: typeof AppAdminBenefitsMappingsRoute
+  AppAdminBenefitsRunsRoute: typeof AppAdminBenefitsRunsRoute
+  AppAdminBenefitsIndexRoute: typeof AppAdminBenefitsIndexRoute
+}
+
+const AppAdminBenefitsRouteRouteChildren: AppAdminBenefitsRouteRouteChildren = {
+  AppAdminBenefitsIdRoute: AppAdminBenefitsIdRoute,
+  AppAdminBenefitsBrandsRoute: AppAdminBenefitsBrandsRoute,
+  AppAdminBenefitsMappingsRoute: AppAdminBenefitsMappingsRoute,
+  AppAdminBenefitsRunsRoute: AppAdminBenefitsRunsRoute,
+  AppAdminBenefitsIndexRoute: AppAdminBenefitsIndexRoute,
+}
+
+const AppAdminBenefitsRouteRouteWithChildren =
+  AppAdminBenefitsRouteRoute._addFileChildren(
+    AppAdminBenefitsRouteRouteChildren,
+  )
+
 interface AppRouteRouteChildren {
   AppFinancesRouteRoute: typeof AppFinancesRouteRouteWithChildren
   AppGoalsRouteRoute: typeof AppGoalsRouteRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppAdminBenefitsRouteRoute: typeof AppAdminBenefitsRouteRouteWithChildren
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppFinancesRouteRoute: AppFinancesRouteRouteWithChildren,
   AppGoalsRouteRoute: AppGoalsRouteRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppAdminBenefitsRouteRoute: AppAdminBenefitsRouteRouteWithChildren,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

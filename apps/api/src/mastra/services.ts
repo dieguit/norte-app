@@ -1,3 +1,4 @@
+import type { BenefitsService } from '../benefits/benefits.service';
 import type { ContributionsService } from '../contributions/contributions.service';
 import type { ExpensesService } from '../expenses/expenses.service';
 import type { FinancesService } from '../finances/finances.service';
@@ -18,4 +19,5 @@ export type NorteServices = {
   goals: GoalsService;
   contributions: ContributionsService;
   notifications: NotificationsService;
+  benefits: BenefitsService;
 };

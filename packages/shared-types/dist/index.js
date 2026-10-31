@@ -912,7 +912,10 @@ function parseGoalCreationSubmission(input, currentMonth) {
 
 // src/notification.schema.ts
 import { z as z13 } from "zod";
-var NOTIFICATION_TYPES = ["day_close_checkin"];
+var NOTIFICATION_TYPES = [
+  "day_close_checkin",
+  "savings_digest"
+];
 var NotificationTypeSchema = z13.enum(NOTIFICATION_TYPES);
 var NotificationTimeSchema = z13.string().regex(
   /^([01]\d|2[0-3]):(00|30)$/,
@@ -933,7 +936,465 @@ var UpdateNotificationSettingSchema = z13.object({
 }).refine((v) => v.enabled !== void 0 || v.time !== void 0, {
   message: "Indic\xE1 si activar/desactivar o el horario."
 });
+
+// src/benefits.schema.ts
+import { z as z14 } from "zod";
+var BENEFIT_CATEGORIES = [
+  "supermercado",
+  "combustible",
+  "gastronomia",
+  "cine",
+  "farmacia",
+  "indumentaria",
+  "viajes",
+  "tecnologia",
+  "otros"
+];
+var BenefitCategorySchema = z14.enum(BENEFIT_CATEGORIES);
+var BENEFIT_CATEGORY_LABELS = {
+  supermercado: "Supermercado",
+  combustible: "Combustible",
+  gastronomia: "Gastronom\xEDa",
+  cine: "Cine",
+  farmacia: "Farmacia",
+  indumentaria: "Indumentaria",
+  viajes: "Viajes",
+  tecnologia: "Tecnolog\xEDa",
+  otros: "Otros"
+};
+var BENEFIT_KINDS = [
+  "discount",
+  "cashback",
+  "installments",
+  "nxm"
+];
+var BENEFIT_CAP_PERIODS = [
+  "transaction",
+  "day",
+  "week",
+  "month"
+];
+var PROVIDER_KINDS = [
+  "bank",
+  "network",
+  "wallet",
+  "membership"
+];
+var INSTRUMENT_TYPES = [
+  "credit",
+  "debit",
+  "prepaid",
+  "membership"
+];
+var CARD_NETWORKS = ["visa", "mastercard", "amex", "cabal"];
+var CardNetworkSchema = z14.enum(CARD_NETWORKS);
+var CARD_TYPES = ["credit", "debit", "prepaid"];
+var MEMBERSHIP_USAGES = [
+  "wallet_access",
+  "account_access",
+  "subscription",
+  "loyalty"
+];
+var slug = z14.string().min(1).max(80);
+var slugList = z14.array(slug).min(1).max(50);
+var CardSelectorSchema = z14.object({
+  instrumentSlugs: slugList.optional(),
+  issuerProviderSlugs: slugList.optional(),
+  excludedIssuerProviderSlugs: slugList.optional(),
+  network: CardNetworkSchema.optional(),
+  types: z14.array(z14.enum(CARD_TYPES)).min(1).optional(),
+  productLevels: slugList.optional(),
+  segments: slugList.optional(),
+  issuerCountries: z14.array(z14.string().length(2)).min(1).optional()
+}).strict().refine((s) => Object.values(s).some((v) => v !== void 0), {
+  message: "CardSelector vac\xEDo"
+});
+var PROVIDER_FACT_KEYS = [
+  "salaryAccount",
+  "plan",
+  "loyaltyLevel",
+  "tier"
+];
+var REQUIREMENT_MAX_DEPTH = 5;
+var REQUIREMENT_MAX_NODES = 50;
+var RequirementNodeSchema = z14.lazy(
+  () => z14.union([
+    z14.object({ allOf: z14.array(RequirementNodeSchema).min(1) }).strict(),
+    z14.object({ anyOf: z14.array(RequirementNodeSchema).min(1) }).strict(),
+    z14.object({ card: CardSelectorSchema }).strict(),
+    z14.object({ membership: z14.object({ instrumentSlug: slug }).strict() }).strict(),
+    z14.object({
+      providerFact: z14.object({
+        providerSlug: slug,
+        key: z14.enum(PROVIDER_FACT_KEYS),
+        values: z14.array(z14.union([z14.string().min(1), z14.boolean()])).min(1)
+      }).strict()
+    }).strict()
+  ])
+);
+function requirementShape(r, depth = 1) {
+  const children = "allOf" in r ? r.allOf : "anyOf" in r ? r.anyOf : [];
+  return children.reduce(
+    (acc, child) => {
+      const c = requirementShape(child, depth + 1);
+      return {
+        depth: Math.max(acc.depth, c.depth),
+        nodes: acc.nodes + c.nodes
+      };
+    },
+    { depth, nodes: 1 }
+  );
+}
+var RequirementSchema = RequirementNodeSchema.refine((r) => {
+  const { depth, nodes } = requirementShape(r);
+  return depth <= REQUIREMENT_MAX_DEPTH && nodes <= REQUIREMENT_MAX_NODES;
+}, "\xC1rbol de requisitos demasiado grande");
+var isoDay = z14.iso.date();
+var InstrumentFactsSchema = z14.object({
+  segment: slug.optional(),
+  productLevel: slug.optional(),
+  issuerCountry: z14.string().length(2).optional(),
+  membershipStatus: z14.enum(["active", "inactive", "unknown"]).optional(),
+  membershipValidUntil: isoDay.optional()
+}).strict();
+var ProviderFactsSchema = z14.object({
+  salaryAccount: z14.boolean().optional(),
+  plan: slug.optional(),
+  loyaltyLevel: slug.optional(),
+  tier: slug.optional()
+}).strict();
+var BenefitProfileFactsSchema = z14.object({
+  instrumentFacts: z14.record(slug, InstrumentFactsSchema).default({}),
+  providerFacts: z14.record(slug, ProviderFactsSchema).default({})
+});
+var OFFER_TYPES = [
+  "discount",
+  "cashback",
+  "installments",
+  "points",
+  "other"
+];
+var CAP_PERIODS = [
+  "transaction",
+  "day",
+  "week",
+  "month",
+  "campaign"
+];
+var CAP_SCOPES = [
+  "card",
+  "account",
+  "person",
+  "bank",
+  "promotion"
+];
+var TRI_STATE = ["yes", "no", "unknown"];
+var BENEFIT_LIFECYCLE = [
+  "draft",
+  "needs_review",
+  "published",
+  "expired",
+  "withdrawn"
+];
+var BenefitCapSchema = z14.object({
+  amountMinor: z14.number().int().positive().nullable(),
+  // null = cap exists, amount unknown
+  period: z14.enum(CAP_PERIODS),
+  scope: z14.enum(CAP_SCOPES).nullable(),
+  sharedCapGroupId: slug.optional()
+}).strict();
+var BenefitRulesSchema = z14.object({
+  eligibility: RequirementSchema,
+  eligibilityCompleteness: z14.enum(["complete", "incomplete"]),
+  unresolved: z14.array(z14.string().min(1)).default([]),
+  offer: z14.discriminatedUnion("type", [
+    z14.object({
+      type: z14.literal("discount"),
+      percentageBps: z14.number().int().min(1).max(1e4)
+    }),
+    z14.object({
+      type: z14.literal("cashback"),
+      percentageBps: z14.number().int().min(1).max(1e4)
+    }),
+    z14.object({
+      type: z14.literal("installments"),
+      installments: z14.number().int().min(2).max(60)
+    }),
+    z14.object({ type: z14.literal("points"), description: z14.string().min(1) }),
+    z14.object({ type: z14.literal("other"), description: z14.string().min(1) })
+  ]),
+  currency: z14.literal("ARS"),
+  // null = unknown minimum; 0 = no minimum.
+  minimumSpendMinor: z14.number().int().nonnegative().nullable(),
+  capState: z14.enum(["known", "none", "unknown"]),
+  caps: z14.array(BenefitCapSchema).max(5),
+  validity: z14.object({
+    from: isoDay.nullable(),
+    // inclusive, America/Argentina/Buenos_Aires
+    to: isoDay.nullable(),
+    // inclusive; null = unknown end, NOT unlimited
+    weekdays: z14.array(z14.number().int().min(0).max(6)).min(1).nullable(),
+    // 0=Sunday; null = every weekday
+    monthDays: z14.array(z14.number().int().min(1).max(31)).min(1).nullable()
+    // null = every day of month
+  }).strict(),
+  channels: z14.object({
+    allowed: z14.array(slug).default([]),
+    excluded: z14.array(slug).default([])
+  }).strict(),
+  requiredActions: z14.array(z14.string().min(1)).default([]),
+  stackable: z14.enum(TRI_STATE),
+  // ongoing = fixed membership perk; the digest only surfaces it on category match or right after declaring it.
+  recurrence: z14.enum(["campaign", "ongoing"])
+}).strict().superRefine((r, ctx) => {
+  if (r.capState === "known" && !r.caps.length)
+    ctx.addIssue({ code: "custom", message: "capState known requiere caps" });
+  if (r.capState === "none" && r.caps.length)
+    ctx.addIssue({ code: "custom", message: "capState none sin caps" });
+  if (r.validity.from && r.validity.to && r.validity.from > r.validity.to)
+    ctx.addIssue({ code: "custom", message: "vigencia invertida" });
+});
+var BenefitMatchSchema = z14.object({
+  benefitId: z14.string(),
+  eligibility: z14.enum(["eligible", "ineligible", "needs_information"]),
+  availability: z14.enum(["available", "upcoming", "unavailable", "unknown"]),
+  nextDate: isoDay.nullable(),
+  stale: z14.boolean(),
+  // Allowed channels are alternatives, not cumulative required actions.
+  channels: z14.object({
+    allowed: z14.array(z14.string()),
+    excluded: z14.array(z14.string())
+  }),
+  matchedInstrumentSlugs: z14.array(z14.string()),
+  missingFacts: z14.array(z14.string()),
+  reasons: z14.array(z14.string()),
+  requiredActions: z14.array(z14.string()),
+  estimatedSavingMinor: z14.number().int().nonnegative().nullable(),
+  estimateAssumptions: z14.array(z14.string())
+});
+var BenefitCatalogResponseSchema = z14.object({
+  providers: z14.array(
+    z14.object({
+      slug: z14.string(),
+      name: z14.string(),
+      kind: z14.enum(PROVIDER_KINDS),
+      coverage: z14.enum(["active", "partial", "pending"]),
+      instruments: z14.array(
+        z14.object({
+          slug: z14.string(),
+          label: z14.string(),
+          network: z14.enum(CARD_NETWORKS).nullable(),
+          type: z14.enum(INSTRUMENT_TYPES),
+          tier: z14.string().nullable(),
+          issuerProviderSlug: z14.string().nullable(),
+          segment: z14.string().nullable(),
+          productLevel: z14.string().nullable(),
+          usage: z14.enum(MEMBERSHIP_USAGES).nullable()
+        })
+      )
+    })
+  ),
+  categories: z14.array(
+    z14.object({ slug: BenefitCategorySchema, label: z14.string() })
+  )
+});
+var UpdateBenefitPreferencesSchema = z14.object({
+  instrumentFacts: BenefitProfileFactsSchema.shape.instrumentFacts.removeDefault().optional(),
+  providerFacts: BenefitProfileFactsSchema.shape.providerFacts.removeDefault().optional(),
+  instrumentSlugs: z14.array(z14.string().min(1)).min(1, "Eleg\xED al menos una tarjeta, cuenta o membres\xEDa.").max(100),
+  categories: z14.array(BenefitCategorySchema).min(1, "Eleg\xED al menos una categor\xEDa.")
+});
+var BenefitPreferencesSchema = z14.object({
+  ...BenefitProfileFactsSchema.shape,
+  instrumentSlugs: z14.array(z14.string()),
+  categories: z14.array(BenefitCategorySchema),
+  enabled: z14.boolean()
+});
+
+// src/benefits-admin.schema.ts
+import { z as z15 } from "zod";
+var BenefitLifecycleSchema = z15.enum(BENEFIT_LIFECYCLE);
+var BenefitEvidenceSchema = z15.object({
+  sourceUrl: z15.string(),
+  detailUrl: z15.string().nullable(),
+  termsUrl: z15.string().nullable(),
+  quotes: z15.array(z15.object({ field: z15.string(), quote: z15.string() }))
+});
+var AdminBenefitListQuerySchema = z15.object({
+  status: BenefitLifecycleSchema.optional(),
+  source: z15.string().min(1).max(80).optional()
+});
+var AdminBenefitListItemSchema = z15.object({
+  id: z15.string(),
+  lifecycle: BenefitLifecycleSchema,
+  origin: z15.enum(["harvest", "manual"]),
+  publisherProviderSlug: z15.string(),
+  category: BenefitCategorySchema,
+  title: z15.string(),
+  merchant: z15.string().nullable(),
+  rules: BenefitRulesSchema,
+  hasPendingRevision: z15.boolean(),
+  lastVerifiedAt: z15.string().nullable()
+  // ISO
+});
+var AdminBenefitListSchema = z15.object({
+  benefits: z15.array(AdminBenefitListItemSchema)
+});
+var AdminBenefitRevisionSchema = z15.object({
+  id: z15.string(),
+  baseVersion: z15.number().int(),
+  category: BenefitCategorySchema,
+  title: z15.string(),
+  merchant: z15.string().nullable(),
+  rules: BenefitRulesSchema,
+  evidence: BenefitEvidenceSchema,
+  actor: z15.string(),
+  createdAt: z15.string(),
+  // ISO
+  // Top-level fields that differ from the current snapshot; rules sub-keys as "rules.<key>".
+  changedFields: z15.array(z15.string())
+});
+var AdminBenefitDetailSchema = AdminBenefitListItemSchema.extend({
+  evidence: BenefitEvidenceSchema,
+  protectedFields: z15.array(z15.string()),
+  version: z15.number().int(),
+  pendingRevision: AdminBenefitRevisionSchema.nullable()
+});
+var AdminBenefitActionSchema = z15.discriminatedUnion("action", [
+  z15.object({
+    action: z15.literal("approve"),
+    reason: z15.string().max(500).optional()
+  }),
+  z15.object({ action: z15.literal("reject"), reason: z15.string().min(1).max(500) }),
+  z15.object({ action: z15.literal("reverify") })
+]);
+var AdminBenefitActionResultSchema = z15.object({
+  benefitId: z15.string(),
+  lifecycle: BenefitLifecycleSchema,
+  version: z15.number().int()
+});
+var AdminSourceSchema = z15.object({
+  sourceId: z15.string(),
+  providerSlug: z15.string(),
+  url: z15.string(),
+  status: z15.string(),
+  coverage: z15.string(),
+  note: z15.string().nullable(),
+  enabled: z15.boolean(),
+  // effective (catalog default + DB override)
+  autoPublish: z15.boolean(),
+  lastRun: z15.object({
+    outcome: z15.enum(["ok", "partial", "blocked", "failed"]),
+    complete: z15.boolean(),
+    detected: z15.number().int(),
+    valid: z15.number().int(),
+    rejected: z15.number().int(),
+    diagnostics: z15.array(z15.string()),
+    startedAt: z15.string()
+    // ISO
+  }).nullable()
+});
+var AdminSourceListSchema = z15.object({
+  sources: z15.array(AdminSourceSchema)
+});
+var AdminSourcePolicyPatchSchema = z15.object({
+  enabled: z15.boolean().optional(),
+  autoPublish: z15.boolean().optional()
+}).refine(
+  (p) => p.enabled !== void 0 || p.autoPublish !== void 0,
+  "Nada para cambiar"
+);
+
+// src/benefits-catalog.schema.ts
+import { z as z16 } from "zod";
+var CATALOG_CATEGORIES = [
+  "supermercados",
+  "gastronomia",
+  "indumentaria",
+  "hogar",
+  "electronica",
+  "salud-belleza",
+  "viajes",
+  "transporte",
+  "combustible-autos",
+  "entretenimiento",
+  "ninos-libreria",
+  "mascotas-servicios",
+  "otros"
+];
+var CatalogCategorySchema = z16.enum(CATALOG_CATEGORIES);
+var CATALOG_CATEGORY_LABELS = {
+  supermercados: "Supermercados",
+  gastronomia: "Gastronom\xEDa",
+  indumentaria: "Indumentaria y accesorios",
+  hogar: "Hogar",
+  electronica: "Electr\xF3nica",
+  "salud-belleza": "Salud y belleza",
+  viajes: "Viajes",
+  transporte: "Transporte",
+  "combustible-autos": "Combustible y autos",
+  entretenimiento: "Entretenimiento",
+  "ninos-libreria": "Ni\xF1os, juguetes y librer\xEDa",
+  "mascotas-servicios": "Mascotas y servicios",
+  otros: "Otros"
+};
+var isoDay2 = z16.iso.date();
+var CampaignOfferSchema = z16.discriminatedUnion("kind", [
+  z16.object({
+    kind: z16.literal("percent"),
+    percentageBps: z16.number().int().min(1).max(1e4),
+    // Galicia says "ahorro" without telling discount from cashback.
+    mode: z16.enum(["discount", "cashback", "unspecified"])
+  }).strict(),
+  z16.object({
+    kind: z16.literal("installments"),
+    count: z16.number().int().min(2).max(60),
+    upTo: z16.boolean()
+    // "hasta N cuotas"
+  }).strict()
+]);
+var CampaignTermsSchema = z16.object({
+  offers: z16.array(CampaignOfferSchema).min(1).max(4),
+  eligibility: RequirementSchema,
+  // incomplete = some requirement could not be read from the source; never shown as eligible.
+  eligibilityCompleteness: z16.enum(["complete", "incomplete"]),
+  unresolved: z16.array(z16.string().min(1)).max(10),
+  capState: z16.enum(["known", "none", "unknown"]),
+  caps: z16.array(BenefitCapSchema).max(5),
+  minimumSpendMinor: z16.number().int().nonnegative().nullable(),
+  // null = unknown, 0 = none
+  validity: z16.object({
+    from: isoDay2.nullable(),
+    to: isoDay2.nullable(),
+    // inclusive, Argentina; null = unknown end
+    weekdays: z16.array(z16.number().int().min(0).max(6)).min(1).nullable()
+    // null = every day
+  }).strict(),
+  channels: z16.array(z16.string().min(1)).max(10),
+  // e.g. modo, qr, nfc, online, instore
+  where: z16.string().max(500).nullable(),
+  // "Consultá los locales adheridos"
+  legalText: z16.string().max(2e4).nullable(),
+  warnings: z16.array(z16.string().min(1)).max(10)
+}).strict().superRefine((t, ctx) => {
+  if (t.capState === "known" && !t.caps.length)
+    ctx.addIssue({ code: "custom", message: "capState known requiere caps" });
+  if (t.capState !== "known" && t.caps.length)
+    ctx.addIssue({ code: "custom", message: "caps s\xF3lo con capState known" });
+  if (t.validity.from && t.validity.to && t.validity.from > t.validity.to)
+    ctx.addIssue({ code: "custom", message: "vigencia invertida" });
+});
 export {
+  AdminBenefitActionResultSchema,
+  AdminBenefitActionSchema,
+  AdminBenefitDetailSchema,
+  AdminBenefitListItemSchema,
+  AdminBenefitListQuerySchema,
+  AdminBenefitListSchema,
+  AdminBenefitRevisionSchema,
+  AdminSourceListSchema,
+  AdminSourcePolicyPatchSchema,
+  AdminSourceSchema,
   AllocationChangeConfirmationSchema,
   AllocationChangeContextSchema,
   AllocationChangeContextStateSchema,
@@ -941,6 +1402,31 @@ export {
   AllocationChangePreviewSchema,
   AllocationChangeStaleSchema,
   AllocationChangeUpdatedSchema,
+  BENEFIT_CAP_PERIODS,
+  BENEFIT_CATEGORIES,
+  BENEFIT_CATEGORY_LABELS,
+  BENEFIT_KINDS,
+  BENEFIT_LIFECYCLE,
+  BenefitCapSchema,
+  BenefitCatalogResponseSchema,
+  BenefitCategorySchema,
+  BenefitEvidenceSchema,
+  BenefitLifecycleSchema,
+  BenefitMatchSchema,
+  BenefitPreferencesSchema,
+  BenefitProfileFactsSchema,
+  BenefitRulesSchema,
+  CAP_PERIODS,
+  CAP_SCOPES,
+  CARD_NETWORKS,
+  CARD_TYPES,
+  CATALOG_CATEGORIES,
+  CATALOG_CATEGORY_LABELS,
+  CampaignOfferSchema,
+  CampaignTermsSchema,
+  CardNetworkSchema,
+  CardSelectorSchema,
+  CatalogCategorySchema,
   ConfirmAllocationChangeWireSchema,
   ConfirmGoalCompletionWireSchema,
   ConfirmGoalCreationWireSchema,
@@ -1001,21 +1487,31 @@ export {
   HomeRoadmapMissingSchema,
   HomeRoadmapPresentSchema,
   HomeRoadmapResponseSchema,
+  INSTRUMENT_TYPES,
   IncomeDraftSchema,
   IncomeMutationResponseSchema,
   InitialHomeStateSchema,
+  InstrumentFactsSchema,
+  MEMBERSHIP_USAGES,
   NOTIFICATION_TYPES,
   NotificationSettingSchema,
   NotificationSettingsResponseSchema,
   NotificationTimeSchema,
   NotificationTypeSchema,
+  OFFER_TYPES,
   ONE_TIME_EXPENSE_SOURCES,
+  PROVIDER_FACT_KEYS,
+  PROVIDER_KINDS,
   PlaceholderItemListSchema,
   PlaceholderItemSchema,
   PlaceholderStatusSchema,
   ProfileResponseSchema,
+  ProviderFactsSchema,
   RECURRING_EXPENSE_SOURCES,
+  REQUIREMENT_MAX_DEPTH,
+  REQUIREMENT_MAX_NODES,
   RenameSavingsPlaceSchema,
+  RequirementSchema,
   RoadmapDataSchema,
   RoadmapExpenseSchema,
   RoadmapFinancesSchema,
@@ -1037,6 +1533,8 @@ export {
   SavingsPlaceMutationResponseSchema,
   SavingsTransferResponseSchema,
   SavingsTransferSchema,
+  TRI_STATE,
+  UpdateBenefitPreferencesSchema,
   UpdateNotificationSettingSchema,
   UpdatePlaceholderItemSchema,
   UpdateSavingContributionWireSchema,

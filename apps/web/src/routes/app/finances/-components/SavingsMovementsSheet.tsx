@@ -1,14 +1,17 @@
-import { Sheet } from '../../../../components/ui/sheet'
-import { SidePanelContent, SidePanelHeader } from '../../../../components/norte/SidePanel'
-import type { SavingsMovement } from '../../../../features/savings-places/savings-places'
-import { Money } from '../../../../components/norte/Money'
-import { createMoney } from '../../../../lib/money'
+import { Sheet } from "../../../../components/ui/sheet";
+import {
+  SidePanelContent,
+  SidePanelHeader,
+} from "../../../../components/norte/SidePanel";
+import type { SavingsMovement } from "../../../../features/savings-places/savings-places";
+import { Money } from "../../../../components/norte/Money";
+import { createMoney } from "../../../../lib/money";
 
 interface SavingsMovementsSheetProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  placeName: string
-  movements: SavingsMovement[]
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  placeName: string;
+  movements: SavingsMovement[];
 }
 
 export function SavingsMovementsSheet({
@@ -43,18 +46,25 @@ export function SavingsMovementsSheet({
                   >
                     <div className="flex min-w-0 flex-col gap-1">
                       <span className="text-sm font-medium text-foreground">
-                        {movement.kind === 'contribution'
-                          ? 'Ahorro registrado'
-                          : movement.kind === 'completion'
+                        {movement.kind === "contribution"
+                          ? "Ahorro registrado"
+                          : movement.kind === "completion"
                             ? `Objetivo completado: ${movement.goalName}`
-                          : `Transferencia desde ${movement.fromPlaceName}`}
+                            : `Transferencia desde ${movement.fromPlaceName}`}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(movement.createdAt).toLocaleDateString('es-AR')}
+                        {new Date(movement.createdAt).toLocaleDateString(
+                          "es-AR",
+                        )}
                       </span>
                     </div>
                     <Money
-                      value={createMoney(movement.kind === 'completion' ? `-${movement.amount.replace(/^-/, '')}` : movement.amount, movement.currency)}
+                      value={createMoney(
+                        movement.kind === "completion"
+                          ? `-${movement.amount.replace(/^-/, "")}`
+                          : movement.amount,
+                        movement.currency,
+                      )}
                       className="shrink-0 sm:justify-end"
                     />
                   </li>
@@ -65,5 +75,5 @@ export function SavingsMovementsSheet({
         </div>
       </SidePanelContent>
     </Sheet>
-  )
+  );
 }

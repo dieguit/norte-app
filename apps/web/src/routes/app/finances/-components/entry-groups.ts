@@ -19,22 +19,34 @@ export type GroupableEntry = {
 type Labels = Readonly<Record<string, string>>;
 
 export const categoryName = (entry: GroupableEntry, labels: Labels) =>
-  entry.sourceKind === "custom" ? entry.sourceName : (labels[entry.sourceKind] ?? entry.sourceName);
+  entry.sourceKind === "custom"
+    ? entry.sourceName
+    : (labels[entry.sourceKind] ?? entry.sourceName);
 
-export const entryLabel = (entry: GroupableEntry, labels: Labels) => entry.concept ?? categoryName(entry, labels);
+export const entryLabel = (entry: GroupableEntry, labels: Labels) =>
+  entry.concept ?? categoryName(entry, labels);
 
-export const categoryKey = (entry: GroupableEntry) => entry.sourceId ?? `${entry.sourceKind}:${entry.sourceName}`;
+export const categoryKey = (entry: GroupableEntry) =>
+  entry.sourceId ?? `${entry.sourceKind}:${entry.sourceName}`;
 
 export const sumArs = (entries: GroupableEntry[]) =>
-  entries.reduce((sum, entry) => sum.plus(entry.arsEquivalent ?? entry.amount), new BigNumber(0));
+  entries.reduce(
+    (sum, entry) => sum.plus(entry.arsEquivalent ?? entry.amount),
+    new BigNumber(0),
+  );
 
 function groupBy<T>(items: T[], keyOf: (item: T) => string) {
   const groups = new Map<string, T[]>();
-  for (const item of items) groups.set(keyOf(item), [...(groups.get(keyOf(item)) ?? []), item]);
+  for (const item of items)
+    groups.set(keyOf(item), [...(groups.get(keyOf(item)) ?? []), item]);
   return [...groups];
 }
 
-export function groupByCategory<T extends GroupableEntry>(entries: T[], labels: Labels = {}, month?: string) {
+export function groupByCategory<T extends GroupableEntry>(
+  entries: T[],
+  labels: Labels = {},
+  month?: string,
+) {
   const grand = sumArs(entries);
   return groupBy(entries, categoryKey)
     .map(([key, items]) => {
@@ -45,8 +57,12 @@ export function groupByCategory<T extends GroupableEntry>(entries: T[], labels: 
         total: createMoney(total, "ARS"),
         share: grand.isZero() ? 0 : total.div(grand).toNumber(),
         entries: month
-          ? [...items].sort((a, b) => movementDay(b, month).localeCompare(movementDay(a, month)))
-          : [...items].sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth)),
+          ? [...items].sort((a, b) =>
+              movementDay(b, month).localeCompare(movementDay(a, month)),
+            )
+          : [...items].sort((a, b) =>
+              b.effectiveMonth.localeCompare(a.effectiveMonth),
+            ),
       };
     })
     .sort((a, b) => b.share - a.share || a.label.localeCompare(b.label, "es"))

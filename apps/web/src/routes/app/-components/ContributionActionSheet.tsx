@@ -1,17 +1,17 @@
-import { Sheet, SheetHeader } from '../../../components/ui/sheet'
-import { SidePanelContent } from '../../../components/norte/SidePanel'
-import { useSavingContributionContext } from './useSavingContributionContext'
-import { ContributionActionContent } from './ContributionActionContent'
-import { ContributionActionHeader } from './ContributionActionHeader'
-import { useContributionActionSelection } from './useContributionActionSelection'
-import type { CatchUpContribution } from './contribution-action-types'
+import { Sheet, SheetHeader } from "../../../components/ui/sheet";
+import { SidePanelContent } from "../../../components/norte/SidePanel";
+import { useSavingContributionContext } from "./useSavingContributionContext";
+import { ContributionActionContent } from "./ContributionActionContent";
+import { ContributionActionHeader } from "./ContributionActionHeader";
+import { useContributionActionSelection } from "./useContributionActionSelection";
+import type { CatchUpContribution } from "./contribution-action-types";
 
-export type { CatchUpContribution } from './contribution-action-types'
+export type { CatchUpContribution } from "./contribution-action-types";
 
 export interface ContributionActionSheetProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  catchUpContribution?: CatchUpContribution | null
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  catchUpContribution?: CatchUpContribution | null;
 }
 
 export function ContributionActionSheet({
@@ -19,26 +19,30 @@ export function ContributionActionSheet({
   onOpenChange,
   catchUpContribution,
 }: ContributionActionSheetProps) {
-  const selection = useContributionActionSelection(open, catchUpContribution)
+  const selection = useContributionActionSelection(open, catchUpContribution);
   const contextState = useSavingContributionContext({
     open,
-    missingProfileMessage: 'Completá tu perfil financiero antes de registrar un aporte.',
-  })
+    missingProfileMessage:
+      "Completá tu perfil financiero antes de registrar un aporte.",
+  });
   const isContextual = Boolean(
     catchUpContribution &&
-      selection.selectedAction?.kind === catchUpContribution.kind &&
-      selection.selectedAction?.currency === catchUpContribution.currency,
-  )
+    selection.selectedAction?.kind === catchUpContribution.kind &&
+    selection.selectedAction?.currency === catchUpContribution.currency,
+  );
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) selection.setSelectedAction(null)
-    onOpenChange(nextOpen)
-  }
+    if (!nextOpen) selection.setSelectedAction(null);
+    onOpenChange(nextOpen);
+  };
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SidePanelContent>
         <SheetHeader className="border-b border-[var(--line)] px-6 py-5">
-          <ContributionActionHeader selectedAction={selection.selectedAction} onBack={() => selection.setSelectedAction(null)} />
+          <ContributionActionHeader
+            selectedAction={selection.selectedAction}
+            onBack={() => selection.setSelectedAction(null)}
+          />
         </SheetHeader>
         <ContributionActionContent
           loading={contextState.loading}
@@ -53,5 +57,5 @@ export function ContributionActionSheet({
         />
       </SidePanelContent>
     </Sheet>
-  )
+  );
 }

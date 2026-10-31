@@ -4,8 +4,16 @@ import { describe, expect, it } from 'vitest';
 import * as registry from './schema';
 
 const expectedTables = [
+  'benefit_detail_cache',
+  'benefit_banks',
+  'benefit_brands',
+  'benefit_campaigns',
+  'benefit_campaign_banks',
+  'benefit_ingest_runs',
+  'benefit_category_mappings',
   'allocation_plan_entries',
   'allocation_plan_snapshots',
+  'benefit_user_preferences',
   'expense_sources',
   'expenses',
   'financial_goals',
@@ -37,8 +45,8 @@ describe('canonical schema registry', () => {
     expect(tables.map((table) => getTableConfig(table).name).sort()).toEqual(
       expectedTables,
     );
-    expect(new Set(tables).size).toBe(23);
-    expect(Object.values(registry.schema)).toHaveLength(23);
+    expect(new Set(tables).size).toBe(31);
+    expect(Object.values(registry.schema)).toHaveLength(31);
   });
 
   it('retains application-side timestamp updates', () => {
@@ -48,6 +56,7 @@ describe('canonical schema registry', () => {
       registry.schema.investmentContributions,
       registry.schema.notificationSettings,
       registry.schema.notifications,
+      registry.schema.benefitUserPreferences,
     ]) {
       expect(table.updatedAt.onUpdateFn).toBeTypeOf('function');
     }
