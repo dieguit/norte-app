@@ -2,9 +2,11 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { Logger } from '@nestjs/common';
 import type {
   ChannelConfig,
+  ChannelHandler,
   ChannelHandlerContext,
 } from '@mastra/core/channels';
 import { getPostHog, linkDistinctId } from '../analytics/posthog';
+import type { Transcribe } from '../mastra/transcriber';
 import type { ChatChannel } from './whatsapp.adapter.provider';
 import type { WhatsappLinksService } from './whatsapp-links.service';
 import type { NotificationsService } from '../notifications/notifications.service';
@@ -56,15 +58,38 @@ function withSpanishBlocks<T extends { post: (message: never) => unknown }>(
   });
 }
 
+// Voice notes become text before the agent runs so guardrails and memory see words, not audio bytes.
+async function transcribeAudio(
+  message: Parameters<ChannelHandler>[1],
+  transcribe: Transcribe,
+) {
+  const audio = message.attachments.filter(
+    (a) => a.type === 'audio' && a.fetchData,
+  );
+  if (!audio.length) return;
+  try {
+    const texts = await Promise.all(
+      audio.map(async (a) => transcribe(await a.fetchData!())),
+    );
+    message.text = [message.text, ...texts].filter(Boolean).join('\n');
+    message.formatted = undefined as never;
+    message.attachments = message.attachments.filter((a) => !audio.includes(a));
+  } catch (error) {
+    logger.warn(`Transcription failed on ${message.id}: ${String(error)}`);
+  }
+}
+
 export function createWhatsappChannel({
   channel,
   links,
   notifications,
+  transcribe,
   webAppUrl,
 }: {
   channel: ChatChannel;
   links: Pick<WhatsappLinksService, 'findUserByJid' | 'issueToken'>;
   notifications: Pick<NotificationsService, 'markAnswered'>;
+  transcribe: Transcribe;
   webAppUrl: string;
 }): ChannelConfig {
   const capture = (
@@ -158,6 +183,9 @@ export function createWhatsappChannel({
           return reset(ctx.mastra, userId, post);
         }
         ctx.requestContext.set('userId', userId);
+        await Promise.all(
+          [...ctx.skipped, message].map((m) => transcribeAudio(m, transcribe)),
+        );
         // Any reply closes the day-close check-in window, so no timeout message follows.
         // ponytail: markAnswered runs here in onDirectMessage (after queue drain) because neither
         // Mastra channels nor Chat SDK expose a pre-queue hook on message receipt. A reply queued

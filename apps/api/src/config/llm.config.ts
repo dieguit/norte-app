@@ -51,11 +51,13 @@ export const roles = {
   main: { model: 'agy-flash-low', effort: 'low' },
   // Guard checks are classifications; thinking adds blocking latency per message.
   guard: { model: 'agy-flash-lite', effort: 'none' },
+  transcriber: { model: 'agy-flash-lite', effort: 'none' },
   domains: {},
   judge: { model: 'agy-flash' },
 } as const satisfies {
   main: ConfigRef;
   guard: ConfigRef;
+  transcriber: ConfigRef;
   domains?: Partial<Record<keyof DomainModels, ConfigRef>>;
   judge: ConfigRef;
 };
