@@ -24,10 +24,12 @@ function setup(
   const notifications = {
     markAnswered: vi.fn().mockResolvedValue(true),
   };
+  const transcribe = vi.fn().mockResolvedValue('gasté 5 lucas en el súper');
   const channel = createWhatsappChannel({
     channel: { key: channelKey, adapter: {} as never },
     links,
     notifications,
+    transcribe,
     webAppUrl: 'https://app.norte.test',
   });
   const adapter = {
@@ -54,10 +56,14 @@ function setup(
     skipped: [] as HandlerArgs[1][],
   };
   const dm = channel.handlers!.onDirectMessage as ChannelHandler;
-  const send = (author: { userId: string; isMe: boolean }, text = 'hola') =>
+  const send = (
+    author: { userId: string; isMe: boolean },
+    text = 'hola',
+    attachments: unknown[] = [],
+  ) =>
     dm(
       thread as unknown as HandlerArgs[0],
-      { id: 'm1', author, text } as unknown as HandlerArgs[1],
+      { id: 'm1', author, text, attachments } as unknown as HandlerArgs[1],
       defaultHandler,
       ctx,
     );
@@ -89,6 +95,7 @@ function setup(
     send,
     dm,
     capture,
+    transcribe,
   };
 }
 
@@ -430,7 +437,10 @@ describe('createWhatsappChannel', () => {
     it('reacts on every queued message of the batch', async () => {
       const { send, adapter, ctx } = setup('user_1', key);
       ctx.skipped.push(
-        ...([{ id: 's1' }, { id: 's2' }] as unknown as HandlerArgs[1][]),
+        ...([
+          { id: 's1', attachments: [] },
+          { id: 's2', attachments: [] },
+        ] as unknown as HandlerArgs[1][]),
       );
       await send({ userId: 'a@lid', isMe: false });
       for (const id of ['s1', 's2', 'm1']) {
@@ -457,6 +467,55 @@ describe('createWhatsappChannel', () => {
         send({ userId: 'a@lid', isMe: false }),
       ).resolves.toBeUndefined();
       expect(defaultHandler).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('voice notes', () => {
+    const voiceNote = () => ({
+      type: 'audio',
+      mimeType: 'audio/ogg; codecs=opus',
+      fetchData: vi.fn().mockResolvedValue(Buffer.from('ogg')),
+    });
+
+    it('replaces audio with its transcript before running the agent', async () => {
+      const { send, transcribe, defaultHandler } = setup('user_1');
+      const image = { type: 'image', mimeType: 'image/jpeg' };
+      await send({ userId: 'a@lid', isMe: false }, '', [voiceNote(), image]);
+      expect(transcribe).toHaveBeenCalledWith(Buffer.from('ogg'));
+      expect(defaultHandler.mock.calls[0][1]).toMatchObject({
+        text: 'gasté 5 lucas en el súper',
+        formatted: undefined,
+        attachments: [image],
+      });
+    });
+
+    it('marks the check-in answered before transcribing', async () => {
+      const { send, transcribe, notifications } = setup('user_1');
+      await send({ userId: 'a@lid', isMe: false }, '', [voiceNote()]);
+      expect(
+        notifications.markAnswered.mock.invocationCallOrder[0],
+      ).toBeLessThan(transcribe.mock.invocationCallOrder[0]);
+    });
+
+    it('passes a placeholder when the voice note has no speech', async () => {
+      const { send, transcribe, defaultHandler } = setup('user_1');
+      transcribe.mockResolvedValue('');
+      await send({ userId: 'a@lid', isMe: false }, '', [voiceNote()]);
+      expect(defaultHandler.mock.calls[0][1]).toMatchObject({
+        text: '[Nota de voz sin habla reconocible]',
+        attachments: [],
+      });
+    });
+
+    it('keeps the audio when transcription fails', async () => {
+      const { send, transcribe, defaultHandler } = setup('user_1');
+      transcribe.mockRejectedValue(new Error('down'));
+      const audio = voiceNote();
+      await send({ userId: 'a@lid', isMe: false }, '', [audio]);
+      expect(defaultHandler.mock.calls[0][1]).toMatchObject({
+        text: '',
+        attachments: [audio],
+      });
     });
   });
 

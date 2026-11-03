@@ -37,6 +37,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsCron } from './notifications.cron';
 import { createMastra } from './index';
+import { createTranscriber } from './transcriber';
 import { ProfileModule } from '../profile/profile.module';
 import { ProfileService } from '../profile/profile.service';
 import { SavingsPlacesModule } from '../savings-places/savings-places.module';
@@ -117,16 +118,19 @@ const mastraModule = MastraModule.registerAsync({
     savingsPlaces: SavingsPlacesService,
   ) => {
     const webAppUrl = config.get('WEB_APP_URL', { infer: true });
+    const llmEnv = {
+      LLM_BASE_URL: config.get('LLM_BASE_URL', { infer: true }),
+      LLM_API_KEY: config.get('LLM_API_KEY', { infer: true }),
+      OPENAI_API_KEY: config.get('OPENAI_API_KEY', { infer: true }),
+      GROQ_API_KEY: config.get('GROQ_API_KEY', { infer: true }),
+      LLM_MODEL: config.get('LLM_MODEL', { infer: true }),
+      LLM_GUARD_MODEL: config.get('LLM_GUARD_MODEL', { infer: true }),
+    };
     return {
       mastra: createMastra(
         {
+          ...llmEnv,
           DATABASE_URL: config.get('DATABASE_URL'),
-          LLM_BASE_URL: config.get('LLM_BASE_URL'),
-          LLM_API_KEY: config.get('LLM_API_KEY'),
-          OPENAI_API_KEY: config.get('OPENAI_API_KEY'),
-          GROQ_API_KEY: config.get('GROQ_API_KEY'),
-          LLM_MODEL: config.get('LLM_MODEL'),
-          LLM_GUARD_MODEL: config.get('LLM_GUARD_MODEL'),
           MASTRA_API_KEY: config.get('MASTRA_API_KEY'),
         },
         {
@@ -148,6 +152,7 @@ const mastraModule = MastraModule.registerAsync({
                   channel,
                   links,
                   notifications,
+                  transcribe: createTranscriber(llmEnv),
                   webAppUrl: config.getOrThrow('WEB_APP_URL'),
                 }),
               }
