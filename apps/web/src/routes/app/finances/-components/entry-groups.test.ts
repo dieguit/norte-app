@@ -34,9 +34,16 @@ describe('groupByCategory', () => {
 })
 
 describe('groupByDay', () => {
-  it('groups by computed day, newest first', () => {
-    const days = groupByDay([{ id: 'a', d: '2026-10-05' }, { id: 'b', d: '2026-10-21' }, { id: 'c', d: '2026-10-05' }], (x) => x.d)
-    expect(days.map((g) => [g.day, g.entries.map((e) => e.id)])).toEqual([['2026-10-21', ['b']], ['2026-10-05', ['a', 'c']]])
+  it('groups by computed day, newest first, and newest first within a day', () => {
+    const days = groupByDay(
+      [
+        { id: 'a', d: '2026-10-05', createdAt: '2026-10-05T09:00:00.000Z' },
+        { id: 'b', d: '2026-10-21', createdAt: '2026-10-21T09:00:00.000Z' },
+        { id: 'c', d: '2026-10-05', createdAt: '2026-10-05T18:00:00.000Z' },
+      ],
+      (x) => x.d,
+    )
+    expect(days.map((g) => [g.day, g.entries.map((e) => e.id)])).toEqual([['2026-10-21', ['b']], ['2026-10-05', ['c', 'a']]])
   })
 })
 

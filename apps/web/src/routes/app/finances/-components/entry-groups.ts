@@ -53,8 +53,9 @@ export function groupByCategory<T extends GroupableEntry>(entries: T[], labels: 
     .map((group, rank) => ({ ...group, rank }));
 }
 
-export function groupByDay<T>(items: T[], dayOf: (item: T) => string) {
-  return groupBy(items, dayOf)
+export function groupByDay<T extends { createdAt: string }>(items: T[], dayOf: (item: T) => string) {
+  const newestFirst = [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return groupBy(newestFirst, dayOf)
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([day, entries]) => ({ day, entries }));
 }
