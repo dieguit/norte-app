@@ -71,7 +71,12 @@ async function transcribeAudio(
     const texts = await Promise.all(
       audio.map(async (a) => transcribe(await a.fetchData!())),
     );
-    message.text = [message.text, ...texts].filter(Boolean).join('\n');
+    message.text = [
+      message.text,
+      ...texts.map((t) => t || '[Nota de voz sin habla reconocible]'),
+    ]
+      .filter(Boolean)
+      .join('\n');
     message.formatted = undefined as never;
     message.attachments = message.attachments.filter((a) => !audio.includes(a));
   } catch (error) {
@@ -89,7 +94,7 @@ export function createWhatsappChannel({
   channel: ChatChannel;
   links: Pick<WhatsappLinksService, 'findUserByJid' | 'issueToken'>;
   notifications: Pick<NotificationsService, 'markAnswered'>;
-  transcribe: Transcribe;
+  transcribe?: Transcribe;
   webAppUrl: string;
 }): ChannelConfig {
   const capture = (
@@ -183,9 +188,6 @@ export function createWhatsappChannel({
           return reset(ctx.mastra, userId, post);
         }
         ctx.requestContext.set('userId', userId);
-        await Promise.all(
-          [...ctx.skipped, message].map((m) => transcribeAudio(m, transcribe)),
-        );
         // Any reply closes the day-close check-in window, so no timeout message follows.
         // ponytail: markAnswered runs here in onDirectMessage (after queue drain) because neither
         // Mastra channels nor Chat SDK expose a pre-queue hook on message receipt. A reply queued
@@ -216,6 +218,8 @@ export function createWhatsappChannel({
             ),
           );
         await react('👀');
+        if (transcribe)
+          await Promise.all(batch.map((m) => transcribeAudio(m, transcribe)));
         const state = { failed: false };
         await turn.run(state, () =>
           defaultHandler(

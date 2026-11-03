@@ -489,6 +489,24 @@ describe('createWhatsappChannel', () => {
       });
     });
 
+    it('marks the check-in answered before transcribing', async () => {
+      const { send, transcribe, notifications } = setup('user_1');
+      await send({ userId: 'a@lid', isMe: false }, '', [voiceNote()]);
+      expect(
+        notifications.markAnswered.mock.invocationCallOrder[0],
+      ).toBeLessThan(transcribe.mock.invocationCallOrder[0]);
+    });
+
+    it('passes a placeholder when the voice note has no speech', async () => {
+      const { send, transcribe, defaultHandler } = setup('user_1');
+      transcribe.mockResolvedValue('');
+      await send({ userId: 'a@lid', isMe: false }, '', [voiceNote()]);
+      expect(defaultHandler.mock.calls[0][1]).toMatchObject({
+        text: '[Nota de voz sin habla reconocible]',
+        attachments: [],
+      });
+    });
+
     it('keeps the audio when transcription fails', async () => {
       const { send, transcribe, defaultHandler } = setup('user_1');
       transcribe.mockRejectedValue(new Error('down'));
