@@ -115,10 +115,18 @@ describe('PlayDigital JSON detail', () => {
       codes: ['selecta-2', 'selecta-4'],
       unknown: [],
     });
-    d.offers[0].segmentations.audiences.push('private-nivel-5', null);
+    d.offers[0].segmentations.audiences.push(
+      'private-nivel-5',
+      'private-nivel-6',
+    );
+    expect(playdigitalAudiences(d, bank)).toEqual({
+      codes: ['selecta-2', 'selecta-4', 'private-black', 'private-infinite'],
+      unknown: [],
+    });
+    d.offers[0].segmentations.audiences.push(null);
     expect(playdigitalAudiences(d, bank)).toEqual({
       codes: [],
-      unknown: ['private-nivel-5', 'null'],
+      unknown: ['null'],
     });
     d.offers[0].segmentations.audiences = [];
     expect(playdigitalAudiences(d, bank)).toEqual({ codes: [], unknown: [] });

@@ -96,16 +96,19 @@ const tierCodes: Record<string, string[] | null> = {
   Masivo: ['masivo'],
   Eminent: ['eminent', 'eminent-black'],
   'Eminent Black': ['eminent-black'],
+  'Eminent Elite': ['eminent-elite'],
 };
 // These are the catalog's explicit payment logos, not inferred tier/card-product names.
 const logos: Record<
   string,
-  { network: 'visa' | 'mastercard' | 'amex'; types?: ['debit'] }
+  { network: 'visa' | 'mastercard' | 'amex'; types?: ['debit' | 'credit'] }
 > = {
   'TarjetaMasterCard.png': { network: 'mastercard' },
   'Master_Black.png': { network: 'mastercard' },
+  'Masterelite.png': { network: 'mastercard', types: ['credit'] },
   'TarjetaVisa.png': { network: 'visa' },
   'Visa_Black.png': { network: 'visa' },
+  'Visaelite.png': { network: 'visa', types: ['credit'] },
   'TarjetaAmericanExpress.png': { network: 'amex' },
   'Amex_Black.png': { network: 'amex' },
   'Vdebito80x80azul.png': { network: 'visa', types: ['debit'] },
@@ -122,7 +125,6 @@ function eligibility(row: Row, add: AddAnomaly) {
       `Nivel Galicia sin confirmar: ${row.modeloAtencion.nombre}`,
     );
   }
-  if (row.haberes) unresolved.push('Requiere cobrar el sueldo en Galicia');
   const cards: Requirement[] = row.mediosDePago.map((logo) => {
     const selector = logos[logo];
     if (!selector) unresolved.push(`Medio de pago sin confirmar: ${logo}`);
@@ -154,6 +156,9 @@ function parseTerms(
     eligibility: { allOf: requirements },
     eligibilityCompleteness: unresolved.length ? 'incomplete' : 'complete',
     unresolved,
+    purchaseConditions: row.haberes
+      ? [{ kind: 'payroll', bankSlug: 'galicia' }]
+      : [],
     capState: 'unknown',
     caps: [],
     minimumSpendMinor: null,
@@ -259,18 +264,25 @@ function mapRow(
   };
 }
 
+function collectRow(run: AdapterRun, raw: unknown) {
+  if (z.object({ proximamente: z.literal(true) }).safeParse(raw).success) {
+    const id = identitySchema.safeParse(raw);
+    if (id.success) (run.rejectedExternalIds ??= []).push(String(id.data.id));
+    return;
+  }
+  const id = identitySchema.safeParse(raw);
+  if (id.success) run.observedExternalIds.push(String(id.data.id));
+  const listing = mapRow(raw, run.anomalies);
+  if (listing) run.listings.push(listing);
+}
+
 function collectRows(run: AdapterRun, list: unknown[], totalSize: number) {
   run.totalReported = totalSize;
   run.rawRowCount = list.length;
-  for (const raw of list) {
-    const id = identitySchema.safeParse(raw);
-    if (id.success) run.observedExternalIds.push(String(id.data.id));
-    const listing = mapRow(raw, run.anomalies);
-    if (listing) run.listings.push(listing);
-  }
+  for (const raw of list) collectRow(run, raw);
   run.complete =
     list.length === totalSize &&
-    run.anomalies.length === 0 &&
+    run.anomalies.every((anomaly) => anomaly.kind === 'unknown_tier_signal') &&
     run.listings.every((listing) => listing.terms !== null);
   run.outcome = run.complete ? 'ok' : 'partial';
 }

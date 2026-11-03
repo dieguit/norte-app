@@ -2,6 +2,8 @@ import type { PurchaseCondition } from "@repo/shared-types";
 
 export function purchaseConditionText(condition: PurchaseCondition): string {
   switch (condition.kind) {
+    case "payroll":
+      return `Requiere cobrar el sueldo en ${condition.bankSlug.charAt(0).toUpperCase()}${condition.bankSlug.slice(1)}.`;
     case "participating_locations":
       return `Locales adheridos: ${condition.instruction}`;
     case "acquirer":
@@ -10,7 +12,5 @@ export function purchaseConditionText(condition: PurchaseCondition): string {
       return `Horario: ${condition.from} a ${condition.to} (hora de Argentina).`;
     case "coupon":
       return `Cupón${condition.code ? ` ${condition.code}` : ""}: ${condition.instruction}`;
-    case "legal_purchase":
-      return condition.text;
   }
 }

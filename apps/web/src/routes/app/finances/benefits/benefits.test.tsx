@@ -545,11 +545,6 @@ describe("benefit detail", () => {
         instruction: "Ingresalo al pagar",
         evidence: "fuente",
       },
-      {
-        kind: "legal_purchase" as const,
-        text: "Sujeto a validación especial",
-        evidence: "fuente",
-      },
     ];
     m.getBenefit.mockResolvedValue({
       ...detail,
@@ -580,12 +575,6 @@ describe("benefit detail", () => {
     ).toBeInTheDocument();
     expect(
       within(purchase).getByText("Cupón AHORRO: Ingresalo al pagar"),
-    ).toBeInTheDocument();
-    expect(
-      within(purchase).getByText("Condiciones legales sin interpretar"),
-    ).toBeInTheDocument();
-    expect(
-      within(purchase).getByText("Sujeto a validación especial"),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "Otras opciones" }),

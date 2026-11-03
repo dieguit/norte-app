@@ -219,7 +219,7 @@ describe('PlayDigital adapter', () => {
   it('ignores listing tier signals and reports unknown detail audiences', async () => {
     const card = { ...cards[0], title: 'Selecta Nivel 2' };
     const detail = structuredClone(jetsmart);
-    detail.offers[0].segmentations = { audiences: ['private-nivel-5'] };
+    detail.offers[0].segmentations = { audiences: ['spx-santander'] };
     const ctx = context(() => page([card]));
     ctx.knownDetails.set(card.promo_id!, known(card, detail));
     const [run] = await playdigitalAdapter.run(ctx, [banks[0]]);
@@ -228,7 +228,7 @@ describe('PlayDigital adapter', () => {
     expect(run.anomalies).toContainEqual(
       expect.objectContaining({
         kind: 'unknown_audience',
-        detail: 'private-nivel-5',
+        detail: 'spx-santander',
       }),
     );
   });

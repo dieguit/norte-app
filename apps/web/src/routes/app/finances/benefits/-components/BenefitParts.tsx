@@ -50,9 +50,6 @@ export function VariantSummary({
       </span>
       {variant.purchaseConditions.map((condition, i) => (
         <span key={i} className="block text-muted-foreground">
-          {condition.kind === "legal_purchase"
-            ? "Condiciones legales sin interpretar: "
-            : ""}
           {purchaseConditionText(condition)}
         </span>
       ))}

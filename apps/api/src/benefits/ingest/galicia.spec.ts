@@ -46,7 +46,7 @@ describe('Galicia own catalog', () => {
       totalReported: 40,
       anomalies: [],
     });
-    expect(result.observedExternalIds).toHaveLength(40);
+    expect(result.observedExternalIds).toHaveLength(32);
     for (const listing of result.listings) {
       expect(CampaignTermsSchema.safeParse(listing.terms).success).toBe(true);
       expect(listing.terms).toMatchObject({
@@ -78,24 +78,7 @@ describe('Galicia own catalog', () => {
       ]),
     );
     const beauty = result.listings.filter((l) => l.sourceBrandId === '3713');
-    expect(
-      beauty.some(
-        (l) =>
-          l.tiers?.codes[0] === 'masivo' &&
-          l.terms!.offers.some(
-            (o) => o.kind === 'percent' && o.percentageBps === 1000,
-          ),
-      ),
-    ).toBe(true);
-    expect(
-      beauty.some(
-        (l) =>
-          l.tiers?.codes[0] === 'eminent' &&
-          l.terms!.offers.some(
-            (o) => o.kind === 'percent' && o.percentageBps === 1500,
-          ),
-      ),
-    ).toBe(true);
+    expect(beauty).toHaveLength(2);
   });
   it.each([
     ['Cross', null],
@@ -149,13 +132,61 @@ describe('Galicia own catalog', () => {
       },
     ]);
   });
-  it('keeps a salary requirement incomplete even for a known tier', async () => {
+  it('maps Eminent Elite and its credit card logos', async () => {
+    const { result } = await run(
+      one({
+        modeloAtencion: { nombre: 'Eminent Elite' },
+        mediosDePago: ['Visaelite.png', 'Masterelite.png'],
+        haberes: false,
+        proximamente: false,
+      }),
+    );
+    expect(result.anomalies).toEqual([]);
+    expect(result.listings[0]).toMatchObject({
+      tiers: { bankSlug: 'galicia', codes: ['eminent-elite'] },
+      terms: {
+        eligibilityCompleteness: 'complete',
+        unresolved: [],
+        eligibility: {
+          allOf: [
+            {
+              anyOf: [
+                {
+                  card: {
+                    issuerProviderSlugs: ['galicia'],
+                    network: 'visa',
+                    types: ['credit'],
+                  },
+                },
+                {
+                  card: {
+                    issuerProviderSlugs: ['galicia'],
+                    network: 'mastercard',
+                    types: ['credit'],
+                  },
+                },
+              ],
+            },
+            {
+              providerFact: {
+                providerSlug: 'galicia',
+                key: 'tier',
+                values: ['eminent-elite'],
+              },
+            },
+          ],
+        },
+      },
+    });
+  });
+  it('shows payroll without blocking a known tier', async () => {
     const { result } = await run(
       one({ haberes: true, modeloAtencion: { nombre: 'Cross' } }),
     );
     expect(result.listings[0]!.terms).toMatchObject({
-      eligibilityCompleteness: 'incomplete',
-      unresolved: ['Requiere cobrar el sueldo en Galicia'],
+      eligibilityCompleteness: 'complete',
+      unresolved: [],
+      purchaseConditions: [{ kind: 'payroll', bankSlug: 'galicia' }],
     });
     expect(result.anomalies).toEqual([]);
   });
@@ -166,7 +197,7 @@ describe('Galicia own catalog', () => {
       to: '2028-02-29',
     });
   });
-  it('keeps salary and unknown tiers unresolved; maps QR/NFC', async () => {
+  it('keeps unknown tiers unresolved; maps salary and QR/NFC', async () => {
     const { result } = await run(
       one({
         haberes: true,
@@ -177,12 +208,48 @@ describe('Galicia own catalog', () => {
     );
     expect(result.listings[0]!.terms).toMatchObject({
       eligibilityCompleteness: 'incomplete',
-      unresolved: expect.arrayContaining([
-        'Requiere cobrar el sueldo en Galicia',
-      ]),
+      unresolved: ['Nivel Galicia sin confirmar: Nuevo'],
+      purchaseConditions: [{ kind: 'payroll', bankSlug: 'galicia' }],
       channels: ['qr', 'nfc'],
     });
     expect(result.anomalies[0]!.kind).toBe('unknown_tier_signal');
+  });
+  it('skips upcoming records while counting raw rows', async () => {
+    const { result } = await run(one({ proximamente: true }));
+    expect(result).toMatchObject({
+      complete: true,
+      rawRowCount: 1,
+      listings: [],
+      observedExternalIds: [],
+      rejectedExternalIds: [String(fixture.data.list[0].id)],
+    });
+  });
+  it('keeps catalog complete with upcoming rows and unknown tiers', async () => {
+    const current = {
+      ...fixture.data.list[0],
+      modeloAtencion: { nombre: 'Nuevo' },
+      mediosDePago: ['Unknown.png'],
+      proximamente: false,
+    };
+    const upcoming = { ...current, id: 'upcoming', proximamente: true };
+    const { result } = await run({
+      data: { totalSize: 2, list: [current, upcoming] },
+    });
+    expect(result).toMatchObject({
+      outcome: 'ok',
+      complete: true,
+      rawRowCount: 2,
+      observedExternalIds: [String(current.id)],
+      rejectedExternalIds: ['upcoming'],
+      anomalies: [{ kind: 'unknown_tier_signal', detail: 'Nuevo' }],
+    });
+    expect(result.listings[0]!.terms).toMatchObject({
+      eligibilityCompleteness: 'incomplete',
+      unresolved: [
+        'Nivel Galicia sin confirmar: Nuevo',
+        'Medio de pago sin confirmar: Unknown.png',
+      ],
+    });
   });
   it.each([
     ['promocion', 'unparsed_offer'],
@@ -298,7 +365,7 @@ describe('Galicia own catalog', () => {
     async () => {
       const { result } = await run(JSON.parse(readFileSync(sample, 'utf8')));
       expect(result.rawRowCount).toBe(2244);
-      expect(result.listings).toHaveLength(2244);
+      expect(result.listings).toHaveLength(result.observedExternalIds.length);
       expect(result.anomalies).toEqual([]);
       for (const listing of result.listings)
         expect(CampaignTermsSchema.safeParse(listing.terms).success).toBe(true);

@@ -60,6 +60,7 @@ export type CampaignOffer = z.infer<typeof CampaignOfferSchema>;
 const conditionText = z.string().trim().min(1).max(500);
 const purchaseTime = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/);
 export const PurchaseConditionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("payroll"), bankSlug: conditionText }).strict(),
   z
     .object({
       kind: z.literal("participating_locations"),
@@ -93,13 +94,6 @@ export const PurchaseConditionSchema = z.discriminatedUnion("kind", [
       kind: z.literal("coupon"),
       code: conditionText.nullable(),
       instruction: conditionText,
-      evidence: conditionText,
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal("legal_purchase"),
-      text: z.string().trim().min(1).max(2000),
       evidence: conditionText,
     })
     .strict(),

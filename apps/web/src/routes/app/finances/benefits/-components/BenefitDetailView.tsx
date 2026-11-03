@@ -135,28 +135,10 @@ export function BenefitDetailView({
             Condiciones de compra
           </h3>
           <ul className="m-0 flex flex-col gap-1 pl-5 text-body-sm">
-            {benefit.purchaseConditions
-              .filter((c) => c.kind !== "legal_purchase")
-              .map((c, i) => (
-                <li key={i}>{purchaseConditionText(c)}</li>
-              ))}
+            {benefit.purchaseConditions.map((c, i) => (
+              <li key={i}>{purchaseConditionText(c)}</li>
+            ))}
           </ul>
-          {benefit.purchaseConditions.some(
-            (c) => c.kind === "legal_purchase",
-          ) && (
-            <div>
-              <p className="m-0 font-semibold text-body-sm">
-                Condiciones legales sin interpretar
-              </p>
-              {benefit.purchaseConditions
-                .filter((c) => c.kind === "legal_purchase")
-                .map((c, i) => (
-                  <p key={i} className="m-0 whitespace-pre-wrap text-body-sm">
-                    {purchaseConditionText(c)}
-                  </p>
-                ))}
-            </div>
-          )}
         </section>
       )}
 

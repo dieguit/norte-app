@@ -209,6 +209,18 @@ function applicableOffer(d: Detail, bank: BankRef) {
   return o;
 }
 
+function audienceCode(audience: unknown) {
+  const match =
+    typeof audience === 'string'
+      ? /^selecta-nivel-(\d+)$/.exec(audience)
+      : null;
+  const privateTiers: Record<string, string> = {
+    'private-nivel-5': 'private-black',
+    'private-nivel-6': 'private-infinite',
+  };
+  return privateTiers[String(audience)] ?? `selecta-${match?.[1]}`;
+}
+
 function audienceTiers(o: Offer, bank: BankRef) {
   const audiences = o.segmentations?.audiences;
   if (!Array.isArray(audiences)) return { codes: [], unknown: [] };
@@ -216,11 +228,7 @@ function audienceTiers(o: Offer, bank: BankRef) {
   const codes: string[] = [];
   const unknown: string[] = [];
   for (const audience of audiences) {
-    const match =
-      typeof audience === 'string'
-        ? /^selecta-nivel-(\d+)$/.exec(audience)
-        : null;
-    const code = `selecta-${match?.[1]}`;
+    const code = audienceCode(audience);
     if (bank.slug === 'macro' && known.has(code)) codes.push(code);
     else unknown.push(String(audience));
   }

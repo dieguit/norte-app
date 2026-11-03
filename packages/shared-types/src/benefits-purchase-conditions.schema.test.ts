@@ -37,13 +37,6 @@ it("bounds purchase conditions and validates exact non-overnight Argentine times
   ).toBe(false);
   expect(
     PurchaseConditionSchema.safeParse({
-      kind: "legal_purchase",
-      text: "x".repeat(2001),
-      evidence,
-    }).success,
-  ).toBe(false);
-  expect(
-    PurchaseConditionSchema.safeParse({
       kind: "acquirer",
       mode: "exclude",
       names: Array(21).fill("ACQUIRER"),
@@ -145,8 +138,8 @@ it("requires explicit variant eligibility and defaults purchase conditions", () 
   expect(
     CampaignTermsSchema.shape.purchaseConditions.safeParse(
       Array(21).fill({
-        kind: "legal_purchase",
-        text: "Locales adheridos",
+        kind: "participating_locations",
+        instruction: "Locales adheridos",
         evidence,
       }),
     ).success,

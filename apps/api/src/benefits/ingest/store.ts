@@ -568,6 +568,14 @@ async function pruneCampaigns(
     await tx
       .delete(campaigns)
       .where(inArray(campaigns.id, ended.slice(i, i + 1000)));
+  await tx
+    .delete(campaigns)
+    .where(
+      and(
+        eq(campaigns.source, 'galicia'),
+        sql`${campaigns.raw}->'listing'->'proximamente' = 'true'::jsonb`,
+      ),
+    );
   const removedIds = [...new Set(removed.map((row) => row.campaignId))];
   for (let i = 0; i < removedIds.length; i += 1000) {
     const remaining = await tx

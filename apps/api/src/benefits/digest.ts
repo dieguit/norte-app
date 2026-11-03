@@ -33,12 +33,15 @@ function capText(item: BenefitResult): string {
     .join(', ');
 }
 
-function purchaseQualifiers(item: BenefitResult): string[] | null {
+function purchaseQualifiers(item: BenefitResult): string[] {
   const qualifiers: string[] = [];
   for (const condition of item.purchaseConditions) {
     switch (condition.kind) {
-      case 'legal_purchase':
-        return null;
+      case 'payroll':
+        qualifiers.push(
+          `requiere cobrar el sueldo en ${condition.bankSlug.charAt(0).toUpperCase()}${condition.bankSlug.slice(1)}`,
+        );
+        break;
       case 'participating_locations':
         qualifiers.push(`locales adheridos: ${condition.instruction}`);
         break;
@@ -70,7 +73,6 @@ function minimumText(amount: number | null): string {
 function digestLine(item: BenefitResult): string | null {
   if (item.match !== 'eligible' && item.match !== 'conditional') return null;
   const qualifiers = purchaseQualifiers(item);
-  if (qualifiers === null) return null;
   const cards = [
     ...new Set(
       item.usableWith.map(

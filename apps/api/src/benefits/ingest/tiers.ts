@@ -19,6 +19,7 @@ export const BANK_TIERS: Record<string, { code: string; label: string }[]> = {
     { code: 'masivo', label: 'Galicia' },
     { code: 'eminent', label: 'Éminent' },
     { code: 'eminent-black', label: 'Éminent Black' },
+    { code: 'eminent-elite', label: 'Éminent Elite' },
   ],
   macro: [
     { code: 'selecta-1', label: 'Selecta Nivel 1' },

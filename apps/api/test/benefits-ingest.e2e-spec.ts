@@ -603,6 +603,25 @@ describe.skipIf(!url)('v3 ingest persistence', () => {
     }
   });
 
+  it('immediately prunes upcoming Galicia listings', async () => {
+    const active = { ...listing(), source: 'galicia' as const };
+    const legacy = { ...listing(), source: 'galicia' as const };
+    await commit(run([active, legacy], 0, 'galicia', { source: 'galicia' }));
+    await db
+      .update(campaigns)
+      .set({ raw: { listing: { proximamente: true }, detail: null } })
+      .where(eq(campaigns.externalId, legacy.externalId));
+    await commit(
+      run([], 1, 'galicia', {
+        source: 'galicia',
+        rejectedExternalIds: [active.externalId],
+      }),
+    );
+    const rows = await db.select().from(campaigns);
+    expect(rows.map((row) => row.externalId)).not.toContain(active.externalId);
+    expect(rows.map((row) => row.externalId)).not.toContain(legacy.externalId);
+  });
+
   it('immediately prunes non-running legacy listings and rejected details, retaining pending details', async () => {
     const placeholder = listing(),
       past = listing(),

@@ -130,14 +130,7 @@ it('includes structured conditional requirements without losing polarity or unkn
   ).toContain('compra mínima $1.000');
 });
 
-it('skips legal and oversized qualifiers before counting the three-item limit', () => {
-  const legal: BenefitResult = {
-    ...item,
-    match: 'conditional',
-    purchaseConditions: [
-      { kind: 'legal_purchase', text: 'Restricción', evidence: 'legal' },
-    ],
-  };
+it('skips oversized qualifiers before counting the three-item limit', () => {
   const long: BenefitResult = {
     ...item,
     match: 'conditional',
@@ -149,9 +142,9 @@ it('skips legal and oversized qualifiers before counting the three-item limit', 
       },
     ],
   };
-  expect(formatDigest([legal, long], ['supermercados'], '')).toBeNull();
+  expect(formatDigest([long], ['supermercados'], '')).toBeNull();
   const text = formatDigest(
-    [legal, long, ...Array.from({ length: 4 }, () => item)],
+    [long, ...Array.from({ length: 4 }, () => item)],
     ['supermercados'],
     '',
   );

@@ -157,7 +157,7 @@ describe('v3 consumer eligibility', () => {
     ).toEqual([...keys].sort());
     expect(BenefitResultSchema.safeParse(group).success).toBe(true);
   });
-  it('separates profile eligibility from all five purchase condition kinds', () => {
+  it('separates profile eligibility from all four purchase condition kinds', () => {
     const conditions: PurchaseCondition[] = [
       {
         kind: 'participating_locations',
@@ -182,11 +182,6 @@ describe('v3 consumer eligibility', () => {
         code: 'AHORRO',
         instruction: 'Ingresá AHORRO',
         evidence: 'Cupón AHORRO',
-      },
-      {
-        kind: 'legal_purchase',
-        text: 'Sólo productos seleccionados',
-        evidence: 'Productos seleccionados',
       },
     ];
     for (const condition of conditions) {

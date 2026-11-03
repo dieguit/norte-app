@@ -74,9 +74,6 @@ function BenefitRow({ benefit }: { benefit: BenefitResult }) {
         )}
         {benefit.purchaseConditions.map((condition, index) => (
           <span key={index} className="text-caption text-muted-foreground">
-            {condition.kind === "legal_purchase"
-              ? "Condiciones legales sin interpretar: "
-              : ""}
             {purchaseConditionText(condition)}
           </span>
         ))}

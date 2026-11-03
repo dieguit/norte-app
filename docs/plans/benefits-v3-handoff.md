@@ -72,9 +72,9 @@ Galicia's mapper is unchanged and already simple.
 Local dev DB after the last full import:
 
 - **Imports:** all 11 MODO banks and Galicia complete, 0 details missing.
-- **Campaigns:** 3,965 (Galicia 2,242, MODO 1,721 publishable).
-- **Incomplete:** 2 (Galicia, not investigated).
-- **Brands:** 2,115, none empty.
+- **Campaigns:** 3,834 (Galicia 2,119 after skipping `proximamente`, rest MODO).
+- **Incomplete:** 0.
+- **Brands:** none empty.
 
 Validation at HEAD:
 
@@ -86,11 +86,11 @@ Validation at HEAD:
 ## Open items
 
 1. **Browser check not done.** Customer `/app/finances/benefits` and admin `/app/admin/benefits` have never been verified visually with a real Clerk login.
-2. **Unused contract.** `legal_purchase` purchase-condition kind is no longer emitted. Remove it from shared types, digest and web.
-3. **Galicia incomplete.** Look at the 2 incomplete Galicia promos.
-4. **Unmapped tiers.** Macro audiences `private-nivel-5/6` and `spx-santander` produce anomalies and are treated as broadest tier. Map them if those tiers matter.
-5. **Missing banks.** Masventas, HSBC and Brubank have no source yet.
-6. **Duplication.** fallow reports 7 duplication groups (warnings).
+2. **Unmapped audience.** MODO `spx-santander` is treated as broadest tier with an anomaly. New provider tiers (e.g. Galicia `Eminent Elite`, added Nov 2026) surface as `unknown_tier_signal` anomalies; add them to `BANK_TIERS`.
+3. **Missing banks.** Masventas, HSBC and Brubank have no source yet.
+4. **Duplication.** fallow reports 7 duplication groups (warnings).
+
+Resolved: `legal_purchase` removed; Galicia `proximamente` skipped like MODO non-running; Galicia `haberes` is a `payroll` condition; Macro `private-nivel-5/6` → `private-black`/`private-infinite`; Galicia `eminent-elite` tier and Elite card logos.
 
 ## Production rollout (not done)
 

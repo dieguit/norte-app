@@ -117,12 +117,7 @@ function TermsView({ terms }: { terms: CampaignTerms }) {
           <p className="m-0 mb-2 text-body-sm font-semibold">
             Condiciones de compra
           </p>
-          <Lines
-            items={terms.purchaseConditions.map(
-              (condition) =>
-                `${condition.kind === "legal_purchase" ? "Condiciones legales sin interpretar: " : ""}${purchaseConditionText(condition)}`,
-            )}
-          />
+          <Lines items={terms.purchaseConditions.map(purchaseConditionText)} />
         </div>
       )}
       {terms.warnings.length > 0 && (
